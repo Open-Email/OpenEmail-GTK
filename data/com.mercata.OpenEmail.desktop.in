@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=OpenEmail
+Exec=openemail
+Icon=@APP_ID@
+Terminal=false
+Type=Application
+Categories=Office;Email;
+Keywords=GTK;
+StartupNotify=true

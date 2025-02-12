@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>@APP_ID@</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>OpenEmail</name>
+  <summary>Take back control of your inbox</summary>
+  <description>
+    <p>
+      Imagine a mailbox that only lets in letters from people you trust—no spam, no scams, no junk.
+      That’s OpenEmail: a free, open, and secure platform designed to give you complete control
+      over your online communication.
+    </p>
+  </description>
+
+  <developer id="com.mercata">
+    <name>Mercata Sagl</name>
+  </developer>
+
+  <url type="homepage">https://www.open.email</url>
+  <url type="vcs-browser">https://github.com/Open-Email/OpenEmail-GTK</url>
+  <url type="bugtracker">https://github.com/Open-Email/OpenEmail-GTK/issues</url>
+  <url type="faq">https://www.open.email/faq</url>
+
+  <translation type="gettext">openemail</translation>
+  <launchable type="desktop-id">@APP_ID@.desktop</launchable>
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-chat">intense</content_attribute>
+    <content_attribute id="social-contacts">intense</content_attribute>
+  </content_rating>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#00cfff</color>
+    <color type="primary" scheme_preference="dark">#005bec</color>
+  </branding>
+
+  <releases>
+    <release version="0.1.0" date="2025-03-12" />
+  </releases>
+
+</component>
