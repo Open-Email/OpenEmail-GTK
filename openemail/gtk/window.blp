@@ -3,20 +3,96 @@ using Adw 1;
 
 template $MailWindow: Adw.ApplicationWindow {
   title: _("OpenEmail");
-  default-width: 800;
+  default-width: 1000;
   default-height: 600;
 
-  content: Adw.ToolbarView {
-    [top]
-    Adw.HeaderBar {
-      [end]
-      MenuButton {
-        primary: true;
-        icon-name: "open-menu-symbolic";
-        tooltip-text: _("Main Menu");
-        menu-model: primary_menu;
-      }
+  Adw.Breakpoint {
+    condition ('max-width: 900sp')
+
+    setters {
+      pages_split_view.collapsed: true;
+      content_split_view.collapsed: true;
     }
+  }
+
+  content: Adw.NavigationSplitView pages_split_view {
+    sidebar-width-fraction: 0.2;
+
+    sidebar: Adw.NavigationPage {
+      title: _("OpenEmail");
+
+      Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          [end]
+          MenuButton {
+            primary: true;
+            icon-name: "open-menu-symbolic";
+            tooltip-text: _("Main Menu");
+            menu-model: primary_menu;
+          }
+        }
+
+        content: ListBox pages_list {
+          Box {
+            margin-start: 6;
+            margin-top: 6;
+            margin-bottom: 6;
+
+            Image {
+              icon-name: "people-symbolic";
+              margin-end: 12;
+            }
+
+            Label {
+              label: _("Contacts");
+              ellipsize: end;
+            }
+          }
+
+          styles [
+            "navigation-sidebar",
+          ]
+        };
+      }
+    };
+
+    content: Adw.NavigationPage {
+      title: _("Contacts");
+
+      Adw.NavigationSplitView content_split_view {
+        max-sidebar-width: 500;
+        sidebar-width-fraction: 0.35;
+
+        sidebar: Adw.NavigationPage {
+          title: _("Contacts");
+
+          Adw.ToolbarView {
+            [top]
+            Adw.HeaderBar {}
+
+            content: ListBox contacts_list {
+              styles [
+                "navigation-sidebar",
+              ]
+            };
+          }
+        };
+
+        content: Adw.NavigationPage {
+          title: _("Details");
+
+          Adw.ToolbarView {
+            [top]
+            Adw.HeaderBar {
+              show-title: false;
+            }
+
+            content: $MailProfilePage profile_page {};
+          }
+        };
+      }
+    };
   };
 }
 

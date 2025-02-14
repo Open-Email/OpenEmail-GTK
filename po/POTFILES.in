@@ -1,11 +1,13 @@
 # List of source files containing translatable strings.
 # Please keep this file sorted alphabetically.
 
-data/com.mercata.OpenEmail.desktop.in
-data/com.mercata.OpenEmail.metainfo.xml.in
-data/com.mercata.OpenEmail.gschema.xml.in
+data/desktop.in
+data/metainfo.xml.in
+data/gschema.xml.in
 
-src/gtk/window.blp
+openemail/gtk/help-overlay.blp
+openemail/gtk/window.blp
 
-src/main.py
-src/window.py
+openemail/main.py
+openemail/profile_page.py
+openemail/window.py

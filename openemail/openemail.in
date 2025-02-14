@@ -39,11 +39,10 @@ if sys.platform.startswith("linux"):
 gettext.install("openemail", localedir)
 
 if __name__ == "__main__":
-    import gi
     from gi.repository import Gio
 
-    resource = Gio.Resource.load(os.path.join(pkgdatadir, "openemail.gresource"))
-    resource._register()
+    Gio.Resource.load(os.path.join(pkgdatadir, "openemail.gresource"))._register()
+    Gio.Resource.load(os.path.join(pkgdatadir, "openemail-icons.gresource"))._register()
 
     from openemail import main
 

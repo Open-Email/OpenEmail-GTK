@@ -12,8 +12,8 @@ blueprints = custom_target('blueprints',
 
 gnome.compile_resources('openemail',
   configure_file(
-    input:  'openemail.gresource.xml.in',
-    output: 'openemail.gresource.xml',
+    input:  'gresource.xml.in',
+    output: 'gresource.xml',
     configuration: conf,
   ),
   gresource_bundle: true,
@@ -33,7 +33,9 @@ configure_file(
 
 openemail_sources = [
   '__init__.py',
+  'client.py',
   'main.py',
+  'profile_page.py',
   'window.py',
   configure_file(
     input:  'shared.py.in',

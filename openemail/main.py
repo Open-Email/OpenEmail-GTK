@@ -19,7 +19,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import sys
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Sequence
 
 import gi
 
@@ -45,7 +45,8 @@ class MailApplication(Adw.Application):
         self.create_action("preferences", self.on_preferences_action)
 
     def do_activate(self) -> None:
-        """Called when the application is activated.
+        """
+        Called when the application is activated.
 
         We raise the application"s main window, creating it if
         necessary.
@@ -65,7 +66,8 @@ class MailApplication(Adw.Application):
             )
         )
         about.set_copyright("© 2025 Mercata Sagl")
-        # Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
+        # Translators: Replace "translator-credits" with your name/username,
+        # and optionally an email or URL.
         about.set_translator_credits(_("translator-credits"))
         about.present(self.props.active_window)
 
@@ -77,9 +79,10 @@ class MailApplication(Adw.Application):
         self,
         name: str,
         callback: Callable,
-        shortcuts: Optional[Sequence] = None,
+        shortcuts: Sequence | None = None,
     ) -> None:
-        """Add an application action.
+        """
+        Add an application action.
 
         Args:
             name: the name of the action
