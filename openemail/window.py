@@ -46,7 +46,10 @@ class MailWindow(Adw.ApplicationWindow):
         self.sidebar.connect("row-selected", self.__on_row_selected)
         self.contacts_sidebar.connect("row-selected", self.__on_contacts_selected)
 
-    def __on_row_selected(self, _obj: Any, row: MailSidebarItem) -> None:  # type: ignore
+    def __on_row_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
+        if not row:
+            return
+
         self.contacts_sidebar.unselect_all()
         self.sidebar.select_row(row)
 
@@ -55,7 +58,10 @@ class MailWindow(Adw.ApplicationWindow):
         self.content.set_visible_child(self.empty_page)
         self.split_view.set_show_content(True)
 
-    def __on_contacts_selected(self, _obj: Any, row: MailSidebarItem) -> None:  # type: ignore
+    def __on_contacts_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
+        if not row:
+            return
+
         self.sidebar.unselect_all()
         self.contacts_sidebar.select_row(row)
 
