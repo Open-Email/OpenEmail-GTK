@@ -252,7 +252,13 @@ class Profile:
                             fields[key] = None
 
 
+__agents: dict[str, tuple[str, ...]] = {}
+
+
 def __get_agents(address: Address) -> tuple[str, ...]:
+    if existing := __agents.get(address.host_part):
+        return existing
+
     contents = None
     for location in (
         f"https://{address.host_part}/.well-known/mail.txt",
@@ -266,28 +272,29 @@ def __get_agents(address: Address) -> tuple[str, ...]:
         except (HTTPError, URLError, ValueError):
             continue
 
-    if not contents:
-        return (f"mail.{address.host_part}",)
+    if contents:
+        for agent in (
+            agents := [
+                stripped
+                for line in contents.split("\n")
+                if (stripped := line.strip()) and (not stripped.startswith("#"))
+            ]
+        ):
+            try:
+                request.urlopen(
+                    request.Request(
+                        f"https://{agent}/mail/{address.host_part}",
+                        headers=HEADERS,
+                        method="HEAD",
+                    ),
+                )
+            except (HTTPError, URLError, ValueError):
+                agents.remove(agent)
 
-    for agent in (
-        agents := [
-            stripped
-            for line in contents.split("\n")
-            if (stripped := line.strip()) and (not stripped.startswith("#"))
-        ]
-    ):
-        try:
-            request.urlopen(
-                request.Request(
-                    f"https://{agent}/mail/{address.host_part}",
-                    headers=HEADERS,
-                    method="HEAD",
-                ),
-            )
-        except (HTTPError, URLError, ValueError):
-            agents.remove(agent)
+        if agents:
+            __agents[address.host_part] = tuple(agents[:3])
 
-    return tuple(agents[:3]) or (f"mail.{address.host_part}",)
+    return __agents.get(address.host_part) or (f"mail.{address.host_part}",)
 
 
 def fetch_profile(address: Address) -> Profile | None:
