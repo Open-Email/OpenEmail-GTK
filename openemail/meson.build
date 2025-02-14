@@ -2,7 +2,9 @@ moduledir = pkgdatadir / 'openemail'
 
 blueprints = custom_target('blueprints',
   input: files(
+    'gtk/contacts-page.blp',
     'gtk/help-overlay.blp',
+    'gtk/profile-page.blp',
     'gtk/window.blp',
   ),
   output: '.',
@@ -34,6 +36,7 @@ configure_file(
 openemail_sources = [
   '__init__.py',
   'client.py',
+  'contacts_page.py',
   'main.py',
   'profile_page.py',
   'window.py',

@@ -20,70 +20,25 @@
 
 from typing import Any
 
-from gi.repository import Adw, GLib, Gtk, Pango
+from gi.repository import Adw, Gtk
 
 from openemail import shared
-from openemail.client import Address, fetch_profile
-from openemail.profile_page import MailProfilePage
+from openemail.contacts_page import MailContactsPage
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/window.ui")
 class MailWindow(Adw.ApplicationWindow):
     __gtype_name__ = "MailWindow"
 
-    pages_split_view: Adw.NavigationSplitView = Gtk.Template.Child()
-    pages_list: Gtk.ListBox = Gtk.Template.Child()
+    split_view: Adw.NavigationSplitView = Gtk.Template.Child()
+    sidebar: Gtk.ListBox = Gtk.Template.Child()
 
-    content_split_view: Adw.NavigationSplitView = Gtk.Template.Child()
-    contacts_list: Gtk.ListBox = Gtk.Template.Child()
-
-    profile_page: MailProfilePage = Gtk.Template.Child()
-
-    address_book: tuple[Address, ...] = (
-        Address("kramo@open.email"),
-        Address("support@open.email"),
-        Address("john+tag@mymail.com"),
-    )
+    contacts_page: MailContactsPage = Gtk.Template.Child()  # type: ignore
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.pages_list.connect(
+        self.sidebar.connect(
             "row-selected",
-            lambda *_: self.pages_split_view.set_show_content(True),
+            lambda *_: self.split_view.set_show_content(True),
         )
-        self.contacts_list.connect(
-            "row-selected",
-            lambda _obj, row: (
-                self.content_split_view.set_show_content(True),
-                GLib.Thread.new(
-                    None, self.__load_profile, self.address_book[row.get_index()]
-                ),
-            ),
-        )
-
-        for entry in self.address_book:
-            self.contacts_list.append(
-                box := Gtk.Box(
-                    margin_top=12,
-                    margin_bottom=12,
-                )
-            )
-            box.append(
-                Adw.Avatar(
-                    size=32,
-                    text=entry.address,
-                    show_initials=True,
-                    margin_end=6,
-                )
-            )
-            box.append(
-                Gtk.Label(
-                    label=entry.address,
-                    ellipsize=Pango.EllipsizeMode.END,
-                )
-            )
-
-    def __load_profile(self, address: Address) -> None:
-        profile = fetch_profile(address)
-        GLib.idle_add(self.profile_page.set_profile, profile)

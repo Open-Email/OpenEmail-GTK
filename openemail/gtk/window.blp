@@ -7,15 +7,14 @@ template $MailWindow: Adw.ApplicationWindow {
   default-height: 600;
 
   Adw.Breakpoint {
-    condition ('max-width: 900sp')
+    condition ('max-width: 700sp')
 
     setters {
-      pages_split_view.collapsed: true;
-      content_split_view.collapsed: true;
+      split_view.collapsed: true;
     }
   }
 
-  content: Adw.NavigationSplitView pages_split_view {
+  content: Adw.NavigationSplitView split_view {
     sidebar-width-fraction: 0.2;
 
     sidebar: Adw.NavigationPage {
@@ -33,7 +32,7 @@ template $MailWindow: Adw.ApplicationWindow {
           }
         }
 
-        content: ListBox pages_list {
+        content: ListBox sidebar {
           Box {
             margin-start: 6;
             margin-top: 6;
@@ -57,42 +56,7 @@ template $MailWindow: Adw.ApplicationWindow {
       }
     };
 
-    content: Adw.NavigationPage {
-      title: _("Contacts");
-
-      Adw.NavigationSplitView content_split_view {
-        max-sidebar-width: 500;
-        sidebar-width-fraction: 0.35;
-
-        sidebar: Adw.NavigationPage {
-          title: _("Contacts");
-
-          Adw.ToolbarView {
-            [top]
-            Adw.HeaderBar {}
-
-            content: ListBox contacts_list {
-              styles [
-                "navigation-sidebar",
-              ]
-            };
-          }
-        };
-
-        content: Adw.NavigationPage {
-          title: _("Details");
-
-          Adw.ToolbarView {
-            [top]
-            Adw.HeaderBar {
-              show-title: false;
-            }
-
-            content: $MailProfilePage profile_page {};
-          }
-        };
-      }
-    };
+    content: $MailContactsPage contacts_page {};
   };
 }
 

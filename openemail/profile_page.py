@@ -20,29 +20,57 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, GLib, Gtk
 
-from openemail.client import Profile
+from openemail import shared
+from openemail.client import Address, Profile, fetch_profile
 
 
+@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-page.ui")
 class MailProfilePage(Adw.Bin):
     __gtype_name__ = "MailProfilePage"
 
-    def __init__(self, profile: Profile | None = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.set_profile(profile)
+    stack: Gtk.Stack = Gtk.Template.Child()
+    not_selected_page: Adw.StatusPage = Gtk.Template.Child()
+    not_found_page: Adw.StatusPage = Gtk.Template.Child()
+    spinner: Adw.Spinner = Gtk.Template.Child()  # type: ignore
+    page: Adw.Bin = Gtk.Template.Child()
 
-    def set_profile(self, profile: Profile | None) -> None:
-        if not profile:
-            self.set_child(
-                Adw.StatusPage(
-                    title=_("No Profile Information"),
-                    icon_name="about-symbolic",
-                )
-            )
+    _address: Address | None = None
+
+    @property
+    def address(self) -> Address | None:
+        return self._address
+
+    @address.setter
+    def address(self, address: Address) -> None:
+        if address == self._address:
             return
 
-        self.set_child(page := Adw.PreferencesPage())
+        self._address = address
+
+        self.stack.set_visible_child(self.spinner)
+
+        def thread_func() -> None:
+            GLib.idle_add(self.__update_profile, fetch_profile(address))
+
+        GLib.Thread.new(None, thread_func)
+
+    def __init__(self, address: Address | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        if not address:
+            self.stack.set_visible_child(self.not_selected_page)
+            return
+
+        self.address = address
+
+    def __update_profile(self, profile: Profile | None) -> None:
+        if not profile:
+            self.stack.set_visible_child(self.not_found_page)
+            return
+
+        self.page.set_child(page := Adw.PreferencesPage())
+        self.stack.set_visible_child(self.page)
 
         name = profile.required["name"].value
 
@@ -94,7 +122,12 @@ class MailProfilePage(Adw.Bin):
                     continue
 
                 if not group:
-                    page.add(group := Adw.PreferencesGroup(title=name))
+                    page.add(
+                        group := Adw.PreferencesGroup(
+                            title=name,
+                            separate_rows=True,  # type: ignore
+                        )
+                    )
 
                 row = Adw.ActionRow(
                     title=field.name,

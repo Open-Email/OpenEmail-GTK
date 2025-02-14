@@ -5,9 +5,13 @@ data/desktop.in
 data/metainfo.xml.in
 data/gschema.xml.in
 
+openemail/gtk/contacts-page.blp
 openemail/gtk/help-overlay.blp
+openemail/gtk/profile-page.blp
 openemail/gtk/window.blp
 
+openemail/gtk/client.py
+openemail/gtk/contacts_page.py
 openemail/main.py
 openemail/profile_page.py
 openemail/window.py
