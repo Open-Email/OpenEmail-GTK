@@ -20,10 +20,10 @@
 
 from typing import Any
 
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
 from openemail import shared
-from openemail.client import Address, Profile, fetch_profile
+from openemail.client import Address, Profile, fetch_profile, fetch_profile_image
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-page.ui")
@@ -51,10 +51,26 @@ class MailProfilePage(Adw.Bin):
 
         self.stack.set_visible_child(self.spinner)
 
-        def thread_func() -> None:
-            GLib.idle_add(self.__update_profile, fetch_profile(address))
+        def update_profile() -> None:
+            GLib.idle_add(self.__update_profile, fetch_profile(address), address)
 
-        GLib.Thread.new(None, thread_func)
+        def update_image() -> None:
+            GLib.idle_add(self.__update_image, fetch_profile_image(address), address)
+
+        GLib.Thread.new(None, update_profile)
+        GLib.Thread.new(None, update_image)
+
+    _avatar_binding: GObject.Binding | None = None
+    _paintable: Gdk.Paintable | None = None
+
+    @GObject.Property(type=Gdk.Paintable)
+    def paintable(self) -> Gdk.Paintable | None:
+        return self._paintable
+
+    @paintable.setter
+    def label(self, paintable: Gdk.Paintable) -> None:
+        print(paintable)
+        self._paintable = paintable
 
     def __init__(self, address: Address | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -64,7 +80,13 @@ class MailProfilePage(Adw.Bin):
 
         self.address = address
 
-    def __update_profile(self, profile: Profile | None) -> None:
+    def __update_profile(self, profile: Profile | None, address: Address) -> None:
+        if address != self.address:
+            return
+
+        if self._avatar_binding:
+            self._avatar_binding.unbind()
+
         if not profile:
             self.stack.set_visible_child(self.not_found_page)
             return
@@ -75,7 +97,14 @@ class MailProfilePage(Adw.Bin):
         name = profile.required["name"].value
 
         page.add(avatar_group := Adw.PreferencesGroup())
-        avatar_group.add(Adw.Avatar.new(128, name, True))
+
+        avatar_group.add(avatar := Adw.Avatar.new(128, name, True))
+        self._avatar_binding = self.bind_property(
+            "paintable",
+            avatar,
+            "custom-image",
+            GObject.BindingFlags.SYNC_CREATE,
+        )
 
         page.add(title_group := Adw.PreferencesGroup())
         title_group.add(title_label := Gtk.Label(label=name))
@@ -137,3 +166,14 @@ class MailProfilePage(Adw.Bin):
                 row.add_css_class("property")
                 row.add_prefix(Gtk.Image.new_from_icon_name(f"{key}-symbolic"))
                 group.add(row)
+
+    def __update_image(self, image: bytes, address: Address) -> None:
+        if address != self.address:
+            return
+
+        try:
+            self.paintable = Gdk.Texture.new_from_bytes(
+                GLib.Bytes.new(image)  # type: ignore
+            )
+        except GLib.Error:
+            pass

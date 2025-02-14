@@ -314,3 +314,22 @@ def fetch_profile(address: Address) -> Profile | None:
             continue
 
     return None
+
+
+def fetch_profile_image(address: Address) -> bytes | None:
+    for agent in __get_agents(address):
+        try:
+            with request.urlopen(
+                request.Request(
+                    f"https://{agent}/mail/{address.host_part}/{address.local_part}/image",
+                    headers=HEADERS,
+                ),
+            ) as response:
+                try:
+                    return response.read()
+                except ValueError:
+                    continue
+        except (HTTPError, URLError, ValueError, TimeoutError):
+            continue
+
+    return None
