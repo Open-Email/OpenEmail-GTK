@@ -32,31 +32,67 @@ template $MailWindow: Adw.ApplicationWindow {
           }
         }
 
-        content: ListBox sidebar {
-          Box {
-            margin-start: 6;
-            margin-top: 6;
-            margin-bottom: 6;
+        content: Box {
+          orientation: vertical;
 
-            Image {
-              icon-name: "people-symbolic";
-              margin-end: 12;
+          ListBox sidebar {
+            vexpand: true;
+
+            $MailSidebarItem {
+              label: _("Broadcasts");
+              icon-name: _("broadcasts-symbolic");
             }
 
-            Label {
-              label: _("Contacts");
-              ellipsize: end;
+            $MailSidebarItem {
+              label: _("Inbox");
+              icon-name: _("inbox-symbolic");
             }
+
+            $MailSidebarItem {
+              label: _("Outbox");
+              icon-name: _("outbox-symbolic");
+            }
+
+            $MailSidebarItem {
+              label: _("Drafts");
+              icon-name: _("drafts-symbolic");
+            }
+
+            $MailSidebarItem {
+              label: _("Trash");
+              icon-name: _("trash-symbolic");
+            }
+
+            styles [
+              "navigation-sidebar",
+            ]
           }
 
-          styles [
-            "navigation-sidebar",
-          ]
+          ListBox contacts_sidebar {
+            $MailSidebarItem {
+              label: _("Contacts");
+              icon-name: _("contacts-symbolic");
+            }
+
+            styles [
+              "navigation-sidebar",
+            ]
+          }
         };
       }
     };
 
-    content: $MailContactsPage contacts_page {};
+    content: Adw.NavigationPage {
+      title: _("Content");
+
+      Stack content {
+        transition-type: crossfade;
+
+        Adw.StatusPage empty_page {}
+
+        $MailContactsPage contacts_page {}
+      }
+    };
   };
 }
 

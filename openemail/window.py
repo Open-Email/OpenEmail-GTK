@@ -24,6 +24,7 @@ from gi.repository import Adw, Gtk
 
 from openemail import shared
 from openemail.contacts_page import MailContactsPage
+from openemail.sidebar_item import MailSidebarItem
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/window.ui")
@@ -32,13 +33,31 @@ class MailWindow(Adw.ApplicationWindow):
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
     sidebar: Gtk.ListBox = Gtk.Template.Child()
+    contacts_sidebar: Gtk.ListBox = Gtk.Template.Child()
 
+    content: Gtk.Stack = Gtk.Template.Child()
+
+    empty_page: Adw.StatusPage = Gtk.Template.Child()
     contacts_page: MailContactsPage = Gtk.Template.Child()  # type: ignore
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.sidebar.connect(
-            "row-selected",
-            lambda *_: self.split_view.set_show_content(True),
-        )
+        self.sidebar.connect("row-selected", self.__on_row_selected)
+        self.contacts_sidebar.connect("row-selected", self.__on_contacts_selected)
+
+    def __on_row_selected(self, _obj: Any, row: MailSidebarItem) -> None:  # type: ignore
+        self.contacts_sidebar.unselect_all()
+        self.sidebar.select_row(row)
+
+        self.empty_page.set_title(row.label)
+        self.empty_page.set_icon_name(row.icon_name)
+        self.content.set_visible_child(self.empty_page)
+        self.split_view.set_show_content(True)
+
+    def __on_contacts_selected(self, _obj: Any, row: MailSidebarItem) -> None:  # type: ignore
+        self.sidebar.unselect_all()
+        self.contacts_sidebar.select_row(row)
+
+        self.content.set_visible_child(self.contacts_page)
+        self.split_view.set_show_content(True)
