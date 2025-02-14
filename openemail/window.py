@@ -37,7 +37,9 @@ class MailWindow(Adw.ApplicationWindow):
 
     content: Gtk.Stack = Gtk.Template.Child()
 
-    empty_page: Adw.StatusPage = Gtk.Template.Child()
+    empty_page: Adw.ToolbarView = Gtk.Template.Child()
+    empty_status_page: Adw.StatusPage = Gtk.Template.Child()
+
     contacts_page: MailContactsPage = Gtk.Template.Child()  # type: ignore
 
     def __init__(self, **kwargs: Any) -> None:
@@ -53,8 +55,8 @@ class MailWindow(Adw.ApplicationWindow):
         self.contacts_sidebar.unselect_all()
         self.sidebar.select_row(row)
 
-        self.empty_page.set_title(row.label)
-        self.empty_page.set_icon_name(row.icon_name)
+        self.empty_status_page.set_title(row.label)
+        self.empty_status_page.set_icon_name(row.icon_name)
         self.content.set_visible_child(self.empty_page)
         self.split_view.set_show_content(True)
 

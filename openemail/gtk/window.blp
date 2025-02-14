@@ -88,7 +88,14 @@ template $MailWindow: Adw.ApplicationWindow {
       Stack content {
         transition-type: crossfade;
 
-        Adw.StatusPage empty_page {}
+        Adw.ToolbarView empty_page {
+          [top]
+          Adw.HeaderBar {
+            show-title: false;
+          }
+
+          content: Adw.StatusPage empty_status_page {};
+        }
 
         $MailContactsPage contacts_page {}
       }
