@@ -28,7 +28,7 @@ from typing import Generic, NamedTuple, TypeVar, final
 from urllib import request
 from urllib.error import HTTPError, URLError
 
-setdefaulttimeout(1)
+setdefaulttimeout(5)
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 T = TypeVar("T")
@@ -269,7 +269,7 @@ def __get_agents(address: Address) -> tuple[str, ...]:
                 request.Request(location, headers=HEADERS),
             ) as response:
                 contents = str(response.read().decode("utf-8"))
-        except (HTTPError, URLError, ValueError):
+        except (HTTPError, URLError, ValueError, TimeoutError):
             continue
 
     if contents:
@@ -288,7 +288,7 @@ def __get_agents(address: Address) -> tuple[str, ...]:
                         method="HEAD",
                     ),
                 )
-            except (HTTPError, URLError, ValueError):
+            except (HTTPError, URLError, ValueError, TimeoutError):
                 agents.remove(agent)
 
         if agents:
@@ -310,7 +310,7 @@ def fetch_profile(address: Address) -> Profile | None:
                     return Profile(str(response.read().decode("utf-8")))
                 except ValueError:
                     continue
-        except (HTTPError, URLError, ValueError):
+        except (HTTPError, URLError, ValueError, TimeoutError):
             continue
 
     return None
