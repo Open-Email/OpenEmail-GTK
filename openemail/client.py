@@ -269,6 +269,7 @@ def __get_agents(address: Address) -> tuple[str, ...]:
                 request.Request(location, headers=HEADERS),
             ) as response:
                 contents = str(response.read().decode("utf-8"))
+                break
         except (HTTPError, URLError, ValueError, TimeoutError):
             continue
 
