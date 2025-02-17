@@ -22,7 +22,8 @@ from socket import setdefaulttimeout
 from urllib import request
 from urllib.error import HTTPError, URLError
 
-from openemail.user import Address, Profile
+from openemail.crypto import decrpyt_anonymous, get_nonce
+from openemail.user import Address, Profile, User
 
 setdefaulttimeout(5)
 
@@ -44,7 +45,7 @@ def get_agents(address: Address) -> tuple[str, ...]:
             with request.urlopen(
                 request.Request(location, headers=HEADERS),
             ) as response:
-                contents = str(response.read().decode("utf-8"))
+                contents = response.read().decode("utf-8")
                 break
         except (HTTPError, URLError, ValueError, TimeoutError):
             continue
@@ -85,7 +86,7 @@ def fetch_profile(address: Address) -> Profile | None:
                 ),
             ) as response:
                 try:
-                    return Profile(str(response.read().decode("utf-8")))
+                    return Profile(response.read().decode("utf-8"))
                 except ValueError:
                     continue
         except (HTTPError, URLError, ValueError, TimeoutError):
@@ -112,3 +113,74 @@ def fetch_profile_image(address: Address) -> bytes | None:
             continue
 
     return None
+
+
+def try_auth(user: User) -> bool:
+    """Returns whether authentication was successful for the given `user`."""
+    for agent in get_agents(user.address):
+        try:
+            with request.urlopen(
+                request.Request(
+                    f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}",
+                    headers=HEADERS
+                    | {
+                        "Authorization": get_nonce(
+                            agent,
+                            user.public_signing_key,
+                            user.private_signing_key,
+                        )
+                    },
+                    method="HEAD",
+                ),
+            ):
+                return True
+        except (HTTPError, URLError, ValueError, TimeoutError):
+            continue
+
+    return False
+
+
+def fetch_contacts(user: User) -> tuple[Address, ...]:
+    """Attempts to fetch the `user`'s contact list."""
+    for agent in get_agents(user.address):
+        try:
+            with request.urlopen(
+                request.Request(
+                    f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}/links",
+                    headers=HEADERS
+                    | {
+                        "Authorization": get_nonce(
+                            agent,
+                            user.public_signing_key,
+                            user.private_signing_key,
+                        )
+                    },
+                ),
+            ) as response:
+                contents = response.read().decode("utf-8")
+        except (HTTPError, URLError, ValueError, TimeoutError):
+            continue
+
+        if contents:
+            addresses = []
+
+            for line in contents.split("\n"):
+                if len(parts := line.strip().split(",")) != 2:
+                    continue
+
+                try:
+                    addresses.append(
+                        Address(
+                            decrpyt_anonymous(
+                                parts[1].strip(),
+                                user.private_encryption_key,
+                                user.public_encryption_key,
+                            ).decode("ascii")
+                        )
+                    )
+                except ValueError:
+                    continue
+
+            return tuple(addresses)
+
+    return ()

@@ -26,11 +26,15 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
+import json
+
+import keyring
 from gi.repository import Adw, Gio
 
 from openemail import shared
 from openemail.gtk.preferences import MailPreferences
 from openemail.gtk.window import MailWindow
+from openemail.user import User
 
 
 class MailApplication(Adw.Application):
@@ -44,6 +48,11 @@ class MailApplication(Adw.Application):
         self.create_action("quit", lambda *_: self.quit(), ["<primary>q"])
         self.create_action("about", self.on_about_action)
         self.create_action("preferences", self.on_preferences_action)
+
+        if not (user := self.__get_local_user()):
+            return
+
+        shared.user = user
 
     def do_activate(self) -> None:
         """
@@ -74,10 +83,15 @@ class MailApplication(Adw.Application):
 
     def on_preferences_action(self, *_args: Any) -> None:
         """Callback for the app.preferences action."""
-        if (not (win := self.get_active_window())) or win.get_visible_dialog():
+        if (
+            not isinstance(
+                win := self.get_active_window(),
+                Adw.Window,
+            )
+        ) or win.get_visible_dialog():
             return
 
-        MailPreferences().present(win)
+        MailPreferences().present(win)  # type: ignore
 
     def create_action(
         self,
@@ -99,6 +113,21 @@ class MailApplication(Adw.Application):
         self.add_action(action)
         if shortcuts:
             self.set_accels_for_action(f"app.{name}", shortcuts)
+
+    def __get_local_user(self) -> None | User:
+        if not (
+            (address := shared.schema.get_string("address"))
+            and (keys := keyring.get_password(shared.secret_service, address))
+            and (keys := json.loads(keys))
+            and (encryption_key := keys.get("privateEncryptionKey"))
+            and (signing_key := keys.get("privateSigningKey"))
+        ):
+            return None
+
+        try:
+            return User(address, encryption_key, signing_key)
+        except ValueError:
+            return None
 
 
 def main() -> int:

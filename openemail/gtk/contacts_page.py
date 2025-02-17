@@ -24,6 +24,7 @@ from gi.repository import Adw, Gtk, Pango
 
 from openemail import shared
 from openemail.gtk.profile_page import MailProfilePage
+from openemail.network import fetch_contacts
 from openemail.user import Address
 
 
@@ -36,14 +37,15 @@ class MailContactsPage(Adw.NavigationPage):
 
     profile_page: MailProfilePage = Gtk.Template.Child()  # type: ignore
 
-    address_book: tuple[Address, ...] = (
-        Address("kramo@open.email"),
-        Address("support@open.email"),
-        Address("john+tag@mymail.com"),
-    )
+    address_book: tuple[Address, ...] = ()
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
+        if not shared.user:
+            return
+
+        self.address_book = fetch_contacts(shared.user)
 
         self.sidebar.connect("row-selected", self.__on_row_selected)
 

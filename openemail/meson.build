@@ -39,7 +39,6 @@ configure_file(
 
 install_data([
     '__init__.py',
-    'auth.py',
     'crypto.py',
     'main.py',
     'network.py',
