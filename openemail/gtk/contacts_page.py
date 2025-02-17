@@ -20,7 +20,7 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gtk, Pango
+from gi.repository import Adw, GLib, Gtk, Pango
 
 from openemail import shared
 from openemail.gtk.profile_page import MailProfilePage
@@ -37,19 +37,27 @@ class MailContactsPage(Adw.NavigationPage):
 
     profile_page: MailProfilePage = Gtk.Template.Child()  # type: ignore
 
-    address_book: tuple[Address, ...] = ()
+    contacts: tuple[Address, ...] = ()
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        if not shared.user:
-            return
-
-        self.address_book = fetch_contacts(shared.user)
-
+        self.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
         self.sidebar.connect("row-selected", self.__on_row_selected)
 
-        for entry in self.address_book:
+        def update_contacts_list() -> None:
+            if not shared.user:
+                return
+
+            GLib.idle_add(self.__update_contacts_list, fetch_contacts(shared.user))
+
+        GLib.Thread.new(None, update_contacts_list)
+
+    def __update_contacts_list(self, contacts: tuple[Address, ...]) -> None:
+        self.sidebar.set_placeholder()
+        self.contacts = contacts
+
+        for contact in contacts:
             self.sidebar.append(
                 box := Gtk.Box(
                     margin_top=12,
@@ -59,18 +67,18 @@ class MailContactsPage(Adw.NavigationPage):
             box.append(
                 Adw.Avatar(
                     size=32,
-                    text=entry.address,
+                    text=contact.address,
                     show_initials=True,
                     margin_end=6,
                 )
             )
             box.append(
                 Gtk.Label(
-                    label=entry.address,
+                    label=contact.address,
                     ellipsize=Pango.EllipsizeMode.END,
                 )
             )
 
     def __on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
         self.split_view.set_show_content(True)
-        self.profile_page.address = self.address_book[row.get_index()]
+        self.profile_page.address = self.contacts[row.get_index()]

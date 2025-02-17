@@ -20,10 +20,10 @@
 
 from typing import Any
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import shared
-from openemail.auth import try_auth
+from openemail.network import try_auth
 from openemail.user import Address, User
 
 
@@ -88,12 +88,15 @@ class MailAuthView(Adw.Bin):
             self.__warn(_("Incorrect key format"))
             return
 
-        if not try_auth(user):
-            self.__warn(_("Authentication failed"))
-            return
+        def authenticate() -> None:
+            if not try_auth(user):
+                GLib.idle_add(self.__warn, _("Authentication failed"))
+                return
 
-        shared.user = user
-        self.emit("authenticated")
+            shared.user = user
+            GLib.idle_add(self.emit, "authenticated")
+
+        GLib.Thread.new(None, authenticate)
 
     def __warn(self, warning: str) -> None:
         self.toast_overlay.add_toast(
