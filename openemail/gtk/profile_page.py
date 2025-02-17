@@ -23,7 +23,8 @@ from typing import Any
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
 from openemail import shared
-from openemail.client import Address, Profile, fetch_profile, fetch_profile_image
+from openemail.network import fetch_profile, fetch_profile_image
+from openemail.user import Address, Profile
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-page.ui")
@@ -69,7 +70,6 @@ class MailProfilePage(Adw.Bin):
 
     @paintable.setter
     def label(self, paintable: Gdk.Paintable) -> None:
-        print(paintable)
         self._paintable = paintable
 
     def __init__(self, address: Address | None = None, **kwargs: Any) -> None:

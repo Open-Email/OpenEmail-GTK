@@ -22,9 +22,14 @@
 
 from gi.repository import Gio
 
+from openemail.user import User
+
 APP_ID = "@APP_ID@"
 VERSION = "@VERSION@"
 PREFIX = "@PREFIX@"
 PROFILE = "@PROFILE@"
 
 schema = Gio.Settings.new(APP_ID)
+secret_service = f"{APP_ID}.Keys"
+
+user: User | None = None

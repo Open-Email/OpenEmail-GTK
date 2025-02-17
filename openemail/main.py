@@ -29,7 +29,8 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio
 
 from openemail import shared
-from openemail.window import MailWindow
+from openemail.gtk.preferences import MailPreferences
+from openemail.gtk.window import MailWindow
 
 
 class MailApplication(Adw.Application):
@@ -69,11 +70,14 @@ class MailApplication(Adw.Application):
         # Translators: Replace "translator-credits" with your name/username,
         # and optionally an email or URL.
         about.set_translator_credits(_("translator-credits"))
-        about.present(self.props.active_window)
+        about.present(self.get_active_window())
 
     def on_preferences_action(self, *_args: Any) -> None:
         """Callback for the app.preferences action."""
-        print("app.preferences action activated")
+        if (not (win := self.get_active_window())) or win.get_visible_dialog():
+            return
+
+        MailPreferences().present(win)
 
     def create_action(
         self,

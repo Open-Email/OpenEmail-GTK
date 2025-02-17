@@ -1,0 +1,34 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailPreferences: Adw.PreferencesDialog {
+  content-width: 200;
+
+  Adw.PreferencesPage {
+    title: _("General");
+    icon-name: _("home-symbolic");
+
+    Adw.PreferencesGroup {
+      Adw.ButtonRow {
+        title: _("Remove Account");
+        activated => $_remove_account();
+
+        styles [
+          "destructive-action",
+        ]
+      }
+    }
+  }
+}
+
+Adw.AlertDialog confirm_remove_dialog {
+  heading: _("Remove Account?");
+  body: _("All local data will be deleted. Log in again to restore data.");
+  close-response: "cancel";
+  response => $_confirm_remove();
+
+  responses [
+    cancel: _("Cancel"),
+    remove: _("Remove Account") destructive,
+  ]
+}

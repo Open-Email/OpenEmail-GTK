@@ -1,4 +1,4 @@
-# client.py
+# user.py
 #
 # Authors: kramo
 # Copyright 2025 Mercata Sagl
@@ -23,18 +23,19 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import date, datetime
 from re import match
-from socket import setdefaulttimeout
-from typing import Generic, NamedTuple, TypeVar, final
-from urllib import request
-from urllib.error import HTTPError, URLError
+from typing import Generic, TypeVar, final
 
-setdefaulttimeout(5)
+from gi.repository.GLib import base64_decode
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+from openemail.crypto import Key, get_keys
+
 T = TypeVar("T")
 
 
+@dataclass
 class Address:
+    """A Mail/HTTPS address."""
+
     address: str
     local_part: str
     host_part: str
@@ -55,10 +56,32 @@ class Address:
             ) from error
 
 
-class EncryptionKey(NamedTuple):
-    id: str | None
-    algorithm: str
-    value: str
+@dataclass
+class User:
+    """A local user."""
+
+    address: Address
+
+    public_encryption_key: Key
+    private_encryption_key: Key
+
+    public_signing_key: Key
+    private_signing_key: Key
+
+    def __init__(self, address: str, encryption_key: str, signing_key: str) -> None:
+        """Tries to create a local user for the provided `address` and Base64-encoded keys."""
+        try:
+            self.public_encryption_key, self.private_encryption_key = get_keys(
+                encryption_key,
+            )
+            self.public_signing_key, self.private_signing_key = get_keys(
+                signing_key,
+            )
+            self.address = Address(address)
+        except ValueError as error:
+            raise ValueError(
+                "Attempt to construct local user with incorrect data."
+            ) from error
 
 
 @dataclass
@@ -135,7 +158,7 @@ class DateTimeField(ProfileField[datetime]):
 
 
 @final
-class KeyField(ProfileField[EncryptionKey]):
+class KeyField(ProfileField[Key]):
     def update_value(self, data):
         if not data:
             return
@@ -144,12 +167,12 @@ class KeyField(ProfileField[EncryptionKey]):
             attr.strip().split("=", 1) for attr in data.split(";") if "=" in attr
         )
         try:
-            self.default_value = EncryptionKey(
-                id=attrs.get("id"),
+            self.default_value = Key(
+                bytes=base64_decode(attrs["value"]),
                 algorithm=attrs["algorithm"],
-                value=attrs["value"],
+                id=attrs.get("id"),
             )
-        except KeyError:
+        except (KeyError, ValueError):
             pass
 
 
@@ -250,87 +273,3 @@ class Profile:
                             raise ValueError(f'Required field "{key}" does not exist.')
                         case self.optional:
                             fields[key] = None
-
-
-__agents: dict[str, tuple[str, ...]] = {}
-
-
-def __get_agents(address: Address) -> tuple[str, ...]:
-    if existing := __agents.get(address.host_part):
-        return existing
-
-    contents = None
-    for location in (
-        f"https://{address.host_part}/.well-known/mail.txt",
-        f"https://mail.{address.host_part}/.well-known/mail.txt",
-    ):
-        try:
-            with request.urlopen(
-                request.Request(location, headers=HEADERS),
-            ) as response:
-                contents = str(response.read().decode("utf-8"))
-                break
-        except (HTTPError, URLError, ValueError, TimeoutError):
-            continue
-
-    if contents:
-        for agent in (
-            agents := [
-                stripped
-                for line in contents.split("\n")
-                if (stripped := line.strip()) and (not stripped.startswith("#"))
-            ]
-        ):
-            try:
-                request.urlopen(
-                    request.Request(
-                        f"https://{agent}/mail/{address.host_part}",
-                        headers=HEADERS,
-                        method="HEAD",
-                    ),
-                )
-            except (HTTPError, URLError, ValueError, TimeoutError):
-                agents.remove(agent)
-
-        if agents:
-            __agents[address.host_part] = tuple(agents[:3])
-
-    return __agents.get(address.host_part) or (f"mail.{address.host_part}",)
-
-
-def fetch_profile(address: Address) -> Profile | None:
-    for agent in __get_agents(address):
-        try:
-            with request.urlopen(
-                request.Request(
-                    f"https://{agent}/mail/{address.host_part}/{address.local_part}/profile",
-                    headers=HEADERS,
-                ),
-            ) as response:
-                try:
-                    return Profile(str(response.read().decode("utf-8")))
-                except ValueError:
-                    continue
-        except (HTTPError, URLError, ValueError, TimeoutError):
-            continue
-
-    return None
-
-
-def fetch_profile_image(address: Address) -> bytes | None:
-    for agent in __get_agents(address):
-        try:
-            with request.urlopen(
-                request.Request(
-                    f"https://{agent}/mail/{address.host_part}/{address.local_part}/image",
-                    headers=HEADERS,
-                ),
-            ) as response:
-                try:
-                    return response.read()
-                except ValueError:
-                    continue
-        except (HTTPError, URLError, ValueError, TimeoutError):
-            continue
-
-    return None

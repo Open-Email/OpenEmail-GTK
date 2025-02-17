@@ -2,8 +2,11 @@ moduledir = pkgdatadir / 'openemail'
 
 blueprints = custom_target('blueprints',
   input: files(
+    'gtk/auth-view.blp',
     'gtk/contacts-page.blp',
+    'gtk/content-view.blp',
     'gtk/help-overlay.blp',
+    'gtk/preferences.blp',
     'gtk/profile-page.blp',
     'gtk/sidebar-item.blp',
     'gtk/window.blp',
@@ -34,19 +37,30 @@ configure_file(
   install_mode: 'r-xr-xr-x'
 )
 
-openemail_sources = [
-  '__init__.py',
-  'client.py',
-  'contacts_page.py',
-  'main.py',
-  'profile_page.py',
-  'sidebar_item.py',
-  'window.py',
-  configure_file(
-    input:  'shared.py.in',
-    output: 'shared.py',
-    configuration: conf
-  ),
-]
+install_data([
+    '__init__.py',
+    'auth.py',
+    'crypto.py',
+    'main.py',
+    'network.py',
+    'user.py',
+    configure_file(
+      input:  'shared.py.in',
+      output: 'shared.py',
+      configuration: conf
+    ),
+  ],
+  install_dir: moduledir
+)
 
-install_data(openemail_sources, install_dir: moduledir)
+install_data([
+    'gtk/auth_view.py',
+    'gtk/contacts_page.py',
+    'gtk/content_view.py',
+    'gtk/preferences.py',
+    'gtk/profile_page.py',
+    'gtk/sidebar_item.py',
+    'gtk/window.py',
+  ],
+  install_dir: join_paths(moduledir, 'gtk')
+)

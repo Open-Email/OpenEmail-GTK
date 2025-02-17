@@ -23,8 +23,8 @@ from typing import Any
 from gi.repository import Adw, Gtk, Pango
 
 from openemail import shared
-from openemail.client import Address
-from openemail.profile_page import MailProfilePage
+from openemail.gtk.profile_page import MailProfilePage
+from openemail.user import Address
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")

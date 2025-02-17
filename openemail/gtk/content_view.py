@@ -1,4 +1,4 @@
-# window.py
+# content_view.py
 #
 # Authors: kramo
 # Copyright 2025 Mercata Sagl
@@ -18,18 +18,19 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+
 from typing import Any
 
 from gi.repository import Adw, Gtk
 
 from openemail import shared
-from openemail.contacts_page import MailContactsPage
-from openemail.sidebar_item import MailSidebarItem
+from openemail.gtk.contacts_page import MailContactsPage
+from openemail.gtk.sidebar_item import MailSidebarItem
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/window.ui")
-class MailWindow(Adw.ApplicationWindow):
-    __gtype_name__ = "MailWindow"
+@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/content-view.ui")
+class MailContentView(Adw.BreakpointBin):
+    __gtype_name__ = "MailContentView"
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
     sidebar: Gtk.ListBox = Gtk.Template.Child()
@@ -42,13 +43,8 @@ class MailWindow(Adw.ApplicationWindow):
 
     contacts_page: MailContactsPage = Gtk.Template.Child()  # type: ignore
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-
-        self.sidebar.connect("row-selected", self.__on_row_selected)
-        self.contacts_sidebar.connect("row-selected", self.__on_contacts_selected)
-
-    def __on_row_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
+    @Gtk.Template.Callback()
+    def _on_row_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
         if not row:
             return
 
@@ -60,7 +56,8 @@ class MailWindow(Adw.ApplicationWindow):
         self.content.set_visible_child(self.empty_page)
         self.split_view.set_show_content(True)
 
-    def __on_contacts_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
+    @Gtk.Template.Callback()
+    def _on_contacts_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
         if not row:
             return
 

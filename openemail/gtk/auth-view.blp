@@ -1,0 +1,92 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailAuthView: Adw.Bin {
+  Adw.ToastOverlay toast_overlay {
+    Adw.NavigationView navigation_view {
+      Adw.NavigationPage {
+        title: _("Log In");
+
+        Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {}
+
+          content: Adw.StatusPage email_status_page {
+            title: _("Email of the Future, Today");
+            description: _("Spam-free, phishing-free, private &amp; secure by design");
+
+            Adw.Clamp {
+              Adw.PreferencesGroup {
+                separate-rows: true;
+
+                Adw.EntryRow email_entry {
+                  title: _("Email");
+                  changed => $_email_changed();
+                  entry-activated => $_log_in();
+                }
+
+                Button log_in_button {
+                  margin-top: 24;
+                  halign: center;
+                  sensitive: false;
+                  label: _("Log In");
+                  clicked => $_log_in();
+
+                  styles [
+                    "pill",
+                    "suggested-action",
+                  ]
+                }
+              }
+            }
+          };
+        }
+      }
+
+      Adw.NavigationPage keys_page {
+        title: _("Private Keys");
+
+        Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {}
+
+          content: Adw.StatusPage keys_status_page {
+            description: _("Enter your private keys");
+            icon-name: "key-symbolic";
+
+            Adw.Clamp {
+              Adw.PreferencesGroup {
+                separate-rows: true;
+
+                Adw.PasswordEntryRow signing_key_entry {
+                  title: _("Private Signing Key");
+                  changed => $_key_changed();
+                  entry-activated => $_focus_encryption_key_entry();
+                }
+
+                Adw.PasswordEntryRow encryption_key_entry {
+                  title: _("Private Encryption Key");
+                  changed => $_key_changed();
+                  entry-activated => $_authenticate();
+                }
+
+                Button authenticate_button {
+                  margin-top: 24;
+                  halign: center;
+                  sensitive: false;
+                  label: _("Authenticate");
+                  clicked => $_authenticate();
+
+                  styles [
+                    "pill",
+                    "suggested-action",
+                  ]
+                }
+              }
+            }
+          };
+        }
+      }
+    }
+  }
+}
