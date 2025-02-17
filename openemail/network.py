@@ -28,6 +28,8 @@ from openemail.user import Address, Profile, User
 setdefaulttimeout(5)
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
+EXCEPTIONS = (HTTPError, URLError, ValueError, TimeoutError)
+
 __agents: dict[str, tuple[str, ...]] = {}
 
 
@@ -47,7 +49,7 @@ def get_agents(address: Address) -> tuple[str, ...]:
             ) as response:
                 contents = response.read().decode("utf-8")
                 break
-        except (HTTPError, URLError, ValueError, TimeoutError):
+        except EXCEPTIONS:
             continue
 
     if contents:
@@ -66,7 +68,7 @@ def get_agents(address: Address) -> tuple[str, ...]:
                         method="HEAD",
                     ),
                 )
-            except (HTTPError, URLError, ValueError, TimeoutError):
+            except EXCEPTIONS:
                 agents.remove(agent)
 
         if agents:
@@ -89,7 +91,7 @@ def fetch_profile(address: Address) -> Profile | None:
                     return Profile(response.read().decode("utf-8"))
                 except ValueError:
                     continue
-        except (HTTPError, URLError, ValueError, TimeoutError):
+        except EXCEPTIONS:
             continue
 
     return None
@@ -109,7 +111,7 @@ def fetch_profile_image(address: Address) -> bytes | None:
                     return response.read()
                 except ValueError:
                     continue
-        except (HTTPError, URLError, ValueError, TimeoutError):
+        except EXCEPTIONS:
             continue
 
     return None
@@ -134,7 +136,7 @@ def try_auth(user: User) -> bool:
                 ),
             ):
                 return True
-        except (HTTPError, URLError, ValueError, TimeoutError):
+        except EXCEPTIONS:
             continue
 
     return False
@@ -158,7 +160,7 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
                 ),
             ) as response:
                 contents = response.read().decode("utf-8")
-        except (HTTPError, URLError, ValueError, TimeoutError):
+        except EXCEPTIONS:
             continue
 
         if contents:
