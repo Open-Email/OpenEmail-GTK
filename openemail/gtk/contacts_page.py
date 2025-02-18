@@ -42,16 +42,26 @@ class MailContactsPage(Adw.NavigationPage):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
         self.sidebar.connect("row-selected", self.__on_row_selected)
 
-        def update_contacts_list() -> None:
+    def update_contacts_list(self) -> None:
+        """Updates the contact list of the user by fetching new data remotely."""
+        if not shared.user:
+            return
+
+        self.sidebar.remove_all()
+        self.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
+
+        def update_contacts() -> None:
             if not shared.user:
                 return
 
-            GLib.idle_add(self.__update_contacts_list, fetch_contacts(shared.user))
+            GLib.idle_add(
+                self.__update_contacts_list,
+                fetch_contacts(shared.user),
+            )
 
-        GLib.Thread.new(None, update_contacts_list)
+        GLib.Thread.new(None, update_contacts)
 
     def __update_contacts_list(self, contacts: tuple[Address, ...]) -> None:
         self.sidebar.set_placeholder()

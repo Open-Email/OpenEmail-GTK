@@ -43,6 +43,10 @@ class MailContentView(Adw.BreakpointBin):
 
     contacts_page: MailContactsPage = Gtk.Template.Child()  # type: ignore
 
+    def load_content(self) -> None:
+        """Populates the content view by fetching the local user's data."""
+        self.contacts_page.update_contacts_list()
+
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
         if not row:

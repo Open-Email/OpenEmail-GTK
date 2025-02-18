@@ -45,6 +45,7 @@ class MailWindow(Adw.ApplicationWindow):
         if not shared.user:
             return
 
+        self.content_view.load_content()
         self.stack.set_visible_child(self.content_view)
 
     @Gtk.Template.Callback()
@@ -67,4 +68,5 @@ class MailWindow(Adw.ApplicationWindow):
             ),
         )
 
+        self.content_view.load_content()
         self.stack.set_visible_child(self.content_view)
