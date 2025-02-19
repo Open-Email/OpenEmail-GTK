@@ -108,6 +108,9 @@ class MailBroadcastsPage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
+        if not row:
+            return
+
         self.split_view.set_show_content(True)
 
         try:
