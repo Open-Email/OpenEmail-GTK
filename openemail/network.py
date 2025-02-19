@@ -19,10 +19,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from socket import setdefaulttimeout
-from urllib import request
+from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
 from openemail.crypto import decrpyt_anonymous, get_nonce
+from openemail.messages import Envelope
 from openemail.user import Address, Profile, User
 
 setdefaulttimeout(5)
@@ -64,8 +65,8 @@ def get_agents(address: Address) -> tuple[str, ...]:
                 request.urlopen(
                     request.Request(
                         f"https://{agent}/mail/{address.host_part}",
-                        headers=HEADERS,
                         method="HEAD",
+                        headers=HEADERS,
                     ),
                 )
             except EXCEPTIONS:
@@ -124,6 +125,7 @@ def try_auth(user: User) -> bool:
             with request.urlopen(
                 request.Request(
                     f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}",
+                    method="HEAD",
                     headers=HEADERS
                     | {
                         "Authorization": get_nonce(
@@ -132,7 +134,6 @@ def try_auth(user: User) -> bool:
                             user.private_signing_key,
                         )
                     },
-                    method="HEAD",
                 ),
             ):
                 return True
@@ -144,6 +145,8 @@ def try_auth(user: User) -> bool:
 
 def fetch_contacts(user: User) -> tuple[Address, ...]:
     """Attempts to fetch the `user`'s contact list."""
+    addresses = []
+
     for agent in get_agents(user.address):
         try:
             with request.urlopen(
@@ -164,8 +167,6 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
             continue
 
         if contents:
-            addresses = []
-
             for line in contents.split("\n"):
                 if len(parts := line.strip().split(",")) != 2:
                     continue
@@ -182,7 +183,143 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
                     )
                 except ValueError:
                     continue
+            break
 
-            return tuple(addresses)
+    return tuple(addresses)
+
+
+def fetch_envelope(
+    url: str,
+    message_id: str,
+    user: User,
+    author: Address,
+) -> Envelope | None:
+    """
+    Performs a HEAD request to the specified URL and retrieves response headers.
+
+    Args:
+        url: The URL for the HEAD request
+        message_id: The message ID
+        user: Local user
+        author: Address of the remote user whose message is being fetched
+    """
+    try:
+        if not (host := parse.urlparse(url).hostname):
+            return
+    except ValueError:
+        return None
+
+    try:
+        with request.urlopen(
+            request.Request(
+                url,
+                method="HEAD",
+                headers=HEADERS
+                | {
+                    "Authorization": get_nonce(
+                        host,
+                        user.public_signing_key,
+                        user.private_signing_key,
+                    )
+                },
+            ),
+        ) as response:
+            return Envelope(
+                user,
+                author,
+                message_id,
+            ).assign_header_values(response.headers)
+
+    except EXCEPTIONS:
+        return None
+
+
+def fetch_message_from_agent(
+    url: str,
+    user: User,
+    author: Address,
+    message_id: str,
+    broadcast_allowed: bool,
+) -> tuple[Envelope, str] | None:
+    # TODO
+
+    if not (envelope := fetch_envelope(url, message_id, user, author)):
+        return None
+
+    try:
+        envelope.open_content_headers()
+    except ValueError:
+        return None
+
+    if envelope.is_broadcast and (not broadcast_allowed):
+        return None
+
+    try:
+        if not (host := parse.urlparse(url).hostname):
+            return
+    except ValueError:
+        return None
+
+    try:
+        with request.urlopen(
+            request.Request(
+                url,
+                headers=HEADERS
+                | {
+                    "Authorization": get_nonce(
+                        host,
+                        user.public_signing_key,
+                        user.private_signing_key,
+                    )
+                },
+            ),
+        ) as response:
+            return (envelope, response.read().decode("utf-8"))
+    except EXCEPTIONS:
+        return None
+
+
+def fetch_broadcast_ids(user: User, author: Address) -> tuple[str, ...]:
+    for agent in get_agents(user.address):
+        try:
+            with request.urlopen(
+                request.Request(
+                    f"https://{agent}/mail/{author.host_part}/{author.local_part}/messages",
+                    headers=HEADERS
+                    | {
+                        "Authorization": get_nonce(
+                            agent,
+                            user.public_signing_key,
+                            user.private_signing_key,
+                        )
+                    },
+                ),
+            ) as response:
+                contents = response.read().decode("utf-8")
+        except EXCEPTIONS:
+            continue
+
+        if contents:
+            return tuple(
+                stripped for line in contents.split("\n") if (stripped := line.strip())
+            )
 
     return ()
+
+
+def fetch_broadcasts(user: User, author: Address) -> tuple[str, ...]:
+    messages = []
+
+    for message_id in fetch_broadcast_ids(user, author):
+        for agent in get_agents(user.address):
+            if message := fetch_message_from_agent(
+                url=f"https://{agent}/mail/{author.host_part}/{author.local_part}/messages/{message_id}",
+                user=user,
+                author=author,
+                message_id=message_id,
+                broadcast_allowed=True,
+            ):
+                messages.append(message)
+                break
+
+    return tuple(messages)

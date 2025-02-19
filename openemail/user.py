@@ -32,7 +32,7 @@ from openemail.crypto import Key, get_keys
 T = TypeVar("T")
 
 
-@dataclass
+@dataclass(slots=True)
 class Address:
     """A Mail/HTTPS address."""
 
@@ -56,7 +56,7 @@ class Address:
             ) from error
 
 
-@dataclass
+@dataclass(slots=True)
 class User:
     """A local user."""
 
@@ -84,7 +84,7 @@ class User:
             ) from error
 
 
-@dataclass
+@dataclass(slots=True)
 class ProfileField(Generic[T]):
     name: str | None = None
     default_value: T | None = None
@@ -252,6 +252,7 @@ class Profile:
             "website": StringField(_("Website")),
             # Provides details about the professional work experience of the profile owner.
             "work": StringField(_("Work")),
+            # TODO
         }
 
         parsed_fields = {

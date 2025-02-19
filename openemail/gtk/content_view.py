@@ -24,6 +24,7 @@ from typing import Any
 from gi.repository import Adw, Gtk
 
 from openemail import shared
+from openemail.gtk.broadcasts_page import MailBroadcastsPage
 from openemail.gtk.contacts_page import MailContactsPage
 from openemail.gtk.sidebar_item import MailSidebarItem
 
@@ -41,11 +42,13 @@ class MailContentView(Adw.BreakpointBin):
     empty_page: Adw.ToolbarView = Gtk.Template.Child()
     empty_status_page: Adw.StatusPage = Gtk.Template.Child()
 
+    broadcasts_page: MailBroadcastsPage = Gtk.Template.Child()  # type: ignore
     contacts_page: MailContactsPage = Gtk.Template.Child()  # type: ignore
 
     def load_content(self) -> None:
         """Populates the content view by fetching the local user's data."""
         self.contacts_page.update_contacts_list()
+        self.broadcasts_page.update_broadcasts_list()
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
@@ -55,9 +58,14 @@ class MailContentView(Adw.BreakpointBin):
         self.contacts_sidebar.unselect_all()
         self.sidebar.select_row(row)
 
-        self.empty_status_page.set_title(row.label)
-        self.empty_status_page.set_icon_name(row.icon_name)
-        self.content.set_visible_child(self.empty_page)
+        match row.get_index():
+            case 0:
+                self.content.set_visible_child(self.broadcasts_page)
+            case _:
+                self.empty_status_page.set_title(row.label)
+                self.empty_status_page.set_icon_name(row.icon_name)
+                self.content.set_visible_child(self.empty_page)
+
         self.split_view.set_show_content(True)
 
     @Gtk.Template.Callback()

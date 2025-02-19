@@ -39,11 +39,6 @@ class MailContactsPage(Adw.NavigationPage):
 
     contacts: tuple[Address, ...] = ()
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-
-        self.sidebar.connect("row-selected", self.__on_row_selected)
-
     def update_contacts_list(self) -> None:
         """Updates the contact list of the user by fetching new data remotely."""
         if not shared.user:
@@ -62,6 +57,11 @@ class MailContactsPage(Adw.NavigationPage):
             )
 
         GLib.Thread.new(None, update_contacts)
+
+    @Gtk.Template.Callback()
+    def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
+        self.split_view.set_show_content(True)
+        self.profile_page.address = self.contacts[row.get_index()]
 
     def __update_contacts_list(self, contacts: tuple[Address, ...]) -> None:
         self.sidebar.set_placeholder()
@@ -88,7 +88,3 @@ class MailContactsPage(Adw.NavigationPage):
                     ellipsize=Pango.EllipsizeMode.END,
                 )
             )
-
-    def __on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
-        self.split_view.set_show_content(True)
-        self.profile_page.address = self.contacts[row.get_index()]
