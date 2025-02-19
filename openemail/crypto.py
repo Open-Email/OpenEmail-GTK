@@ -43,7 +43,7 @@ class Key(NamedTuple):
 
 
 def get_keys(b64: str) -> tuple[Key, Key]:
-    """Returns the public-private key pair for a given Base64-encoded string."""
+    """Get the public-private key pair for a given Base64-encoded string."""
     bytes = b64decode(b64.encode("utf-8"))
     match len(bytes):
         case 32:
@@ -55,13 +55,12 @@ def get_keys(b64: str) -> tuple[Key, Key]:
 
 
 def sign_data(private_key: Key, data: bytes) -> str:
-    """Returns a Base64-encoded version of given `data` signed using the provided `private_key`."""
-
+    """Get a Base64-encoded version of given `data` signed using the provided `private_key`."""
     return b64encode(SigningKey(private_key.bytes).sign(data).signature).decode("utf-8")
 
 
 def random_string(length: int) -> str:
-    """Generates a random string of a given `length` from characters 0..9, A..Z, and a..z."""
+    """Generate a random string of a given `length` from characters 0..9, A..Z, and a..z."""
     return "".join(
         random.choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
         for _ in range(length)
@@ -69,7 +68,7 @@ def random_string(length: int) -> str:
 
 
 def get_nonce(host: str, public_key: Key, private_key: Key) -> str:
-    """Returns a nonce used for authentication for the given agent `host` and `private_key`."""
+    """Get a nonce used for authentication for the given agent `host` and `private_key`."""
     return "SOTN " + "; ".join(
         (
             f"value={(value := random_string(30))}",
@@ -82,7 +81,7 @@ def get_nonce(host: str, public_key: Key, private_key: Key) -> str:
 
 
 def decrpyt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> bytes:
-    """Attempts to decrypt `cipher_text` using the provided keys."""
+    """Attempt to decrypt `cipher_text` using the provided keys."""
     try:
         data = b64decode(cipher_text)
     except ValueError as error:

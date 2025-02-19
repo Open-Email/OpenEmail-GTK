@@ -48,6 +48,7 @@ class MailApplication(Adw.Application):
         self.create_action("quit", lambda *_: self.quit(), ["<primary>q"])
         self.create_action("about", self.on_about_action)
         self.create_action("preferences", self.on_preferences_action)
+        self.create_action("sync", self.on_sync_action)
 
         if not (user := self.__get_local_user()):
             return
@@ -55,16 +56,14 @@ class MailApplication(Adw.Application):
         shared.user = user
 
     def do_activate(self) -> None:
-        """
-        Called when the application is activated.
+        """Raise the application's main window, creating it if necessary.
 
-        We raise the application"s main window, creating it if
-        necessary.
+        Called when the application is activated.
         """
         (self.get_active_window() or MailWindow(application=self)).present()  # type: ignore
 
     def on_about_action(self, *_args: Any) -> None:
-        """Callback for the app.about action."""
+        """Present the about dialog."""
         about = Adw.AboutDialog.new_from_appdata(
             f"{shared.PREFIX}/{shared.APP_ID}.metainfo.xml"
         )
@@ -82,7 +81,7 @@ class MailApplication(Adw.Application):
         about.present(self.get_active_window())
 
     def on_preferences_action(self, *_args: Any) -> None:
-        """Callback for the app.preferences action."""
+        """Present the preferences dialog."""
         if (
             not isinstance(
                 win := self.get_active_window(),
@@ -93,19 +92,26 @@ class MailApplication(Adw.Application):
 
         MailPreferences().present(win)  # type: ignore
 
+    def on_sync_action(self, *_args: Any) -> None:
+        """Sync remote content."""
+        if not isinstance(win := self.get_active_window(), MailWindow):  # type: ignore
+            return
+
+        win.content_view.load_content(first_sync=False)  # type: ignore
+
     def create_action(
         self,
         name: str,
         callback: Callable,
         shortcuts: Sequence | None = None,
     ) -> None:
-        """
-        Add an application action.
+        """Add an application action.
 
         Args:
             name: the name of the action
             callback: the function to be called when the action is activated
             shortcuts: an optional list of accelerators
+
         """
         action = Gio.SimpleAction.new(name, None)
         action.connect("activate", callback)
@@ -130,6 +136,5 @@ class MailApplication(Adw.Application):
 
 
 def main() -> int:
-    """The application"s entry point."""
-    app = MailApplication()
-    return app.run(sys.argv)
+    """Run the application."""
+    return MailApplication().run(sys.argv)

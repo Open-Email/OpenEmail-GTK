@@ -21,13 +21,14 @@
 from base64 import b64decode
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Self
+from typing import NamedTuple, Self
 
 from openemail.user import Address, User
 
 
-@dataclass(slots=True)
-class ContentHeaders:
+class ContentHeaders(NamedTuple):
+    """Content headers of a message."""
+
     message_id: str
     date: datetime
     subject: str
@@ -40,6 +41,8 @@ class ContentHeaders:
 
 @dataclass(slots=True)
 class Envelope:
+    """Metadata about a message."""
+
     user: User
     author: Address
     message_id: str
@@ -62,15 +65,11 @@ class Envelope:
 
     @property
     def is_broadcast(self) -> bool:
+        """Whether or not the message is a broadcast."""
         return not self.access_links
 
-    @staticmethod
-    def parse_header_attributes(data: str) -> dict[str, str]:
-        return dict(
-            attr.strip().split("=", 1) for attr in data.split(";") if "=" in attr
-        )
-
     def assign_header_values(self, headers: dict[str, str]) -> Self:
+        """Assign values from `headers` to `self`."""
         # TODO
         for key, value in headers.items():
             if not (key := key.lower()).startswith("message-"):
@@ -148,6 +147,7 @@ class Envelope:
         return self
 
     def open_content_headers(self) -> None:
+        """Decode the content headers."""
         if not self.content_header_bytes:
             raise ValueError("No content header bytes to open.")
 
@@ -166,10 +166,26 @@ class Envelope:
             raise NotImplementedError  # TODO
 
     def assert_authenticity(self) -> bool:
+        """Assert the authenticity of the envelope's data."""
         return True  # TODO
+
+    @staticmethod
+    def parse_header_attributes(data: str) -> dict[str, str]:
+        """Parse `data` for header attributes."""
+        return dict(
+            attr.strip().split("=", 1) for attr in data.split(";") if "=" in attr
+        )
+
+
+class Message(NamedTuple):
+    """An envelope and its contents."""
+
+    envelope: Envelope
+    message: str
 
 
 def content_from_headers(data: str) -> ContentHeaders:
+    """Parse `data` for content headers."""
     message_id: str | None = None
     date: datetime | None = None
     subject: str | None = None

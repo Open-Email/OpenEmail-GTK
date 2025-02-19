@@ -29,6 +29,8 @@ from openemail.user import Address, Profile
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-page.ui")
 class MailProfilePage(Adw.Bin):
+    """A page presenting a user's profile."""
+
     __gtype_name__ = "MailProfilePage"
 
     stack: Gtk.Stack = Gtk.Template.Child()
@@ -41,6 +43,7 @@ class MailProfilePage(Adw.Bin):
 
     @property
     def address(self) -> Address | None:
+        """The Mail/HTTPS address of the user."""
         return self._address
 
     @address.setter
@@ -66,10 +69,11 @@ class MailProfilePage(Adw.Bin):
 
     @GObject.Property(type=Gdk.Paintable)
     def paintable(self) -> Gdk.Paintable | None:
+        """Get the `Gdk.Paintable` of the user's profile picture."""
         return self._paintable
 
     @paintable.setter
-    def label(self, paintable: Gdk.Paintable) -> None:
+    def paintable(self, paintable: Gdk.Paintable) -> None:
         self._paintable = paintable
 
     def __init__(self, address: Address | None = None, **kwargs: Any) -> None:

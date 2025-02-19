@@ -29,6 +29,8 @@ from openemail.gtk.window import MailWindow
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/preferences.ui")
 class MailPreferences(Adw.PreferencesDialog):
+    """The application's preferences dialog."""
+
     __gtype_name__ = "MailPreferences"
 
     confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()

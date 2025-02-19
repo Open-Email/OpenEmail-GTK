@@ -20,9 +20,13 @@
 
 """Shared data across the application."""
 
-from gi.repository import Gio
+from typing import Any, Callable
 
-from openemail.user import User
+from gi.repository import Gio, GLib
+
+from openemail.messages import Message
+from openemail.network import fetch_broadcasts, fetch_contacts
+from openemail.user import Address, User
 
 APP_ID = "@APP_ID@"
 VERSION = "@VERSION@"
@@ -33,3 +37,59 @@ schema = Gio.Settings.new(APP_ID)
 secret_service = f"{APP_ID}.Keys"
 
 user: User | None = None
+
+address_book: list[Address] = []
+broadcasts: list[Message] = []
+
+loading = 0
+
+
+def update_address_book(callback: Callable[[], Any] | None = None) -> None:
+    """Update the address book of the user by fetching new data remotely."""
+    global loading
+    global address_book
+    address_book = []
+
+    def update_contacts() -> None:
+        global loading
+        global address_book
+
+        if user:
+            address_book += fetch_contacts(user)
+
+        loading -= 1
+        if callback:
+            GLib.idle_add(callback)
+
+    loading += 1
+    GLib.Thread.new(None, update_contacts)
+
+
+def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
+    """Update the broadcasts list of the user by fetching new data remotely."""
+    global loading
+    global broadcasts
+    broadcasts = []
+
+    running = len(address_book)
+
+    def fetch_done_cb() -> None:
+        nonlocal running
+
+        running -= 1
+        if (not running) and callback:
+            GLib.idle_add(callback)
+
+    def update_broadcasts(author: Address) -> None:
+        global loading
+        global broadcasts
+
+        if user:
+            broadcasts += fetch_broadcasts(user, author)
+
+        loading -= 1
+        fetch_done_cb()
+
+    for contact in address_book:
+        loading += 1
+        GLib.Thread.new(None, update_broadcasts, contact)

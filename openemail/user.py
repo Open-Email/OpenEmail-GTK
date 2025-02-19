@@ -69,7 +69,7 @@ class User:
     private_signing_key: Key
 
     def __init__(self, address: str, encryption_key: str, signing_key: str) -> None:
-        """Tries to create a local user for the provided `address` and Base64-encoded keys."""
+        """Try to create a local user for the provided `address` and Base64-encoded keys."""
         try:
             self.public_encryption_key, self.private_encryption_key = get_keys(
                 encryption_key,
@@ -86,11 +86,14 @@ class User:
 
 @dataclass(slots=True)
 class ProfileField(Generic[T]):
+    """A generic profile field."""
+
     name: str | None = None
     default_value: T | None = None
 
     @property
     def value(self) -> T:
+        """The value of the field."""
         if self.default_value is None:
             raise ValueError("Profile incorrectly initialized.")
 
@@ -98,40 +101,54 @@ class ProfileField(Generic[T]):
 
     @property
     @abstractmethod
-    def string(self) -> str: ...
+    def string(self) -> str:
+        """The string representation of the profile field."""
 
     @abstractmethod
-    def update_value(self, data: str | None) -> None: ...
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
 
 
 @final
 class StringField(ProfileField[str]):
+    """A profile field representing a string."""
+
     @property
-    def string(self):
+    def string(self) -> str:
+        """The profile field."""
         return self.value
 
-    def update_value(self, data):
+    def update_value(self, data: str | None) -> None:
+        """Update `self.value` to `data`."""
         self.default_value = data
 
 
 @final
 class BoolField(ProfileField[bool]):
+    """A profile field representing a boolean."""
+
     @property
-    def string(self):
+    def string(self) -> str:
+        """Either "Yes" or "No"."""
         return _("Yes") if self.value else _("No")
 
-    def update_value(self, data):
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
         if data is not None:
             self.default_value = data == "Yes"
 
 
 @final
 class DateField(ProfileField[date]):
+    """A profile field representing a date."""
+
     @property
-    def string(self):
+    def string(self) -> str:
+        """The formatted date."""
         return self.value.strftime("%x")
 
-    def update_value(self, data):
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
         if not data:
             return
 
@@ -143,11 +160,15 @@ class DateField(ProfileField[date]):
 
 @final
 class DateTimeField(ProfileField[datetime]):
-    @property
-    def string(self):
-        return self.value.strftime("%x")
+    """A profile field representing a date and time."""
 
-    def update_value(self, data):
+    @property
+    def string(self) -> str:
+        """The formatted date and time."""
+        return self.value.strftime("%c")
+
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
         if not data:
             return
 
@@ -159,7 +180,10 @@ class DateTimeField(ProfileField[datetime]):
 
 @final
 class KeyField(ProfileField[Key]):
-    def update_value(self, data):
+    """A profile field representing a key."""
+
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
         if not data:
             return
 
@@ -177,6 +201,8 @@ class KeyField(ProfileField[Key]):
 
 
 class Profile:
+    """A user's profile."""
+
     required: dict[str, ProfileField]
     optional: dict[str, ProfileField | None]
 

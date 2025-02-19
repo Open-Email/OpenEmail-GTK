@@ -25,6 +25,8 @@ from openemail import shared
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/sidebar-item.ui")
 class MailSidebarItem(Gtk.ListBoxRow):
+    """An item in the main sidebar."""
+
     __gtype_name__ = "MailSidebarItem"
 
     title: Gtk.Label = Gtk.Template.Child()
@@ -32,6 +34,7 @@ class MailSidebarItem(Gtk.ListBoxRow):
 
     @GObject.Property(type=str)
     def label(self) -> str:
+        """Get the item's label."""
         return self.title.get_label()
 
     @label.setter
@@ -40,6 +43,7 @@ class MailSidebarItem(Gtk.ListBoxRow):
 
     @GObject.Property(type=str)
     def icon_name(self) -> str | None:
+        """Get the item's icon."""
         return self.icon.get_icon_name()
 
     @icon_name.setter

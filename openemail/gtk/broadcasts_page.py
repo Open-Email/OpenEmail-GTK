@@ -24,12 +24,13 @@ from gi.repository import Adw, GLib, Gtk, Pango
 
 from openemail import shared
 from openemail.messages import Envelope
-from openemail.network import fetch_broadcasts
 from openemail.user import Address
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/broadcasts-page.ui")
 class MailBroadcastsPage(Adw.NavigationPage):
+    """A page listing the user's broadcast messages."""
+
     __gtype_name__ = "MailBroadcastsPage"
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
@@ -37,39 +38,19 @@ class MailBroadcastsPage(Adw.NavigationPage):
 
     message_view: Gtk.Label = Gtk.Template.Child()
 
-    broadcasts: tuple[tuple[Envelope, str], ...] = ()
+    def update_broadcasts_list(self, loading: bool = False) -> None:
+        """Update the list of broadcasts.
 
-    def update_broadcasts_list(self) -> None:
-        """Updates the broadcasts list of the user by fetching new data remotely."""
-        if not shared.user:
+        If `loading` is set to True, present a loading page instead.
+        """
+        self.sidebar.remove_all()
+
+        if loading:
+            self.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
             return
 
-        self.sidebar.remove_all()
-        self.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
-
-        def update_broadcasts() -> None:
-            if not shared.user:
-                return
-
-            GLib.idle_add(
-                self.__update_broadcasts_list,
-                fetch_broadcasts(shared.user, Address("jamie@open.email")),
-            )
-
-        GLib.Thread.new(None, update_broadcasts)
-
-    @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
-        self.split_view.set_show_content(True)
-        self.message_view.set_label(self.broadcasts[row.get_index()][1])
-
-    def __update_broadcasts_list(
-        self, broadcasts: tuple[tuple[Envelope, str], ...]
-    ) -> None:
         self.sidebar.set_placeholder()
-        self.broadcasts = broadcasts
-
-        for broadcast in broadcasts:
+        for broadcast in shared.broadcasts:
             self.sidebar.append(
                 box := Gtk.Box(
                     margin_top=12,
@@ -81,15 +62,14 @@ class MailBroadcastsPage(Adw.NavigationPage):
                 )
             )
 
-            if broadcast[0].content_headers:
+            if broadcast.envelope.content_headers:
                 box.append(hbox := Gtk.Box())
                 (
                     title := Gtk.Label(
                         hexpand=True,
                         halign=Gtk.Align.START,
-                        label=broadcast[0].content_headers.author.address,
+                        label=broadcast.envelope.content_headers.author.address,
                         ellipsize=Pango.EllipsizeMode.END,
-                        lines=1,
                     )
                 ).add_css_class("heading")
                 hbox.append(title)
@@ -97,9 +77,8 @@ class MailBroadcastsPage(Adw.NavigationPage):
                 (
                     date := Gtk.Label(
                         halign=Gtk.Align.END,
-                        label=broadcast[0].content_headers.date.strftime("%x"),
+                        label=broadcast.envelope.content_headers.date.strftime("%x"),
                         ellipsize=Pango.EllipsizeMode.END,
-                        lines=1,
                     )
                 ).add_css_class("caption")
                 hbox.append(date)
@@ -107,8 +86,9 @@ class MailBroadcastsPage(Adw.NavigationPage):
                 (
                     subject := Gtk.Label(
                         halign=Gtk.Align.START,
-                        label=broadcast[0].content_headers.subject,
+                        label=broadcast.envelope.content_headers.subject,
                         ellipsize=Pango.EllipsizeMode.END,
+                        wrap=True,
                         lines=2,
                     )
                 ).add_css_class("caption-heading")
@@ -118,9 +98,19 @@ class MailBroadcastsPage(Adw.NavigationPage):
                 message := Gtk.Label(
                     halign=Gtk.Align.START,
                     hexpand=True,
-                    label=broadcast[1],
+                    label=broadcast.message,
                     ellipsize=Pango.EllipsizeMode.END,
+                    wrap=True,
                     lines=3,
                 )
             ).add_css_class("caption")
             box.append(message)
+
+    @Gtk.Template.Callback()
+    def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
+        self.split_view.set_show_content(True)
+
+        try:
+            self.message_view.set_label(shared.broadcasts[row.get_index()].message)
+        except IndexError:
+            pass

@@ -23,7 +23,7 @@ from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
 from openemail.crypto import decrpyt_anonymous, get_nonce
-from openemail.messages import Envelope
+from openemail.messages import Envelope, Message
 from openemail.user import Address, Profile, User
 
 setdefaulttimeout(5)
@@ -35,7 +35,7 @@ __agents: dict[str, tuple[str, ...]] = {}
 
 
 def get_agents(address: Address) -> tuple[str, ...]:
-    """Returns the first ≤3 responding mail agents for a given `address`."""
+    """Get the first ≤3 responding mail agents for a given `address`."""
     if existing := __agents.get(address.host_part):
         return existing
 
@@ -79,7 +79,7 @@ def get_agents(address: Address) -> tuple[str, ...]:
 
 
 def fetch_profile(address: Address) -> Profile | None:
-    """Attempts to fetch the remote profile associated with a given `address`."""
+    """Attempt to fetch the remote profile associated with a given `address`."""
     for agent in get_agents(address):
         try:
             with request.urlopen(
@@ -99,7 +99,7 @@ def fetch_profile(address: Address) -> Profile | None:
 
 
 def fetch_profile_image(address: Address) -> bytes | None:
-    """Attempts to fetch the remote profile image associated with a given `address`."""
+    """Attempt to fetch the remote profile image associated with a given `address`."""
     for agent in get_agents(address):
         try:
             with request.urlopen(
@@ -119,7 +119,7 @@ def fetch_profile_image(address: Address) -> bytes | None:
 
 
 def try_auth(user: User) -> bool:
-    """Returns whether authentication was successful for the given `user`."""
+    """Get whether authentication was successful for the given `user`."""
     for agent in get_agents(user.address):
         try:
             with request.urlopen(
@@ -144,7 +144,7 @@ def try_auth(user: User) -> bool:
 
 
 def fetch_contacts(user: User) -> tuple[Address, ...]:
-    """Attempts to fetch the `user`'s contact list."""
+    """Attempt to fetch the `user`'s contact list."""
     addresses = []
 
     for agent in get_agents(user.address):
@@ -194,14 +194,14 @@ def fetch_envelope(
     user: User,
     author: Address,
 ) -> Envelope | None:
-    """
-    Performs a HEAD request to the specified URL and retrieves response headers.
+    """Perform a HEAD request to the specified URL and retrieves response headers.
 
     Args:
         url: The URL for the HEAD request
         message_id: The message ID
         user: Local user
         author: Address of the remote user whose message is being fetched
+
     """
     try:
         if not (host := parse.urlparse(url).hostname):
@@ -240,7 +240,8 @@ def fetch_message_from_agent(
     author: Address,
     message_id: str,
     broadcast_allowed: bool,
-) -> tuple[Envelope, str] | None:
+) -> Message | None:
+    """Attempt to fetch a message from the provided `agent`."""
     # TODO
 
     if not (envelope := fetch_envelope(url, message_id, user, author)):
@@ -274,12 +275,13 @@ def fetch_message_from_agent(
                 },
             ),
         ) as response:
-            return (envelope, response.read().decode("utf-8"))
+            return Message(envelope, response.read().decode("utf-8"))
     except EXCEPTIONS:
         return None
 
 
 def fetch_broadcast_ids(user: User, author: Address) -> tuple[str, ...]:
+    """Attempt to fetch broadcast IDs by `author`."""
     for agent in get_agents(user.address):
         try:
             with request.urlopen(
@@ -307,7 +309,8 @@ def fetch_broadcast_ids(user: User, author: Address) -> tuple[str, ...]:
     return ()
 
 
-def fetch_broadcasts(user: User, author: Address) -> tuple[str, ...]:
+def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
+    """Attempt to fetch broadcasts by `author`."""
     messages = []
 
     for message_id in fetch_broadcast_ids(user, author):

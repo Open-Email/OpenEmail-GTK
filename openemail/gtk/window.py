@@ -32,6 +32,8 @@ from openemail.gtk.content_view import MailContentView
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/window.ui")
 class MailWindow(Adw.ApplicationWindow):
+    """The main application window."""
+
     __gtype_name__ = "MailWindow"
 
     stack: Gtk.Stack = Gtk.Template.Child()

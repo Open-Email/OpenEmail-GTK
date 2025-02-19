@@ -30,6 +30,8 @@ from openemail.user import Address
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")
 class MailContactsPage(Adw.NavigationPage):
+    """A page with the contents of the user's address book."""
+
     __gtype_name__ = "MailContactsPage"
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
@@ -37,37 +39,20 @@ class MailContactsPage(Adw.NavigationPage):
 
     profile_page: MailProfilePage = Gtk.Template.Child()  # type: ignore
 
-    contacts: tuple[Address, ...] = ()
+    def update_contacts_list(self, loading: bool = False) -> None:
+        """Update the list of contacts.
 
-    def update_contacts_list(self) -> None:
-        """Updates the contact list of the user by fetching new data remotely."""
-        if not shared.user:
+        If `loading` is set to True, present a loading page instead.
+        """
+        self.sidebar.remove_all()
+
+        if loading:
+            self.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
             return
 
-        self.sidebar.remove_all()
-        self.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
-
-        def update_contacts() -> None:
-            if not shared.user:
-                return
-
-            GLib.idle_add(
-                self.__update_contacts_list,
-                fetch_contacts(shared.user),
-            )
-
-        GLib.Thread.new(None, update_contacts)
-
-    @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
-        self.split_view.set_show_content(True)
-        self.profile_page.address = self.contacts[row.get_index()]
-
-    def __update_contacts_list(self, contacts: tuple[Address, ...]) -> None:
         self.sidebar.set_placeholder()
-        self.contacts = contacts
 
-        for contact in contacts:
+        for contact in shared.address_book:
             self.sidebar.append(
                 box := Gtk.Box(
                     margin_top=12,
@@ -88,3 +73,12 @@ class MailContactsPage(Adw.NavigationPage):
                     ellipsize=Pango.EllipsizeMode.END,
                 )
             )
+
+    @Gtk.Template.Callback()
+    def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
+        self.split_view.set_show_content(True)
+
+        try:
+            self.profile_page.address = shared.address_book[row.get_index()]
+        except IndexError:
+            pass
