@@ -56,6 +56,7 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
 
         if user:
             address_book += fetch_contacts(user)
+            address_book.sort(key=lambda address: address.address)
 
         loading -= 1
         if callback:
@@ -74,20 +75,29 @@ def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
     running = len(address_book)
 
     def fetch_done_cb() -> None:
+        global loading
         nonlocal running
 
         running -= 1
-        if (not running) and callback:
-            GLib.idle_add(callback)
+        if not running:
+            broadcasts.sort(
+                key=lambda message: headers.date
+                if (headers := message.envelope.content_headers)
+                else 0,
+                reverse=True,
+            )
+
+            if callback:
+                GLib.idle_add(callback)
+
+        loading -= 1
 
     def update_broadcasts(author: Address) -> None:
-        global loading
         global broadcasts
 
         if user:
             broadcasts += fetch_broadcasts(user, author)
 
-        loading -= 1
         fetch_done_cb()
 
     for contact in address_book:
