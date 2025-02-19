@@ -46,7 +46,15 @@ template $MailBroadcastsPage: Adw.NavigationPage {
             show-title: false;
           }
 
-          content: Label message_view {};
+          content: ScrolledWindow {
+            Label message_view {
+              margin-top: 12;
+              margin-bottom: 48;
+              margin-start: 24;
+              margin-end: 24;
+              wrap: true;
+            }
+          };
         }
       };
     }
