@@ -245,7 +245,7 @@ def _home(agent: str, address: Address) -> str:
 
 
 def _mail_host(agent: str, address: Address) -> str:
-    return f"https://{agent}/mail/{address.host_part}/"
+    return f"https://{agent}/mail/{address.host_part}"
 
 
 def _mail(agent: str, address: Address) -> str:
