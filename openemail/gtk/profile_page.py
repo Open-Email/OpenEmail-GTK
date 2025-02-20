@@ -36,57 +36,24 @@ class MailProfilePage(Adw.Bin):
     stack: Gtk.Stack = Gtk.Template.Child()
     not_selected_page: Adw.StatusPage = Gtk.Template.Child()
     not_found_page: Adw.StatusPage = Gtk.Template.Child()
-    spinner: Adw.Spinner = Gtk.Template.Child()  # type: ignore
     page: Adw.Bin = Gtk.Template.Child()
 
-    _address: Address | None = None
-
-    @property
-    def address(self) -> Address | None:
-        """The Mail/HTTPS address of the user."""
-        return self._address
-
-    @address.setter
-    def address(self, address: Address) -> None:
-        if address == self._address:
-            return
-
-        self._address = address
-
-        self.stack.set_visible_child(self.spinner)
-
-        def update_profile() -> None:
-            GLib.idle_add(self.__update_profile, fetch_profile(address), address)
-
-        def update_image() -> None:
-            GLib.idle_add(self.__update_image, fetch_profile_image(address), address)
-
-        GLib.Thread.new(None, update_profile)
-        GLib.Thread.new(None, update_image)
-
-    _avatar_binding: GObject.Binding | None = None
+    _profile: Profile | None = None
     _paintable: Gdk.Paintable | None = None
 
-    @GObject.Property(type=Gdk.Paintable)
-    def paintable(self) -> Gdk.Paintable | None:
-        """Get the `Gdk.Paintable` of the user's profile picture."""
-        return self._paintable
+    _avatar_binding: GObject.Binding | None = None
 
-    @paintable.setter
-    def paintable(self, paintable: Gdk.Paintable) -> None:
-        self._paintable = paintable
+    @property
+    def profile(self) -> Profile | None:
+        """Profile of the user, if one was found."""
+        return self._profile
 
-    def __init__(self, address: Address | None = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        if not address:
-            self.stack.set_visible_child(self.not_selected_page)
+    @profile.setter
+    def profile(self, profile: Profile | None) -> None:
+        if profile == self._profile:
             return
 
-        self.address = address
-
-    def __update_profile(self, profile: Profile | None, address: Address) -> None:
-        if address != self.address:
-            return
+        self._profile = profile
 
         if self._avatar_binding:
             self._avatar_binding.unbind()
@@ -98,7 +65,7 @@ class MailProfilePage(Adw.Bin):
         self.page.set_child(page := Adw.PreferencesPage())
         self.stack.set_visible_child(self.page)
 
-        name = profile.required["name"].value
+        name = str(profile.required["name"])
 
         page.add(avatar_group := Adw.PreferencesGroup())
 
@@ -171,13 +138,19 @@ class MailProfilePage(Adw.Bin):
                 row.add_prefix(Gtk.Image.new_from_icon_name(f"{key}-symbolic"))
                 group.add(row)
 
-    def __update_image(self, image: bytes, address: Address) -> None:
-        if address != self.address:
+    @GObject.Property(type=Gdk.Paintable)
+    def paintable(self) -> Gdk.Paintable | None:
+        """Get the `Gdk.Paintable` of the user's profile picture."""
+        return self._paintable
+
+    @paintable.setter
+    def paintable(self, paintable: Gdk.Paintable) -> None:
+        self._paintable = paintable
+
+    def __init__(self, address: Address | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        if not address:
+            self.stack.set_visible_child(self.not_selected_page)
             return
 
-        try:
-            self.paintable = Gdk.Texture.new_from_bytes(
-                GLib.Bytes.new(image)  # type: ignore
-            )
-        except GLib.Error:
-            pass
+        self.address = address

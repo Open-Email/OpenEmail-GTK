@@ -22,11 +22,16 @@
 
 from typing import Any, Callable
 
-from gi.repository import Gio, GLib
+from gi.repository import Gdk, Gio, GLib
 
 from openemail.messages import Message
-from openemail.network import fetch_broadcasts, fetch_contacts
-from openemail.user import Address, User
+from openemail.network import (
+    fetch_broadcasts,
+    fetch_contacts,
+    fetch_profile,
+    fetch_profile_image,
+)
+from openemail.user import Address, Profile, User
 
 APP_ID = "@APP_ID@"
 VERSION = "@VERSION@"
@@ -38,7 +43,7 @@ secret_service = f"{APP_ID}.Keys"
 
 user: User | None = None
 
-address_book: list[Address] = []
+address_book: dict[Address, tuple[Profile | None, Gdk.Paintable | None]] = {}
 broadcasts: list[Message] = []
 
 loading = 0
@@ -48,15 +53,27 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
     """Update the address book of the user by fetching new data remotely."""
     global loading
     global address_book
-    address_book = []
+    address_book = {}
 
     def update_contacts() -> None:
         global loading
         global address_book
 
         if user:
-            address_book += fetch_contacts(user)
-            address_book.sort(key=lambda address: address.address)
+            (contacts := list(fetch_contacts(user))).sort(
+                key=lambda address: address.address
+            )
+            address_book = {
+                contact: (
+                    fetch_profile(contact),
+                    Gdk.Texture.new_from_bytes(
+                        GLib.Bytes.new(image)  # type: ignore
+                    )
+                    if (image := fetch_profile_image(contact))
+                    else None,
+                )
+                for contact in contacts
+            }
 
         loading -= 1
         if callback:

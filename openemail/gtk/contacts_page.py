@@ -52,7 +52,10 @@ class MailContactsPage(Adw.NavigationPage):
 
         self.sidebar.set_placeholder()
 
-        for contact in shared.address_book:
+        for contact, profile in shared.address_book.items():
+            name = str(profile[0].required["name"]) if profile[0] else None
+            address = contact.address
+
             self.sidebar.append(
                 box := Gtk.Box(
                     margin_top=12,
@@ -62,17 +65,36 @@ class MailContactsPage(Adw.NavigationPage):
             box.append(
                 Adw.Avatar(
                     size=32,
-                    text=contact.address,
+                    text=name or address,
                     show_initials=True,
+                    custom_image=profile[1],
                     margin_end=6,
                 )
             )
+
             box.append(
-                Gtk.Label(
-                    label=contact.address,
-                    ellipsize=Pango.EllipsizeMode.END,
+                vbox := Gtk.Box(
+                    orientation=Gtk.Orientation.VERTICAL,
+                    valign=Gtk.Align.CENTER,
+                    margin_start=6,
                 )
             )
+            vbox.append(
+                Gtk.Label(
+                    label=name or address,
+                    ellipsize=Pango.EllipsizeMode.END,
+                    halign=Gtk.Align.START,
+                )
+            )
+            if name:
+                (
+                    label := Gtk.Label(
+                        label=address,
+                        ellipsize=Pango.EllipsizeMode.END,
+                        halign=Gtk.Align.START,
+                    )
+                ).add_css_class("caption")
+                vbox.append(label)
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
@@ -82,6 +104,8 @@ class MailContactsPage(Adw.NavigationPage):
         self.split_view.set_show_content(True)
 
         try:
-            self.profile_page.address = shared.address_book[row.get_index()]
+            self.profile_page.profile, self.profile_page.paintable = list(
+                shared.address_book.values()
+            )[row.get_index()]
         except IndexError:
             pass

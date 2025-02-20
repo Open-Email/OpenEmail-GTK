@@ -63,12 +63,20 @@ class MailBroadcastsPage(Adw.NavigationPage):
             )
 
             if broadcast.envelope.content_headers:
+                author = broadcast.envelope.content_headers.author
+                name = (
+                    str(profile.required["name"])
+                    if (info := shared.address_book.get(author))
+                    and (profile := info[0])
+                    else author.address
+                )
+
                 box.append(hbox := Gtk.Box())
                 (
                     title := Gtk.Label(
                         hexpand=True,
                         halign=Gtk.Align.START,
-                        label=broadcast.envelope.content_headers.author.address,
+                        label=name,
                         ellipsize=Pango.EllipsizeMode.END,
                     )
                 ).add_css_class("heading")

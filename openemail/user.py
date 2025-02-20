@@ -55,6 +55,9 @@ class Address:
                 f'Email address "{address}" contains more than a single @ character.'
             ) from error
 
+    def __hash__(self) -> int:
+        return hash(self.address)
+
 
 @dataclass(slots=True)
 class User:
