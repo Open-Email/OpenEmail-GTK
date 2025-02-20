@@ -22,7 +22,7 @@ from http.client import HTTPResponse
 from socket import setdefaulttimeout
 from typing import MutableMapping
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from openemail.crypto import decrpyt_anonymous, get_nonce
@@ -103,7 +103,7 @@ def get_agents(address: Address) -> tuple[str, ...]:
 def fetch_profile(address: Address) -> Profile | None:
     """Attempt to fetch the remote profile associated with a given `address`."""
     for agent in get_agents(address):
-        if not (response := request(urljoin(_home(agent, address), "profile"))):
+        if not (response := request(f"{_mail(agent, address)}/profile")):
             continue
 
         with response:
@@ -116,7 +116,7 @@ def fetch_profile(address: Address) -> Profile | None:
 def fetch_profile_image(address: Address) -> bytes | None:
     """Attempt to fetch the remote profile image associated with a given `address`."""
     for agent in get_agents(address):
-        if not (response := request(urljoin(_home(agent, address), "image"))):
+        if not (response := request(f"{_mail(agent, address)}/image")):
             continue
 
         with response:
@@ -142,7 +142,7 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
     for agent in get_agents(user.address):
         if not (
             response := request(
-                urljoin(_home(agent, user.address), "links"),
+                f"{_home(agent, user.address)}/links",
                 user,
             )
         ):
@@ -230,7 +230,7 @@ def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
     for message_id in fetch_broadcast_ids(user, author):
         for agent in get_agents(user.address):
             if message := fetch_message_from_agent(
-                url=urljoin(_messages(agent, author), message_id),
+                url=f"{_messages(agent, author)}/{message_id}",
                 user=user,
                 message_id=message_id,
             ):
@@ -249,8 +249,8 @@ def _mail_host(agent: str, address: Address) -> str:
 
 
 def _mail(agent: str, address: Address) -> str:
-    return urljoin(_mail_host(agent, address), address.local_part)
+    return f"{_mail_host(agent, address)}/{address.local_part}"
 
 
 def _messages(agent: str, address: Address) -> str:
-    return urljoin(_mail(agent, address), "messages")
+    return f"{_mail(agent, address)}/messages"
