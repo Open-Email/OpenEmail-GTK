@@ -18,9 +18,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from http.client import HTTPResponse
 from socket import setdefaulttimeout
-from urllib import parse, request
+from typing import MutableMapping
+from urllib import parse
 from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from openemail.crypto import decrpyt_anonymous, get_nonce
 from openemail.messages import Envelope, Message
@@ -28,10 +31,40 @@ from openemail.user import Address, Profile, User
 
 setdefaulttimeout(5)
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
-EXCEPTIONS = (HTTPError, URLError, ValueError, TimeoutError)
-
 __agents: dict[str, tuple[str, ...]] = {}
+
+
+def request(
+    url: str,
+    method: str | None = None,
+    agent: str | None = None,
+    user: User | None = None,
+) -> HTTPResponse | None:
+    """Make an HTTP request using `urllib.urlopen`, handling errors and authentication.
+
+    If `agent` and `user` are set, use them to obtain an authentication nonce.
+    """
+    try:
+        return urlopen(
+            Request(
+                url,
+                method=method,
+                headers={"User-Agent": "Mozilla/5.0"}
+                | (
+                    {
+                        "Authorization": get_nonce(
+                            agent,
+                            user.public_signing_key,
+                            user.private_signing_key,
+                        )
+                    }
+                    if (agent and user)
+                    else {}
+                ),
+            ),
+        )
+    except (HTTPError, URLError, ValueError, TimeoutError):
+        return None
 
 
 def get_agents(address: Address) -> tuple[str, ...]:
@@ -44,16 +77,12 @@ def get_agents(address: Address) -> tuple[str, ...]:
         f"https://{address.host_part}/.well-known/mail.txt",
         f"https://mail.{address.host_part}/.well-known/mail.txt",
     ):
-        try:
-            with request.urlopen(
-                request.Request(location, headers=HEADERS),
-            ) as response:
-                contents = response.read().decode("utf-8")
-                break
-        except EXCEPTIONS:
+        if not (response := request(location)):
             continue
 
-    if contents:
+        with response:
+            contents = response.read().decode("utf-8")
+
         for agent in (
             agents := [
                 stripped
@@ -61,19 +90,14 @@ def get_agents(address: Address) -> tuple[str, ...]:
                 if (stripped := line.strip()) and (not stripped.startswith("#"))
             ]
         ):
-            try:
-                request.urlopen(
-                    request.Request(
-                        f"https://{agent}/mail/{address.host_part}",
-                        method="HEAD",
-                        headers=HEADERS,
-                    ),
-                )
-            except EXCEPTIONS:
+            if not request(f"https://{agent}/mail/{address.host_part}", method="HEAD"):
                 agents.remove(agent)
+                continue
 
         if agents:
             __agents[address.host_part] = tuple(agents[:3])
+
+        break
 
     return __agents.get(address.host_part) or (f"mail.{address.host_part}",)
 
@@ -81,19 +105,16 @@ def get_agents(address: Address) -> tuple[str, ...]:
 def fetch_profile(address: Address) -> Profile | None:
     """Attempt to fetch the remote profile associated with a given `address`."""
     for agent in get_agents(address):
-        try:
-            with request.urlopen(
-                request.Request(
-                    f"https://{agent}/mail/{address.host_part}/{address.local_part}/profile",
-                    headers=HEADERS,
-                ),
-            ) as response:
-                try:
-                    return Profile(response.read().decode("utf-8"))
-                except ValueError:
-                    continue
-        except EXCEPTIONS:
+        if not (
+            response := request(
+                f"https://{agent}/mail/{address.host_part}/{address.local_part}/profile"
+            )
+        ):
             continue
+
+        with response:
+            return Profile(response.read().decode("utf-8"))
+            break
 
     return None
 
@@ -101,19 +122,16 @@ def fetch_profile(address: Address) -> Profile | None:
 def fetch_profile_image(address: Address) -> bytes | None:
     """Attempt to fetch the remote profile image associated with a given `address`."""
     for agent in get_agents(address):
-        try:
-            with request.urlopen(
-                request.Request(
-                    f"https://{agent}/mail/{address.host_part}/{address.local_part}/image",
-                    headers=HEADERS,
-                ),
-            ) as response:
-                try:
-                    return response.read()
-                except ValueError:
-                    continue
-        except EXCEPTIONS:
+        if not (
+            response := request(
+                f"https://{agent}/mail/{address.host_part}/{address.local_part}/image"
+            )
+        ):
             continue
+
+        with response:
+            return response.read()
+            break
 
     return None
 
@@ -121,24 +139,13 @@ def fetch_profile_image(address: Address) -> bytes | None:
 def try_auth(user: User) -> bool:
     """Get whether authentication was successful for the given `user`."""
     for agent in get_agents(user.address):
-        try:
-            with request.urlopen(
-                request.Request(
-                    f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}",
-                    method="HEAD",
-                    headers=HEADERS
-                    | {
-                        "Authorization": get_nonce(
-                            agent,
-                            user.public_signing_key,
-                            user.private_signing_key,
-                        )
-                    },
-                ),
-            ):
-                return True
-        except EXCEPTIONS:
-            continue
+        if request(
+            f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}",
+            method="HEAD",
+            agent=agent,
+            user=user,
+        ):
+            return True
 
     return False
 
@@ -148,42 +155,35 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
     addresses = []
 
     for agent in get_agents(user.address):
-        try:
-            with request.urlopen(
-                request.Request(
-                    f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}/links",
-                    headers=HEADERS
-                    | {
-                        "Authorization": get_nonce(
-                            agent,
-                            user.public_signing_key,
-                            user.private_signing_key,
-                        )
-                    },
-                ),
-            ) as response:
-                contents = response.read().decode("utf-8")
-        except EXCEPTIONS:
+        if not (
+            response := request(
+                f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}/links",
+                agent=agent,
+                user=user,
+            )
+        ):
             continue
 
-        if contents:
-            for line in contents.split("\n"):
-                if len(parts := line.strip().split(",")) != 2:
-                    continue
+        with response:
+            contents = response.read().decode("utf-8")
 
-                try:
-                    addresses.append(
-                        Address(
-                            decrpyt_anonymous(
-                                parts[1].strip(),
-                                user.private_encryption_key,
-                                user.public_encryption_key,
-                            ).decode("ascii")
-                        )
+        for line in contents.split("\n"):
+            if len(parts := line.strip().split(",")) != 2:
+                continue
+
+            try:
+                addresses.append(
+                    Address(
+                        decrpyt_anonymous(
+                            parts[1].strip(),
+                            user.private_encryption_key,
+                            user.public_encryption_key,
+                        ).decode("ascii")
                     )
-                except ValueError:
-                    continue
-            break
+                )
+            except ValueError:
+                continue
+        break
 
     return tuple(addresses)
 
@@ -209,29 +209,11 @@ def fetch_envelope(
     except ValueError:
         return None
 
-    try:
-        with request.urlopen(
-            request.Request(
-                url,
-                method="HEAD",
-                headers=HEADERS
-                | {
-                    "Authorization": get_nonce(
-                        host,
-                        user.public_signing_key,
-                        user.private_signing_key,
-                    )
-                },
-            ),
-        ) as response:
-            return Envelope(
-                user,
-                author,
-                message_id,
-            ).assign_header_values(response.headers)
-
-    except EXCEPTIONS:
+    if not (response := request(url, agent=host, user=user)):
         return None
+
+    with response:
+        return Envelope(user, author, message_id).assign_header_values(response.headers)
 
 
 def fetch_message_from_agent(
@@ -257,54 +239,35 @@ def fetch_message_from_agent(
 
     try:
         if not (host := parse.urlparse(url).hostname):
-            return
+            return None
     except ValueError:
         return None
 
-    try:
-        with request.urlopen(
-            request.Request(
-                url,
-                headers=HEADERS
-                | {
-                    "Authorization": get_nonce(
-                        host,
-                        user.public_signing_key,
-                        user.private_signing_key,
-                    )
-                },
-            ),
-        ) as response:
-            return Message(envelope, response.read().decode("utf-8"))
-    except EXCEPTIONS:
+    if not (response := request(url, agent=host, user=user)):
         return None
+
+    with response:
+        return Message(envelope, response.read().decode("utf-8"))
 
 
 def fetch_broadcast_ids(user: User, author: Address) -> tuple[str, ...]:
     """Attempt to fetch broadcast IDs by `author`."""
     for agent in get_agents(user.address):
-        try:
-            with request.urlopen(
-                request.Request(
-                    f"https://{agent}/mail/{author.host_part}/{author.local_part}/messages",
-                    headers=HEADERS
-                    | {
-                        "Authorization": get_nonce(
-                            agent,
-                            user.public_signing_key,
-                            user.private_signing_key,
-                        )
-                    },
-                ),
-            ) as response:
-                contents = response.read().decode("utf-8")
-        except EXCEPTIONS:
+        if not (
+            response := request(
+                f"https://{agent}/mail/{author.host_part}/{author.local_part}/messages",
+                agent=agent,
+                user=user,
+            )
+        ):
             continue
 
-        if contents:
-            return tuple(
-                stripped for line in contents.split("\n") if (stripped := line.strip())
-            )
+        with response:
+            contents = response.read().decode("utf-8")
+
+        return tuple(
+            stripped for line in contents.split("\n") if (stripped := line.strip())
+        )
 
     return ()
 

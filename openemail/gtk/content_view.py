@@ -56,7 +56,7 @@ class MailContentView(Adw.BreakpointBin):
         Otherwise, a toast is presented at the start and end.
         """
         if not first_sync:
-            if shared.loading:
+            if shared.is_loading():
                 if self.syncing_toast:
                     self.syncing_toast.dismiss()
 

@@ -21,6 +21,7 @@
 from base64 import b64decode
 from dataclasses import dataclass, field
 from datetime import datetime
+from http.client import HTTPMessage
 from typing import NamedTuple, Self
 
 from openemail.user import Address, User
@@ -68,7 +69,7 @@ class Envelope:
         """Whether or not the message is a broadcast."""
         return not self.access_links
 
-    def assign_header_values(self, headers: dict[str, str]) -> Self:
+    def assign_header_values(self, headers: HTTPMessage) -> Self:
         """Assign values from `headers` to `self`."""
         # TODO
         for key, value in headers.items():

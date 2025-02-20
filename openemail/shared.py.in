@@ -47,26 +47,31 @@ address_book: dict[Address, Profile | None] = {}
 photo_book: dict[Address, Gdk.Paintable | None] = {}
 broadcasts: list[Message] = []
 
-loading = 0
+_loading = 0
+
+
+def is_loading() -> bool:
+    """Check whether or not an update is currently ongoing."""
+    return bool(_loading)
 
 
 def update_address_book(callback: Callable[[], Any] | None = None) -> None:
     """Update the address and photo books of the user by fetching new data remotely."""
-    global loading
+    global _loading
 
     running = 0
     new_address_book: dict[Address, Profile | None] = {}
     new_photo_book: dict[Address, Gdk.Paintable | None] = {}
 
     def fetch_done_cb() -> None:
-        global loading
+        global _loading
         nonlocal running
         global address_book
         global photo_book
 
         running -= 1
         if not running:
-            loading -= 1
+            _loading -= 1
 
             address_book = new_address_book
             photo_book = new_photo_book
@@ -89,7 +94,7 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
         fetch_done_cb()
 
     def update_contacts() -> None:
-        global loading
+        global _loading
         nonlocal running
 
         if user:
@@ -102,19 +107,19 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
                 GLib.Thread.new(None, update_profile, contact)
                 GLib.Thread.new(None, update_profile_image, contact)
 
-    loading += 1
+    _loading += 1
     GLib.Thread.new(None, update_contacts)
 
 
 def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
     """Update the broadcasts list of the user by fetching new data remotely."""
-    global loading
+    global _loading
 
     running = len(address_book)
     new_broadcasts: list[Message] = []
 
     def fetch_done_cb() -> None:
-        global loading
+        global _loading
         nonlocal running
         global broadcasts
 
@@ -128,7 +133,7 @@ def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
             )
 
             broadcasts = new_broadcasts
-            loading -= 1
+            _loading -= 1
 
             if callback:
                 GLib.idle_add(callback)
@@ -142,7 +147,7 @@ def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
 
         fetch_done_cb()
 
-    loading += 1
+    _loading += 1
     for contact in address_book:
         GLib.Thread.new(None, update_broadcasts, contact)
 
