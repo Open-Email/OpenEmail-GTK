@@ -44,7 +44,7 @@ install_data([
     '__init__.py',
     'crypto.py',
     'main.py',
-    'messages.py',
+    'message.py',
     'network.py',
     'user.py',
     configure_file(

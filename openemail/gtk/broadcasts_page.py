@@ -24,7 +24,7 @@ from gi.repository import Adw, GLib, Gtk, Pango
 
 from openemail import shared
 from openemail.gtk.message_row import MailMessageRow
-from openemail.messages import Envelope
+from openemail.message import Envelope
 from openemail.user import Address
 
 
@@ -52,12 +52,11 @@ class MailBroadcastsPage(Adw.NavigationPage):
 
         self.sidebar.set_placeholder()
         for broadcast in shared.broadcasts:
-            headers = broadcast.envelope.content_headers
             self.sidebar.append(
                 MailMessageRow(
                     name=shared.get_name(broadcast.envelope.author),  # type: ignore
-                    date=headers.date.strftime("%x") if headers else None,  # type: ignore
-                    subject=headers.subject if headers else None,  # type: ignore
+                    date=broadcast.envelope.date.strftime("%x"),  # type: ignore
+                    subject=broadcast.envelope.subject,  # type: ignore
                     message=broadcast.message,  # type: ignore
                     profile_image=shared.photo_book.get(broadcast.envelope.author),  # type: ignore
                 )

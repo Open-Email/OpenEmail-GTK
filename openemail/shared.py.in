@@ -24,7 +24,7 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib
 
-from openemail.messages import Message
+from openemail.message import Message
 from openemail.network import (
     fetch_broadcasts,
     fetch_contacts,
@@ -126,9 +126,7 @@ def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
         running -= 1
         if not running:
             new_broadcasts.sort(
-                key=lambda message: headers.date
-                if (headers := message.envelope.content_headers)
-                else 0,
+                key=lambda message: message.envelope.date,
                 reverse=True,
             )
 

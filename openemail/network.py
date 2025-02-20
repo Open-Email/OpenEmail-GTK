@@ -26,7 +26,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from openemail.crypto import decrpyt_anonymous, get_nonce
-from openemail.messages import Envelope, Message
+from openemail.message import Envelope, Message
 from openemail.user import Address, Profile, User
 
 setdefaulttimeout(5)
@@ -99,7 +99,7 @@ def get_agents(address: Address) -> tuple[str, ...]:
 
         break
 
-    return __agents.get(address.host_part) or (f"mail.{address.host_part}",)
+    return __agents.get(address.host_part, (f"mail.{address.host_part}",))
 
 
 def fetch_profile(address: Address) -> Profile | None:
@@ -188,24 +188,18 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
     return tuple(addresses)
 
 
-def fetch_envelope(
-    url: str,
-    message_id: str,
-    user: User,
-    author: Address,
-) -> Envelope | None:
+def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
     """Perform a HEAD request to the specified URL and retrieves response headers.
 
     Args:
         url: The URL for the HEAD request
         message_id: The message ID
         user: Local user
-        author: Address of the remote user whose message is being fetched
 
     """
     try:
         if not (host := parse.urlparse(url).hostname):
-            return
+            return None
     except ValueError:
         return None
 
@@ -213,28 +207,19 @@ def fetch_envelope(
         return None
 
     with response:
-        return Envelope(user, author, message_id).assign_header_values(response.headers)
+        try:
+            return Envelope(message_id, response.headers)
+        except ValueError:
+            return None
 
 
 def fetch_message_from_agent(
     url: str,
     user: User,
-    author: Address,
     message_id: str,
-    broadcast_allowed: bool,
 ) -> Message | None:
     """Attempt to fetch a message from the provided `agent`."""
-    # TODO
-
-    if not (envelope := fetch_envelope(url, message_id, user, author)):
-        return None
-
-    try:
-        envelope.open_content_headers()
-    except ValueError:
-        return None
-
-    if envelope.is_broadcast and (not broadcast_allowed):
+    if not (envelope := fetch_envelope(url, message_id, user)):
         return None
 
     try:
@@ -281,9 +266,7 @@ def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
             if message := fetch_message_from_agent(
                 url=f"https://{agent}/mail/{author.host_part}/{author.local_part}/messages/{message_id}",
                 user=user,
-                author=author,
                 message_id=message_id,
-                broadcast_allowed=True,
             ):
                 messages.append(message)
                 break

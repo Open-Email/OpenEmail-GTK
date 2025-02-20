@@ -271,7 +271,6 @@ class Profile:
             "website": StringField(_("Website")),
             # Provides details about the professional work experience of the profile owner.
             "work": StringField(_("Work")),
-            # TODO
         }
 
         parsed_fields = {
