@@ -83,11 +83,9 @@ class MailApplication(Adw.Application):
     def on_preferences_action(self, *_args: Any) -> None:
         """Present the preferences dialog."""
         if (
-            not isinstance(
-                win := self.get_active_window(),
-                Adw.Window,
-            )
-        ) or win.get_visible_dialog():
+            isinstance(win := self.get_active_window(), Adw.ApplicationWindow)
+            and win.get_visible_dialog()
+        ):
             return
 
         MailPreferences().present(win)  # type: ignore

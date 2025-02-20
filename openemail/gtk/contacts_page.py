@@ -53,8 +53,7 @@ class MailContactsPage(Adw.NavigationPage):
         self.sidebar.set_placeholder()
 
         for contact, profile in shared.address_book.items():
-            name = str(profile[0].required["name"]) if profile[0] else None
-            address = contact.address
+            name = shared.get_name(contact)
 
             self.sidebar.append(
                 box := Gtk.Box(
@@ -65,9 +64,9 @@ class MailContactsPage(Adw.NavigationPage):
             box.append(
                 Adw.Avatar(
                     size=32,
-                    text=name or address,
+                    text=name,
                     show_initials=True,
-                    custom_image=profile[1],
+                    custom_image=shared.photo_book.get(contact),
                     margin_end=6,
                 )
             )
@@ -81,15 +80,15 @@ class MailContactsPage(Adw.NavigationPage):
             )
             vbox.append(
                 Gtk.Label(
-                    label=name or address,
+                    label=name,
                     ellipsize=Pango.EllipsizeMode.END,
                     halign=Gtk.Align.START,
                 )
             )
-            if name:
+            if name != contact.address:
                 (
                     label := Gtk.Label(
-                        label=address,
+                        label=contact.address,
                         ellipsize=Pango.EllipsizeMode.END,
                         halign=Gtk.Align.START,
                     )
@@ -103,9 +102,10 @@ class MailContactsPage(Adw.NavigationPage):
 
         self.split_view.set_show_content(True)
 
+        index = row.get_index()
+
         try:
-            self.profile_page.profile, self.profile_page.paintable = list(
-                shared.address_book.values()
-            )[row.get_index()]
+            self.profile_page.profile = list(shared.address_book.values())[index]
+            self.profile_page.paintable = list(shared.photo_book.values())[index]
         except IndexError:
             pass

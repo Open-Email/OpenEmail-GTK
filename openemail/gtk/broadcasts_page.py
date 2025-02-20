@@ -52,26 +52,35 @@ class MailBroadcastsPage(Adw.NavigationPage):
         self.sidebar.set_placeholder()
         for broadcast in shared.broadcasts:
             self.sidebar.append(
-                box := Gtk.Box(
+                contents := Gtk.Box(
                     margin_top=12,
                     margin_bottom=12,
-                    margin_start=6,
                     margin_end=6,
+                    spacing=3,
+                )
+            )
+
+            contents.append(
+                details := Gtk.Box(
+                    margin_start=6,
                     orientation=Gtk.Orientation.VERTICAL,
                     spacing=3,
                 )
             )
 
             if broadcast.envelope.content_headers:
-                author = broadcast.envelope.content_headers.author
-                name = (
-                    str(profile.required["name"])
-                    if (info := shared.address_book.get(author))
-                    and (profile := info[0])
-                    else author.address
+                name = shared.get_name(broadcast.envelope.author)
+
+                contents.prepend(
+                    Adw.Avatar(
+                        size=32,
+                        text=name,
+                        show_initials=True,
+                        custom_image=shared.photo_book.get(broadcast.envelope.author),
+                    )
                 )
 
-                box.append(hbox := Gtk.Box())
+                details.append(heading := Gtk.Box())
                 (
                     title := Gtk.Label(
                         hexpand=True,
@@ -80,7 +89,7 @@ class MailBroadcastsPage(Adw.NavigationPage):
                         ellipsize=Pango.EllipsizeMode.END,
                     )
                 ).add_css_class("heading")
-                hbox.append(title)
+                heading.append(title)
 
                 (
                     date := Gtk.Label(
@@ -89,7 +98,7 @@ class MailBroadcastsPage(Adw.NavigationPage):
                         ellipsize=Pango.EllipsizeMode.END,
                     )
                 ).add_css_class("caption")
-                hbox.append(date)
+                heading.append(date)
 
                 (
                     subject := Gtk.Label(
@@ -100,7 +109,7 @@ class MailBroadcastsPage(Adw.NavigationPage):
                         lines=2,
                     )
                 ).add_css_class("caption-heading")
-                box.append(subject)
+                details.append(subject)
 
             (
                 message := Gtk.Label(
@@ -112,7 +121,7 @@ class MailBroadcastsPage(Adw.NavigationPage):
                     lines=3,
                 )
             ).add_css_class("caption")
-            box.append(message)
+            details.append(message)
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:

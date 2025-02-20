@@ -22,7 +22,7 @@
 
 from typing import Any, Callable
 
-from gi.repository import Gdk, Gio, GLib
+from gi.repository import Adw, Gdk, Gio, GLib
 
 from openemail.messages import Message
 from openemail.network import (
@@ -43,41 +43,59 @@ secret_service = f"{APP_ID}.Keys"
 
 user: User | None = None
 
-address_book: dict[Address, tuple[Profile | None, Gdk.Paintable | None]] = {}
+address_book: dict[Address, Profile | None] = {}
+photo_book: dict[Address, Gdk.Paintable | None] = {}
 broadcasts: list[Message] = []
 
 loading = 0
 
 
 def update_address_book(callback: Callable[[], Any] | None = None) -> None:
-    """Update the address book of the user by fetching new data remotely."""
+    """Update the address and photo books of the user by fetching new data remotely."""
     global loading
-    global address_book
-    address_book = {}
+
+    running = len(address_book) * 2
+
+    def fetch_done_cb() -> None:
+        global loading
+        nonlocal running
+
+        running -= 1
+        if not running:
+            loading -= 1
+
+            if callback:
+                GLib.idle_add(callback)
+
+    def update_profile(contact: Address) -> None:
+        global address_book
+        address_book[contact] = fetch_profile(contact)
+        fetch_done_cb()
+
+    def update_profile_image(contact: Address) -> None:
+        global photo_book
+        photo_book[contact] = (
+            Gdk.Texture.new_from_bytes(
+                GLib.Bytes.new(image)  # type: ignore
+            )
+            if (image := fetch_profile_image(contact))
+            else None
+        )
+        fetch_done_cb()
 
     def update_contacts() -> None:
         global loading
-        global address_book
+        nonlocal running
 
         if user:
             (contacts := list(fetch_contacts(user))).sort(
                 key=lambda address: address.address
             )
-            address_book = {
-                contact: (
-                    fetch_profile(contact),
-                    Gdk.Texture.new_from_bytes(
-                        GLib.Bytes.new(image)  # type: ignore
-                    )
-                    if (image := fetch_profile_image(contact))
-                    else None,
-                )
-                for contact in contacts
-            }
 
-        loading -= 1
-        if callback:
-            GLib.idle_add(callback)
+            for contact in contacts:
+                running += 2
+                GLib.Thread.new(None, update_profile, contact)
+                GLib.Thread.new(None, update_profile_image, contact)
 
     loading += 1
     GLib.Thread.new(None, update_contacts)
@@ -86,37 +104,51 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
 def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
     """Update the broadcasts list of the user by fetching new data remotely."""
     global loading
-    global broadcasts
-    broadcasts = []
 
     running = len(address_book)
+    new_broadcasts: list[Message] = []
 
     def fetch_done_cb() -> None:
         global loading
         nonlocal running
+        global broadcasts
 
         running -= 1
         if not running:
-            broadcasts.sort(
+            new_broadcasts.sort(
                 key=lambda message: headers.date
                 if (headers := message.envelope.content_headers)
                 else 0,
                 reverse=True,
             )
 
+            broadcasts = new_broadcasts
+            loading -= 1
+
             if callback:
                 GLib.idle_add(callback)
 
-        loading -= 1
-
     def update_broadcasts(author: Address) -> None:
         global broadcasts
+        nonlocal new_broadcasts
 
         if user:
-            broadcasts += fetch_broadcasts(user, author)
+            new_broadcasts += fetch_broadcasts(user, author)
 
         fetch_done_cb()
 
     for contact in address_book:
         loading += 1
         GLib.Thread.new(None, update_broadcasts, contact)
+
+
+def get_name(address: Address) -> str:
+    """Get the name of a user.
+
+    Returns the string representation of `address` if no profile has been found.
+    """
+    return (
+        str(profile.required["name"])
+        if (profile := address_book.get(address))
+        else address.address
+    )
