@@ -164,7 +164,7 @@ class MailProfilePage(Adw.Bin):
 
                 row = Adw.ActionRow(
                     title=field.name,
-                    subtitle=field.string,
+                    subtitle=str(field),
                     subtitle_selectable=True,
                 )
                 row.add_css_class("property")

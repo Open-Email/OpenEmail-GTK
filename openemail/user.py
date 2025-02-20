@@ -99,11 +99,6 @@ class ProfileField(Generic[T]):
 
         return self.default_value
 
-    @property
-    @abstractmethod
-    def string(self) -> str:
-        """The string representation of the profile field."""
-
     @abstractmethod
     def update_value(self, data: str | None) -> None:
         """Attempt to update `self.value` from `data`."""
@@ -113,9 +108,7 @@ class ProfileField(Generic[T]):
 class StringField(ProfileField[str]):
     """A profile field representing a string."""
 
-    @property
-    def string(self) -> str:
-        """The profile field."""
+    def __str__(self) -> str:
         return self.value
 
     def update_value(self, data: str | None) -> None:
@@ -127,9 +120,7 @@ class StringField(ProfileField[str]):
 class BoolField(ProfileField[bool]):
     """A profile field representing a boolean."""
 
-    @property
-    def string(self) -> str:
-        """Either "Yes" or "No"."""
+    def __str__(self) -> str:
         return _("Yes") if self.value else _("No")
 
     def update_value(self, data: str | None) -> None:
@@ -142,9 +133,7 @@ class BoolField(ProfileField[bool]):
 class DateField(ProfileField[date]):
     """A profile field representing a date."""
 
-    @property
-    def string(self) -> str:
-        """The formatted date."""
+    def __str__(self) -> str:
         return self.value.strftime("%x")
 
     def update_value(self, data: str | None) -> None:
@@ -162,9 +151,7 @@ class DateField(ProfileField[date]):
 class DateTimeField(ProfileField[datetime]):
     """A profile field representing a date and time."""
 
-    @property
-    def string(self) -> str:
-        """The formatted date and time."""
+    def __str__(self) -> str:
         return self.value.strftime("%c")
 
     def update_value(self, data: str | None) -> None:
@@ -182,6 +169,9 @@ class DateTimeField(ProfileField[datetime]):
 class KeyField(ProfileField[Key]):
     """A profile field representing a key."""
 
+    def __str__(self) -> str:
+        return str(self.value)
+
     def update_value(self, data: str | None) -> None:
         """Attempt to update `self.value` from `data`."""
         if not data:
@@ -192,9 +182,9 @@ class KeyField(ProfileField[Key]):
         )
         try:
             self.default_value = Key(
-                bytes=base64_decode(attrs["value"]),
-                algorithm=attrs["algorithm"],
-                id=attrs.get("id"),
+                base64_decode(attrs["value"]),
+                attrs["algorithm"],
+                attrs.get("id"),
             )
         except (KeyError, ValueError):
             pass
