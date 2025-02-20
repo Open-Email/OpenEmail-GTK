@@ -21,8 +21,8 @@
 from http.client import HTTPResponse
 from socket import setdefaulttimeout
 from typing import MutableMapping
-from urllib import parse
 from urllib.error import HTTPError, URLError
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from openemail.crypto import decrpyt_anonymous, get_nonce
@@ -31,13 +31,13 @@ from openemail.user import Address, Profile, User
 
 setdefaulttimeout(5)
 
-__agents: dict[str, tuple[str, ...]] = {}
+_agents: dict[str, tuple[str, ...]] = {}
 
 
 def request(
     url: str,
-    method: str | None = None,
     user: User | None = None,
+    method: str | None = None,
 ) -> HTTPResponse | None:
     """Make an HTTP request using `urllib.urlopen`, handling errors and authentication.
 
@@ -46,7 +46,7 @@ def request(
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         if user:
-            if not (agent := parse.urlparse(url).hostname):
+            if not (agent := urlparse(url).hostname):
                 return None
 
             headers.update(
@@ -59,7 +59,7 @@ def request(
                 }
             )
 
-        return urlopen(Request(url, method=method, headers=headers))
+        return urlopen(Request(url, headers=headers, method=method))
 
     except (HTTPError, URLError, ValueError, TimeoutError):
         return None
@@ -67,7 +67,7 @@ def request(
 
 def get_agents(address: Address) -> tuple[str, ...]:
     """Get the first ≤3 responding mail agents for a given `address`."""
-    if existing := __agents.get(address.host_part):
+    if existing := _agents.get(address.host_part):
         return existing
 
     contents = None
@@ -88,26 +88,22 @@ def get_agents(address: Address) -> tuple[str, ...]:
                 if (stripped := line.strip()) and (not stripped.startswith("#"))
             ]
         ):
-            if not request(f"https://{agent}/mail/{address.host_part}", method="HEAD"):
+            if not request(_mail_host(agent, address), method="HEAD"):
                 agents.remove(agent)
                 continue
 
         if agents:
-            __agents[address.host_part] = tuple(agents[:3])
+            _agents[address.host_part] = tuple(agents[:3])
 
         break
 
-    return __agents.get(address.host_part, (f"mail.{address.host_part}",))
+    return _agents.get(address.host_part, (f"mail.{address.host_part}",))
 
 
 def fetch_profile(address: Address) -> Profile | None:
     """Attempt to fetch the remote profile associated with a given `address`."""
     for agent in get_agents(address):
-        if not (
-            response := request(
-                f"https://{agent}/mail/{address.host_part}/{address.local_part}/profile"
-            )
-        ):
+        if not (response := request(urljoin(_home(agent, address), "profile"))):
             continue
 
         with response:
@@ -120,11 +116,7 @@ def fetch_profile(address: Address) -> Profile | None:
 def fetch_profile_image(address: Address) -> bytes | None:
     """Attempt to fetch the remote profile image associated with a given `address`."""
     for agent in get_agents(address):
-        if not (
-            response := request(
-                f"https://{agent}/mail/{address.host_part}/{address.local_part}/image"
-            )
-        ):
+        if not (response := request(urljoin(_home(agent, address), "image"))):
             continue
 
         with response:
@@ -137,11 +129,7 @@ def fetch_profile_image(address: Address) -> bytes | None:
 def try_auth(user: User) -> bool:
     """Get whether authentication was successful for the given `user`."""
     for agent in get_agents(user.address):
-        if request(
-            f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}",
-            method="HEAD",
-            user=user,
-        ):
+        if request(_home(agent, user.address), user, method="HEAD"):
             return True
 
     return False
@@ -154,8 +142,8 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
     for agent in get_agents(user.address):
         if not (
             response := request(
-                f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}/links",
-                user=user,
+                urljoin(_home(agent, user.address), "links"),
+                user,
             )
         ):
             continue
@@ -193,7 +181,7 @@ def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
         user: Local user
 
     """
-    if not (response := request(url, user=user)):
+    if not (response := request(url, user)):
         return None
 
     with response:
@@ -212,7 +200,7 @@ def fetch_message_from_agent(
     if not (envelope := fetch_envelope(url, message_id, user)):
         return None
 
-    if not (response := request(url, user=user)):
+    if not (response := request(url, user)):
         return None
 
     with response:
@@ -222,12 +210,7 @@ def fetch_message_from_agent(
 def fetch_broadcast_ids(user: User, author: Address) -> tuple[str, ...]:
     """Attempt to fetch broadcast IDs by `author`."""
     for agent in get_agents(user.address):
-        if not (
-            response := request(
-                f"https://{agent}/mail/{author.host_part}/{author.local_part}/messages",
-                user=user,
-            )
-        ):
+        if not (response := request(_messages(agent, author), user)):
             continue
 
         with response:
@@ -247,7 +230,7 @@ def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
     for message_id in fetch_broadcast_ids(user, author):
         for agent in get_agents(user.address):
             if message := fetch_message_from_agent(
-                url=f"https://{agent}/mail/{author.host_part}/{author.local_part}/messages/{message_id}",
+                url=urljoin(_messages(agent, author), message_id),
                 user=user,
                 message_id=message_id,
             ):
@@ -255,3 +238,19 @@ def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
                 break
 
     return tuple(messages)
+
+
+def _home(agent: str, address: Address) -> str:
+    return f"https://{agent}/home/{address.host_part}/{address.local_part}"
+
+
+def _mail_host(agent: str, address: Address) -> str:
+    return f"https://{agent}/mail/{address.host_part}/"
+
+
+def _mail(agent: str, address: Address) -> str:
+    return urljoin(_mail_host(agent, address), address.local_part)
+
+
+def _messages(agent: str, address: Address) -> str:
+    return urljoin(_mail(agent, address), "messages")
