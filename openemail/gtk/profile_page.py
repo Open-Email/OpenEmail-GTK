@@ -34,7 +34,6 @@ class MailProfilePage(Adw.Bin):
     __gtype_name__ = "MailProfilePage"
 
     stack: Gtk.Stack = Gtk.Template.Child()
-    not_selected_page: Adw.StatusPage = Gtk.Template.Child()
     not_found_page: Adw.StatusPage = Gtk.Template.Child()
     page: Adw.Bin = Gtk.Template.Child()
 
@@ -50,6 +49,10 @@ class MailProfilePage(Adw.Bin):
 
     @profile.setter
     def profile(self, profile: Profile | None) -> None:
+        if not profile:
+            self.stack.set_visible_child(self.not_found_page)
+            return
+
         if profile == self._profile:
             return
 
@@ -57,10 +60,6 @@ class MailProfilePage(Adw.Bin):
 
         if self._avatar_binding:
             self._avatar_binding.unbind()
-
-        if not profile:
-            self.stack.set_visible_child(self.not_found_page)
-            return
 
         self.page.set_child(page := Adw.PreferencesPage())
         self.stack.set_visible_child(self.page)
@@ -146,11 +145,3 @@ class MailProfilePage(Adw.Bin):
     @paintable.setter
     def paintable(self, paintable: Gdk.Paintable | None) -> None:
         self._paintable = paintable
-
-    def __init__(self, address: Address | None = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        if not address:
-            self.stack.set_visible_child(self.not_selected_page)
-            return
-
-        self.address = address
