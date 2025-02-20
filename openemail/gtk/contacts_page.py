@@ -23,6 +23,7 @@ from typing import Any
 from gi.repository import Adw, GLib, Gtk, Pango
 
 from openemail import shared
+from openemail.gtk.contact_row import MailContactRow
 from openemail.gtk.profile_page import MailProfilePage
 from openemail.network import fetch_contacts
 from openemail.user import Address
@@ -53,59 +54,24 @@ class MailContactsPage(Adw.NavigationPage):
         self.sidebar.set_placeholder()
 
         for contact, profile in shared.address_book.items():
-            name = shared.get_name(contact)
-
             self.sidebar.append(
-                box := Gtk.Box(
-                    margin_top=12,
-                    margin_bottom=12,
+                MailContactRow(
+                    address=contact.address,  # type: ignore
+                    name=shared.get_name(contact),  # type: ignore
+                    profile_image=shared.photo_book.get(contact),  # type: ignore
                 )
             )
-            box.append(
-                Adw.Avatar(
-                    size=32,
-                    text=name,
-                    show_initials=True,
-                    custom_image=shared.photo_book.get(contact),
-                    margin_end=6,
-                )
-            )
-
-            box.append(
-                vbox := Gtk.Box(
-                    orientation=Gtk.Orientation.VERTICAL,
-                    valign=Gtk.Align.CENTER,
-                    margin_start=6,
-                )
-            )
-            vbox.append(
-                Gtk.Label(
-                    label=name,
-                    ellipsize=Pango.EllipsizeMode.END,
-                    halign=Gtk.Align.START,
-                )
-            )
-            if name != contact.address:
-                (
-                    label := Gtk.Label(
-                        label=contact.address,
-                        ellipsize=Pango.EllipsizeMode.END,
-                        halign=Gtk.Align.START,
-                    )
-                ).add_css_class("caption")
-                vbox.append(label)
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
         if not row:
             return
 
-        self.split_view.set_show_content(True)
-
-        index = row.get_index()
-
         try:
-            self.profile_page.profile = list(shared.address_book.values())[index]
-            self.profile_page.paintable = list(shared.photo_book.values())[index]
+            address = list(shared.address_book)[row.get_index()]
+            self.profile_page.profile = shared.address_book[address]
+            self.profile_page.paintable = shared.photo_book[address]
         except IndexError:
             pass
+
+        self.split_view.set_show_content(True)

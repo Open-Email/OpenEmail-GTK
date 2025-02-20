@@ -35,12 +35,13 @@ class MailProfilePage(Adw.Bin):
 
     stack: Gtk.Stack = Gtk.Template.Child()
     not_found_page: Adw.StatusPage = Gtk.Template.Child()
-    page: Adw.Bin = Gtk.Template.Child()
+    page: Adw.PreferencesPage = Gtk.Template.Child()
 
     _profile: Profile | None = None
+    _name: str | None = None
     _paintable: Gdk.Paintable | None = None
 
-    _avatar_binding: GObject.Binding | None = None
+    _groups: list[Adw.PreferencesGroup] = []
 
     @property
     def profile(self) -> Profile | None:
@@ -49,36 +50,16 @@ class MailProfilePage(Adw.Bin):
 
     @profile.setter
     def profile(self, profile: Profile | None) -> None:
+        self._profile = profile
+
         if not profile:
             self.stack.set_visible_child(self.not_found_page)
             return
 
-        if profile == self._profile:
-            return
+        self.name = str(profile.required["name"])
 
-        self._profile = profile
-
-        if self._avatar_binding:
-            self._avatar_binding.unbind()
-
-        self.page.set_child(page := Adw.PreferencesPage())
-        self.stack.set_visible_child(self.page)
-
-        name = str(profile.required["name"])
-
-        page.add(avatar_group := Adw.PreferencesGroup())
-
-        avatar_group.add(avatar := Adw.Avatar.new(128, name, True))
-        self._avatar_binding = self.bind_property(
-            "paintable",
-            avatar,
-            "custom-image",
-            GObject.BindingFlags.SYNC_CREATE,
-        )
-
-        page.add(title_group := Adw.PreferencesGroup())
-        title_group.add(title_label := Gtk.Label(label=name))
-        title_label.add_css_class("title-1")
+        for group in self._groups:
+            self.page.remove(group)
 
         for name, category in {
             _("General"): (
@@ -121,12 +102,13 @@ class MailProfilePage(Adw.Bin):
                     continue
 
                 if not group:
-                    page.add(
+                    self._groups.append(
                         group := Adw.PreferencesGroup(
                             title=name,
                             separate_rows=True,  # type: ignore
                         )
                     )
+                    self.page.add(group)
 
                 row = Adw.ActionRow(
                     title=field.name,
@@ -136,6 +118,17 @@ class MailProfilePage(Adw.Bin):
                 row.add_css_class("property")
                 row.add_prefix(Gtk.Image.new_from_icon_name(f"{key}-symbolic"))
                 group.add(row)
+
+        self.stack.set_visible_child(self.page)
+
+    @GObject.Property(type=str)
+    def name(self) -> str | None:
+        """Get the user's name."""
+        return self._name
+
+    @name.setter
+    def name(self, name: str) -> None:
+        self._name = name
 
     @GObject.Property(type=Gdk.Paintable)
     def paintable(self) -> Gdk.Paintable | None:

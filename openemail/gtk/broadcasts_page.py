@@ -23,6 +23,7 @@ from typing import Any
 from gi.repository import Adw, GLib, Gtk, Pango
 
 from openemail import shared
+from openemail.gtk.message_row import MailMessageRow
 from openemail.messages import Envelope
 from openemail.user import Address
 
@@ -51,77 +52,16 @@ class MailBroadcastsPage(Adw.NavigationPage):
 
         self.sidebar.set_placeholder()
         for broadcast in shared.broadcasts:
+            headers = broadcast.envelope.content_headers
             self.sidebar.append(
-                contents := Gtk.Box(
-                    margin_top=12,
-                    margin_bottom=12,
-                    margin_end=6,
-                    spacing=3,
+                MailMessageRow(
+                    name=shared.get_name(broadcast.envelope.author),  # type: ignore
+                    date=headers.date.strftime("%x") if headers else None,  # type: ignore
+                    subject=headers.subject if headers else None,  # type: ignore
+                    message=broadcast.message,  # type: ignore
+                    profile_image=shared.photo_book.get(broadcast.envelope.author),  # type: ignore
                 )
             )
-
-            contents.append(
-                details := Gtk.Box(
-                    margin_start=6,
-                    orientation=Gtk.Orientation.VERTICAL,
-                    spacing=3,
-                )
-            )
-
-            if broadcast.envelope.content_headers:
-                name = shared.get_name(broadcast.envelope.author)
-
-                contents.prepend(
-                    Adw.Avatar(
-                        size=32,
-                        text=name,
-                        show_initials=True,
-                        custom_image=shared.photo_book.get(broadcast.envelope.author),
-                    )
-                )
-
-                details.append(heading := Gtk.Box())
-                (
-                    title := Gtk.Label(
-                        hexpand=True,
-                        halign=Gtk.Align.START,
-                        label=name,
-                        ellipsize=Pango.EllipsizeMode.END,
-                    )
-                ).add_css_class("heading")
-                heading.append(title)
-
-                (
-                    date := Gtk.Label(
-                        halign=Gtk.Align.END,
-                        label=broadcast.envelope.content_headers.date.strftime("%x"),
-                        ellipsize=Pango.EllipsizeMode.END,
-                    )
-                ).add_css_class("caption")
-                heading.append(date)
-
-                (
-                    subject := Gtk.Label(
-                        halign=Gtk.Align.START,
-                        label=broadcast.envelope.content_headers.subject,
-                        ellipsize=Pango.EllipsizeMode.END,
-                        wrap=True,
-                        lines=2,
-                    )
-                ).add_css_class("caption-heading")
-                details.append(subject)
-
-            (
-                message := Gtk.Label(
-                    halign=Gtk.Align.START,
-                    hexpand=True,
-                    label=broadcast.message,
-                    ellipsize=Pango.EllipsizeMode.END,
-                    wrap=True,
-                    lines=3,
-                )
-            ).add_css_class("caption")
-            details.append(message)
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:

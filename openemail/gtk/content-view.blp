@@ -39,27 +39,27 @@ template $MailContentView: Adw.BreakpointBin {
               vexpand: true;
               row-selected => $_on_row_selected();
 
-              $MailSidebarItem {
+              $MailNavigationRow {
                 label: _("Broadcasts");
                 icon-name: _("broadcasts-symbolic");
               }
 
-              $MailSidebarItem {
+              $MailNavigationRow {
                 label: _("Inbox");
                 icon-name: _("inbox-symbolic");
               }
 
-              $MailSidebarItem {
+              $MailNavigationRow {
                 label: _("Outbox");
                 icon-name: _("outbox-symbolic");
               }
 
-              $MailSidebarItem {
+              $MailNavigationRow {
                 label: _("Drafts");
                 icon-name: _("drafts-symbolic");
               }
 
-              $MailSidebarItem {
+              $MailNavigationRow {
                 label: _("Trash");
                 icon-name: _("trash-symbolic");
               }
@@ -72,7 +72,7 @@ template $MailContentView: Adw.BreakpointBin {
             ListBox contacts_sidebar {
               row-selected => $_on_contacts_selected();
 
-              $MailSidebarItem {
+              $MailNavigationRow {
                 label: _("Contacts");
                 icon-name: _("contacts-symbolic");
               }

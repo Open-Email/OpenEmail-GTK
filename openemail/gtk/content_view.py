@@ -25,7 +25,7 @@ from gi.repository import Adw, Gtk
 from openemail import shared
 from openemail.gtk.broadcasts_page import MailBroadcastsPage
 from openemail.gtk.contacts_page import MailContactsPage
-from openemail.gtk.sidebar_item import MailSidebarItem
+from openemail.gtk.navigation_row import MailNavigationRow
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/content-view.ui")
@@ -95,7 +95,7 @@ class MailContentView(Adw.BreakpointBin):
         shared.update_address_book(update_address_book_cb)
 
     @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
+    def _on_row_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:  # type: ignore
         if not row:
             return
 
@@ -113,7 +113,7 @@ class MailContentView(Adw.BreakpointBin):
         self.split_view.set_show_content(True)
 
     @Gtk.Template.Callback()
-    def _on_contacts_selected(self, _obj: Any, row: MailSidebarItem | None) -> None:  # type: ignore
+    def _on_contacts_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:  # type: ignore
         if not row:
             return
 

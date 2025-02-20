@@ -3,8 +3,6 @@ using Adw 1;
 
 template $MailProfilePage: Adw.Bin {
   Stack stack {
-    transition-type: crossfade;
-
     Adw.StatusPage {
       title: _("No Profile Selected");
       icon-name: "about-symbolic";
@@ -16,6 +14,25 @@ template $MailProfilePage: Adw.Bin {
       icon-name: "about-symbolic";
     }
 
-    Adw.Bin page {}
+    Adw.PreferencesPage page {
+      Adw.PreferencesGroup {
+        Adw.Avatar {
+          size: 128;
+          text: bind template.name;
+          custom-image: bind template.paintable;
+          show-initials: true;
+        }
+      }
+
+      Adw.PreferencesGroup {
+        Label {
+          label: bind template.name;
+
+          styles [
+            "title-1",
+          ]
+        }
+      }
+    }
   }
 }
