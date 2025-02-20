@@ -79,9 +79,8 @@ class MailContentView(Adw.BreakpointBin):
         self.contacts_page.update_contacts_list(loading=first_sync)
         self.broadcasts_page.update_broadcasts_list(loading=first_sync)
 
-        def update_address_book_cb() -> None:
-            self.contacts_page.update_contacts_list()
-            shared.update_broadcasts_list(self.broadcasts_page.update_broadcasts_list)
+        def update_broadcasts_list_cb() -> None:
+            self.broadcasts_page.update_broadcasts_list()
 
             if first_sync:
                 return
@@ -91,6 +90,10 @@ class MailContentView(Adw.BreakpointBin):
 
             self.syncing_toast = Adw.Toast(title=_("Finished syncing"))
             self.toast_overlay.add_toast(self.syncing_toast)
+
+        def update_address_book_cb() -> None:
+            self.contacts_page.update_contacts_list()
+            shared.update_broadcasts_list(update_broadcasts_list_cb)
 
         shared.update_address_book(update_address_book_cb)
 
