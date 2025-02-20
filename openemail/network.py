@@ -37,32 +37,30 @@ __agents: dict[str, tuple[str, ...]] = {}
 def request(
     url: str,
     method: str | None = None,
-    agent: str | None = None,
     user: User | None = None,
 ) -> HTTPResponse | None:
     """Make an HTTP request using `urllib.urlopen`, handling errors and authentication.
 
-    If `agent` and `user` are set, use them to obtain an authentication nonce.
+    If `user` is set, use it and `url`'s host to obtain an authentication nonce.
     """
     try:
-        return urlopen(
-            Request(
-                url,
-                method=method,
-                headers={"User-Agent": "Mozilla/5.0"}
-                | (
-                    {
-                        "Authorization": get_nonce(
-                            agent,
-                            user.public_signing_key,
-                            user.private_signing_key,
-                        )
-                    }
-                    if (agent and user)
-                    else {}
-                ),
-            ),
-        )
+        headers = {"User-Agent": "Mozilla/5.0"}
+        if user:
+            if not (agent := parse.urlparse(url).hostname):
+                return None
+
+            headers.update(
+                {
+                    "Authorization": get_nonce(
+                        agent,
+                        user.public_signing_key,
+                        user.private_signing_key,
+                    )
+                }
+            )
+
+        return urlopen(Request(url, method=method, headers=headers))
+
     except (HTTPError, URLError, ValueError, TimeoutError):
         return None
 
@@ -142,7 +140,6 @@ def try_auth(user: User) -> bool:
         if request(
             f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}",
             method="HEAD",
-            agent=agent,
             user=user,
         ):
             return True
@@ -158,7 +155,6 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
         if not (
             response := request(
                 f"https://{agent}/home/{user.address.host_part}/{user.address.local_part}/links",
-                agent=agent,
                 user=user,
             )
         ):
@@ -197,13 +193,7 @@ def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
         user: Local user
 
     """
-    try:
-        if not (host := parse.urlparse(url).hostname):
-            return None
-    except ValueError:
-        return None
-
-    if not (response := request(url, agent=host, user=user)):
+    if not (response := request(url, user=user)):
         return None
 
     with response:
@@ -222,13 +212,7 @@ def fetch_message_from_agent(
     if not (envelope := fetch_envelope(url, message_id, user)):
         return None
 
-    try:
-        if not (host := parse.urlparse(url).hostname):
-            return None
-    except ValueError:
-        return None
-
-    if not (response := request(url, agent=host, user=user)):
+    if not (response := request(url, user=user)):
         return None
 
     with response:
@@ -241,7 +225,6 @@ def fetch_broadcast_ids(user: User, author: Address) -> tuple[str, ...]:
         if not (
             response := request(
                 f"https://{agent}/mail/{author.host_part}/{author.local_part}/messages",
-                agent=agent,
                 user=user,
             )
         ):
