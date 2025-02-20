@@ -173,7 +173,7 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
 
 
 def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
-    """Perform a HEAD request to the specified URL and retrieves response headers.
+    """Perform a HEAD request to the specified URL and retrieve response headers.
 
     Args:
         url: The URL for the HEAD request
