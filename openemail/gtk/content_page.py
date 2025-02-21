@@ -44,7 +44,7 @@ class MailContentPage(Adw.BreakpointBin):
     _details: Gtk.Widget | None = None
 
     @GObject.Property(type=str, default=_("Content"))
-    def title(self) -> str | None:
+    def title(self) -> str:
         """Get the page's title."""
         return self._title
 
