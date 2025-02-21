@@ -9,6 +9,7 @@ openemail/gtk/auth-view.blp
 openemail/gtk/broadcasts-page.blp
 openemail/gtk/contact-row.blp
 openemail/gtk/contacts-page.blp
+openemail/gtk/content-page.blp
 openemail/gtk/content-view.blp
 openemail/gtk/help-overlay.blp
 openemail/gtk/message-row.blp
@@ -21,6 +22,7 @@ openemail/gtk/auth_view.py
 openemail/gtk/broadcasts_page.py
 openemail/gtk/contact_row.blp
 openemail/gtk/contacts_page.py
+openemail/gtk/content_page.py
 openemail/gtk/content_view.py
 openemail/gtk/message_row.py
 openemail/gtk/navigation_row.py

@@ -23,6 +23,7 @@ from typing import Any
 from gi.repository import Adw, GLib, Gtk, Pango
 
 from openemail import shared
+from openemail.gtk.content_page import MailContentPage
 from openemail.gtk.message_row import MailMessageRow
 from openemail.message import Envelope
 from openemail.user import Address
@@ -34,25 +35,27 @@ class MailBroadcastsPage(Adw.NavigationPage):
 
     __gtype_name__ = "MailBroadcastsPage"
 
-    split_view: Adw.NavigationSplitView = Gtk.Template.Child()
-    sidebar: Gtk.ListBox = Gtk.Template.Child()
-
+    content: MailContentPage = Gtk.Template.Child()  # type: ignore
     message_view: Gtk.Label = Gtk.Template.Child()
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.content.on_row_selected = self.__on_row_selected
 
     def update_broadcasts_list(self, loading: bool = False) -> None:
         """Update the list of broadcasts.
 
         If `loading` is set to True, present a loading page instead.
         """
-        self.sidebar.remove_all()
+        self.content.sidebar.remove_all()
 
         if loading:
-            self.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
+            self.content.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
             return
 
-        self.sidebar.set_placeholder()
+        self.content.sidebar.set_placeholder()
         for broadcast in shared.broadcasts:
-            self.sidebar.append(
+            self.content.sidebar.append(
                 MailMessageRow(
                     name=shared.get_name(broadcast.envelope.author),  # type: ignore
                     date=broadcast.envelope.date.strftime("%x"),  # type: ignore
@@ -62,13 +65,7 @@ class MailBroadcastsPage(Adw.NavigationPage):
                 )
             )
 
-    @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
-        if not row:
-            return
-
-        self.split_view.set_show_content(True)
-
+    def __on_row_selected(self, row: Gtk.ListBoxRow) -> None:
         try:
             self.message_view.set_label(shared.broadcasts[row.get_index()].message)
         except IndexError:

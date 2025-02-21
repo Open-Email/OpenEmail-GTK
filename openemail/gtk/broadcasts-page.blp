@@ -4,59 +4,17 @@ using Adw 1;
 template $MailBroadcastsPage: Adw.NavigationPage {
   title: _("Broadcasts");
 
-  Adw.BreakpointBin {
-    width-request: 360;
-    height-request: 294;
+  $MailContentPage content {
+    title: _("Broadcasts");
 
-    Adw.Breakpoint {
-      condition ('max-width: 800sp')
-
-      setters {
-        split_view.collapsed: true;
+    details: ScrolledWindow {
+      Label message_view {
+        margin-top: 12;
+        margin-bottom: 48;
+        margin-start: 24;
+        margin-end: 24;
+        wrap: true;
       }
-    }
-
-    Adw.NavigationSplitView split_view {
-      max-sidebar-width: 500;
-      sidebar-width-fraction: 0.35;
-
-      sidebar: Adw.NavigationPage {
-        title: _("Broadcasts");
-
-        Adw.ToolbarView {
-          [top]
-          Adw.HeaderBar {}
-
-          content: ListBox sidebar {
-            row-selected => $_on_row_selected();
-
-            styles [
-              "navigation-sidebar",
-            ]
-          };
-        }
-      };
-
-      content: Adw.NavigationPage {
-        title: _("Details");
-
-        Adw.ToolbarView {
-          [top]
-          Adw.HeaderBar {
-            show-title: false;
-          }
-
-          content: ScrolledWindow {
-            Label message_view {
-              margin-top: 12;
-              margin-bottom: 48;
-              margin-start: 24;
-              margin-end: 24;
-              wrap: true;
-            }
-          };
-        }
-      };
-    }
+    };
   }
 }

@@ -24,6 +24,7 @@ from gi.repository import Adw, GLib, Gtk, Pango
 
 from openemail import shared
 from openemail.gtk.contact_row import MailContactRow
+from openemail.gtk.content_page import MailContentPage
 from openemail.gtk.profile_page import MailProfilePage
 from openemail.network import fetch_contacts
 from openemail.user import Address
@@ -35,26 +36,28 @@ class MailContactsPage(Adw.NavigationPage):
 
     __gtype_name__ = "MailContactsPage"
 
-    split_view: Adw.NavigationSplitView = Gtk.Template.Child()
-    sidebar: Gtk.ListBox = Gtk.Template.Child()
-
+    content: MailContentPage = Gtk.Template.Child()  # type: ignore
     profile_page: MailProfilePage = Gtk.Template.Child()  # type: ignore
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.content.on_row_selected = self.__on_row_selected
 
     def update_contacts_list(self, loading: bool = False) -> None:
         """Update the list of contacts.
 
         If `loading` is set to True, present a loading page instead.
         """
-        self.sidebar.remove_all()
+        self.content.sidebar.remove_all()
 
         if loading:
-            self.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
+            self.content.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
             return
 
-        self.sidebar.set_placeholder()
+        self.content.sidebar.set_placeholder()
 
         for contact, profile in shared.address_book.items():
-            self.sidebar.append(
+            self.content.sidebar.append(
                 MailContactRow(
                     address=contact.address,  # type: ignore
                     name=shared.get_name(contact),  # type: ignore
@@ -62,16 +65,10 @@ class MailContactsPage(Adw.NavigationPage):
                 )
             )
 
-    @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
-        if not row:
-            return
-
+    def __on_row_selected(self, row: Gtk.ListBoxRow) -> None:
         try:
             address = list(shared.address_book)[row.get_index()]
             self.profile_page.profile = shared.address_book[address]
             self.profile_page.paintable = shared.photo_book[address]
         except IndexError:
             pass
-
-        self.split_view.set_show_content(True)
