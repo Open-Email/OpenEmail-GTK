@@ -1,4 +1,4 @@
-# sidebar_item.py
+# navigation_row.py
 #
 # Authors: kramo
 # Copyright 2025 Mercata Sagl
@@ -18,30 +18,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from gi.repository import GObject, Gtk
+from gi.repository import Gdk, GObject, Gtk
 
 from openemail import shared
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/sidebar-item.ui")
-class MailSidebarItem(Gtk.ListBoxRow):
-    __gtype_name__ = "MailSidebarItem"
+@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/navigation-row.ui")
+class MailNavigationRow(Gtk.ListBoxRow):
+    """An item in the main sidebar."""
 
-    title: Gtk.Label = Gtk.Template.Child()
-    icon: Gtk.Image = Gtk.Template.Child()
+    __gtype_name__ = "MailNavigationRow"
 
-    @GObject.Property(type=str)
-    def label(self) -> str:
-        return self.title.get_label()
-
-    @label.setter
-    def label(self, label: str) -> None:
-        self.title.set_label(label)
-
-    @GObject.Property(type=str)
-    def icon_name(self) -> str | None:
-        return self.icon.get_icon_name()
-
-    @icon_name.setter
-    def icon_name(self, icon_name: str) -> None:
-        self.icon.set_from_icon_name(icon_name)
+    label = GObject.Property(type=str)
+    icon_name = GObject.Property(type=str)

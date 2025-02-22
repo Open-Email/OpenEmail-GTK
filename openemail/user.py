@@ -32,7 +32,7 @@ from openemail.crypto import Key, get_keys
 T = TypeVar("T")
 
 
-@dataclass
+@dataclass(slots=True)
 class Address:
     """A Mail/HTTPS address."""
 
@@ -55,8 +55,11 @@ class Address:
                 f'Email address "{address}" contains more than a single @ character.'
             ) from error
 
+    def __hash__(self) -> int:
+        return hash(self.address)
 
-@dataclass
+
+@dataclass(slots=True)
 class User:
     """A local user."""
 
@@ -69,7 +72,7 @@ class User:
     private_signing_key: Key
 
     def __init__(self, address: str, encryption_key: str, signing_key: str) -> None:
-        """Tries to create a local user for the provided `address` and Base64-encoded keys."""
+        """Try to create a local user for the provided `address` and Base64-encoded keys."""
         try:
             self.public_encryption_key, self.private_encryption_key = get_keys(
                 encryption_key,
@@ -84,54 +87,60 @@ class User:
             ) from error
 
 
-@dataclass
+@dataclass(slots=True)
 class ProfileField(Generic[T]):
+    """A generic profile field."""
+
     name: str | None = None
     default_value: T | None = None
 
     @property
     def value(self) -> T:
+        """The value of the field."""
         if self.default_value is None:
             raise ValueError("Profile incorrectly initialized.")
 
         return self.default_value
 
-    @property
     @abstractmethod
-    def string(self) -> str: ...
-
-    @abstractmethod
-    def update_value(self, data: str | None) -> None: ...
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
 
 
 @final
 class StringField(ProfileField[str]):
-    @property
-    def string(self):
+    """A profile field representing a string."""
+
+    def __str__(self) -> str:
         return self.value
 
-    def update_value(self, data):
+    def update_value(self, data: str | None) -> None:
+        """Update `self.value` to `data`."""
         self.default_value = data
 
 
 @final
 class BoolField(ProfileField[bool]):
-    @property
-    def string(self):
+    """A profile field representing a boolean."""
+
+    def __str__(self) -> str:
         return _("Yes") if self.value else _("No")
 
-    def update_value(self, data):
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
         if data is not None:
             self.default_value = data == "Yes"
 
 
 @final
 class DateField(ProfileField[date]):
-    @property
-    def string(self):
+    """A profile field representing a date."""
+
+    def __str__(self) -> str:
         return self.value.strftime("%x")
 
-    def update_value(self, data):
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
         if not data:
             return
 
@@ -143,11 +152,13 @@ class DateField(ProfileField[date]):
 
 @final
 class DateTimeField(ProfileField[datetime]):
-    @property
-    def string(self):
-        return self.value.strftime("%x")
+    """A profile field representing a date and time."""
 
-    def update_value(self, data):
+    def __str__(self) -> str:
+        return self.value.strftime("%c")
+
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
         if not data:
             return
 
@@ -159,7 +170,13 @@ class DateTimeField(ProfileField[datetime]):
 
 @final
 class KeyField(ProfileField[Key]):
-    def update_value(self, data):
+    """A profile field representing a key."""
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
         if not data:
             return
 
@@ -168,15 +185,17 @@ class KeyField(ProfileField[Key]):
         )
         try:
             self.default_value = Key(
-                bytes=base64_decode(attrs["value"]),
-                algorithm=attrs["algorithm"],
-                id=attrs.get("id"),
+                base64_decode(attrs["value"]),
+                attrs["algorithm"],
+                attrs.get("id"),
             )
         except (KeyError, ValueError):
             pass
 
 
 class Profile:
+    """A user's profile."""
+
     required: dict[str, ProfileField]
     optional: dict[str, ProfileField | None]
 

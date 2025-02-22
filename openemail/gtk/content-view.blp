@@ -13,95 +13,99 @@ template $MailContentView: Adw.BreakpointBin {
     }
   }
 
-  Adw.NavigationSplitView split_view {
-    sidebar-width-fraction: 0.2;
+  Adw.ToastOverlay toast_overlay {
+    Adw.NavigationSplitView split_view {
+      sidebar-width-fraction: 0.2;
 
-    sidebar: Adw.NavigationPage {
-      title: _("OpenEmail");
+      sidebar: Adw.NavigationPage {
+        title: _("OpenEmail");
 
-      Adw.ToolbarView {
-        [top]
-        Adw.HeaderBar {
-          [end]
-          MenuButton {
-            primary: true;
-            icon-name: "open-menu-symbolic";
-            tooltip-text: _("Main Menu");
-            menu-model: primary_menu;
-          }
-        }
-
-        content: Box {
-          orientation: vertical;
-
-          ListBox sidebar {
-            vexpand: true;
-            row-selected => $_on_row_selected();
-
-            $MailSidebarItem {
-              label: _("Broadcasts");
-              icon-name: _("broadcasts-symbolic");
-            }
-
-            $MailSidebarItem {
-              label: _("Inbox");
-              icon-name: _("inbox-symbolic");
-            }
-
-            $MailSidebarItem {
-              label: _("Outbox");
-              icon-name: _("outbox-symbolic");
-            }
-
-            $MailSidebarItem {
-              label: _("Drafts");
-              icon-name: _("drafts-symbolic");
-            }
-
-            $MailSidebarItem {
-              label: _("Trash");
-              icon-name: _("trash-symbolic");
-            }
-
-            styles [
-              "navigation-sidebar",
-            ]
-          }
-
-          ListBox contacts_sidebar {
-            row-selected => $_on_contacts_selected();
-
-            $MailSidebarItem {
-              label: _("Contacts");
-              icon-name: _("contacts-symbolic");
-            }
-
-            styles [
-              "navigation-sidebar",
-            ]
-          }
-        };
-      }
-    };
-
-    content: Adw.NavigationPage {
-      title: _("Content");
-
-      Stack content {
-        transition-type: crossfade;
-
-        Adw.ToolbarView empty_page {
+        Adw.ToolbarView {
           [top]
           Adw.HeaderBar {
-            show-title: false;
+            [end]
+            MenuButton {
+              primary: true;
+              icon-name: "open-menu-symbolic";
+              tooltip-text: _("Main Menu");
+              menu-model: primary_menu;
+            }
           }
 
-          content: Adw.StatusPage empty_status_page {};
-        }
+          content: Box {
+            orientation: vertical;
 
-        $MailContactsPage contacts_page {}
-      }
-    };
+            ListBox sidebar {
+              vexpand: true;
+              row-selected => $_on_row_selected();
+
+              $MailNavigationRow {
+                label: _("Broadcasts");
+                icon-name: _("broadcasts-symbolic");
+              }
+
+              $MailNavigationRow {
+                label: _("Inbox");
+                icon-name: _("inbox-symbolic");
+              }
+
+              $MailNavigationRow {
+                label: _("Outbox");
+                icon-name: _("outbox-symbolic");
+              }
+
+              $MailNavigationRow {
+                label: _("Drafts");
+                icon-name: _("drafts-symbolic");
+              }
+
+              $MailNavigationRow {
+                label: _("Trash");
+                icon-name: _("trash-symbolic");
+              }
+
+              styles [
+                "navigation-sidebar",
+              ]
+            }
+
+            ListBox contacts_sidebar {
+              row-selected => $_on_contacts_selected();
+
+              $MailNavigationRow {
+                label: _("Contacts");
+                icon-name: _("contacts-symbolic");
+              }
+
+              styles [
+                "navigation-sidebar",
+              ]
+            }
+          };
+        }
+      };
+
+      content: Adw.NavigationPage {
+        title: _("Content");
+
+        Stack content {
+          transition-type: crossfade;
+
+          Adw.ToolbarView empty_page {
+            [top]
+            Adw.HeaderBar {
+              show-title: false;
+            }
+
+            content: Adw.StatusPage empty_status_page {};
+          }
+
+          $MailBroadcastsPage broadcasts_page {}
+
+          $MailContactsPage contacts_page {}
+        }
+      };
+    }
   }
 }
 
@@ -120,6 +124,11 @@ menu primary_menu {
     item {
       label: _("_About OpenEmail");
       action: "app.about";
+    }
+
+    item {
+      label: _("_Sync");
+      action: "app.sync";
     }
   }
 }

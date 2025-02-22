@@ -1,0 +1,39 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailContactRow: Gtk.ListBoxRow {
+  Box {
+    margin-top: 12;
+    margin-bottom: 12;
+    spacing: 12;
+
+    Adw.Avatar {
+      size: 32;
+      text: bind template.name;
+      custom-image: bind template.profile-image;
+      show-initials: true;
+    }
+
+    Box {
+      orientation: vertical;
+      valign: center;
+
+      Label {
+        halign: start;
+        label: bind template.name;
+        ellipsize: end;
+      }
+
+      Label {
+        visible: bind template.has-name;
+        halign: start;
+        label: bind template.address;
+        ellipsize: end;
+
+        styles [
+          "caption",
+        ]
+      }
+    }
+  }
+}

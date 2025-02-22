@@ -32,6 +32,8 @@ from openemail.gtk.content_view import MailContentView
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/window.ui")
 class MailWindow(Adw.ApplicationWindow):
+    """The main application window."""
+
     __gtype_name__ = "MailWindow"
 
     stack: Gtk.Stack = Gtk.Template.Child()
@@ -59,10 +61,10 @@ class MailWindow(Adw.ApplicationWindow):
             shared.user.address.address,
             json.dumps(
                 {
-                    "privateEncryptionKey": shared.user.private_encryption_key.string,
+                    "privateEncryptionKey": str(shared.user.private_encryption_key),
                     "privateSigningKey": b64encode(
-                        shared.user.private_signing_key.bytes
-                        + shared.user.public_signing_key.bytes
+                        bytes(shared.user.private_signing_key)
+                        + bytes(shared.user.public_signing_key)
                     ).decode("utf-8"),
                 }
             ),

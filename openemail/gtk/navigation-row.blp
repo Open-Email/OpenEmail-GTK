@@ -1,18 +1,17 @@
 using Gtk 4.0;
-using Adw 1;
 
-template $MailSidebarItem: Gtk.ListBoxRow {
+template $MailNavigationRow: Gtk.ListBoxRow {
   Box {
-    margin-start: 6;
     margin-top: 6;
     margin-bottom: 6;
+    margin-start: 6;
 
-    Image icon {
+    Image {
       icon-name: bind template.icon-name;
       margin-end: 12;
     }
 
-    Label title {
+    Label {
       label: bind template.label;
       ellipsize: end;
     }

@@ -2,12 +2,17 @@
 <gresources>
   <gresource prefix="@PREFIX@">
     <file preprocess="xml-stripblanks">gtk/auth-view.ui</file>
+    <file preprocess="xml-stripblanks">gtk/broadcasts-page.ui</file>
+    <file preprocess="xml-stripblanks">gtk/contact-row.ui</file>
     <file preprocess="xml-stripblanks">gtk/contacts-page.ui</file>
+    <file preprocess="xml-stripblanks">gtk/content-page.ui</file>
     <file preprocess="xml-stripblanks">gtk/content-view.ui</file>
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
+    <file preprocess="xml-stripblanks">gtk/navigation-row.ui</file>
+    <file preprocess="xml-stripblanks">gtk/message-row.ui</file>
+    <file preprocess="xml-stripblanks">gtk/message-view.ui</file>
     <file preprocess="xml-stripblanks">gtk/preferences.ui</file>
-    <file preprocess="xml-stripblanks">gtk/profile-page.ui</file>
-    <file preprocess="xml-stripblanks">gtk/sidebar-item.ui</file>
+    <file preprocess="xml-stripblanks">gtk/profile-view.ui</file>
     <file preprocess="xml-stripblanks">gtk/window.ui</file>
     <file alias="@APP_ID@.metainfo.xml" preprocess="xml-stripblanks">../data/@APP_ID@.metainfo.xml</file>
   </gresource>

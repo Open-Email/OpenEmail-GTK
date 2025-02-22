@@ -1,0 +1,52 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailContactsPage: Adw.NavigationPage {
+  title: _("Contacts");
+
+  Adw.BreakpointBin {
+    width-request: 360;
+    height-request: 294;
+
+    Adw.Breakpoint {
+      condition ('max-width: 800sp')
+
+      setters {
+        split_view.collapsed: true;
+      }
+    }
+
+    Adw.NavigationSplitView split_view {
+      max-sidebar-width: 500;
+      sidebar-width-fraction: 0.35;
+
+      sidebar: Adw.NavigationPage {
+        title: _("Contacts");
+
+        Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {}
+
+          content: ListBox sidebar {
+            styles [
+              "navigation-sidebar",
+            ]
+          };
+        }
+      };
+
+      content: Adw.NavigationPage {
+        title: _("Details");
+
+        Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {
+            show-title: false;
+          }
+
+          content: $MailProfileView profile_view {};
+        }
+      };
+    }
+  }
+}

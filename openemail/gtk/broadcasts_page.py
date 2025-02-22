@@ -1,4 +1,4 @@
-# contacts_page.py
+# broadcasts_page.py
 #
 # Authors: kramo
 # Copyright 2025 Mercata Sagl
@@ -23,28 +23,29 @@ from typing import Any
 from gi.repository import Adw, GLib, Gtk, Pango
 
 from openemail import shared
-from openemail.gtk.contact_row import MailContactRow
 from openemail.gtk.content_page import MailContentPage
-from openemail.gtk.profile_view import MailProfileView
-from openemail.network import fetch_contacts
+from openemail.gtk.message_row import MailMessageRow
+from openemail.gtk.message_view import MailMessageView
+from openemail.message import Envelope
 from openemail.user import Address
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")
-class MailContactsPage(Adw.NavigationPage):
-    """A page with the contents of the user's address book."""
+@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/broadcasts-page.ui")
+class MailBroadcastsPage(Adw.NavigationPage):
+    """A page listing the user's broadcast messages."""
 
-    __gtype_name__ = "MailContactsPage"
+    __gtype_name__ = "MailBroadcastsPage"
 
     content: MailContentPage = Gtk.Template.Child()  # type: ignore
-    profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
+    message_view: MailMessageView = Gtk.Template.Child()  # type: ignore
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
         self.content.on_row_selected = self.__on_row_selected
 
-    def update_contacts_list(self, loading: bool = False) -> None:
-        """Update the list of contacts.
+    def update_broadcasts_list(self, loading: bool = False) -> None:
+        """Update the list of broadcasts.
 
         If `loading` is set to True, present a loading page instead.
         """
@@ -55,20 +56,8 @@ class MailContactsPage(Adw.NavigationPage):
             return
 
         self.content.sidebar.set_placeholder()
+        for broadcast in shared.broadcasts:
+            self.content.sidebar.append(MailMessageRow(broadcast))
 
-        for contact, profile in shared.address_book.items():
-            self.content.sidebar.append(
-                MailContactRow(
-                    address=contact.address,  # type: ignore
-                    name=shared.get_name(contact),  # type: ignore
-                    profile_image=shared.photo_book.get(contact),  # type: ignore
-                )
-            )
-
-    def __on_row_selected(self, row: Gtk.ListBoxRow) -> None:
-        try:
-            address = list(shared.address_book)[row.get_index()]
-            self.profile_view.profile = shared.address_book[address]
-            self.profile_view.paintable = shared.photo_book[address]
-        except IndexError:
-            pass
+    def __on_row_selected(self, row: MailMessageRow) -> None:  # type: ignore
+        self.message_view.set_from_message(row.message)

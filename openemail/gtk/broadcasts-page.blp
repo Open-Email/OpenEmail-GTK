@@ -1,0 +1,12 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailBroadcastsPage: Adw.NavigationPage {
+  title: _("Broadcasts");
+
+  $MailContentPage content {
+    title: _("Broadcasts");
+
+    details: $MailMessageView message_view {};
+  }
+}

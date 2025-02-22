@@ -32,18 +32,19 @@ SIGNING_ALGORITHM = "ed25519"
 class Key(NamedTuple):
     """A cryptographic key using `algorithm` with the value of `bytes`, and an optional `id`."""
 
-    bytes: bytes
+    data: bytes
     algorithm: str = SIGNING_ALGORITHM
     id: str | None = None
 
-    @property
-    def string(self) -> str:
-        """Base64-encoded string representation of the key."""
-        return b64encode(self.bytes).decode("utf-8")
+    def __str__(self) -> str:
+        return b64encode(self.data).decode("utf-8")
+
+    def __bytes__(self) -> bytes:
+        return self.data
 
 
 def get_keys(b64: str) -> tuple[Key, Key]:
-    """Returns the public-private key pair for a given Base64-encoded string."""
+    """Get the public-private key pair for a given Base64-encoded string."""
     bytes = b64decode(b64.encode("utf-8"))
     match len(bytes):
         case 32:
@@ -55,13 +56,18 @@ def get_keys(b64: str) -> tuple[Key, Key]:
 
 
 def sign_data(private_key: Key, data: bytes) -> str:
-    """Returns a Base64-encoded version of given `data` signed using the provided `private_key`."""
-
-    return b64encode(SigningKey(private_key.bytes).sign(data).signature).decode("utf-8")
+    """Get a Base64-encoded version of given `data` signed using the provided `private_key`."""
+    return b64encode(
+        SigningKey(
+            bytes(private_key),
+        )
+        .sign(data)
+        .signature
+    ).decode("utf-8")
 
 
 def random_string(length: int) -> str:
-    """Generates a random string of a given `length` from characters 0..9, A..Z, and a..z."""
+    """Generate a random string of a given `length` from characters 0..9, A..Z, and a..z."""
     return "".join(
         random.choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
         for _ in range(length)
@@ -69,23 +75,23 @@ def random_string(length: int) -> str:
 
 
 def get_nonce(host: str, public_key: Key, private_key: Key) -> str:
-    """Returns a nonce used for authentication for the given agent `host` and `private_key`."""
+    """Get a nonce used for authentication for the given agent `host` and `private_key`."""
     return "SOTN " + "; ".join(
         (
             f"value={(value := random_string(30))}",
             f"host={host}",
             f"algorithm={SIGNING_ALGORITHM}",
             f"signature={sign_data(private_key, f'{host}{value}'.encode('utf-8'))}",
-            f"key={public_key.string}",
+            f"key={public_key}",
         )
     )
 
 
 def decrpyt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> bytes:
-    """Attempts to decrypt `cipher_text` using the provided keys."""
+    """Attempt to decrypt `cipher_text` using the provided keys."""
     try:
         data = b64decode(cipher_text)
     except ValueError as error:
         raise ValueError("Invalid cipher text.") from error
 
-    return SealedBox(PrivateKey(private_key.bytes)).decrypt(data)
+    return SealedBox(PrivateKey(bytes(private_key))).decrypt(data)

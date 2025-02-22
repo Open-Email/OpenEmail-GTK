@@ -29,6 +29,8 @@ from openemail.user import Address, User
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/auth-view.ui")
 class MailAuthView(Adw.Bin):
+    """A view prompting the user to log in."""
+
     __gtype_name__ = "MailAuthView"
 
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
@@ -45,7 +47,8 @@ class MailAuthView(Adw.Bin):
     authenticate_button: Gtk.Button = Gtk.Template.Child()
 
     @GObject.Signal(name="authenticated")
-    def authenticated(self) -> None: ...
+    def authenticated(self) -> None:
+        """Notify listeners of a successful authentication."""
 
     def __init__(self, **kwargs: Any) -> None:
         self.email_status_page.set_icon_name(shared.APP_ID)

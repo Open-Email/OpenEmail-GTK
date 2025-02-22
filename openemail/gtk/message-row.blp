@@ -1,0 +1,72 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailMessageRow: Gtk.ListBoxRow {
+  Box {
+    margin-top: 12;
+    margin-bottom: 12;
+    margin-end: 3;
+    spacing: 3;
+
+    Adw.Avatar {
+      size: 32;
+      text: bind template.name;
+      custom-image: bind template.profile-image;
+      show-initials: true;
+    }
+
+    Box {
+      margin-start: 6;
+      orientation: vertical;
+      spacing: 3;
+
+      Box {
+        Label {
+          hexpand: true;
+          halign: start;
+          label: bind template.name;
+          ellipsize: end;
+
+          styles [
+            "heading",
+          ]
+        }
+
+        Label {
+          halign: end;
+          label: bind template.date;
+          ellipsize: end;
+
+          styles [
+            "caption",
+          ]
+        }
+      }
+
+      Label {
+        halign: start;
+        label: bind template.subject;
+        ellipsize: end;
+        wrap: true;
+        lines: 2;
+
+        styles [
+          "caption-heading",
+        ]
+      }
+
+      Label {
+        halign: start;
+        hexpand: true;
+        label: bind template.stripped-contents;
+        ellipsize: end;
+        wrap: true;
+        lines: 3;
+
+        styles [
+          "caption",
+        ]
+      }
+    }
+  }
+}

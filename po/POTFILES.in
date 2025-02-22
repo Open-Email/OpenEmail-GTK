@@ -6,19 +6,29 @@ data/metainfo.xml.in
 data/gschema.xml.in
 
 openemail/gtk/auth-view.blp
+openemail/gtk/broadcasts-page.blp
+openemail/gtk/contact-row.blp
 openemail/gtk/contacts-page.blp
+openemail/gtk/content-page.blp
 openemail/gtk/content-view.blp
 openemail/gtk/help-overlay.blp
+openemail/gtk/message-row.blp
+openemail/gtk/message-view.blp
+openemail/gtk/navigation-row.blp
 openemail/gtk/preferences.blp
-openemail/gtk/profile-page.blp
-openemail/gtk/sidebar-item.blp
+openemail/gtk/profile-view.blp
 openemail/gtk/window.blp
 
 openemail/gtk/auth_view.py
+openemail/gtk/broadcasts_page.py
+openemail/gtk/contact_row.blp
 openemail/gtk/contacts_page.py
+openemail/gtk/content_page.py
 openemail/gtk/content_view.py
+openemail/gtk/message_row.py
+openemail/gtk/message_view.py
+openemail/gtk/navigation_row.py
 openemail/gtk/preferences.py
-openemail/gtk/profile_page.py
-openemail/gtk/sidebar_item.py
+openemail/gtk/profile_view.py
 openemail/gtk/window.py
 openemail/main.py

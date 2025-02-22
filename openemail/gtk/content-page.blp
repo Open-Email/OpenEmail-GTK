@@ -1,0 +1,50 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailContentPage: Adw.BreakpointBin {
+  width-request: 360;
+  height-request: 294;
+
+  Adw.Breakpoint {
+    condition ('max-width: 800sp')
+
+    setters {
+      split_view.collapsed: true;
+    }
+  }
+
+  Adw.NavigationSplitView split_view {
+    max-sidebar-width: 500;
+    sidebar-width-fraction: 0.35;
+
+    sidebar: Adw.NavigationPage {
+      title: bind template.title;
+
+      Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {}
+
+        content: ListBox sidebar {
+          row-selected => $_on_row_selected();
+
+          styles [
+            "navigation-sidebar",
+          ]
+        };
+      }
+    };
+
+    content: Adw.NavigationPage {
+      title: _("Details");
+
+      Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          show-title: false;
+        }
+
+        content: bind template.details;
+      }
+    };
+  }
+}

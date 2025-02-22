@@ -1,0 +1,38 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailProfileView: Adw.Bin {
+  Stack stack {
+    Adw.StatusPage {
+      title: _("No Profile Selected");
+      icon-name: "about-symbolic";
+    }
+
+    Adw.StatusPage not_found_page {
+      title: _("Profile Not Found");
+      description: _("Couldn’t get information about the selected user");
+      icon-name: "about-symbolic";
+    }
+
+    Adw.PreferencesPage main_page {
+      Adw.PreferencesGroup {
+        Adw.Avatar {
+          size: 128;
+          text: bind template.name;
+          custom-image: bind template.paintable;
+          show-initials: true;
+        }
+      }
+
+      Adw.PreferencesGroup {
+        Label {
+          label: bind template.name;
+
+          styles [
+            "title-1",
+          ]
+        }
+      }
+    }
+  }
+}
