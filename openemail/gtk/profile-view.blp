@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MailProfilePage: Adw.Bin {
+template $MailProfileView: Adw.Bin {
   Stack stack {
     Adw.StatusPage {
       title: _("No Profile Selected");
@@ -14,7 +14,7 @@ template $MailProfilePage: Adw.Bin {
       icon-name: "about-symbolic";
     }
 
-    Adw.PreferencesPage page {
+    Adw.PreferencesPage main_page {
       Adw.PreferencesGroup {
         Adw.Avatar {
           size: 128;

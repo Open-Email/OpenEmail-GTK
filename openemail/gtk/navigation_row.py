@@ -29,23 +29,5 @@ class MailNavigationRow(Gtk.ListBoxRow):
 
     __gtype_name__ = "MailNavigationRow"
 
-    _label: str | None = None
-    _icon_name: str | None = None
-
-    @GObject.Property(type=str)
-    def label(self) -> str | None:
-        """Get the item's label."""
-        return self._label
-
-    @label.setter
-    def label(self, label: str) -> None:
-        self._label = label
-
-    @GObject.Property(type=str)
-    def icon_name(self) -> str | None:
-        """Get the item's icon."""
-        return self._icon_name
-
-    @icon_name.setter
-    def icon_name(self, icon_name: str) -> None:
-        self._icon_name = icon_name
+    label = GObject.Property(type=str)
+    icon_name = GObject.Property(type=str)

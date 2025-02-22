@@ -58,7 +58,7 @@ template $MailMessageRow: Gtk.ListBoxRow {
       Label {
         halign: start;
         hexpand: true;
-        label: bind template.message;
+        label: bind template.stripped-contents;
         ellipsize: end;
         wrap: true;
         lines: 3;

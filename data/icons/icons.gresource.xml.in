@@ -3,13 +3,14 @@
   <gresource prefix="@PREFIX@/icons">
     <file preprocess="xml-stripblanks">scalable/actions/home-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/key-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">scalable/actions/mailbox-symbolic.svg</file>
     <!-- Sidebar -->
     <file preprocess="xml-stripblanks">scalable/actions/broadcasts-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">scalable/actions/contacts-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">scalable/actions/drafts-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/inbox-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/outbox-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">scalable/actions/drafts-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/trash-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">scalable/actions/contacts-symbolic.svg</file>
     <!-- Profile Fields -->
     <file preprocess="xml-stripblanks">scalable/actions/about-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/away-symbolic.svg</file>

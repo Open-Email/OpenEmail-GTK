@@ -1,0 +1,82 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailMessageView: Adw.Bin {
+  Stack stack {
+    Adw.StatusPage {
+      title: _("No Message Selected");
+      icon-name: "mailbox-symbolic";
+    }
+
+    ScrolledWindow main_page {
+      Box {
+        margin-top: 12;
+        margin-bottom: 32;
+        margin-start: 24;
+        margin-end: 24;
+        orientation: vertical;
+        spacing: 18;
+
+        Box {
+          valign: start;
+          spacing: 3;
+
+          Adw.Avatar {
+            size: 48;
+            text: bind template.name;
+            custom-image: bind template.profile-image;
+            show-initials: true;
+          }
+
+          Box {
+            margin-start: 6;
+            orientation: vertical;
+            spacing: 3;
+
+            Box {
+              Label {
+                hexpand: true;
+                halign: start;
+                label: bind template.name;
+                ellipsize: end;
+
+                styles [
+                  "title-4",
+                ]
+              }
+
+              Label {
+                halign: end;
+                label: bind template.date;
+                ellipsize: end;
+
+                styles [
+                  "numeric",
+                ]
+              }
+            }
+
+            Label {
+              halign: start;
+              label: bind template.subject;
+              wrap: true;
+              selectable: true;
+
+              styles [
+                "heading",
+              ]
+            }
+          }
+        }
+
+        Label {
+          halign: start;
+          hexpand: true;
+          label: bind template.contents;
+          wrap: true;
+          selectable: true;
+        }
+      }
+    }
+  }
+}

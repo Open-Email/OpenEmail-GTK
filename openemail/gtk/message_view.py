@@ -1,4 +1,4 @@
-# message_row.py
+# message_view.py
 #
 # Authors: kramo
 # Copyright 2025 Mercata Sagl
@@ -21,17 +21,20 @@
 from re import sub
 from typing import Any
 
-from gi.repository import Gdk, GObject, Gtk
+from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import shared
 from openemail.message import Message
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/message-row.ui")
-class MailMessageRow(Gtk.ListBoxRow):
-    """An item in the main sidebar."""
+@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/message-view.ui")
+class MailMessageView(Adw.Bin):
+    """A view displaying metadata about, and the contents of a message."""
 
-    __gtype_name__ = "MailMessageRow"
+    __gtype_name__ = "MailMessageView"
+
+    stack: Gtk.Stack = Gtk.Template.Child()
+    main_page: Gtk.ScrolledWindow = Gtk.Template.Child()
 
     message: Message | None = None
 
@@ -39,7 +42,6 @@ class MailMessageRow(Gtk.ListBoxRow):
     date = GObject.Property(type=str)
     subject = GObject.Property(type=str)
     contents = GObject.Property(type=str)
-    stripped_contents = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
 
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
@@ -49,12 +51,11 @@ class MailMessageRow(Gtk.ListBoxRow):
             self.set_from_message(message)
 
     def set_from_message(self, message: Message) -> None:
-        """Update properties of the row from `message`."""
-        self.message = message
+        """Update properties of the view from `message`."""
+        self.stack.set_visible_child(self.main_page)
 
         self.name = shared.get_name(message.envelope.author)
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
         self.contents = message.message
-        self.stripped_contents = sub(r"\n+", " ", message.message)
         self.profile_image = shared.photo_book.get(message.envelope.author)

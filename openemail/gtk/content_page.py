@@ -24,7 +24,7 @@ from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import shared
 from openemail.gtk.contact_row import MailContactRow
-from openemail.gtk.profile_page import MailProfilePage
+from openemail.gtk.profile_view import MailProfileView
 from openemail.network import fetch_contacts
 from openemail.user import Address
 
@@ -40,26 +40,8 @@ class MailContentPage(Adw.BreakpointBin):
 
     on_row_selected: Callable[[Gtk.ListBoxRow], Any] | None = None
 
-    _title: str = _("Content")
-    _details: Gtk.Widget | None = None
-
-    @GObject.Property(type=str, default=_("Content"))
-    def title(self) -> str:
-        """Get the page's title."""
-        return self._title
-
-    @title.setter
-    def title(self, title: str) -> None:
-        self._title = title
-
-    @GObject.Property(type=Gtk.Widget)
-    def details(self) -> Gtk.Widget | None:
-        """Get the page's details view."""
-        return self._details
-
-    @details.setter
-    def details(self, details: Gtk.Widget | None) -> None:
-        self._details = details
+    title = GObject.Property(type=str, default=_("Content"))
+    details = GObject.Property(type=Gtk.Widget)
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:

@@ -29,11 +29,21 @@ class MailContactRow(Gtk.ListBoxRow):
 
     __gtype_name__ = "MailContactRow"
 
-    _name: str | None = None
-    _address: str | None = None
-    _profile_image: Gdk.Paintable | None = None
+    has_name = GObject.Property(type=bool, default=False)
+    profile_image = GObject.Property(type=Gdk.Paintable)
 
-    _has_name: bool = False
+    _address: str | None = None
+    _name: str | None = None
+
+    @GObject.Property(type=str)
+    def address(self) -> str | None:
+        """Get the user's Mail/HTTPS address."""
+        return self._address
+
+    @address.setter
+    def address(self, address: str) -> None:
+        self._address = address
+        self.has_name = address != self.name
 
     @GObject.Property(type=str)
     def name(self) -> str | None:
@@ -44,31 +54,3 @@ class MailContactRow(Gtk.ListBoxRow):
     def name(self, name: str) -> None:
         self._name = name
         self.has_name = name != self.address
-
-    @GObject.Property(type=str)
-    def address(self) -> str | None:
-        """Get the user's Mail/HTTPS address."""
-        return self._address
-
-    @address.setter
-    def address(self, address: str) -> None:
-        self._address = address
-        self.has_name = address != self._name
-
-    @GObject.Property(type=bool, default=True)
-    def has_name(self) -> bool:
-        """Whether the user has a name."""
-        return self._has_name
-
-    @has_name.setter
-    def has_name(self, has_name: bool) -> None:
-        self._has_name = has_name
-
-    @GObject.Property(type=Gdk.Paintable)
-    def profile_image(self) -> Gdk.Paintable | None:
-        """Get the user's profile image."""
-        return self._profile_image
-
-    @profile_image.setter
-    def profile_image(self, profile_image: Gdk.Paintable | None) -> None:
-        self._profile_image = profile_image

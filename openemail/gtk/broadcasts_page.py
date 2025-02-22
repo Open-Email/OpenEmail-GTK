@@ -25,6 +25,7 @@ from gi.repository import Adw, GLib, Gtk, Pango
 from openemail import shared
 from openemail.gtk.content_page import MailContentPage
 from openemail.gtk.message_row import MailMessageRow
+from openemail.gtk.message_view import MailMessageView
 from openemail.message import Envelope
 from openemail.user import Address
 
@@ -36,10 +37,11 @@ class MailBroadcastsPage(Adw.NavigationPage):
     __gtype_name__ = "MailBroadcastsPage"
 
     content: MailContentPage = Gtk.Template.Child()  # type: ignore
-    message_view: Gtk.Label = Gtk.Template.Child()
+    message_view: MailMessageView = Gtk.Template.Child()  # type: ignore
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
         self.content.on_row_selected = self.__on_row_selected
 
     def update_broadcasts_list(self, loading: bool = False) -> None:
@@ -55,18 +57,7 @@ class MailBroadcastsPage(Adw.NavigationPage):
 
         self.content.sidebar.set_placeholder()
         for broadcast in shared.broadcasts:
-            self.content.sidebar.append(
-                MailMessageRow(
-                    name=shared.get_name(broadcast.envelope.author),  # type: ignore
-                    date=broadcast.envelope.date.strftime("%x"),  # type: ignore
-                    subject=broadcast.envelope.subject,  # type: ignore
-                    message=broadcast.message,  # type: ignore
-                    profile_image=shared.photo_book.get(broadcast.envelope.author),  # type: ignore
-                )
-            )
+            self.content.sidebar.append(MailMessageRow(broadcast))
 
-    def __on_row_selected(self, row: Gtk.ListBoxRow) -> None:
-        try:
-            self.message_view.set_label(shared.broadcasts[row.get_index()].message)
-        except IndexError:
-            pass
+    def __on_row_selected(self, row: MailMessageRow) -> None:  # type: ignore
+        self.message_view.set_from_message(row.message)

@@ -7,14 +7,6 @@ template $MailBroadcastsPage: Adw.NavigationPage {
   $MailContentPage content {
     title: _("Broadcasts");
 
-    details: ScrolledWindow {
-      Label message_view {
-        margin-top: 12;
-        margin-bottom: 48;
-        margin-start: 24;
-        margin-end: 24;
-        wrap: true;
-      }
-    };
+    details: $MailMessageView message_view {};
   }
 }

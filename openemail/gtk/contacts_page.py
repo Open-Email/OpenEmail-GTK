@@ -25,7 +25,7 @@ from gi.repository import Adw, GLib, Gtk, Pango
 from openemail import shared
 from openemail.gtk.contact_row import MailContactRow
 from openemail.gtk.content_page import MailContentPage
-from openemail.gtk.profile_page import MailProfilePage
+from openemail.gtk.profile_view import MailProfileView
 from openemail.network import fetch_contacts
 from openemail.user import Address
 
@@ -37,7 +37,7 @@ class MailContactsPage(Adw.NavigationPage):
     __gtype_name__ = "MailContactsPage"
 
     content: MailContentPage = Gtk.Template.Child()  # type: ignore
-    profile_page: MailProfilePage = Gtk.Template.Child()  # type: ignore
+    profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -68,7 +68,7 @@ class MailContactsPage(Adw.NavigationPage):
     def __on_row_selected(self, row: Gtk.ListBoxRow) -> None:
         try:
             address = list(shared.address_book)[row.get_index()]
-            self.profile_page.profile = shared.address_book[address]
-            self.profile_page.paintable = shared.photo_book[address]
+            self.profile_view.profile = shared.address_book[address]
+            self.profile_view.paintable = shared.photo_book[address]
         except IndexError:
             pass

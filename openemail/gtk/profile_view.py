@@ -1,4 +1,4 @@
-# profile_page.py
+# profile_view.py
 #
 # Authors: kramo
 # Copyright 2025 Mercata Sagl
@@ -27,20 +27,20 @@ from openemail.network import fetch_profile, fetch_profile_image
 from openemail.user import Address, Profile
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-page.ui")
-class MailProfilePage(Adw.Bin):
+@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-view.ui")
+class MailProfileView(Adw.Bin):
     """A page presenting a user's profile."""
 
-    __gtype_name__ = "MailProfilePage"
+    __gtype_name__ = "MailProfileView"
 
     stack: Gtk.Stack = Gtk.Template.Child()
     not_found_page: Adw.StatusPage = Gtk.Template.Child()
-    page: Adw.PreferencesPage = Gtk.Template.Child()
+    main_page: Adw.PreferencesPage = Gtk.Template.Child()
+
+    name = GObject.Property(type=str)
+    paintable = GObject.Property(type=Gdk.Paintable)
 
     _profile: Profile | None = None
-    _name: str | None = None
-    _paintable: Gdk.Paintable | None = None
-
     _groups: list[Adw.PreferencesGroup] = []
 
     @property
@@ -58,8 +58,8 @@ class MailProfilePage(Adw.Bin):
 
         self.name = str(profile.required["name"])
 
-        for group in self._groups:
-            self.page.remove(group)
+        while self._groups:
+            self.main_page.remove(self._groups.pop())
 
         for name, category in {
             _("General"): (
@@ -108,7 +108,7 @@ class MailProfilePage(Adw.Bin):
                             separate_rows=True,  # type: ignore
                         )
                     )
-                    self.page.add(group)
+                    self.main_page.add(group)
 
                 row = Adw.ActionRow(
                     title=field.name,
@@ -119,22 +119,4 @@ class MailProfilePage(Adw.Bin):
                 row.add_prefix(Gtk.Image.new_from_icon_name(f"{key}-symbolic"))
                 group.add(row)
 
-        self.stack.set_visible_child(self.page)
-
-    @GObject.Property(type=str)
-    def name(self) -> str | None:
-        """Get the user's name."""
-        return self._name
-
-    @name.setter
-    def name(self, name: str) -> None:
-        self._name = name
-
-    @GObject.Property(type=Gdk.Paintable)
-    def paintable(self) -> Gdk.Paintable | None:
-        """Get the `Gdk.Paintable` of the user's profile image."""
-        return self._paintable
-
-    @paintable.setter
-    def paintable(self, paintable: Gdk.Paintable | None) -> None:
-        self._paintable = paintable
+        self.stack.set_visible_child(self.main_page)
