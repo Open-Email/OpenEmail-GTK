@@ -59,7 +59,7 @@ class MailContactsPage(Adw.NavigationPage):
         for contact, profile in shared.address_book.items():
             self.content.sidebar.append(
                 MailContactRow(
-                    address=contact.address,  # type: ignore
+                    address=str(contact),  # type: ignore
                     name=shared.get_name(contact),  # type: ignore
                     profile_image=shared.photo_book.get(contact),  # type: ignore
                 )

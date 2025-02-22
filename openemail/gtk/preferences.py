@@ -45,7 +45,7 @@ class MailPreferences(Adw.PreferencesDialog):
             return
 
         shared.schema.set_string("address", "")
-        keyring.delete_password(shared.secret_service, shared.user.address.address)
+        keyring.delete_password(shared.secret_service, str(shared.user.address))
         shared.user = None
 
         if not isinstance(root := self.get_root(), MailWindow):  # type: ignore

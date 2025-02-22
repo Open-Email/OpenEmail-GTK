@@ -55,10 +55,10 @@ class MailWindow(Adw.ApplicationWindow):
         if not shared.user:
             return
 
-        shared.schema.set_string("address", shared.user.address.address)
+        shared.schema.set_string("address", str(shared.user.address))
         keyring.set_password(
             f"{shared.APP_ID}.Keys",
-            shared.user.address.address,
+            str(shared.user.address),
             json.dumps(
                 {
                     "privateEncryptionKey": str(shared.user.private_encryption_key),

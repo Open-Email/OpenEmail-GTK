@@ -72,4 +72,4 @@ class Message(NamedTuple):
     """An envelope and its contents."""
 
     envelope: Envelope
-    message: str
+    contents: str

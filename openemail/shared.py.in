@@ -99,7 +99,7 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
 
         if user:
             (contacts := list(fetch_contacts(user))).sort(
-                key=lambda address: address.address
+                key=lambda address: str(address)
             )
 
             for contact in contacts:
@@ -155,8 +155,6 @@ def get_name(address: Address) -> str:
 
     Returns the string representation of `address` if no profile has been found.
     """
-    return (
-        str(profile.required["name"])
-        if (profile := address_book.get(address))
-        else address.address
+    return str(
+        profile.required["name"] if (profile := address_book.get(address)) else address
     )

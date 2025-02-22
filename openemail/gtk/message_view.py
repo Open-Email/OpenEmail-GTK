@@ -57,5 +57,5 @@ class MailMessageView(Adw.Bin):
         self.name = shared.get_name(message.envelope.author)
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
-        self.contents = message.message
+        self.contents = message.contents
         self.profile_image = shared.photo_book.get(message.envelope.author)

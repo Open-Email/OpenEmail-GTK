@@ -36,27 +36,28 @@ T = TypeVar("T")
 class Address:
     """A Mail/HTTPS address."""
 
-    address: str
     local_part: str
     host_part: str
 
     def __init__(self, address: str) -> None:
         if not match(
             r"^[a-z0-9][a-z0-9\.\-_\+]{2,}@[a-z0-9.-]+\.[a-z]{2,}|xn--[a-z0-9]{2,}$",
-            lowercased := address.lower(),
+            address := address.lower(),
         ):
             raise ValueError(f'Email address "{address}" is invalid.')
 
-        self.address = lowercased
         try:
-            self.local_part, self.host_part = self.address.split("@")
+            self.local_part, self.host_part = address.split("@")
         except ValueError as error:
             raise ValueError(
                 f'Email address "{address}" contains more than a single @ character.'
             ) from error
 
+    def __str__(self) -> str:
+        return f"{self.local_part}@{self.host_part}"
+
     def __hash__(self) -> int:
-        return hash(self.address)
+        return hash(str(self))
 
 
 @dataclass(slots=True)
