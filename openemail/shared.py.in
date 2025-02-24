@@ -55,6 +55,26 @@ def is_loading() -> bool:
     return bool(_loading)
 
 
+def update_user_profile(callback: Callable[[], Any] | None = None) -> None:
+    """Update the profile of the user by fetching new data remotely."""
+    global _loading
+
+    def update_profile() -> None:
+        global _loading
+
+        if user:
+            user.profile = fetch_profile(user.address)
+            user.profile_image = fetch_profile_image(user.address)
+
+        _loading -= 1
+
+        if callback:
+            GLib.idle_add(callback)
+
+    _loading += 1
+    GLib.Thread.new(None, update_profile)
+
+
 def update_address_book(callback: Callable[[], Any] | None = None) -> None:
     """Update the address and photo books of the user by fetching new data remotely."""
     global _loading
@@ -84,13 +104,17 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
         fetch_done_cb()
 
     def update_profile_image(contact: Address) -> None:
-        new_photo_book[contact] = (
-            Gdk.Texture.new_from_bytes(
-                GLib.Bytes.new(image)  # type: ignore
+        try:
+            new_photo_book[contact] = (
+                Gdk.Texture.new_from_bytes(
+                    GLib.Bytes.new(image)  # type: ignore
+                )
+                if (image := fetch_profile_image(contact))
+                else None
             )
-            if (image := fetch_profile_image(contact))
-            else None
-        )
+        except GLib.Error:
+            new_photo_book[contact] = None
+
         fetch_done_cb()
 
     def update_contacts() -> None:

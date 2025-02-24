@@ -18,6 +18,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from dataclasses import dataclass
 from typing import Any
 
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
@@ -27,11 +28,14 @@ from openemail.network import fetch_profile, fetch_profile_image
 from openemail.user import Address, Profile
 
 
+@dataclass
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-view.ui")
 class MailProfileView(Adw.Bin):
     """A page presenting a user's profile."""
 
     __gtype_name__ = "MailProfileView"
+
+    _groups: list[Adw.PreferencesGroup]
 
     stack: Gtk.Stack = Gtk.Template.Child()
     not_found_page: Adw.StatusPage = Gtk.Template.Child()
@@ -41,7 +45,10 @@ class MailProfileView(Adw.Bin):
     paintable = GObject.Property(type=Gdk.Paintable)
 
     _profile: Profile | None = None
-    _groups: list[Adw.PreferencesGroup] = []
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._groups = []
 
     @property
     def profile(self) -> Profile | None:

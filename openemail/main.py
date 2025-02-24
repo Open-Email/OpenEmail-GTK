@@ -70,8 +70,8 @@ class MailApplication(Adw.Application):
         about.set_developers(("kramo https://kramo.page",))
         about.set_designers(
             (
-                "Varti Studio https://varti-studio.com",
                 "kramo https://kramo.page",
+                "Varti Studio https://varti-studio.com",
             )
         )
         about.set_copyright("© 2025 Mercata Sagl")

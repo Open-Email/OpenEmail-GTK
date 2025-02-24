@@ -61,34 +61,6 @@ class Address:
 
 
 @dataclass(slots=True)
-class User:
-    """A local user."""
-
-    address: Address
-
-    public_encryption_key: Key
-    private_encryption_key: Key
-
-    public_signing_key: Key
-    private_signing_key: Key
-
-    def __init__(self, address: str, encryption_key: str, signing_key: str) -> None:
-        """Try to create a local user for the provided `address` and Base64-encoded keys."""
-        try:
-            self.public_encryption_key, self.private_encryption_key = get_keys(
-                encryption_key,
-            )
-            self.public_signing_key, self.private_signing_key = get_keys(
-                signing_key,
-            )
-            self.address = Address(address)
-        except ValueError as error:
-            raise ValueError(
-                "Attempt to construct local user with incorrect data."
-            ) from error
-
-
-@dataclass(slots=True)
 class ProfileField(Generic[T]):
     """A generic profile field."""
 
@@ -293,3 +265,34 @@ class Profile:
                             raise ValueError(f'Required field "{key}" does not exist.')
                         case self.optional:
                             fields[key] = None
+
+
+@dataclass(slots=True)
+class User:
+    """A local user."""
+
+    address: Address
+
+    public_encryption_key: Key
+    private_encryption_key: Key
+
+    public_signing_key: Key
+    private_signing_key: Key
+
+    profile: Profile | None = None
+    profile_image: bytes | None = None
+
+    def __init__(self, address: str, encryption_key: str, signing_key: str) -> None:
+        """Try to create a local user for the provided `address` and Base64-encoded keys."""
+        try:
+            self.public_encryption_key, self.private_encryption_key = get_keys(
+                encryption_key,
+            )
+            self.public_signing_key, self.private_signing_key = get_keys(
+                signing_key,
+            )
+            self.address = Address(address)
+        except ValueError as error:
+            raise ValueError(
+                "Attempt to construct local user with incorrect data."
+            ) from error

@@ -20,12 +20,13 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
 from openemail import shared
 from openemail.gtk.broadcasts_page import MailBroadcastsPage
 from openemail.gtk.contacts_page import MailContactsPage
 from openemail.gtk.navigation_row import MailNavigationRow
+from openemail.gtk.profile_view import MailProfileView
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/content-view.ui")
@@ -36,8 +37,12 @@ class MailContentView(Adw.BreakpointBin):
 
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
+
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     contacts_sidebar: Gtk.ListBox = Gtk.Template.Child()
+    profile_dialog: Adw.Dialog = Gtk.Template.Child()
+    profile_stack: Gtk.Stack = Gtk.Template.Child()
+    profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
 
     content: Gtk.Stack = Gtk.Template.Child()
 
@@ -48,6 +53,8 @@ class MailContentView(Adw.BreakpointBin):
     contacts_page: MailContactsPage = Gtk.Template.Child()  # type: ignore
 
     syncing_toast: Adw.Toast | None = None
+
+    profile_image = GObject.Property(type=Gdk.Paintable)
 
     def load_content(self, first_sync: bool = True) -> None:
         """Populate the content view by fetching the local user's data.
@@ -75,6 +82,24 @@ class MailContentView(Adw.BreakpointBin):
                 priority=Adw.ToastPriority.HIGH,
             )
             self.toast_overlay.add_toast(self.syncing_toast)
+
+        def update_user_profile_cb() -> None:
+            if (
+                (user := shared.user)
+                and (profile := user.profile)
+                and (image := user.profile_image)
+            ):
+                self.profile_view.profile = profile
+                self.profile_stack.set_visible_child(self.profile_view)
+
+                try:
+                    self.profile_image = Gdk.Texture.new_from_bytes(
+                        GLib.Bytes.new(image)  # type: ignore
+                    )
+                except GLib.Error:
+                    pass
+
+        shared.update_user_profile(update_user_profile_cb)
 
         self.contacts_page.update_contacts_list(loading=first_sync)
         self.broadcasts_page.update_broadcasts_list(loading=first_sync)
@@ -125,3 +150,7 @@ class MailContentView(Adw.BreakpointBin):
 
         self.content.set_visible_child(self.contacts_page)
         self.split_view.set_show_content(True)
+
+    @Gtk.Template.Callback()
+    def _on_profile_button_clciked(self, *_args: Any) -> None:
+        self.profile_dialog.present(self)
