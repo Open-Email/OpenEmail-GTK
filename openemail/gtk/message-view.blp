@@ -21,11 +21,21 @@ template $MailMessageView: Adw.Bin {
           valign: start;
           spacing: 3;
 
-          Adw.Avatar {
-            size: 48;
-            text: bind template.name;
-            custom-image: bind template.profile-image;
-            show-initials: true;
+          Button {
+            tooltip-text: _("Profile");
+            clicked => $_show_profile_dialog();
+
+            Adw.Avatar {
+              size: 48;
+              text: bind template.name;
+              custom-image: bind template.profile-image;
+              show-initials: true;
+            }
+
+            styles [
+              "circular",
+              "avatar-button",
+            ]
           }
 
           Box {
@@ -78,5 +88,18 @@ template $MailMessageView: Adw.Bin {
         }
       }
     }
+  }
+}
+
+Adw.Dialog profile_dialog {
+  content-width: 400;
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {}
+
+    content: $MailProfileView profile_view {
+      paintable: bind template.profile-image;
+    };
   }
 }

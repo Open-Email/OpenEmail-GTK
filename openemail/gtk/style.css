@@ -1,0 +1,7 @@
+.avatar-button {
+  transition: filter 0.3s;
+}
+
+.avatar-button:hover {
+  filter: opacity(0.8);
+}

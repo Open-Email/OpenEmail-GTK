@@ -152,6 +152,8 @@ Adw.Dialog profile_dialog {
     content: Stack profile_stack {
       transition-type: crossfade;
 
+      Adw.Spinner {}
+
       $MailProfileView profile_view {
         paintable: bind template.profile-image;
       }

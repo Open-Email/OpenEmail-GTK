@@ -24,6 +24,7 @@ from typing import Any
 from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import shared
+from openemail.gtk.profile_view import MailProfileView
 from openemail.message import Message
 
 
@@ -35,6 +36,9 @@ class MailMessageView(Adw.Bin):
 
     stack: Gtk.Stack = Gtk.Template.Child()
     main_page: Gtk.ScrolledWindow = Gtk.Template.Child()
+
+    profile_dialog: Adw.Dialog = Gtk.Template.Child()
+    profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
 
     message: Message | None = None
 
@@ -54,8 +58,22 @@ class MailMessageView(Adw.Bin):
         """Update properties of the view from `message`."""
         self.stack.set_visible_child(self.main_page)
 
+        self.message = message
         self.name = shared.get_name(message.envelope.author)
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
         self.contents = message.contents
         self.profile_image = shared.get_profile_image(message.envelope.author)
+
+    @Gtk.Template.Callback()
+    def _show_profile_dialog(self, *_args: Any) -> None:
+        self.profile_view.profile = (
+            (
+                shared.user.profile
+                if shared.user and (shared.user.address == self.message.envelope.author)
+                else shared.address_book.get(self.message.envelope.author)
+            )
+            if self.message
+            else None
+        )
+        self.profile_dialog.present(self)
