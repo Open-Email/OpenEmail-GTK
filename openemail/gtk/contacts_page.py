@@ -55,7 +55,7 @@ class MailContactsPage(Adw.NavigationPage):
                 MailContactRow(
                     address=str(contact),  # type: ignore
                     name=shared.get_name(contact),  # type: ignore
-                    profile_image=shared.photo_book.get(contact),  # type: ignore
+                    profile_image=shared.get_profile_image(contact),  # type: ignore
                 )
             )
 

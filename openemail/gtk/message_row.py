@@ -57,4 +57,4 @@ class MailMessageRow(Gtk.ListBoxRow):
         self.subject = message.envelope.subject
         self.contents = message.contents
         self.stripped_contents = sub(r"\n+", " ", message.contents)
-        self.profile_image = shared.photo_book.get(message.envelope.author)
+        self.profile_image = shared.get_profile_image(message.envelope.author)

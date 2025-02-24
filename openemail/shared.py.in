@@ -271,6 +271,24 @@ def get_name(address: Address) -> str:
 
     Returns the string representation of `address` if no profile has been found.
     """
+    if user and user.profile:
+        if address == user.address:
+            return str(user.profile.required["name"])
+
     return str(
         profile.required["name"] if (profile := address_book.get(address)) else address
     )
+
+
+def get_profile_image(address: Address) -> Gdk.Paintable | None:
+    """Get the profile image of a user."""
+    if user and user.profile_image:
+        if address == user.address:
+            try:
+                return Gdk.Texture.new_from_bytes(
+                    GLib.Bytes.new(user.profile_image)  # type: ignore
+                )
+            except GLib.Error:
+                return None
+
+    return photo_book.get(address)

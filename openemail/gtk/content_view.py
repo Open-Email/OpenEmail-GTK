@@ -90,9 +90,24 @@ class MailContentView(Adw.BreakpointBin):
             )
             self.toast_overlay.add_toast(self.syncing_toast)
 
+        self.contacts_page.set_loading(True)
+        self.broadcasts_page.set_loading(True)
+        self.inbox_page.set_loading(True)
+        self.outbox_page.set_loading(True)
+
+        def update_address_book_cb(
+            contacts: dict[Address, Profile | None], *args: Any
+        ) -> None:
+            self.contacts_page.update_contacts_list(contacts)
+            shared.update_broadcasts_list(self.broadcasts_page.update_messages_list)
+            shared.update_messages_list(self.inbox_page.update_messages_list)
+            shared.update_outbox(self.outbox_page.update_messages_list)
+
         def update_user_profile_cb(
             profile: Profile | None, profile_image: bytes | None
         ) -> None:
+            shared.update_address_book(update_address_book_cb)
+
             self.profile_view.profile = profile
             self.profile_stack.set_visible_child(self.profile_view)
 
@@ -108,21 +123,6 @@ class MailContentView(Adw.BreakpointBin):
                 self.profile_image = None
 
         shared.update_user_profile(update_user_profile_cb)
-
-        self.contacts_page.set_loading(True)
-        self.broadcasts_page.set_loading(True)
-        self.inbox_page.set_loading(True)
-        self.outbox_page.set_loading(True)
-
-        def update_address_book_cb(
-            contacts: dict[Address, Profile | None], *args: Any
-        ) -> None:
-            self.contacts_page.update_contacts_list(contacts)
-            shared.update_broadcasts_list(self.broadcasts_page.update_messages_list)
-            shared.update_messages_list(self.inbox_page.update_messages_list)
-            shared.update_outbox(self.outbox_page.update_messages_list)
-
-        shared.update_address_book(update_address_book_cb)
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:  # type: ignore
