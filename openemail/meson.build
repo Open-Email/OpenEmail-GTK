@@ -3,7 +3,7 @@ moduledir = pkgdatadir / 'openemail'
 blueprints = custom_target('blueprints',
   input: files(
     'gtk/auth-view.blp',
-    'gtk/broadcasts-page.blp',
+    'gtk/messages-page.blp',
     'gtk/contact-row.blp',
     'gtk/contacts-page.blp',
     'gtk/content-page.blp',
@@ -60,7 +60,7 @@ install_data([
 
 install_data([
     'gtk/auth_view.py',
-    'gtk/broadcasts_page.py',
+    'gtk/messages_page.py',
     'gtk/contact_row.py',
     'gtk/contacts_page.py',
     'gtk/content_page.py',

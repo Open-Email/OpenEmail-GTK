@@ -5,7 +5,7 @@ template $MailContactsPage: Adw.NavigationPage {
   title: _("Contacts");
 
   $MailContentPage content {
-    title: _("Contacts");
+    title: bind template.title;
 
     details: $MailProfileView profile_view {};
   }

@@ -27,7 +27,7 @@ from openemail.gtk.contact_row import MailContactRow
 from openemail.gtk.content_page import MailContentPage
 from openemail.gtk.profile_view import MailProfileView
 from openemail.network import fetch_contacts
-from openemail.user import Address
+from openemail.user import Address, Profile
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")
@@ -43,20 +43,14 @@ class MailContactsPage(Adw.NavigationPage):
         super().__init__(**kwargs)
         self.content.on_row_selected = self.__on_row_selected
 
-    def update_contacts_list(self, loading: bool = False) -> None:
-        """Update the list of contacts.
+    def set_loading(self, loading: bool) -> None:
+        """Set whether or not to display a spinner when there is no content."""
+        self.content.sidebar.set_placeholder(Adw.Spinner() if loading else None)  # type: ignore
 
-        If `loading` is set to True, present a loading page instead.
-        """
+    def update_contacts_list(self, contacts: dict[Address, Profile | None]) -> None:
+        """Update the list of contacts."""
         self.content.sidebar.remove_all()
-
-        if loading:
-            self.content.sidebar.set_placeholder(Adw.Spinner())  # type: ignore
-            return
-
-        self.content.sidebar.set_placeholder()
-
-        for contact, profile in shared.address_book.items():
+        for contact, profile in contacts.items():
             self.content.sidebar.append(
                 MailContactRow(
                     address=str(contact),  # type: ignore
@@ -64,6 +58,8 @@ class MailContactsPage(Adw.NavigationPage):
                     profile_image=shared.photo_book.get(contact),  # type: ignore
                 )
             )
+
+        self.set_loading(False)
 
     def __on_row_selected(self, row: Gtk.ListBoxRow) -> None:
         try:

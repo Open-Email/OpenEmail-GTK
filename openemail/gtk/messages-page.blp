@@ -1,11 +1,9 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MailBroadcastsPage: Adw.NavigationPage {
-  title: _("Broadcasts");
-
+template $MailMessagesPage: Adw.NavigationPage {
   $MailContentPage content {
-    title: _("Broadcasts");
+    title: bind template.title;
 
     details: $MailMessageView message_view {};
   }

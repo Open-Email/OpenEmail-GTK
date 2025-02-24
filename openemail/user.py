@@ -56,6 +56,24 @@ class Address:
     def __str__(self) -> str:
         return f"{self.local_part}@{self.host_part}"
 
+    def __eq__(self, other: object) -> bool:
+        return str(self) == str(other)
+
+    def __ne__(self, other: object) -> bool:
+        return str(self) != str(other)
+
+    def __lt__(self, other: object) -> bool:
+        return str(self) < str(other)
+
+    def __gt__(self, other: object) -> bool:
+        return str(self) > str(other)
+
+    def __le__(self, other: object) -> bool:
+        return str(self) >= str(other)
+
+    def __ge__(self, other: object) -> bool:
+        return str(self) <= str(other)
+
     def __hash__(self) -> int:
         return hash(str(self))
 

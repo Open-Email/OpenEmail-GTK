@@ -28,6 +28,7 @@ from openemail.message import Message
 from openemail.network import (
     fetch_broadcasts,
     fetch_contacts,
+    fetch_link_messages,
     fetch_profile,
     fetch_profile_image,
 )
@@ -46,6 +47,8 @@ user: User | None = None
 address_book: dict[Address, Profile | None] = {}
 photo_book: dict[Address, Gdk.Paintable | None] = {}
 broadcasts: list[Message] = []
+link_messages: list[Message] = []
+outbox: list[Message] = []
 
 _loading = 0
 
@@ -55,7 +58,9 @@ def is_loading() -> bool:
     return bool(_loading)
 
 
-def update_user_profile(callback: Callable[[], Any] | None = None) -> None:
+def update_user_profile(
+    callback: Callable[[Profile | None, bytes | None], Any] | None = None,
+) -> None:
     """Update the profile of the user by fetching new data remotely."""
     global _loading
 
@@ -69,13 +74,22 @@ def update_user_profile(callback: Callable[[], Any] | None = None) -> None:
         _loading -= 1
 
         if callback:
-            GLib.idle_add(callback)
+            GLib.idle_add(
+                callback,
+                user.profile if user else None,
+                user.profile_image if user else None,
+            )
 
     _loading += 1
     GLib.Thread.new(None, update_profile)
 
 
-def update_address_book(callback: Callable[[], Any] | None = None) -> None:
+def update_address_book(
+    callback: Callable[
+        [dict[Address, Profile | None], dict[Address, Gdk.Paintable | None]], Any
+    ]
+    | None = None,
+) -> None:
     """Update the address and photo books of the user by fetching new data remotely."""
     global _loading
 
@@ -97,7 +111,7 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
             photo_book = new_photo_book
 
             if callback:
-                GLib.idle_add(callback)
+                GLib.idle_add(callback, address_book, photo_book)
 
     def update_profile(contact: Address) -> None:
         new_address_book[contact] = fetch_profile(contact)
@@ -135,7 +149,9 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
     GLib.Thread.new(None, update_contacts)
 
 
-def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
+def update_broadcasts_list(
+    callback: Callable[[list[Message]], Any] | None = None,
+) -> None:
     """Update the broadcasts list of the user by fetching new data remotely."""
     global _loading
 
@@ -158,7 +174,7 @@ def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
             _loading -= 1
 
             if callback:
-                GLib.idle_add(callback)
+                GLib.idle_add(callback, broadcasts)
 
     def update_broadcasts(author: Address) -> None:
         global broadcasts
@@ -172,6 +188,82 @@ def update_broadcasts_list(callback: Callable[[], Any] | None = None) -> None:
     _loading += 1
     for contact in address_book:
         GLib.Thread.new(None, update_broadcasts, contact)
+
+
+def update_messages_list(
+    callback: Callable[[list[Message]], Any] | None = None,
+) -> None:
+    """Update the messages list of the user by fetching new data remotely."""
+    global _loading
+
+    running = len(address_book)
+    new_messages: list[Message] = []
+
+    def fetch_done_cb() -> None:
+        global _loading
+        nonlocal running
+        global link_messages
+
+        running -= 1
+        if not running:
+            new_messages.sort(
+                key=lambda message: message.envelope.date,
+                reverse=True,
+            )
+
+            link_messages = new_messages
+            _loading -= 1
+
+            if callback:
+                GLib.idle_add(callback, link_messages)
+
+    def update_messages(author: Address) -> None:
+        global link_messages
+        nonlocal new_messages
+
+        if user:
+            new_messages += fetch_link_messages(user, author)
+
+        fetch_done_cb()
+
+    _loading += 1
+    for contact in address_book:
+        GLib.Thread.new(None, update_messages, contact)
+
+
+def update_outbox(
+    callback: Callable[[list[Message]], Any] | None = None,
+) -> None:
+    """Update the outbox of the user by fetching new data remotely."""
+    global _loading
+
+    if not user:
+        return
+
+    new_messages: list[Message] = []
+
+    def update_messages(author: Address) -> None:
+        global _loading
+        global outbox
+        nonlocal new_messages
+
+        if user:
+            new_messages += fetch_link_messages(user, author)
+            new_messages += fetch_broadcasts(user, author)
+
+        new_messages.sort(
+            key=lambda message: message.envelope.date,
+            reverse=True,
+        )
+
+        outbox = new_messages
+        _loading -= 1
+
+        if callback:
+            GLib.idle_add(callback, outbox)
+
+    _loading += 1
+    GLib.Thread.new(None, update_messages, user.address)
 
 
 def get_name(address: Address) -> str:

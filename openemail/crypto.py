@@ -18,11 +18,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import random
 from base64 import b64decode, b64encode
 from typing import NamedTuple
 
-from nacl.bindings import crypto_scalarmult_base
+from nacl.bindings import (
+    crypto_aead_xchacha20poly1305_ietf_decrypt,
+    crypto_aead_xchacha20poly1305_ietf_NPUBBYTES,
+    crypto_scalarmult_base,
+)
+from nacl.exceptions import CryptoError
 from nacl.public import PrivateKey, SealedBox
 from nacl.signing import SigningKey
 
@@ -87,11 +93,27 @@ def get_nonce(host: str, public_key: Key, private_key: Key) -> str:
     )
 
 
-def decrpyt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> bytes:
+def decrypt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> bytes:
     """Attempt to decrypt `cipher_text` using the provided keys."""
     try:
         data = b64decode(cipher_text)
     except ValueError as error:
         raise ValueError("Invalid cipher text.") from error
 
-    return SealedBox(PrivateKey(bytes(private_key))).decrypt(data)
+    try:
+        return SealedBox(PrivateKey(bytes(private_key))).decrypt(data)
+    except CryptoError as error:
+        raise ValueError("Unable to decrypt cipher text.") from error
+
+
+def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
+    """Attempt to decrypt `data` using `access_key`."""
+    try:
+        return crypto_aead_xchacha20poly1305_ietf_decrypt(
+            data[crypto_aead_xchacha20poly1305_ietf_NPUBBYTES:],
+            None,
+            data[:crypto_aead_xchacha20poly1305_ietf_NPUBBYTES],
+            access_key,
+        )
+    except CryptoError as error:
+        raise ValueError("Unable to decrypt data.") from error

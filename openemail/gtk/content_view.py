@@ -23,10 +23,11 @@ from typing import Any
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
 from openemail import shared
-from openemail.gtk.broadcasts_page import MailBroadcastsPage
 from openemail.gtk.contacts_page import MailContactsPage
+from openemail.gtk.messages_page import MailMessagesPage
 from openemail.gtk.navigation_row import MailNavigationRow
 from openemail.gtk.profile_view import MailProfileView
+from openemail.user import Address, Profile
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/content-view.ui")
@@ -49,7 +50,9 @@ class MailContentView(Adw.BreakpointBin):
     empty_page: Adw.ToolbarView = Gtk.Template.Child()
     empty_status_page: Adw.StatusPage = Gtk.Template.Child()
 
-    broadcasts_page: MailBroadcastsPage = Gtk.Template.Child()  # type: ignore
+    broadcasts_page: MailMessagesPage = Gtk.Template.Child()  # type: ignore
+    inbox_page: MailMessagesPage = Gtk.Template.Child()  # type: ignore
+    outbox_page: MailMessagesPage = Gtk.Template.Child()  # type: ignore
     contacts_page: MailContactsPage = Gtk.Template.Child()  # type: ignore
 
     syncing_toast: Adw.Toast | None = None
@@ -87,42 +90,37 @@ class MailContentView(Adw.BreakpointBin):
             )
             self.toast_overlay.add_toast(self.syncing_toast)
 
-        def update_user_profile_cb() -> None:
-            if (
-                (user := shared.user)
-                and (profile := user.profile)
-                and (image := user.profile_image)
-            ):
-                self.profile_view.profile = profile
-                self.profile_stack.set_visible_child(self.profile_view)
+        def update_user_profile_cb(
+            profile: Profile | None, profile_image: bytes | None
+        ) -> None:
+            self.profile_view.profile = profile
+            self.profile_stack.set_visible_child(self.profile_view)
 
-                try:
-                    self.profile_image = Gdk.Texture.new_from_bytes(
-                        GLib.Bytes.new(image)  # type: ignore
-                    )
-                except GLib.Error:
-                    pass
+            if not profile_image:
+                self.profile_image = None
+                return
+
+            try:
+                self.profile_image = Gdk.Texture.new_from_bytes(
+                    GLib.Bytes.new(profile_image)  # type: ignore
+                )
+            except GLib.Error:
+                self.profile_image = None
 
         shared.update_user_profile(update_user_profile_cb)
 
-        self.contacts_page.update_contacts_list(loading=first_sync)
-        self.broadcasts_page.update_broadcasts_list(loading=first_sync)
+        self.contacts_page.set_loading(True)
+        self.broadcasts_page.set_loading(True)
+        self.inbox_page.set_loading(True)
+        self.outbox_page.set_loading(True)
 
-        def update_broadcasts_list_cb() -> None:
-            self.broadcasts_page.update_broadcasts_list()
-
-            if first_sync:
-                return
-
-            if self.syncing_toast:
-                self.syncing_toast.dismiss()
-
-            self.syncing_toast = Adw.Toast(title=_("Finished syncing"))
-            self.toast_overlay.add_toast(self.syncing_toast)
-
-        def update_address_book_cb() -> None:
-            self.contacts_page.update_contacts_list()
-            shared.update_broadcasts_list(update_broadcasts_list_cb)
+        def update_address_book_cb(
+            contacts: dict[Address, Profile | None], *args: Any
+        ) -> None:
+            self.contacts_page.update_contacts_list(contacts)
+            shared.update_broadcasts_list(self.broadcasts_page.update_messages_list)
+            shared.update_messages_list(self.inbox_page.update_messages_list)
+            shared.update_outbox(self.outbox_page.update_messages_list)
 
         shared.update_address_book(update_address_book_cb)
 
@@ -137,6 +135,10 @@ class MailContentView(Adw.BreakpointBin):
         match row.get_index():
             case 0:
                 self.content.set_visible_child(self.broadcasts_page)
+            case 1:
+                self.content.set_visible_child(self.inbox_page)
+            case 2:
+                self.content.set_visible_child(self.outbox_page)
             case _:
                 self.empty_status_page.set_title(row.label)
                 self.empty_status_page.set_icon_name(row.icon_name)

@@ -2,7 +2,7 @@
 <gresources>
   <gresource prefix="@PREFIX@">
     <file preprocess="xml-stripblanks">gtk/auth-view.ui</file>
-    <file preprocess="xml-stripblanks">gtk/broadcasts-page.ui</file>
+    <file preprocess="xml-stripblanks">gtk/messages-page.ui</file>
     <file preprocess="xml-stripblanks">gtk/contact-row.ui</file>
     <file preprocess="xml-stripblanks">gtk/contacts-page.ui</file>
     <file preprocess="xml-stripblanks">gtk/content-page.ui</file>

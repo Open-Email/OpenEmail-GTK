@@ -123,7 +123,17 @@ template $MailContentView: Adw.BreakpointBin {
             content: Adw.StatusPage empty_status_page {};
           }
 
-          $MailBroadcastsPage broadcasts_page {}
+          $MailMessagesPage broadcasts_page {
+            title: _("Broadcasts");
+          }
+
+          $MailMessagesPage inbox_page {
+            title: _("Inbox");
+          }
+
+          $MailMessagesPage outbox_page {
+            title: _("Outbox");
+          }
 
           $MailContactsPage contacts_page {}
         }
@@ -151,24 +161,9 @@ Adw.Dialog profile_dialog {
 
 menu primary_menu {
   section {
-    item {
-      label: _("_Preferences");
-      action: "app.preferences";
-    }
-
-    item {
-      label: _("_Keyboard Shortcuts");
-      action: "win.show-help-overlay";
-    }
-
-    item {
-      label: _("_About OpenEmail");
-      action: "app.about";
-    }
-
-    item {
-      label: _("_Sync");
-      action: "app.sync";
-    }
+    item (_("_Sync"), "app.sync")
+    item (_("_Preferences"), "app.preferences")
+    item (_("_Keyboard Shortcuts"), "win.show-help-overlay")
+    item (_("_About OpenEmail"), "app.about")
   }
 }
