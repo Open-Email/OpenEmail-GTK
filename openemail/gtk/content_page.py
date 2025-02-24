@@ -43,6 +43,10 @@ class MailContentPage(Adw.BreakpointBin):
     title = GObject.Property(type=str, default=_("Content"))
     details = GObject.Property(type=Gtk.Widget)
 
+    @GObject.Signal(name="show-sidebar")
+    def show_sidebar(self) -> None:
+        """Notify listeners that the main sidebar should be shown."""
+
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
         if not row:
@@ -52,3 +56,17 @@ class MailContentPage(Adw.BreakpointBin):
             self.on_row_selected(row)
 
         self.split_view.set_show_content(True)
+
+    @Gtk.Template.Callback()
+    def _show_sidebar(self, *_args: Any) -> None:
+        if not isinstance(
+            split_view := getattr(
+                getattr(self.get_root(), "content_view", None),
+                "split_view",
+                None,
+            ),
+            Adw.OverlaySplitView,
+        ):
+            return
+
+        split_view.set_show_sidebar(not split_view.get_show_sidebar())

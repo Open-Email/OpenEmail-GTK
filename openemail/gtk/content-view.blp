@@ -6,7 +6,7 @@ template $MailContentView: Adw.BreakpointBin {
   height-request: 294;
 
   Adw.Breakpoint {
-    condition ('max-width: 750sp')
+    condition ("max-width: 900px")
 
     setters {
       split_view.collapsed: true;
@@ -14,7 +14,7 @@ template $MailContentView: Adw.BreakpointBin {
   }
 
   Adw.ToastOverlay toast_overlay {
-    Adw.NavigationSplitView split_view {
+    Adw.OverlaySplitView split_view {
       min-sidebar-width: 260;
       sidebar-width-fraction: 0.2;
 
@@ -111,6 +111,13 @@ template $MailContentView: Adw.BreakpointBin {
             [top]
             Adw.HeaderBar {
               show-title: false;
+
+              [start]
+              Button {
+                icon-name: _("sidebar-show-symbolic");
+                tooltip-text: _("Toggle Sidebar");
+                clicked => $_show_sidebar();
+              }
             }
 
             content: Adw.StatusPage empty_status_page {};

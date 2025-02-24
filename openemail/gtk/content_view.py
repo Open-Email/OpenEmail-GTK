@@ -36,7 +36,7 @@ class MailContentView(Adw.BreakpointBin):
     __gtype_name__ = "MailContentView"
 
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
-    split_view: Adw.NavigationSplitView = Gtk.Template.Child()
+    split_view: Adw.OverlaySplitView = Gtk.Template.Child()
 
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     contacts_sidebar: Gtk.ListBox = Gtk.Template.Child()
@@ -55,6 +55,10 @@ class MailContentView(Adw.BreakpointBin):
     syncing_toast: Adw.Toast | None = None
 
     profile_image = GObject.Property(type=Gdk.Paintable)
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
     def load_content(self, first_sync: bool = True) -> None:
         """Populate the content view by fetching the local user's data.
@@ -138,7 +142,8 @@ class MailContentView(Adw.BreakpointBin):
                 self.empty_status_page.set_icon_name(row.icon_name)
                 self.content.set_visible_child(self.empty_page)
 
-        self.split_view.set_show_content(True)
+        if self.split_view.get_collapsed():
+            self.split_view.set_show_sidebar(False)
 
     @Gtk.Template.Callback()
     def _on_contacts_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:  # type: ignore
@@ -149,8 +154,14 @@ class MailContentView(Adw.BreakpointBin):
         self.contacts_sidebar.select_row(row)
 
         self.content.set_visible_child(self.contacts_page)
-        self.split_view.set_show_content(True)
+
+        if self.split_view.get_collapsed():
+            self.split_view.set_show_sidebar(False)
 
     @Gtk.Template.Callback()
     def _on_profile_button_clciked(self, *_args: Any) -> None:
         self.profile_dialog.present(self)
+
+    @Gtk.Template.Callback()
+    def _show_sidebar(self, *_args: Any) -> None:
+        self.split_view.set_show_sidebar(not self.split_view.get_show_sidebar())

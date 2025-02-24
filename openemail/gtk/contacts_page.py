@@ -20,7 +20,7 @@
 
 from typing import Any
 
-from gi.repository import Adw, GLib, Gtk, Pango
+from gi.repository import Adw, Gtk
 
 from openemail import shared
 from openemail.gtk.contact_row import MailContactRow

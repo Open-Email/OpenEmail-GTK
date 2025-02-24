@@ -6,7 +6,7 @@ template $MailContentPage: Adw.BreakpointBin {
   height-request: 294;
 
   Adw.Breakpoint {
-    condition ('max-width: 800sp')
+    condition ("max-width: 600px")
 
     setters {
       split_view.collapsed: true;
@@ -22,7 +22,14 @@ template $MailContentPage: Adw.BreakpointBin {
 
       Adw.ToolbarView {
         [top]
-        Adw.HeaderBar {}
+        Adw.HeaderBar {
+          [start]
+          Button {
+            icon-name: _("sidebar-show-symbolic");
+            tooltip-text: _("Toggle Sidebar");
+            clicked => $_show_sidebar();
+          }
+        }
 
         content: ListBox sidebar {
           row-selected => $_on_row_selected();
