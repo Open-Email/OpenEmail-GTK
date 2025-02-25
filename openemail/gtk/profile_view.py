@@ -37,14 +37,14 @@ class MailProfileView(Adw.Bin):
 
     _groups: list[Adw.PreferencesGroup]
 
-    stack: Gtk.Stack = Gtk.Template.Child()
-    not_found_page: Adw.StatusPage = Gtk.Template.Child()
-    main_page: Adw.PreferencesPage = Gtk.Template.Child()
+    page: Adw.PreferencesPage = Gtk.Template.Child()
 
     name = GObject.Property(type=str)
     address = GObject.Property(type=str)
     paintable = GObject.Property(type=Gdk.Paintable)
     away = GObject.Property(type=bool, default=False)
+
+    visible_child_name = GObject.Property(type=str, default="empty")
 
     _profile: Profile | None = None
 
@@ -62,7 +62,7 @@ class MailProfileView(Adw.Bin):
         self._profile = profile
 
         if not profile:
-            self.stack.set_visible_child(self.not_found_page)
+            self.visible_child_name = "not-found"
             return
 
         self.name = str(profile.required["name"])
@@ -70,7 +70,7 @@ class MailProfileView(Adw.Bin):
         self.away = away.value if (away := profile.optional.get("away")) else False
 
         while self._groups:
-            self.main_page.remove(self._groups.pop())
+            self.page.remove(self._groups.pop())
 
         for name, category in {
             _("General"): (
@@ -118,7 +118,7 @@ class MailProfileView(Adw.Bin):
                             separate_rows=True,  # type: ignore
                         )
                     )
-                    self.main_page.add(group)
+                    self.page.add(group)
 
                 row = Adw.ActionRow(
                     title=field.name,
@@ -129,4 +129,4 @@ class MailProfileView(Adw.Bin):
                 row.add_prefix(Gtk.Image.new_from_icon_name(f"{key}-symbolic"))
                 group.add(row)
 
-        self.stack.set_visible_child(self.main_page)
+        self.visible_child_name = "profile"

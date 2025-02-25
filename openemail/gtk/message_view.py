@@ -34,11 +34,10 @@ class MailMessageView(Adw.Bin):
 
     __gtype_name__ = "MailMessageView"
 
-    stack: Gtk.Stack = Gtk.Template.Child()
-    main_page: Gtk.ScrolledWindow = Gtk.Template.Child()
-
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
     profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
+
+    visible_child_name = GObject.Property(type=str, default="empty")
 
     message: Message | None = None
 
@@ -56,7 +55,7 @@ class MailMessageView(Adw.Bin):
 
     def set_from_message(self, message: Message) -> None:
         """Update properties of the view from `message`."""
-        self.stack.set_visible_child(self.main_page)
+        self.visible_child_name = "message"
 
         self.message = message
         self.name = shared.get_name(message.envelope.author)

@@ -36,13 +36,10 @@ class MailContentPage(Adw.BreakpointBin):
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
 
-    sidebar_stack: Gtk.Stack = Gtk.Template.Child()
-    sidebar: Gtk.ListView = Gtk.Template.Child()
-    spinner: Adw.Spinner = Gtk.Template.Child()  # type: ignore
-
     factory = GObject.Property(type=Gtk.ListItemFactory)
     model = GObject.Property(type=Gtk.SelectionModel)
-    on_row_selected: Callable[[Gtk.ListBoxRow], Any] | None = None
+
+    sidebar_child_name = GObject.Property(type=str, default="content")
 
     title = GObject.Property(type=str, default=_("Content"))
     details = GObject.Property(type=Gtk.Widget)
@@ -53,19 +50,9 @@ class MailContentPage(Adw.BreakpointBin):
 
     def set_loading(self, loading: bool) -> None:
         """Set whether or not to display a spinner."""
-        self.sidebar_stack.set_visible_child(
-            self.spinner if loading and (not self.model.get_n_items()) else self.sidebar
+        self.sidebar_child_name = (
+            "spinner" if loading and (not self.model.get_n_items()) else "content"
         )
-
-    @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:
-        if not row:
-            return
-
-        if self.on_row_selected:
-            self.on_row_selected(row)
-
-        self.split_view.set_show_content(True)
 
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:

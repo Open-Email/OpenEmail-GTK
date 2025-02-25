@@ -85,9 +85,10 @@ class MailMessagesPage(Adw.NavigationPage):
                 model=Gtk.SortListModel.new(
                     self.messages,
                     Gtk.CustomSorter.new(
-                        lambda a, b, _: b.message.envelope.date.compare(
-                            a.message.envelope.date
-                        )  # type: ignore
+                        lambda a, b, _: int(
+                            b.message.envelope.date > a.message.envelope.date
+                        )
+                        - int(b.message.envelope.date < a.message.envelope.date)  # type: ignore
                     ),
                 ),
             )

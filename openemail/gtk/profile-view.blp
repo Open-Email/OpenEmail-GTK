@@ -2,54 +2,68 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MailProfileView: Adw.Bin {
-  Stack stack {
-    Adw.StatusPage {
-      title: _("No Profile Selected");
-      icon-name: "about-symbolic";
+  Stack {
+    visible-child-name: bind template.visible-child-name;
+
+    StackPage {
+      name: "empty";
+
+      child: Adw.StatusPage {
+        title: _("No Profile Selected");
+        icon-name: "about-symbolic";
+      };
     }
 
-    Adw.StatusPage not_found_page {
-      title: _("Profile Not Found");
-      description: _("Couldn’t get information about the selected user");
-      icon-name: "about-symbolic";
+    StackPage {
+      name: "not-found";
+
+      child: Adw.StatusPage {
+        title: _("Profile Not Found");
+        description: _("Couldn’t get information about the selected user");
+        icon-name: "about-symbolic";
+      };
     }
 
-    Adw.PreferencesPage main_page {
-      Adw.PreferencesGroup {
-        Adw.Avatar {
-          size: 128;
-          text: bind template.name;
-          custom-image: bind template.paintable;
-          show-initials: true;
-        }
-      }
+    StackPage {
+      name: "profile";
 
-      Adw.PreferencesGroup {
-        Label {
-          label: bind template.name;
-
-          styles [
-            "title-1",
-          ]
+      child: Adw.PreferencesPage page {
+        Adw.PreferencesGroup {
+          Adw.Avatar {
+            size: 128;
+            text: bind template.name;
+            custom-image: bind template.paintable;
+            show-initials: true;
+          }
         }
 
-        Label {
-          margin-top: 3;
-          label: bind template.address;
-        }
+        Adw.PreferencesGroup {
+          Label {
+            label: bind template.name;
 
-        Label {
-          visible: bind template.away;
-          margin-top: 9;
-          halign: center;
-          label: _("Away");
+            styles [
+              "title-1",
+            ]
+          }
 
-          styles [
-            "caption",
-            "away-label",
-          ]
+          Label {
+            margin-top: 3;
+            label: bind template.address;
+          }
+
+          Label {
+            visible: bind template.away;
+            margin-top: 9;
+            halign: center;
+            label: _("Away");
+
+            styles [
+              "caption",
+              "away-label",
+            ]
+          }
         }
-      }
+      };
     }
   }
 }

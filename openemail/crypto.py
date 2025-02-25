@@ -18,7 +18,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import logging
 import random
 from base64 import b64decode, b64encode
 from typing import NamedTuple

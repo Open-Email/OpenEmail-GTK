@@ -48,8 +48,8 @@ class MailPreferences(Adw.PreferencesDialog):
         keyring.delete_password(shared.secret_service, str(shared.user.address))
         shared.user = None
 
-        if not isinstance(root := self.get_root(), MailWindow):  # type: ignore
+        if not isinstance(win := self.get_root(), MailWindow):  # type: ignore
             return
 
-        root.stack.set_visible_child(root.auth_view)  # type: ignore
+        win.visible_child_name = "auth"  # type: ignore
         self.force_close()

@@ -42,12 +42,8 @@ class MailContentView(Adw.BreakpointBin):
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     contacts_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
-    profile_stack: Gtk.Stack = Gtk.Template.Child()
     profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
 
-    content: Gtk.Stack = Gtk.Template.Child()
-
-    empty_page: Adw.ToolbarView = Gtk.Template.Child()
     empty_status_page: Adw.StatusPage = Gtk.Template.Child()
 
     broadcasts_page: MailMessagesPage = Gtk.Template.Child()  # type: ignore
@@ -57,6 +53,8 @@ class MailContentView(Adw.BreakpointBin):
 
     syncing_toast: Adw.Toast | None = None
 
+    content_child_name = GObject.Property(type=str, default="broadcasts")
+    profile_stack_child_name = GObject.Property(type=str, default="spinner")
     profile_image = GObject.Property(type=Gdk.Paintable)
 
     def __init__(self, **kwargs: Any) -> None:
@@ -109,7 +107,7 @@ class MailContentView(Adw.BreakpointBin):
             shared.update_address_book(update_address_book_cb)
 
             self.profile_view.profile = profile
-            self.profile_stack.set_visible_child(self.profile_view)
+            self.profile_stack_child_name = "profile"
 
             if not profile_image:
                 self.profile_image = None
@@ -122,6 +120,7 @@ class MailContentView(Adw.BreakpointBin):
             except GLib.Error:
                 self.profile_image = None
 
+        self.profile_stack_child_name = "spinner"
         shared.update_user_profile(update_user_profile_cb)
 
     @Gtk.Template.Callback()
@@ -134,15 +133,15 @@ class MailContentView(Adw.BreakpointBin):
 
         match row.get_index():
             case 0:
-                self.content.set_visible_child(self.broadcasts_page)
+                self.content_child_name = "broadcasts"
             case 1:
-                self.content.set_visible_child(self.inbox_page)
+                self.content_child_name = "inbox"
             case 2:
-                self.content.set_visible_child(self.outbox_page)
+                self.content_child_name = "outbox"
             case _:
                 self.empty_status_page.set_title(row.label)
                 self.empty_status_page.set_icon_name(row.icon_name)
-                self.content.set_visible_child(self.empty_page)
+                self.content_child_name = "placeholder"
 
         if self.split_view.get_collapsed():
             self.split_view.set_show_sidebar(False)
@@ -155,7 +154,7 @@ class MailContentView(Adw.BreakpointBin):
         self.sidebar.unselect_all()
         self.contacts_sidebar.select_row(row)
 
-        self.content.set_visible_child(self.contacts_page)
+        self.content_child_name = "contacts"
 
         if self.split_view.get_collapsed():
             self.split_view.set_show_sidebar(False)

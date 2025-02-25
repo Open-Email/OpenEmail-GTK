@@ -76,13 +76,23 @@ template $MailAuthView: Adw.Bin {
                   sensitive: false;
                   clicked => $_authenticate();
 
-                  Stack authenticate_stack {
+                  Stack {
                     transition-type: crossfade;
+                    visible-child-name: bind template.button-child-name;
 
-                    Label authenticate_label {
-                      label: _("Authenticate");
+                    StackPage {
+                      name: "label";
+
+                      child: Label {
+                        label: _("Authenticate");
+                      };
                     }
-                    Adw.Spinner authenticate_spinner {}
+
+                    StackPage {
+                      name: "spinner";
+
+                      child: Adw.Spinner {};
+                    }
                   }
 
                   styles [

@@ -18,7 +18,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import logging
 from base64 import b64decode
 from dataclasses import dataclass, field
 from datetime import datetime

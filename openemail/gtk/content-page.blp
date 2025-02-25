@@ -31,21 +31,29 @@ template $MailContentPage: Adw.BreakpointBin {
           }
         }
 
-        content:
-        Stack sidebar_stack {
+        content: Stack {
           transition-type: crossfade;
+          visible-child-name: bind template.sidebar-child-name;
 
-          ListView sidebar {
-            vexpand: true;
-            factory: bind template.factory;
-            model: bind template.model;
+          StackPage {
+            name: "content";
 
-            styles [
-              "navigation-sidebar",
-            ]
+            child: ListView {
+              vexpand: true;
+              factory: bind template.factory;
+              model: bind template.model;
+
+              styles [
+                "navigation-sidebar",
+              ]
+            };
           }
 
-          Adw.Spinner spinner {}
+          StackPage {
+            name: "spinner";
+
+            child: Adw.Spinner {};
+          }
         };
       }
     };

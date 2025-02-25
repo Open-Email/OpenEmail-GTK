@@ -106,36 +106,57 @@ template $MailContentView: Adw.BreakpointBin {
 
         Stack content {
           transition-type: crossfade;
+          visible-child-name: bind template.content-child-name;
 
-          Adw.ToolbarView empty_page {
-            [top]
-            Adw.HeaderBar {
-              show-title: false;
+          StackPage {
+            name: "broadcasts";
 
-              [start]
-              Button {
-                icon-name: _("sidebar-show-symbolic");
-                tooltip-text: _("Toggle Sidebar");
-                clicked => $_show_sidebar();
+            child: $MailMessagesPage broadcasts_page {
+              title: _("Broadcasts");
+            };
+          }
+
+          StackPage {
+            name: "inbox";
+
+            child: $MailMessagesPage inbox_page {
+              title: _("Inbox");
+            };
+          }
+
+          StackPage {
+            name: "outbox";
+
+            child: $MailMessagesPage outbox_page {
+              title: _("Outbox");
+            };
+          }
+
+          StackPage {
+            name: "contacts";
+
+            child: $MailContactsPage contacts_page {};
+          }
+
+          StackPage {
+            name: "placeholder";
+
+            child: Adw.ToolbarView {
+              [top]
+              Adw.HeaderBar {
+                show-title: false;
+
+                [start]
+                Button {
+                  icon-name: _("sidebar-show-symbolic");
+                  tooltip-text: _("Toggle Sidebar");
+                  clicked => $_show_sidebar();
+                }
               }
-            }
 
-            content: Adw.StatusPage empty_status_page {};
+              content: Adw.StatusPage empty_status_page {};
+            };
           }
-
-          $MailMessagesPage broadcasts_page {
-            title: _("Broadcasts");
-          }
-
-          $MailMessagesPage inbox_page {
-            title: _("Inbox");
-          }
-
-          $MailMessagesPage outbox_page {
-            title: _("Outbox");
-          }
-
-          $MailContactsPage contacts_page {}
         }
       };
     }
@@ -151,11 +172,20 @@ Adw.Dialog profile_dialog {
 
     content: Stack profile_stack {
       transition-type: crossfade;
+      visible-child-name: bind template.profile-stack-child-name;
 
-      Adw.Spinner {}
+      StackPage {
+        name: "spinner";
 
-      $MailProfileView profile_view {
-        paintable: bind template.profile-image;
+        child: Adw.Spinner {};
+      }
+
+      StackPage {
+        name: "profile";
+
+        child: $MailProfileView profile_view {
+          paintable: bind template.profile-image;
+        };
       }
     };
   }

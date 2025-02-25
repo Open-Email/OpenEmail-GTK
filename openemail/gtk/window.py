@@ -23,7 +23,7 @@ from base64 import b64encode
 from typing import Any
 
 import keyring
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, GObject, Gtk
 
 from openemail import shared
 from openemail.gtk.auth_view import MailAuthView
@@ -36,10 +36,10 @@ class MailWindow(Adw.ApplicationWindow):
 
     __gtype_name__ = "MailWindow"
 
-    stack: Gtk.Stack = Gtk.Template.Child()
-
     auth_view: MailAuthView = Gtk.Template.Child()  # type: ignore
     content_view: MailContentView = Gtk.Template.Child()  # type: ignore
+
+    visible_child_name = GObject.Property(type=str, default="auth")
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -48,7 +48,7 @@ class MailWindow(Adw.ApplicationWindow):
             return
 
         self.content_view.load_content()
-        self.stack.set_visible_child(self.content_view)
+        self.visible_child_name = "content"
 
     @Gtk.Template.Callback()
     def _on_auth(self, *_args: Any) -> None:
@@ -71,4 +71,4 @@ class MailWindow(Adw.ApplicationWindow):
         )
 
         self.content_view.load_content()
-        self.stack.set_visible_child(self.content_view)
+        self.visible_child_name = "content"

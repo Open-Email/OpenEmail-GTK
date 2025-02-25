@@ -18,7 +18,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import logging
 from http.client import HTTPResponse
 from socket import setdefaulttimeout
 from typing import MutableMapping
