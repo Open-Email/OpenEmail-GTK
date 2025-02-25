@@ -136,11 +136,7 @@ def update_address_book(
         nonlocal running
 
         if user:
-            (contacts := list(fetch_contacts(user))).sort(
-                key=lambda address: str(address)
-            )
-
-            for contact in contacts:
+            for contact in fetch_contacts(user):
                 running += 2
                 GLib.Thread.new(None, update_profile, contact)
                 GLib.Thread.new(None, update_profile_image, contact)

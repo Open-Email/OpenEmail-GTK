@@ -23,7 +23,6 @@ from typing import Any, Callable
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import shared
-from openemail.gtk.contact_row import MailContactRow
 from openemail.gtk.profile_view import MailProfileView
 from openemail.network import fetch_contacts
 from openemail.user import Address
@@ -36,8 +35,13 @@ class MailContentPage(Adw.BreakpointBin):
     __gtype_name__ = "MailContentPage"
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
-    sidebar: Gtk.ListBox = Gtk.Template.Child()
 
+    sidebar_stack: Gtk.Stack = Gtk.Template.Child()
+    sidebar: Gtk.ListView = Gtk.Template.Child()
+    spinner: Adw.Spinner = Gtk.Template.Child()  # type: ignore
+
+    factory = GObject.Property(type=Gtk.ListItemFactory)
+    model = GObject.Property(type=Gtk.SelectionModel)
     on_row_selected: Callable[[Gtk.ListBoxRow], Any] | None = None
 
     title = GObject.Property(type=str, default=_("Content"))
@@ -46,6 +50,12 @@ class MailContentPage(Adw.BreakpointBin):
     @GObject.Signal(name="show-sidebar")
     def show_sidebar(self) -> None:
         """Notify listeners that the main sidebar should be shown."""
+
+    def set_loading(self, loading: bool) -> None:
+        """Set whether or not to display a spinner."""
+        self.sidebar_stack.set_visible_child(
+            self.spinner if loading and (not self.model.get_n_items()) else self.sidebar
+        )
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: Gtk.ListBoxRow) -> None:

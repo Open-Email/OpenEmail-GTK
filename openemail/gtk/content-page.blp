@@ -31,12 +31,21 @@ template $MailContentPage: Adw.BreakpointBin {
           }
         }
 
-        content: ListBox sidebar {
-          row-selected => $_on_row_selected();
+        content:
+        Stack sidebar_stack {
+          transition-type: crossfade;
 
-          styles [
-            "navigation-sidebar",
-          ]
+          ListView sidebar {
+            vexpand: true;
+            factory: bind template.factory;
+            model: bind template.model;
+
+            styles [
+              "navigation-sidebar",
+            ]
+          }
+
+          Adw.Spinner spinner {}
         };
       }
     };

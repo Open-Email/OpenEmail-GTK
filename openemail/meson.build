@@ -61,11 +61,9 @@ install_data([
 install_data([
     'gtk/auth_view.py',
     'gtk/messages_page.py',
-    'gtk/contact_row.py',
     'gtk/contacts_page.py',
     'gtk/content_page.py',
     'gtk/content_view.py',
-    'gtk/message_row.py',
     'gtk/message_view.py',
     'gtk/navigation_row.py',
     'gtk/preferences.py',

@@ -18,16 +18,48 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from locale import strcoll
 from typing import Any
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gdk, Gio, GObject, Gtk
 
 from openemail import shared
-from openemail.gtk.contact_row import MailContactRow
 from openemail.gtk.content_page import MailContentPage
 from openemail.gtk.profile_view import MailProfileView
 from openemail.network import fetch_contacts
 from openemail.user import Address, Profile
+
+
+class MailContact(GObject.Object):
+    """A contact in ther user's address book."""
+
+    __gtype_name__ = "MailContact"
+
+    has_name = GObject.Property(type=bool, default=False)
+    profile_image = GObject.Property(type=Gdk.Paintable)
+
+    _address: str | None = None
+    _name: str | None = None
+
+    @GObject.Property(type=str)
+    def address(self) -> str | None:
+        """Get the user's Mail/HTTPS address."""
+        return self._address
+
+    @address.setter
+    def address(self, address: str) -> None:
+        self._address = address
+        self.has_name = address != self.name
+
+    @GObject.Property(type=str)
+    def name(self) -> str | None:
+        """Get the user's name."""
+        return self._name
+
+    @name.setter
+    def name(self, name: str) -> None:
+        self._name = name
+        self.has_name = name != self.address
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")
@@ -39,20 +71,36 @@ class MailContactsPage(Adw.NavigationPage):
     content: MailContentPage = Gtk.Template.Child()  # type: ignore
     profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
 
+    contacts: Gio.ListStore
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.content.on_row_selected = self.__on_row_selected
+
+        self.contacts = Gio.ListStore.new(MailContact)
+        self.content.model = (
+            selection := Gtk.SingleSelection(
+                autoselect=False,
+                model=Gtk.SortListModel.new(
+                    self.contacts,
+                    Gtk.CustomSorter.new(lambda a, b, _: strcoll(a.name, b.name)),  # type: ignore
+                ),
+            )
+        )
+        selection.connect("notify::selected", self.__on_selected)
+        self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
+            None, f"{shared.PREFIX}/gtk/contact-row.ui"
+        )
 
     def set_loading(self, loading: bool) -> None:
-        """Set whether or not to display a spinner when there is no content."""
-        self.content.sidebar.set_placeholder(Adw.Spinner() if loading else None)  # type: ignore
+        """Set whether or not to display a spinner."""
+        self.content.set_loading(loading)
 
     def update_contacts_list(self, contacts: dict[Address, Profile | None]) -> None:
         """Update the list of contacts."""
-        self.content.sidebar.remove_all()
+        self.contacts.remove_all()
         for contact, profile in contacts.items():
-            self.content.sidebar.append(
-                MailContactRow(
+            self.contacts.append(
+                MailContact(
                     address=str(contact),  # type: ignore
                     name=shared.get_name(contact),  # type: ignore
                     profile_image=shared.get_profile_image(contact),  # type: ignore
@@ -61,10 +109,13 @@ class MailContactsPage(Adw.NavigationPage):
 
         self.set_loading(False)
 
-    def __on_row_selected(self, row: Gtk.ListBoxRow) -> None:
+    def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+        if not isinstance(selected := selection.get_selected_item(), MailContact):
+            return
+
         try:
-            address = list(shared.address_book)[row.get_index()]
+            address = Address(selected.address)
             self.profile_view.profile = shared.address_book[address]
             self.profile_view.paintable = shared.photo_book[address]
-        except IndexError:
+        except (IndexError, ValueError):
             pass

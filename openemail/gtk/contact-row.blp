@@ -1,16 +1,16 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MailContactRow: Gtk.ListBoxRow {
-  Box {
+template Gtk.ListItem {
+  child: Box {
     margin-top: 12;
     margin-bottom: 12;
     spacing: 12;
 
     Adw.Avatar {
       size: 32;
-      text: bind template.name;
-      custom-image: bind template.profile-image;
+      text: bind template.item as <$MailContact>.name;
+      custom-image: bind template.item as <$MailContact>.profile-image;
       show-initials: true;
     }
 
@@ -20,14 +20,14 @@ template $MailContactRow: Gtk.ListBoxRow {
 
       Label {
         halign: start;
-        label: bind template.name;
+        label: bind template.item as <$MailContact>.name;
         ellipsize: end;
       }
 
       Label {
-        visible: bind template.has-name;
+        visible: bind template.item as <$MailContact>.has-name;
         halign: start;
-        label: bind template.address;
+        label: bind template.item as <$MailContact>.address;
         ellipsize: end;
 
         styles [
@@ -35,5 +35,5 @@ template $MailContactRow: Gtk.ListBoxRow {
         ]
       }
     }
-  }
+  };
 }

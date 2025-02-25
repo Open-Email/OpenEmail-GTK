@@ -1,8 +1,8 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MailMessageRow: Gtk.ListBoxRow {
-  Box {
+template Gtk.ListItem {
+  child: Box {
     margin-top: 12;
     margin-bottom: 12;
     margin-end: 3;
@@ -10,8 +10,8 @@ template $MailMessageRow: Gtk.ListBoxRow {
 
     Adw.Avatar {
       size: 32;
-      text: bind template.name;
-      custom-image: bind template.profile-image;
+      text: bind template.item as <$MailMessage>.name;
+      custom-image: bind template.item as <$MailMessage>.profile-image;
       show-initials: true;
     }
 
@@ -24,7 +24,7 @@ template $MailMessageRow: Gtk.ListBoxRow {
         Label {
           hexpand: true;
           halign: start;
-          label: bind template.name;
+          label: bind template.item as <$MailMessage>.name;
           ellipsize: end;
 
           styles [
@@ -34,7 +34,7 @@ template $MailMessageRow: Gtk.ListBoxRow {
 
         Label {
           halign: end;
-          label: bind template.date;
+          label: bind template.item as <$MailMessage>.date;
           ellipsize: end;
 
           styles [
@@ -45,7 +45,7 @@ template $MailMessageRow: Gtk.ListBoxRow {
 
       Label {
         halign: start;
-        label: bind template.subject;
+        label: bind template.item as <$MailMessage>.subject;
         ellipsize: end;
         wrap: true;
         lines: 2;
@@ -58,7 +58,7 @@ template $MailMessageRow: Gtk.ListBoxRow {
       Label {
         halign: start;
         hexpand: true;
-        label: bind template.stripped-contents;
+        label: bind template.item as <$MailMessage>.stripped-contents;
         ellipsize: end;
         wrap: true;
         lines: 3;
@@ -68,5 +68,5 @@ template $MailMessageRow: Gtk.ListBoxRow {
         ]
       }
     }
-  }
+  };
 }
