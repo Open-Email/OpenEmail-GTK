@@ -74,11 +74,20 @@ template $MailAuthView: Adw.Bin {
                   margin-top: 24;
                   halign: center;
                   sensitive: false;
-                  label: _("Authenticate");
                   clicked => $_authenticate();
+
+                  Stack authenticate_stack {
+                    transition-type: crossfade;
+
+                    Label authenticate_label {
+                      label: _("Authenticate");
+                    }
+                    Adw.Spinner authenticate_spinner {}
+                  }
 
                   styles [
                     "pill",
+                    "text-button",
                     "suggested-action",
                   ]
                 }

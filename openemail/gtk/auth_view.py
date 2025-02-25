@@ -44,7 +44,11 @@ class MailAuthView(Adw.Bin):
     keys_page: Adw.NavigationPage = Gtk.Template.Child()
     signing_key_entry: Adw.EntryRow = Gtk.Template.Child()
     encryption_key_entry: Adw.EntryRow = Gtk.Template.Child()
+
     authenticate_button: Gtk.Button = Gtk.Template.Child()
+    authenticate_stack: Gtk.Stack = Gtk.Template.Child()
+    authenticate_label: Gtk.Label = Gtk.Template.Child()
+    authenticate_spinner: Adw.Spinner = Gtk.Template.Child()  # type: ignore
 
     @GObject.Signal(name="authenticated")
     def authenticated(self) -> None:
@@ -92,12 +96,20 @@ class MailAuthView(Adw.Bin):
             return
 
         def authenticate() -> None:
+            GLib.idle_add(
+                self.authenticate_stack.set_visible_child,
+                self.authenticate_spinner,
+            )
             if not try_auth(user):
                 GLib.idle_add(self.__warn, _("Authentication failed"))
                 return
 
             shared.user = user
             GLib.idle_add(self.emit, "authenticated")
+            GLib.idle_add(
+                self.authenticate_stack.set_visible_child,
+                self.authenticate_label,
+            )
 
         GLib.Thread.new(None, authenticate)
 
