@@ -42,7 +42,9 @@ class MailProfileView(Adw.Bin):
     main_page: Adw.PreferencesPage = Gtk.Template.Child()
 
     name = GObject.Property(type=str)
+    address = GObject.Property(type=str)
     paintable = GObject.Property(type=Gdk.Paintable)
+    away = GObject.Property(type=bool, default=False)
 
     _profile: Profile | None = None
 
@@ -64,13 +66,14 @@ class MailProfileView(Adw.Bin):
             return
 
         self.name = str(profile.required["name"])
+        self.address = profile.address
+        self.away = away.value if (away := profile.optional.get("away")) else False
 
         while self._groups:
             self.main_page.remove(self._groups.pop())
 
         for name, category in {
             _("General"): (
-                "away",
                 "status",
                 "about",
             ),

@@ -187,10 +187,14 @@ class KeyField(ProfileField[Key]):
 class Profile:
     """A user's profile."""
 
+    address: Address
+
     required: dict[str, ProfileField]
     optional: dict[str, ProfileField | None]
 
-    def __init__(self, data: str) -> None:
+    def __init__(self, address: Address, data: str) -> None:
+        self.address = address
+
         self.required = {
             # Represents the display name associated with the address.
             "name": StringField(_("Name")),

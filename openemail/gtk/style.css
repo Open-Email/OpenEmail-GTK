@@ -5,3 +5,10 @@
 .avatar-button:hover {
   filter: opacity(0.8);
 }
+
+.away-label {
+  padding: 6px 12px;
+  color: var(--warning-color);
+  background-color: rgb(from var(--warning-bg-color) r g b / 0.2);
+  border-radius: 9999px;
+}

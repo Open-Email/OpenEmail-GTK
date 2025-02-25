@@ -117,7 +117,7 @@ def fetch_profile(address: Address) -> Profile | None:
             continue
 
         with response:
-            return Profile(response.read().decode("utf-8"))
+            return Profile(address, response.read().decode("utf-8"))
             break
 
     return None

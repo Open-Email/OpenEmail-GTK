@@ -32,6 +32,21 @@ template $MailProfileView: Adw.Bin {
             "title-1",
           ]
         }
+        Label {
+          margin-top: 3;
+          label: bind template.address;
+        }
+        Label {
+          visible: bind template.away;
+          margin-top: 9;
+          halign: center;
+          label: _("Away");
+
+          styles [
+            "caption",
+            "away-label",
+          ]
+        }
       }
     }
   }
