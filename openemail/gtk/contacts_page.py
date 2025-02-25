@@ -119,3 +119,5 @@ class MailContactsPage(Adw.NavigationPage):
             self.profile_view.paintable = shared.photo_book[address]
         except (IndexError, ValueError):
             pass
+
+        self.content.split_view.set_show_content(True)

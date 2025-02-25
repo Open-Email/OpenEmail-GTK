@@ -115,3 +115,4 @@ class MailMessagesPage(Adw.NavigationPage):
             return
 
         self.message_view.set_from_message(selected.message)
+        self.content.split_view.set_show_content(True)
