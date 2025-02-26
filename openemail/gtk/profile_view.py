@@ -126,7 +126,13 @@ class MailProfileView(Adw.Bin):
                     subtitle_selectable=True,
                 )
                 row.add_css_class("property")
-                row.add_prefix(Gtk.Image.new_from_icon_name(f"{key}-symbolic"))
+                row.add_prefix(
+                    Gtk.Image(
+                        valign=Gtk.Align.START,
+                        icon_name=f"{key}-symbolic",
+                        margin_top=18,
+                    )
+                )
                 group.add(row)
 
         self.visible_child_name = "profile"
