@@ -46,6 +46,7 @@ class MailMessageView(Adw.Bin):
     subject = GObject.Property(type=str)
     contents = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
+    readers = GObject.Property(type=str)
 
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -63,6 +64,23 @@ class MailMessageView(Adw.Bin):
         self.subject = message.envelope.subject
         self.contents = message.contents
         self.profile_image = shared.get_profile_image(message.envelope.author)
+
+        if message.envelope.is_broadcast:
+            self.readers = _("Broadcast")
+            return
+
+        self.readers = _("Readers: ")
+        self.readers += (
+            str(shared.user.profile.required["name"])
+            if shared.user and shared.user.profile
+            else _("Me")
+        )
+
+        for reader in message.envelope.readers:
+            if shared.user and reader == shared.user.address:
+                continue
+
+            self.readers += f", {profile.required['name'] if (profile := shared.address_book.get(reader)) else reader}"
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:

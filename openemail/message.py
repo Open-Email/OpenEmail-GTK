@@ -47,6 +47,7 @@ class Envelope:
     date: datetime = field(init=False)
     subject: str = field(init=False)
     author: Address = field(init=False)
+    readers: list[Address] = field(init=False, default_factory=list)
 
     access_links: str | None = field(init=False, default=None)
     access_key: bytes | None = field(init=False, default=None)
@@ -121,6 +122,13 @@ class Envelope:
             self.author = Address(headers["author"])
         except KeyError as error:
             raise ValueError("Incomplete header contents.") from error
+
+        if readers := headers.get("readers"):
+            for reader in readers.split(","):
+                try:
+                    self.readers.append(Address(reader.strip()))
+                except ValueError:
+                    continue
 
 
 class Message(NamedTuple):

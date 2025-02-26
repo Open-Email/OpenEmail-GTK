@@ -30,3 +30,4 @@ openemail/gtk/preferences.py
 openemail/gtk/profile_view.py
 openemail/gtk/window.py
 openemail/main.py
+openemail/user.py

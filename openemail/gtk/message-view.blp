@@ -86,6 +86,17 @@ template $MailMessageView: Adw.Bin {
                   "heading",
                 ]
               }
+
+              Label {
+                halign: start;
+                label: bind template.readers;
+                wrap: true;
+                selectable: true;
+
+                styles [
+                  "caption",
+                ]
+              }
             }
           }
 

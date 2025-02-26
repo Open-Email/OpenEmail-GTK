@@ -212,10 +212,15 @@ def fetch_message_from_agent(url: str, user: User, message_id: str) -> Message |
     return Message(envelope, contents.decode("utf-8"))
 
 
-def fetch_broadcast_ids(user: User, author: Address) -> tuple[str, ...]:
-    """Attempt to fetch broadcast IDs by `author`."""
+def fetch_message_ids(url: str, user: User, author: Address) -> tuple[str, ...]:
+    """Attempt to fetch message IDs by `author`, addressed to `user` from `url`.
+
+    `{}` in `url` will be substituted by the mail agent.
+    """
+    link = generate_link(user.address, author)
+
     for agent in get_agents(user.address):
-        if not (response := request(_messages(agent, author), user)):
+        if not (response := request(url.format(agent), user)):
             continue
 
         with response:
@@ -231,7 +236,7 @@ def fetch_broadcast_ids(user: User, author: Address) -> tuple[str, ...]:
 def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
     """Attempt to fetch broadcasts by `author`."""
     messages = []
-    for message_id in fetch_broadcast_ids(user, author):
+    for message_id in fetch_message_ids(_messages("{}", author), user, author):
         for agent in get_agents(user.address):
             if message := fetch_message_from_agent(
                 url=f"{_messages(agent, author)}/{message_id}",
@@ -244,30 +249,14 @@ def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
     return tuple(messages)
 
 
-def fetch_link_message_ids(user: User, author: Address) -> tuple[str, ...]:
-    """Attempt to fetch message IDs by `author`, addressed to `user`."""
-    link = generate_link(user.address, author)
-
-    for agent in get_agents(user.address):
-        if not (response := request(_link_messages(agent, author, link), user)):
-            continue
-
-        with response:
-            contents = response.read().decode("utf-8")
-
-        return tuple(
-            stripped for line in contents.split("\n") if (stripped := line.strip())
-        )
-
-    return ()
-
-
 def fetch_link_messages(user: User, author: Address) -> tuple[Message, ...]:
     """Attempt to fetch messages by `author`, addressed to `user`."""
     link = generate_link(user.address, author)
 
     messages = []
-    for message_id in fetch_link_message_ids(user, author):
+    for message_id in fetch_message_ids(
+        _link_messages("{}", author, link), user, author
+    ):
         for agent in get_agents(user.address):
             if message := fetch_message_from_agent(
                 url=f"{_link_messages(agent, author, link)}/{message_id}",
