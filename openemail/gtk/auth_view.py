@@ -97,6 +97,7 @@ class MailAuthView(Adw.Bin):
             GLib.idle_add(self.set_property, "button-child-name", "spinner")
             if not try_auth(user):
                 GLib.idle_add(self.__warn, _("Authentication failed"))
+                GLib.idle_add(self.set_property, "button-child-name", "label")
                 return
 
             shared.user = user
