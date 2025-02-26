@@ -32,6 +32,18 @@ from openemail.crypto import Key, get_keys
 T = TypeVar("T")
 
 
+def parse_headers(data: str) -> dict[str, str]:
+    """Parse `data` into a dictionary of headers."""
+    try:
+        return {
+            (split := attr.strip().split("=", 1))[0].lower(): split[1]
+            for attr in data.split(";")
+        }
+    except (IndexError, ValueError):
+        print()
+        return {}
+
+
 @dataclass(slots=True)
 class Address:
     """A Mail/HTTPS address."""
@@ -171,9 +183,8 @@ class KeyField(ProfileField[Key]):
         if not data:
             return
 
-        attrs = dict(
-            attr.strip().split("=", 1) for attr in data.split(";") if "=" in attr
-        )
+        attrs = parse_headers(data)
+
         try:
             self.default_value = Key(
                 base64_decode(attrs["value"]),

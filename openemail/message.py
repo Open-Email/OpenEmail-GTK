@@ -26,7 +26,7 @@ from http.client import HTTPMessage
 from typing import NamedTuple, Self
 
 from openemail.crypto import decrypt_anonymous, decrypt_xchacha20poly1305
-from openemail.user import Address, User
+from openemail.user import Address, User, parse_headers
 
 
 def generate_link(first: Address, second: Address) -> str:
@@ -75,13 +75,7 @@ class Envelope:
 
                     for link in reader_links:
                         try:
-                            reader = {
-                                (split := attr.strip().split("=", 1))[0].lower(): split[
-                                    1
-                                ]
-                                for attr in link.split(";")
-                            }
-
+                            reader = parse_headers(link)
                             self.access_key = decrypt_anonymous(
                                 reader["value"],
                                 self.user.private_encryption_key,
@@ -89,7 +83,7 @@ class Envelope:
                             )
                             break
 
-                        except (IndexError, KeyError, ValueError):
+                        except (KeyError, ValueError):
                             continue
 
                 case "message-headers":
@@ -99,11 +93,7 @@ class Envelope:
             raise ValueError("Empty message headers.")
 
         try:
-            header_bytes = b64decode(
-                dict(attr.strip().split("=", 1) for attr in message_headers.split(";"))[
-                    "value"
-                ]
-            )
+            header_bytes = b64decode(parse_headers(message_headers)["value"])
 
             if (not self.is_broadcast) and self.access_key:
                 header_bytes = decrypt_xchacha20poly1305(header_bytes, self.access_key)
