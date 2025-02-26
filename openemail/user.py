@@ -19,7 +19,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date, datetime
 from re import match
@@ -91,7 +91,7 @@ class Address:
 
 
 @dataclass(slots=True)
-class ProfileField(Generic[T]):
+class ProfileField(ABC, Generic[T]):
     """A generic profile field."""
 
     name: str | None = None
