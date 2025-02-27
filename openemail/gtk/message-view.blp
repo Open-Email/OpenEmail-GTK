@@ -107,6 +107,15 @@ template $MailMessageView: Adw.Bin {
             wrap: true;
             selectable: true;
           }
+
+          ListBox attachments {
+            selection-mode: none;
+            row-activated => $_open_attachment();
+
+            styles [
+              "boxed-list-separate",
+            ]
+          }
         }
       };
     }

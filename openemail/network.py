@@ -79,7 +79,10 @@ def get_agents(address: Address) -> tuple[str, ...]:
             continue
 
         with response:
-            contents = response.read().decode("utf-8")
+            try:
+                contents = response.read().decode("utf-8")
+            except UnicodeError:
+                continue
 
         for agent in (
             agents := [
@@ -116,7 +119,11 @@ def fetch_profile(address: Address) -> Profile | None:
             continue
 
         with response:
-            return Profile(address, response.read().decode("utf-8"))
+            try:
+                return Profile(address, response.read().decode("utf-8"))
+            except UnicodeError:
+                continue
+
             break
 
     return None
@@ -149,7 +156,10 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
             continue
 
         with response:
-            contents = response.read().decode("utf-8")
+            try:
+                contents = response.read().decode("utf-8")
+            except UnicodeError:
+                continue
 
         for line in contents.split("\n"):
             if len(parts := line.strip().split(",")) != 2:
@@ -162,10 +172,10 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
                             parts[1].strip(),
                             user.private_encryption_key,
                             user.public_encryption_key,
-                        ).decode("ascii")
+                        ).decode("utf-8")
                     )
                 )
-            except ValueError:
+            except (ValueError, UnicodeDecodeError):
                 continue
         break
 
@@ -182,13 +192,13 @@ def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
         author: The remote user whose message is being fetched
 
     """
-    if not (response := request(url, user)):
+    if not (response := request(url, user, method="HEAD")):
         return None
 
     with response:
         try:
             return Envelope(message_id, response.headers, user)
-        except ValueError:
+        except ValueError as error:
             return None
 
 
@@ -197,19 +207,25 @@ def fetch_message_from_agent(url: str, user: User, message_id: str) -> Message |
     if not (envelope := fetch_envelope(url, message_id, user)):
         return None
 
+    if envelope.is_child:
+        return Message(envelope, attachment_url=url)
+
     if not (response := request(url, user)):
         return None
 
     with response:
         contents = response.read()
 
-    if not envelope.is_broadcast and envelope.access_key:
+    if (not envelope.is_broadcast) and envelope.access_key:
         try:
             contents = decrypt_xchacha20poly1305(contents, envelope.access_key)
         except ValueError:
             return None
 
-    return Message(envelope, contents.decode("utf-8"))
+    try:
+        return Message(envelope, contents.decode("utf-8"))
+    except UnicodeError:
+        return None
 
 
 def fetch_message_ids(url: str, user: User, author: Address) -> tuple[str, ...]:
@@ -224,7 +240,10 @@ def fetch_message_ids(url: str, user: User, author: Address) -> tuple[str, ...]:
             continue
 
         with response:
-            contents = response.read().decode("utf-8")
+            try:
+                contents = response.read().decode("utf-8")
+            except UnicodeError:
+                continue
 
         return tuple(
             stripped for line in contents.split("\n") if (stripped := line.strip())
@@ -233,40 +252,55 @@ def fetch_message_ids(url: str, user: User, author: Address) -> tuple[str, ...]:
     return ()
 
 
-def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
-    """Attempt to fetch broadcasts by `author`."""
-    messages = []
-    for message_id in fetch_message_ids(_messages("{}", author), user, author):
+def fetch_messages(
+    id_url: str,
+    url: str,
+    user: User,
+    author: Address,
+) -> tuple[Message, ...]:
+    """Attempt to fetch messages by `author` from `url` with IDs at `id_url`.
+
+    `{}` in `id_url` will be substituted by the mail agent.
+
+    The first two `{}`s in `url` will be substituted by the mail agent and the message ID.
+    """
+    messages: dict[str, Message] = {}
+    for message_id in fetch_message_ids(id_url, user, author):
         for agent in get_agents(user.address):
             if message := fetch_message_from_agent(
-                url=f"{_messages(agent, author)}/{message_id}",
-                user=user,
-                message_id=message_id,
+                url.format(agent, message_id), user, message_id
             ):
-                messages.append(message)
+                messages[message.envelope.message_id] = message
                 break
 
-    return tuple(messages)
+    for message_id, message in messages.copy().items():
+        if message.envelope.parent_id:
+            if parent := messages.get(message.envelope.parent_id):
+                parent.children.append(messages.pop(message_id))
+
+    return tuple(messages.values())
+
+
+def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
+    """Attempt to fetch broadcasts by `author`."""
+    return fetch_messages(
+        _messages("{}", author),
+        _messages("{}", author) + "/{}",
+        user,
+        author,
+    )
 
 
 def fetch_link_messages(user: User, author: Address) -> tuple[Message, ...]:
     """Attempt to fetch messages by `author`, addressed to `user`."""
     link = generate_link(user.address, author)
 
-    messages = []
-    for message_id in fetch_message_ids(
-        _link_messages("{}", author, link), user, author
-    ):
-        for agent in get_agents(user.address):
-            if message := fetch_message_from_agent(
-                url=f"{_link_messages(agent, author, link)}/{message_id}",
-                user=user,
-                message_id=message_id,
-            ):
-                messages.append(message)
-                break
-
-    return tuple(messages)
+    return fetch_messages(
+        _link_messages("{}", author, link),
+        _link_messages("{}", author, link) + "/{}",
+        user,
+        author,
+    )
 
 
 def _home(agent: str, address: Address) -> str:

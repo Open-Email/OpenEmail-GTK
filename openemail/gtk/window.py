@@ -55,20 +55,24 @@ class MailWindow(Adw.ApplicationWindow):
         if not shared.user:
             return
 
+        try:
+            keyring.set_password(
+                f"{shared.APP_ID}.Keys",
+                str(shared.user.address),
+                json.dumps(
+                    {
+                        "privateEncryptionKey": str(shared.user.private_encryption_key),
+                        "privateSigningKey": b64encode(
+                            bytes(shared.user.private_signing_key)
+                            + bytes(shared.user.public_signing_key)
+                        ).decode("utf-8"),
+                    }
+                ),
+            )
+        except UnicodeDecodeError:
+            return
+
         shared.schema.set_string("address", str(shared.user.address))
-        keyring.set_password(
-            f"{shared.APP_ID}.Keys",
-            str(shared.user.address),
-            json.dumps(
-                {
-                    "privateEncryptionKey": str(shared.user.private_encryption_key),
-                    "privateSigningKey": b64encode(
-                        bytes(shared.user.private_signing_key)
-                        + bytes(shared.user.public_signing_key)
-                    ).decode("utf-8"),
-                }
-            ),
-        )
 
         self.content_view.load_content()
         self.visible_child_name = "content"

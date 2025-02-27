@@ -59,7 +59,9 @@ class MailMessage(GObject.Object):
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
         self.contents = message.contents
-        self.stripped_contents = sub(r"\n+", " ", message.contents)
+        self.stripped_contents = (
+            sub(r"\n+", " ", message.contents) if message.contents else None
+        )
         self.profile_image = shared.get_profile_image(message.envelope.author)
 
 

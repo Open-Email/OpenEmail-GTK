@@ -40,7 +40,6 @@ def parse_headers(data: str) -> dict[str, str]:
             for attr in data.split(";")
         }
     except (IndexError, ValueError):
-        print()
         return {}
 
 

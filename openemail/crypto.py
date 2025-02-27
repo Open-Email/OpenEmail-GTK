@@ -42,7 +42,10 @@ class Key(NamedTuple):
     id: str | None = None
 
     def __str__(self) -> str:
-        return b64encode(self.data).decode("utf-8")
+        try:
+            return b64encode(self.data).decode("utf-8")
+        except UnicodeDecodeError:
+            return str(self.data)
 
     def __bytes__(self) -> bytes:
         return self.data
@@ -62,13 +65,12 @@ def get_keys(b64: str) -> tuple[Key, Key]:
 
 def sign_data(private_key: Key, data: bytes) -> str:
     """Get a Base64-encoded version of given `data` signed using the provided `private_key`."""
-    return b64encode(
-        SigningKey(
-            bytes(private_key),
-        )
-        .sign(data)
-        .signature
-    ).decode("utf-8")
+    try:
+        return b64encode(
+            SigningKey(bytes(private_key)).sign(data).signature,
+        ).decode("utf-8")
+    except (CryptoError, UnicodeDecodeError) as error:
+        raise ValueError("Unable to sign data.") from error
 
 
 def random_string(length: int) -> str:
@@ -81,15 +83,18 @@ def random_string(length: int) -> str:
 
 def get_nonce(host: str, public_key: Key, private_key: Key) -> str:
     """Get a nonce used for authentication for the given agent `host` and `private_key`."""
-    return "SOTN " + "; ".join(
-        (
-            f"value={(value := random_string(30))}",
-            f"host={host}",
-            f"algorithm={SIGNING_ALGORITHM}",
-            f"signature={sign_data(private_key, f'{host}{value}'.encode('utf-8'))}",
-            f"key={public_key}",
+    try:
+        return "SOTN " + "; ".join(
+            (
+                f"value={(value := random_string(30))}",
+                f"host={host}",
+                f"algorithm={SIGNING_ALGORITHM}",
+                f"signature={sign_data(private_key, f'{host}{value}'.encode('utf-8'))}",
+                f"key={public_key}",
+            )
         )
-    )
+    except ValueError as error:
+        raise ValueError("Unable to get authentication nonce.") from error
 
 
 def decrypt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> bytes:

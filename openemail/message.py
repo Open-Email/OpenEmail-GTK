@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
 from http.client import HTTPMessage
-from typing import NamedTuple, Self
+from typing import Self
 
 from openemail.crypto import decrypt_anonymous, decrypt_xchacha20poly1305
 from openemail.user import Address, User, parse_headers
@@ -52,10 +52,18 @@ class Envelope:
     access_links: str | None = field(init=False, default=None)
     access_key: bytes | None = field(init=False, default=None)
 
+    parent_id: str | None = field(init=False, default=None)
+    file_name: str | None = field(init=False, default=None)
+
     @property
     def is_broadcast(self) -> bool:
         """Whether or not the message is a broadcast."""
         return not bool(self.access_links)
+
+    @property
+    def is_child(self) -> bool:
+        """Whether or not the message is a child."""
+        return bool(self.parent_id)
 
     def __post_init__(self) -> None:
         message_headers: str | None = None
@@ -98,20 +106,29 @@ class Envelope:
             if (not self.is_broadcast) and self.access_key:
                 header_bytes = decrypt_xchacha20poly1305(header_bytes, self.access_key)
 
-            headers = {
-                (split := header.split(":", 1))[0].lower(): split[1].strip()
-                for header in header_bytes.decode("utf-8").split("\n")
-            }
+            try:
+                headers = {
+                    (split := header.split(":", 1))[0].lower(): split[1].strip()
+                    for header in header_bytes.decode("utf-8").split("\n")
+                }
+            except UnicodeDecodeError as error:
+                raise ValueError("Unable to decode headers.") from error
 
         except (IndexError, KeyError, ValueError) as error:
             raise ValueError("Could not parse headers.") from error
 
         try:
+            self.message_id = headers["id"]
             self.date = datetime.fromisoformat(headers["date"])
             self.subject = headers["subject"]
             self.author = Address(headers["author"])
         except KeyError as error:
             raise ValueError("Incomplete header contents.") from error
+
+        self.parent_id = headers.get("parent-id")
+        # TODO: The macOS client does not implement this header and relies on Files instead
+        if (file := headers.get("file")) and (file_headers := parse_headers(file)):
+            self.file_name = file_headers.get("name")
 
         if readers := headers.get("readers"):
             for reader in readers.split(","):
@@ -121,8 +138,12 @@ class Envelope:
                     continue
 
 
-class Message(NamedTuple):
+@dataclass(slots=True)
+class Message:
     """An envelope and its contents."""
 
     envelope: Envelope
-    contents: str
+    contents: str | None = None
+    attachment_url: str | None = None
+
+    children: list[Self] = field(init=False, default_factory=list)
