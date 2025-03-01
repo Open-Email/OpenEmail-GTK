@@ -23,7 +23,7 @@ from base64 import b64encode
 from typing import Any
 
 import keyring
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import shared
 from openemail.gtk.auth_view import MailAuthView
@@ -43,6 +43,25 @@ class MailWindow(Adw.ApplicationWindow):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
+        shared.state_settings.bind(
+            "width",
+            self,
+            "default-width",
+            Gio.SettingsBindFlags.DEFAULT,
+        )
+        shared.state_settings.bind(
+            "height",
+            self,
+            "default-height",
+            Gio.SettingsBindFlags.DEFAULT,
+        )
+        shared.state_settings.bind(
+            "show-sidebar",
+            self.content_view.split_view,
+            "show-sidebar",
+            Gio.SettingsBindFlags.DEFAULT,
+        )
 
         if not shared.user:
             return
@@ -72,7 +91,7 @@ class MailWindow(Adw.ApplicationWindow):
         except UnicodeDecodeError:
             return
 
-        shared.schema.set_string("address", str(shared.user.address))
+        shared.settings.set_string("address", str(shared.user.address))
 
         self.content_view.load_content()
         self.visible_child_name = "content"

@@ -39,7 +39,8 @@ VERSION = "@VERSION@"
 PREFIX = "@PREFIX@"
 PROFILE = "@PROFILE@"
 
-schema = Gio.Settings.new(APP_ID)
+settings = Gio.Settings.new(APP_ID)
+state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
 
 user: User | None = None

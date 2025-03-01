@@ -119,7 +119,7 @@ class MailApplication(Adw.Application):
 
     def __get_local_user(self) -> None | User:
         if not (
-            (address := shared.schema.get_string("address"))
+            (address := shared.settings.get_string("address"))
             and (keys := keyring.get_password(shared.secret_service, address))
             and (keys := json.loads(keys))
             and (encryption_key := keys.get("privateEncryptionKey"))

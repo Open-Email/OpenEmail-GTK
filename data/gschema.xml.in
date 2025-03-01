@@ -5,4 +5,15 @@
 			<default>""</default>
 		</key>
 	</schema>
+	<schema id="@APP_ID@.State" path="@PREFIX@/State/">
+		<key name="width" type="i">
+			<default>1080</default>
+		</key>
+		<key name="height" type="i">
+			<default>600</default>
+		</key>
+		<key name="show-sidebar" type="b">
+			<default>true</default>
+		</key>
+	</schema>
 </schemalist>
