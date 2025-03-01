@@ -276,7 +276,7 @@ def fetch_messages(
     for message_id, message in messages.copy().items():
         if message.envelope.parent_id:
             if parent := messages.get(message.envelope.parent_id):
-                parent.children.append(messages.pop(message_id))
+                parent.add_child(messages.pop(message_id))
 
     return tuple(messages.values())
 

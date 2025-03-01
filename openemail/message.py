@@ -54,6 +54,7 @@ class Envelope:
 
     parent_id: str | None = field(init=False, default=None)
     file_name: str | None = field(init=False, default=None)
+    files: dict[str, str] = field(init=False, default_factory=dict)
 
     @property
     def is_broadcast(self) -> bool:
@@ -126,8 +127,16 @@ class Envelope:
             raise ValueError("Incomplete header contents.") from error
 
         self.parent_id = headers.get("parent-id")
-        # TODO: The macOS client does not implement this header and relies on Files instead
-        if (file := headers.get("file")) and (file_headers := parse_headers(file)):
+        if files := headers.get("files"):
+            for file in files.split(","):
+                headers = parse_headers(file.strip())
+                try:
+                    self.files[headers["id"]] = headers["name"]
+                except KeyError:
+                    continue
+
+        elif (file := headers.get("file")) and (file_headers := parse_headers(file)):
+            # The macOS client does not seem to implement this header and relies only on Files
             self.file_name = file_headers.get("name")
 
         if readers := headers.get("readers"):
@@ -147,3 +156,16 @@ class Message:
     attachment_url: str | None = None
 
     children: list[Self] = field(init=False, default_factory=list)
+
+    def add_child(self, child: Self) -> None:
+        """Add `child` to `self.children`, updating its properties accordingly."""
+        self.children.append(child)
+
+        if not (
+            self.envelope.files
+            and (child.envelope.parent_id == self.envelope.message_id)
+            and (file_name := self.envelope.files.get(child.envelope.message_id))
+        ):
+            return
+
+        child.envelope.file_name = file_name
