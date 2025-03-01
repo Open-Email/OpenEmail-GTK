@@ -53,13 +53,13 @@ class MailContentView(Adw.BreakpointBin):
 
     syncing_toast: Adw.Toast | None = None
 
-    content_child_name = GObject.Property(type=str, default="broadcasts")
+    content_child_name = GObject.Property(type=str, default="inbox")
     profile_stack_child_name = GObject.Property(type=str, default="spinner")
     profile_image = GObject.Property(type=Gdk.Paintable)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.sidebar.select_row(self.sidebar.get_row_at_index(0))
+        self.sidebar.select_row(self.sidebar.get_row_at_index(1))
 
     def load_content(self, first_sync: bool = True) -> None:
         """Populate the content view by fetching the local user's data.
