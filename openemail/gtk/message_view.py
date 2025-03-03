@@ -45,7 +45,7 @@ class MailMessageView(Adw.Bin):
     visible_child_name = GObject.Property(type=str, default="empty")
 
     message: Message | None = None
-    attachment_messages: dict[Adw.ActionRow, Message]
+    attachment_messages: dict[Adw.ActionRow, list[Message]]
 
     name = GObject.Property(type=str)
     date = GObject.Property(type=str)
@@ -74,16 +74,10 @@ class MailMessageView(Adw.Bin):
 
         self.attachments.remove_all()
         self.attachment_messages = {}
-        for child in message.children:
-            if not child.attachment_url:
-                continue
-
-            row = Adw.ActionRow(
-                title=child.envelope.file_name or _("Attachment"),
-                activatable=True,
-            )
+        for name, parts in message.attachments.items():
+            row = Adw.ActionRow(title=name, activatable=True)
             row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
-            self.attachment_messages[row] = child
+            self.attachment_messages[row] = parts
             self.attachments.append(row)
 
         if message.envelope.is_broadcast:
@@ -118,39 +112,45 @@ class MailMessageView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _open_attachment(self, _obj: Any, row: Adw.ActionRow) -> None:
-        if not (
-            (child := self.attachment_messages.get(row))
-            and (url := child.attachment_url)
-        ):
+        if not (parts := self.attachment_messages.get(row)):
             return
 
         def save(gfile: Gio.File) -> None:
+            data = b""
+            for part in parts:
+                if not (
+                    (url := part.attachment_url)
+                    and (response := request(part.attachment_url, shared.user))
+                ):
+                    return
+
+                with response:
+                    contents = response.read()
+
+                if (
+                    part
+                    and (not part.envelope.is_broadcast)
+                    and part.envelope.access_key
+                ):
+                    try:
+                        contents = decrypt_xchacha20poly1305(
+                            contents, part.envelope.access_key
+                        )
+                    except ValueError:
+                        return
+
+                data += contents
+
             try:
                 stream = gfile.replace(
-                    None, True, Gio.FileCreateFlags.REPLACE_DESTINATION
+                    None,
+                    True,
+                    Gio.FileCreateFlags.REPLACE_DESTINATION,
                 )
             except GLib.Error:
                 return
 
-            if not (response := request(url, shared.user)):
-                return
-
-            with response:
-                contents = response.read()
-
-            if (
-                child
-                and (not child.envelope.is_broadcast)
-                and child.envelope.access_key
-            ):
-                try:
-                    contents = decrypt_xchacha20poly1305(
-                        contents, child.envelope.access_key
-                    )
-                except ValueError:
-                    return
-
-            stream.write_bytes(GLib.Bytes.new(contents))  # type: ignore
+            stream.write_bytes(GLib.Bytes.new(data))  # type: ignore
             stream.close()
 
         def save_finish(dialog: Gtk.FileDialog, result: Gio.AsyncResult) -> None:

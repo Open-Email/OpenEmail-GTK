@@ -19,11 +19,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from base64 import b64decode
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
 from http.client import HTTPMessage
-from typing import Self
+from typing import NamedTuple, Self
 
 from openemail.crypto import decrypt_anonymous, decrypt_xchacha20poly1305
 from openemail.user import Address, User, parse_headers
@@ -34,6 +35,13 @@ def generate_link(first: Address, second: Address) -> str:
     return sha256(
         f"{min(first, second)}{max(first, second)}".encode("ascii")
     ).hexdigest()
+
+
+class AttachmentProperties(NamedTuple):
+    """A file attached to a message."""
+
+    name: str
+    part: str | None
 
 
 @dataclass(slots=True)
@@ -53,8 +61,9 @@ class Envelope:
     access_key: bytes | None = field(init=False, default=None)
 
     parent_id: str | None = field(init=False, default=None)
+    part: int = field(init=False, default=0)
     file_name: str | None = field(init=False, default=None)
-    files: dict[str, str] = field(init=False, default_factory=dict)
+    files: dict[str, AttachmentProperties] = field(init=False, default_factory=dict)
 
     @property
     def is_broadcast(self) -> bool:
@@ -127,17 +136,27 @@ class Envelope:
             raise ValueError("Incomplete header contents.") from error
 
         self.parent_id = headers.get("parent-id")
+
         if files := headers.get("files"):
             for file in files.split(","):
-                headers = parse_headers(file.strip())
+                file_headers = parse_headers(file.strip())
                 try:
-                    self.files[headers["id"]] = headers["name"]
+                    self.files[file_headers["id"]] = AttachmentProperties(
+                        file_headers["name"],
+                        file_headers.get("part"),
+                    )
                 except KeyError:
                     continue
 
         elif (file := headers.get("file")) and (file_headers := parse_headers(file)):
             # The macOS client does not seem to implement this header and relies only on Files
             self.file_name = file_headers.get("name")
+
+            if part := file_headers.get("part"):
+                try:
+                    self.part = int(part.split("/")[0].strip())
+                except ValueError as error:
+                    pass
 
         if readers := headers.get("readers"):
             for reader in readers.split(","):
@@ -156,6 +175,7 @@ class Message:
     attachment_url: str | None = None
 
     children: list[Self] = field(init=False, default_factory=list)
+    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
 
     def add_child(self, child: Self) -> None:
         """Add `child` to `self.children`, updating its properties accordingly."""
@@ -164,8 +184,45 @@ class Message:
         if not (
             self.envelope.files
             and (child.envelope.parent_id == self.envelope.message_id)
-            and (file_name := self.envelope.files.get(child.envelope.message_id))
+            and (props := self.envelope.files.get(child.envelope.message_id))
         ):
             return
 
-        child.envelope.file_name = file_name
+        child.envelope.file_name = props.name
+        if props.part:
+            try:
+                child.envelope.part = int(props.part.split("/")[0].strip())
+            except ValueError as error:
+                pass
+
+    def reconstruct_from_children(self) -> None:
+        """Attempt to reconstruct the entire contents of this message from all of its children.
+
+        Should only be called after all children have been fetched and added.
+        """
+        parts: list[Self] = []
+
+        for child in self.children:
+            if not (
+                child.envelope.parent_id
+                and (child.envelope.parent_id == self.envelope.message_id)
+            ):
+                continue
+
+            if child.envelope.message_id not in self.envelope.files:
+                parts.append(child)
+
+            if not child.envelope.file_name:
+                continue
+
+            # TODO: Check if "name" is how you're supposed to reconstruct these
+            if not (attachment := self.attachments.get(child.envelope.file_name)):
+                attachment = self.attachments[child.envelope.file_name] = []
+            attachment.append(child)
+
+        parts.sort(key=lambda part: part.envelope.part)
+        for part in parts:
+            self.contents = f"{self.contents or ''}{part.contents or ''}"
+
+        for name, attachment in self.attachments.items():
+            attachment.sort(key=lambda part: part.envelope.part)
