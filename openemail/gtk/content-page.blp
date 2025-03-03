@@ -38,14 +38,16 @@ template $MailContentPage: Adw.BreakpointBin {
           StackPage {
             name: "content";
 
-            child: ListView {
-              vexpand: true;
-              factory: bind template.factory;
-              model: bind template.model;
+            child: ScrolledWindow {
+              ListView {
+                vexpand: true;
+                factory: bind template.factory;
+                model: bind template.model;
 
-              styles [
-                "navigation-sidebar",
-              ]
+                styles [
+                  "navigation-sidebar",
+                ]
+              }
             };
           }
 
