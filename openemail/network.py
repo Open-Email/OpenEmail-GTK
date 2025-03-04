@@ -18,7 +18,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import json
 from http.client import HTTPResponse
+from os import getenv
+from pathlib import Path
 from socket import setdefaulttimeout
 from typing import MutableMapping
 from urllib.error import HTTPError, URLError
@@ -30,6 +33,8 @@ from openemail.message import Envelope, Message, generate_link
 from openemail.user import Address, Profile, User
 
 setdefaulttimeout(5)
+
+cache_dir: Path = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
 
 _agents: dict[str, tuple[str, ...]] = {}
 
@@ -192,14 +197,24 @@ def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
         author: The remote user whose message is being fetched
 
     """
-    if not (response := request(url, user, method="HEAD")):
+    if not (agent := urlparse(url).hostname):
         return None
 
-    with response:
-        try:
-            return Envelope(message_id, response.headers, user)
-        except ValueError as error:
+    if (envelope_path := cache_dir / "envelopes" / agent / message_id).is_file():
+        headers = json.load(envelope_path.open("r"))
+    else:
+        if not (response := request(url, user, method="HEAD")):
             return None
+
+        headers = dict(response.getheaders())
+
+        envelope_path.parent.mkdir(parents=True, exist_ok=True)
+        json.dump(headers, envelope_path.open("w"))
+
+    try:
+        return Envelope(message_id, headers, user)
+    except ValueError as error:
+        return None
 
 
 def fetch_message_from_agent(url: str, user: User, message_id: str) -> Message | None:
@@ -207,14 +222,23 @@ def fetch_message_from_agent(url: str, user: User, message_id: str) -> Message |
     if not (envelope := fetch_envelope(url, message_id, user)):
         return None
 
-    if envelope.is_child:
+    if envelope.is_child:  # TODO: This probably won't work for split messages
         return Message(envelope, attachment_url=url)
 
-    if not (response := request(url, user)):
+    if not (agent := urlparse(url).hostname):
         return None
 
-    with response:
-        contents = response.read()
+    if (message_path := cache_dir / "messages" / agent / message_id).is_file():
+        contents = message_path.read_bytes()
+    else:
+        if not (response := request(url, user)):
+            return None
+
+        with response:
+            contents = response.read()
+
+        message_path.parent.mkdir(parents=True, exist_ok=True)
+        message_path.write_bytes(contents)
 
     if (not envelope.is_broadcast) and envelope.access_key:
         try:

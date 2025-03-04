@@ -23,7 +23,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
-from http.client import HTTPMessage
 from typing import NamedTuple, Self
 
 from openemail.crypto import decrypt_anonymous, decrypt_xchacha20poly1305
@@ -49,7 +48,7 @@ class Envelope:
     """Metadata about a message."""
 
     message_id: str
-    headers: HTTPMessage
+    headers: dict[str, str]
     user: User | None = None
 
     date: datetime = field(init=False)

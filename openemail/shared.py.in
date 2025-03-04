@@ -20,10 +20,12 @@
 
 """Shared data across the application."""
 
+from pathlib import Path
 from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib
 
+from openemail import network
 from openemail.message import Message
 from openemail.network import (
     fetch_broadcasts,
@@ -52,6 +54,8 @@ link_messages: list[Message] = []
 outbox: list[Message] = []
 
 _loading = 0
+
+network.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
 
 
 def is_loading() -> bool:
