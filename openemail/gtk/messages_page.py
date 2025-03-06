@@ -45,6 +45,9 @@ class MailMessage(GObject.Object):
     stripped_contents = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
 
+    _name_binding: GObject.Binding | None = None
+    _image_binding: GObject.Binding | None = None
+
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
@@ -55,14 +58,24 @@ class MailMessage(GObject.Object):
         """Update properties of the row from `message`."""
         self.message = message
 
-        self.name = shared.get_name(message.envelope.author)
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
         self.contents = message.contents
         self.stripped_contents = (
             sub(r"\n+", " ", message.contents) if message.contents else None
         )
-        self.profile_image = shared.get_profile_image(message.envelope.author)
+
+        if self._name_binding:
+            self._name_binding.unbind()
+        self._name_binding = shared.profiles[message.envelope.author].bind_property(
+            "name", self, "name", GObject.BindingFlags.SYNC_CREATE
+        )
+
+        if self._image_binding:
+            self._image_binding.unbind()
+        self._image_binding = shared.profiles[message.envelope.author].bind_property(
+            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
+        )
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/messages-page.ui")

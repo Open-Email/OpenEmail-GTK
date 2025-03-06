@@ -30,38 +30,6 @@ from openemail.network import fetch_contacts
 from openemail.user import Address, Profile
 
 
-class MailContact(GObject.Object):
-    """A contact in ther user's address book."""
-
-    __gtype_name__ = "MailContact"
-
-    has_name = GObject.Property(type=bool, default=False)
-    profile_image = GObject.Property(type=Gdk.Paintable)
-
-    _address: str | None = None
-    _name: str | None = None
-
-    @GObject.Property(type=str)
-    def address(self) -> str | None:
-        """Get the user's Mail/HTTPS address."""
-        return self._address
-
-    @address.setter
-    def address(self, address: str) -> None:
-        self._address = address
-        self.has_name = address != self.name
-
-    @GObject.Property(type=str)
-    def name(self) -> str | None:
-        """Get the user's name."""
-        return self._name
-
-    @name.setter
-    def name(self, name: str) -> None:
-        self._name = name
-        self.has_name = name != self.address
-
-
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")
 class MailContactsPage(Adw.NavigationPage):
     """A page with the contents of the user's address book."""
@@ -76,12 +44,11 @@ class MailContactsPage(Adw.NavigationPage):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.contacts = Gio.ListStore.new(MailContact)
         self.content.model = (
             selection := Gtk.SingleSelection(
                 autoselect=False,
                 model=Gtk.SortListModel.new(
-                    self.contacts,
+                    shared.address_book,
                     Gtk.CustomSorter.new(lambda a, b, _: strcoll(a.name, b.name)),  # type: ignore
                 ),
             )
@@ -95,29 +62,11 @@ class MailContactsPage(Adw.NavigationPage):
         """Set whether or not to display a spinner."""
         self.content.set_loading(loading)
 
-    def update_contacts_list(self, contacts: dict[Address, Profile | None]) -> None:
-        """Update the list of contacts."""
-        self.contacts.remove_all()
-        for contact, profile in contacts.items():
-            self.contacts.append(
-                MailContact(
-                    address=str(contact),  # type: ignore
-                    name=shared.get_name(contact),  # type: ignore
-                    profile_image=shared.get_profile_image(contact),  # type: ignore
-                )
-            )
-
-        self.set_loading(False)
-
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not isinstance(selected := selection.get_selected_item(), MailContact):
+        if not isinstance(selected := selection.get_selected_item(), shared.GProfile):
             return
 
-        try:
-            address = Address(selected.address)
-            self.profile_view.profile = shared.address_book[address]
-            self.profile_view.paintable = shared.photo_book[address]
-        except (IndexError, ValueError):
-            pass
+        self.profile_view.profile = selected.profile
+        self.profile_view.paintable = selected.image
 
         self.content.split_view.set_show_content(True)

@@ -20,10 +20,11 @@
 
 """Shared data across the application."""
 
+from collections import defaultdict
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
-from gi.repository import Adw, Gdk, Gio, GLib
+from gi.repository import Adw, Gdk, Gio, GLib, GObject
 
 from openemail import network
 from openemail.message import Message
@@ -44,18 +45,69 @@ PROFILE = "@PROFILE@"
 settings = Gio.Settings.new(APP_ID)
 state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
+network.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
 
 user: User | None = None
 
-address_book: dict[Address, Profile | None] = {}
-photo_book: dict[Address, Gdk.Paintable | None] = {}
 broadcasts: list[Message] = []
 link_messages: list[Message] = []
 outbox: list[Message] = []
 
-_loading = 0
 
-network.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
+class GProfile(GObject.Object):
+    """A GObject representation of a user profile."""
+
+    __gtype_name__ = "GProfile"
+
+    has_name = GObject.Property(type=bool, default=False)
+    image = GObject.Property(type=Gdk.Paintable)
+
+    _profile: Profile | None = None
+    _address: str | None = None
+    _name: str | None = None
+
+    @property
+    def profile(self) -> Profile | None:
+        """The profile of the user."""
+        return self._profile
+
+    @profile.setter
+    def profile(self, profile: Profile | None) -> None:
+        self._profile = profile
+
+        if not profile:
+            return
+
+        self.address = str(profile.address)
+        self.name = str(profile.required["name"])
+
+    @GObject.Property(type=str)
+    def address(self) -> str | None:
+        """Get the user's Mail/HTTPS address."""
+        return self._address
+
+    @address.setter
+    def address(self, address: str) -> None:
+        self._address = address
+
+        if not self.name:
+            self.name = address
+
+    @GObject.Property(type=str)
+    def name(self) -> str | None:
+        """Get the user's name."""
+        return self._name
+
+    @name.setter
+    def name(self, name: str) -> None:
+        self._name = name
+        self.has_name = name != self.address
+
+
+profiles: defaultdict[Address, GProfile] = defaultdict(GProfile)
+address_book = Gio.ListStore.new(GProfile)
+
+_loading = 0
 
 
 def is_loading() -> bool:
@@ -64,7 +116,7 @@ def is_loading() -> bool:
 
 
 def update_user_profile(
-    callback: Callable[[Profile | None, bytes | None], Any] | None = None,
+    callback: Callable[[Profile | None, Gdk.Paintable | None], Any] | None = None,
 ) -> None:
     """Update the profile of the user by fetching new data remotely."""
     global _loading
@@ -73,81 +125,98 @@ def update_user_profile(
         global _loading
 
         if user:
-            user.profile = fetch_profile(user.address)
-            user.profile_image = fetch_profile_image(user.address)
+            profiles[user.address].profile = fetch_profile(user.address)
+
+            try:
+                profiles[user.address].image = Gdk.Texture.new_from_bytes(
+                    GLib.Bytes.new(fetch_profile_image(user.address))  # type: ignore
+                )
+            except GLib.Error:
+                profiles[user.address].image = None
 
         _loading -= 1
 
-        if callback:
+        if callback and user:
             GLib.idle_add(
                 callback,
-                user.profile if user else None,
-                user.profile_image if user else None,
+                profiles[user.address].profile,
+                profiles[user.address].image,
             )
 
     _loading += 1
     GLib.Thread.new(None, update_profile)
 
 
-def update_address_book(
-    callback: Callable[
-        [dict[Address, Profile | None], dict[Address, Gdk.Paintable | None]], Any
-    ]
-    | None = None,
-) -> None:
-    """Update the address and photo books of the user by fetching new data remotely."""
+def update_address_book(callback: Callable[[], Any] | None = None) -> None:
+    """Update the address book of the user by fetching new data remotely."""
+    global _loading
+
+    def update_address_store(contacts: Iterable[Address]) -> None:
+        global _loading
+        global address_book
+        global profiles
+
+        address_book.remove_all()
+        for contact in contacts:
+            profiles[contact].address = str(contact)
+            address_book.append(profiles[contact])
+
+        _loading -= 1
+
+        if callback:
+            GLib.idle_add(callback)
+
+    def update_contacts() -> None:
+        global _loading
+        if not user:
+            _loading -= 1
+            return
+
+        GLib.idle_add(update_address_store, fetch_contacts(user))
+
+    _loading += 1
+    GLib.Thread.new(None, update_contacts)
+
+
+def update_profiles() -> None:
+    """Update the profiles for contacts in the user's address book by fetching new data remotely."""
     global _loading
 
     running = 0
-    new_address_book: dict[Address, Profile | None] = {}
-    new_photo_book: dict[Address, Gdk.Paintable | None] = {}
-
-    def fetch_done_cb() -> None:
-        global _loading
-        nonlocal running
-        global address_book
-        global photo_book
-
-        running -= 1
-        if not running:
-            _loading -= 1
-
-            address_book = new_address_book
-            photo_book = new_photo_book
-
-            if callback:
-                GLib.idle_add(callback, address_book, photo_book)
 
     def update_profile(contact: Address) -> None:
-        new_address_book[contact] = fetch_profile(contact)
-        fetch_done_cb()
+        global _loading
+        global profiles
+
+        profiles[contact].profile = fetch_profile(contact)
+        _loading -= 1
 
     def update_profile_image(contact: Address) -> None:
+        global _loading
+        global profiles
+
         try:
-            new_photo_book[contact] = (
+            GLib.idle_add(
+                profiles[contact].set_property,
+                "image",
                 Gdk.Texture.new_from_bytes(
                     GLib.Bytes.new(image)  # type: ignore
                 )
                 if (image := fetch_profile_image(contact))
-                else None
+                else None,
             )
         except GLib.Error:
-            new_photo_book[contact] = None
+            GLib.idle_add(profiles[contact].set_property, "image", None)
 
-        fetch_done_cb()
+        _loading -= 1
 
-    def update_contacts() -> None:
-        global _loading
-        nonlocal running
+    if not user:
+        return
 
-        if user:
-            for contact in fetch_contacts(user):
-                running += 2
-                GLib.Thread.new(None, update_profile, contact)
-                GLib.Thread.new(None, update_profile_image, contact)
-
-    _loading += 1
-    GLib.Thread.new(None, update_contacts)
+    for contact in address_book:
+        _loading += 1
+        GLib.Thread.new(None, update_profile, Address(contact.address))
+        GLib.Thread.new(None, update_profile_image, Address(contact.address))
 
 
 def update_broadcasts_list(
@@ -188,7 +257,7 @@ def update_broadcasts_list(
 
     _loading += 1
     for contact in address_book:
-        GLib.Thread.new(None, update_broadcasts, contact)
+        GLib.Thread.new(None, update_broadcasts, Address(contact.address))
 
 
 def update_messages_list(
@@ -229,7 +298,7 @@ def update_messages_list(
 
     _loading += 1
     for contact in address_book:
-        GLib.Thread.new(None, update_messages, contact)
+        GLib.Thread.new(None, update_messages, Address(contact.address))
 
 
 def update_outbox(
@@ -265,31 +334,3 @@ def update_outbox(
 
     _loading += 1
     GLib.Thread.new(None, update_messages, user.address)
-
-
-def get_name(address: Address) -> str:
-    """Get the name of a user.
-
-    Returns the string representation of `address` if no profile has been found.
-    """
-    if user and user.profile:
-        if address == user.address:
-            return str(user.profile.required["name"])
-
-    return str(
-        profile.required["name"] if (profile := address_book.get(address)) else address
-    )
-
-
-def get_profile_image(address: Address) -> Gdk.Paintable | None:
-    """Get the profile image of a user."""
-    if user and user.profile_image:
-        if address == user.address:
-            try:
-                return Gdk.Texture.new_from_bytes(
-                    GLib.Bytes.new(user.profile_image)  # type: ignore
-                )
-            except GLib.Error:
-                return None
-
-    return photo_book.get(address)

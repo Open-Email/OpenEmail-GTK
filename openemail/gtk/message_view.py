@@ -54,6 +54,9 @@ class MailMessageView(Adw.Bin):
     profile_image = GObject.Property(type=Gdk.Paintable)
     readers = GObject.Property(type=str)
 
+    _name_binding: GObject.Binding | None = None
+    _image_binding: GObject.Binding | None = None
+
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.attachment_messages = {}
@@ -66,11 +69,21 @@ class MailMessageView(Adw.Bin):
         self.visible_child_name = "message"
 
         self.message = message
-        self.name = shared.get_name(message.envelope.author)
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
         self.contents = message.contents
-        self.profile_image = shared.get_profile_image(message.envelope.author)
+
+        if self._name_binding:
+            self._name_binding.unbind()
+        self._name_binding = shared.profiles[message.envelope.author].bind_property(
+            "name", self, "name", GObject.BindingFlags.SYNC_CREATE
+        )
+
+        if self._image_binding:
+            self._image_binding.unbind()
+        self._image_binding = shared.profiles[message.envelope.author].bind_property(
+            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
+        )
 
         self.attachments.remove_all()
         self.attachment_messages = {}
@@ -85,26 +98,20 @@ class MailMessageView(Adw.Bin):
             return
 
         self.readers = _("Readers: ")
-        self.readers += (
-            str(shared.user.profile.required["name"])
-            if shared.user and shared.user.profile
-            else _("Me")
+        self.readers += str(
+            shared.profiles[shared.user.address].name if shared.user else _("Me")
         )
 
         for reader in message.envelope.readers:
             if shared.user and reader == shared.user.address:
                 continue
 
-            self.readers += f", {profile.required['name'] if (profile := shared.address_book.get(reader)) else reader}"
+            self.readers += f", {profile.name if (profile := shared.profiles.get(reader)) else reader}"
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:
         self.profile_view.profile = (
-            (
-                shared.user.profile
-                if shared.user and (shared.user.address == self.message.envelope.author)
-                else shared.address_book.get(self.message.envelope.author)
-            )
+            shared.profiles[self.message.envelope.author].profile
             if self.message
             else None
         )

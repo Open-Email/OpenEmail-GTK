@@ -311,9 +311,6 @@ class User:
     public_signing_key: Key
     private_signing_key: Key
 
-    profile: Profile | None = None
-    profile_image: bytes | None = None
-
     def __init__(self, address: str, encryption_key: str, signing_key: str) -> None:
         """Try to create a local user for the provided `address` and Base64-encoded keys."""
         try:

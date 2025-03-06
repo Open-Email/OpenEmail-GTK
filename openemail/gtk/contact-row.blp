@@ -9,8 +9,8 @@ template Gtk.ListItem {
 
     Adw.Avatar {
       size: 32;
-      text: bind template.item as <$MailContact>.name;
-      custom-image: bind template.item as <$MailContact>.profile-image;
+      text: bind template.item as <$GProfile>.name;
+      custom-image: bind template.item as <$GProfile>.image;
       show-initials: true;
     }
 
@@ -20,14 +20,14 @@ template Gtk.ListItem {
 
       Label {
         halign: start;
-        label: bind template.item as <$MailContact>.name;
+        label: bind template.item as <$GProfile>.name;
         ellipsize: end;
       }
 
       Label {
-        visible: bind template.item as <$MailContact>.has-name;
+        visible: bind template.item as <$GProfile>.has-name;
         halign: start;
-        label: bind template.item as <$MailContact>.address;
+        label: bind template.item as <$GProfile>.address;
         ellipsize: end;
 
         styles [

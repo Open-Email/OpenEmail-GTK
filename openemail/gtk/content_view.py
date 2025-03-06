@@ -93,32 +93,22 @@ class MailContentView(Adw.BreakpointBin):
         self.inbox_page.set_loading(True)
         self.outbox_page.set_loading(True)
 
-        def update_address_book_cb(
-            contacts: dict[Address, Profile | None], *args: Any
-        ) -> None:
-            self.contacts_page.update_contacts_list(contacts)
+        def update_address_book_cb() -> None:
+            shared.update_profiles()
+
+            self.contacts_page.set_loading(False)
             shared.update_broadcasts_list(self.broadcasts_page.update_messages_list)
             shared.update_messages_list(self.inbox_page.update_messages_list)
             shared.update_outbox(self.outbox_page.update_messages_list)
 
+        shared.update_address_book(update_address_book_cb)
+
         def update_user_profile_cb(
-            profile: Profile | None, profile_image: bytes | None
+            profile: Profile | None, profile_image: Gdk.Paintable | None
         ) -> None:
-            shared.update_address_book(update_address_book_cb)
-
             self.profile_view.profile = profile
+            self.profile_image = self.profile_view.profile_image = profile_image
             self.profile_stack_child_name = "profile"
-
-            if not profile_image:
-                self.profile_image = None
-                return
-
-            try:
-                self.profile_image = Gdk.Texture.new_from_bytes(
-                    GLib.Bytes.new(profile_image)  # type: ignore
-                )
-            except GLib.Error:
-                self.profile_image = None
 
         self.profile_stack_child_name = "spinner"
         shared.update_user_profile(update_user_profile_cb)
