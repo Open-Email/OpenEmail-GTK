@@ -18,6 +18,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import asyncio
 import json
 from base64 import b64decode, b64encode
 from datetime import datetime, timezone
@@ -48,7 +49,7 @@ cache_dir: Path = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "opene
 _agents: dict[str, tuple[str, ...]] = {}
 
 
-def request(
+async def request(
     url: str,
     user: User | None = None,
     method: str | None = None,
@@ -76,13 +77,15 @@ def request(
                 }
             )
 
-        return urlopen(Request(url, method=method, headers=headers, data=data))
+        return await asyncio.to_thread(
+            urlopen, Request(url, method=method, headers=headers, data=data)
+        )
 
     except (HTTPError, URLError, ValueError, TimeoutError):
         return None
 
 
-def get_agents(address: Address) -> tuple[str, ...]:
+async def get_agents(address: Address) -> tuple[str, ...]:
     """Get the first ≤3 responding mail agents for a given `address`."""
     if existing := _agents.get(address.host_part):
         return existing
@@ -92,7 +95,7 @@ def get_agents(address: Address) -> tuple[str, ...]:
         f"https://{address.host_part}/.well-known/mail.txt",
         f"https://mail.{address.host_part}/.well-known/mail.txt",
     ):
-        if not (response := request(location)):
+        if not (response := await request(location)):
             continue
 
         with response:
@@ -108,7 +111,7 @@ def get_agents(address: Address) -> tuple[str, ...]:
                 if (stripped := line.strip()) and (not stripped.startswith("#"))
             ]
         ):
-            if not request(_mail_host(agent, address), method="HEAD"):
+            if not await request(_mail_host(agent, address), method="HEAD"):
                 agents.remove(agent)
                 continue
 
@@ -120,19 +123,19 @@ def get_agents(address: Address) -> tuple[str, ...]:
     return _agents.get(address.host_part, (f"mail.{address.host_part}",))
 
 
-def try_auth(user: User) -> bool:
+async def try_auth(user: User) -> bool:
     """Get whether authentication was successful for the given `user`."""
-    for agent in get_agents(user.address):
-        if request(_home(agent, user.address), user, method="HEAD"):
+    for agent in await get_agents(user.address):
+        if await request(_home(agent, user.address), user, method="HEAD"):
             return True
 
     return False
 
 
-def fetch_profile(address: Address) -> Profile | None:
+async def fetch_profile(address: Address) -> Profile | None:
     """Attempt to fetch the remote profile associated with a given `address`."""
-    for agent in get_agents(address):
-        if not (response := request(f"{_mail(agent, address)}/profile")):
+    for agent in await get_agents(address):
+        if not (response := await request(f"{_mail(agent, address)}/profile")):
             continue
 
         with response:
@@ -146,10 +149,10 @@ def fetch_profile(address: Address) -> Profile | None:
     return None
 
 
-def fetch_profile_image(address: Address) -> bytes | None:
+async def fetch_profile_image(address: Address) -> bytes | None:
     """Attempt to fetch the remote profile image associated with a given `address`."""
-    for agent in get_agents(address):
-        if not (response := request(f"{_mail(agent, address)}/image")):
+    for agent in await get_agents(address):
+        if not (response := await request(f"{_mail(agent, address)}/image")):
             continue
 
         with response:
@@ -159,13 +162,13 @@ def fetch_profile_image(address: Address) -> bytes | None:
     return None
 
 
-def fetch_contacts(user: User) -> tuple[Address, ...]:
+async def fetch_contacts(user: User) -> tuple[Address, ...]:
     """Attempt to fetch the `user`'s contact list."""
     addresses = []
 
-    for agent in get_agents(user.address):
+    for agent in await get_agents(user.address):
         if not (
-            response := request(
+            response := await request(
                 f"{_home(agent, user.address)}/links",
                 user,
             )
@@ -199,7 +202,7 @@ def fetch_contacts(user: User) -> tuple[Address, ...]:
     return tuple(addresses)
 
 
-def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
+async def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
     """Perform a HEAD request to the specified URL and retrieve response headers.
 
     Args:
@@ -215,7 +218,7 @@ def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
     if (envelope_path := cache_dir / "envelopes" / agent / message_id).is_file():
         headers = json.load(envelope_path.open("r"))
     else:
-        if not (response := request(url, user, method="HEAD")):
+        if not (response := await request(url, user, method="HEAD")):
             return None
 
         headers = dict(response.getheaders())
@@ -229,9 +232,11 @@ def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
         return None
 
 
-def fetch_message_from_agent(url: str, user: User, message_id: str) -> Message | None:
+async def fetch_message_from_agent(
+    url: str, user: User, message_id: str
+) -> Message | None:
     """Attempt to fetch a message from the provided `agent`."""
-    if not (envelope := fetch_envelope(url, message_id, user)):
+    if not (envelope := await fetch_envelope(url, message_id, user)):
         return None
 
     if envelope.is_child:  # TODO: This probably won't work for split messages
@@ -243,7 +248,7 @@ def fetch_message_from_agent(url: str, user: User, message_id: str) -> Message |
     if (message_path := cache_dir / "messages" / agent / message_id).is_file():
         contents = message_path.read_bytes()
     else:
-        if not (response := request(url, user)):
+        if not (response := await request(url, user)):
             return None
 
         with response:
@@ -264,15 +269,15 @@ def fetch_message_from_agent(url: str, user: User, message_id: str) -> Message |
         return None
 
 
-def fetch_message_ids(url: str, user: User, author: Address) -> tuple[str, ...]:
+async def fetch_message_ids(url: str, user: User, author: Address) -> tuple[str, ...]:
     """Attempt to fetch message IDs by `author`, addressed to `user` from `url`.
 
     `{}` in `url` will be substituted by the mail agent.
     """
     link = generate_link(user.address, author)
 
-    for agent in get_agents(user.address):
-        if not (response := request(url.format(agent), user)):
+    for agent in await get_agents(user.address):
+        if not (response := await request(url.format(agent), user)):
             continue
 
         with response:
@@ -288,7 +293,7 @@ def fetch_message_ids(url: str, user: User, author: Address) -> tuple[str, ...]:
     return ()
 
 
-def fetch_messages(
+async def fetch_messages(
     id_url: str,
     url: str,
     user: User,
@@ -301,9 +306,9 @@ def fetch_messages(
     The first two `{}`s in `url` will be substituted by the mail agent and the message ID.
     """
     messages: dict[str, Message] = {}
-    for message_id in fetch_message_ids(id_url, user, author):
-        for agent in get_agents(user.address):
-            if message := fetch_message_from_agent(
+    for message_id in await fetch_message_ids(id_url, user, author):
+        for agent in await get_agents(user.address):
+            if message := await fetch_message_from_agent(
                 url.format(agent, message_id), user, message_id
             ):
                 messages[message.envelope.message_id] = message
@@ -320,9 +325,9 @@ def fetch_messages(
     return tuple(messages.values())
 
 
-def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
+async def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
     """Attempt to fetch broadcasts by `author`."""
-    return fetch_messages(
+    return await fetch_messages(
         _mail_messages("{}", author),
         _mail_messages("{}", author) + "/{}",
         user,
@@ -330,11 +335,11 @@ def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
     )
 
 
-def fetch_link_messages(user: User, author: Address) -> tuple[Message, ...]:
+async def fetch_link_messages(user: User, author: Address) -> tuple[Message, ...]:
     """Attempt to fetch messages by `author`, addressed to `user`."""
     link = generate_link(user.address, author)
 
-    return fetch_messages(
+    return await fetch_messages(
         _link_messages("{}", author, link),
         _link_messages("{}", author, link) + "/{}",
         user,
@@ -342,7 +347,7 @@ def fetch_link_messages(user: User, author: Address) -> tuple[Message, ...]:
     )
 
 
-def send_message(
+async def send_message(
     user: User,
     readers: Iterable[Address],
     subject: str,
@@ -416,8 +421,8 @@ def send_message(
         ),
     }
 
-    for agent in get_agents(user.address):
-        if request(
+    for agent in await get_agents(user.address):
+        if await request(
             _home_messages(agent, user.address),
             user,
             method="POST",

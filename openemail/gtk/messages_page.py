@@ -39,6 +39,7 @@ class MailMessagesPage(Adw.NavigationPage):
     content: MailContentPage = Gtk.Template.Child()  # type: ignore
     message_view: MailMessageView = Gtk.Template.Child()  # type: ignore
 
+    title = GObject.Property(type=str, default=_("Messages"))
     _folder: str | None = None
 
     @GObject.Property(type=str)

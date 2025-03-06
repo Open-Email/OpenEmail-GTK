@@ -93,9 +93,9 @@ class MailAuthView(Adw.Bin):
             self.__warn(_("Incorrect key format"))
             return
 
-        def authenticate() -> None:
+        async def authenticate() -> None:
             GLib.idle_add(self.set_property, "button-child-name", "spinner")
-            if not try_auth(user):
+            if not await try_auth(user):
                 GLib.idle_add(self.__warn, _("Authentication failed"))
                 GLib.idle_add(self.set_property, "button-child-name", "label")
                 return
@@ -104,7 +104,7 @@ class MailAuthView(Adw.Bin):
             GLib.idle_add(self.emit, "authenticated")
             GLib.idle_add(self.set_property, "button-child-name", "label")
 
-        GLib.Thread.new(None, authenticate)
+        shared.loop.create_task(authenticate())
 
     def __warn(self, warning: str) -> None:
         self.toast_overlay.add_toast(

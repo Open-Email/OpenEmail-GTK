@@ -122,12 +122,12 @@ class MailMessageView(Adw.Bin):
         if not (parts := self.attachment_messages.get(row)):
             return
 
-        def save(gfile: Gio.File) -> None:
+        async def save(gfile: Gio.File) -> None:
             data = b""
             for part in parts:
                 if not (
                     (url := part.attachment_url)
-                    and (response := request(part.attachment_url, shared.user))
+                    and (response := await request(part.attachment_url, shared.user))
                 ):
                     return
 
@@ -168,7 +168,7 @@ class MailMessageView(Adw.Bin):
             except GLib.Error:
                 return
 
-            GLib.Thread.new(None, save, gfile)
+            shared.loop.create_task(save(gfile))
 
         Gtk.FileDialog(
             initial_name=row.get_title(),

@@ -85,17 +85,17 @@ class MailContentPage(Adw.BreakpointBin):
         if not shared.user:
             return
 
-        GLib.Thread.new(
-            None,
-            send_message,
-            shared.user,
-            (),
-            self.subject.get_text(),
-            (buffer := self.body.get_buffer()).get_text(
-                buffer.get_start_iter(),
-                buffer.get_end_iter(),
-                False,
-            ),
+        shared.loop.create_task(
+            send_message(
+                shared.user,
+                (),
+                self.subject.get_text(),
+                (buffer := self.body.get_buffer()).get_text(
+                    buffer.get_start_iter(),
+                    buffer.get_end_iter(),
+                    False,
+                ),
+            )
         )
 
         self.compose_dialog.force_close()

@@ -20,11 +20,13 @@
 
 """Shared data across the application."""
 
+import asyncio
 from collections import defaultdict
 from pathlib import Path
 from re import sub
 from typing import Any, Callable, Iterable
 
+from gi.events import GLibEventLoopPolicy
 from gi.repository import Adw, Gdk, Gio, GLib, GObject
 
 from openemail import network
@@ -48,6 +50,9 @@ settings = Gio.Settings.new(APP_ID)
 state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
 network.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
+
+asyncio.set_event_loop_policy(policy := GLibEventLoopPolicy())
+loop: asyncio.AbstractEventLoop = policy.get_event_loop()
 
 user: User | None = None
 
@@ -172,11 +177,11 @@ def update_user_profile(
     """Update the profile of the user by fetching new data remotely."""
     global _loading
 
-    def update_profile() -> None:
+    async def update_profile() -> None:
         global _loading
 
         if user:
-            if profile := fetch_profile(user.address):
+            if profile := await fetch_profile(user.address):
                 user.public_signing_key = profile.required["signing-key"].value
                 if key := profile.optional.get("encryption-key"):
                     user.public_encryption_key = key.value
@@ -185,7 +190,7 @@ def update_user_profile(
 
             try:
                 profiles[user.address].image = Gdk.Texture.new_from_bytes(
-                    GLib.Bytes.new(fetch_profile_image(user.address))  # type: ignore
+                    GLib.Bytes.new(await fetch_profile_image(user.address))  # type: ignore
                 )
             except GLib.Error:
                 profiles[user.address].image = None
@@ -193,24 +198,26 @@ def update_user_profile(
         _loading -= 1
 
         if callback and user:
-            GLib.idle_add(
-                callback,
-                profiles[user.address].profile,
-                profiles[user.address].image,
-            )
+            callback(profiles[user.address].profile, profiles[user.address].image)
 
     _loading += 1
-    GLib.Thread.new(None, update_profile)
+    loop.create_task(update_profile())
 
 
 def update_address_book(callback: Callable[[], Any] | None = None) -> None:
     """Update the address book of the user by fetching new data remotely."""
     global _loading
 
-    def update_address_store(contacts: Iterable[Address]) -> None:
+    async def update_contacts() -> None:
         global _loading
         global address_book
         global profiles
+
+        if not user:
+            _loading -= 1
+            return
+
+        contacts = await fetch_contacts(user)
 
         address_book.remove_all()
         for contact in contacts:
@@ -220,18 +227,10 @@ def update_address_book(callback: Callable[[], Any] | None = None) -> None:
         _loading -= 1
 
         if callback:
-            GLib.idle_add(callback)
-
-    def update_contacts() -> None:
-        global _loading
-        if not user:
-            _loading -= 1
-            return
-
-        GLib.idle_add(update_address_store, fetch_contacts(user))
+            callback()
 
     _loading += 1
-    GLib.Thread.new(None, update_contacts)
+    loop.create_task(update_contacts())
 
 
 def update_profiles() -> None:
@@ -240,29 +239,27 @@ def update_profiles() -> None:
 
     running = 0
 
-    def update_profile(contact: Address) -> None:
+    async def update_profile(contact: Address) -> None:
         global _loading
         global profiles
 
-        profiles[contact].profile = fetch_profile(contact)
+        profiles[contact].profile = await fetch_profile(contact)
         _loading -= 1
 
-    def update_profile_image(contact: Address) -> None:
+    async def update_profile_image(contact: Address) -> None:
         global _loading
         global profiles
 
         try:
-            GLib.idle_add(
-                profiles[contact].set_property,
-                "image",
+            profiles[contact].image = (
                 Gdk.Texture.new_from_bytes(
                     GLib.Bytes.new(image)  # type: ignore
                 )
-                if (image := fetch_profile_image(contact))
-                else None,
+                if (image := await fetch_profile_image(contact))
+                else None
             )
         except GLib.Error:
-            GLib.idle_add(profiles[contact].set_property, "image", None)
+            profiles[contact].image = None
 
         _loading -= 1
 
@@ -271,8 +268,8 @@ def update_profiles() -> None:
 
     for contact in address_book:
         _loading += 2
-        GLib.Thread.new(None, update_profile, Address(contact.address))
-        GLib.Thread.new(None, update_profile_image, Address(contact.address))
+        loop.create_task(update_profile(Address(contact.address)))
+        loop.create_task(update_profile_image(Address(contact.address)))
 
 
 def update_broadcasts_list() -> None:
@@ -282,10 +279,18 @@ def update_broadcasts_list() -> None:
     running = len(address_book)
     new_broadcasts: list[Message] = []
 
-    def update_broadcasts_store() -> None:
+    async def update_broadcasts(author: Address) -> None:
+        nonlocal running
         global _loading
         global broadcasts
         nonlocal new_broadcasts
+
+        if user:
+            new_broadcasts += await fetch_broadcasts(user, author)
+
+        running -= 1
+        if running:
+            return
 
         broadcasts.remove_all()
         for broadcast in new_broadcasts:
@@ -293,25 +298,9 @@ def update_broadcasts_list() -> None:
 
         _loading -= 1
 
-    def fetch_done_cb() -> None:
-        nonlocal running
-
-        running -= 1
-        if not running:
-            GLib.idle_add(update_broadcasts_store)
-
-    def update_broadcasts(author: Address) -> None:
-        global broadcasts
-        nonlocal new_broadcasts
-
-        if user:
-            new_broadcasts += fetch_broadcasts(user, author)
-
-        fetch_done_cb()
-
     _loading += 1
     for contact in address_book:
-        GLib.Thread.new(None, update_broadcasts, Address(contact.address))
+        loop.create_task(update_broadcasts(Address(contact.address)))
 
 
 def update_messages_list() -> None:
@@ -321,10 +310,18 @@ def update_messages_list() -> None:
     running = len(address_book)
     new_messages: list[Message] = []
 
-    def update_messages_store() -> None:
+    async def update_messages(author: Address) -> None:
+        nonlocal running
         global _loading
         global link_messages
         nonlocal new_messages
+
+        if user:
+            new_messages += await fetch_link_messages(user, author)
+
+        running -= 1
+        if running:
+            return
 
         link_messages.remove_all()
         for message in new_messages:
@@ -332,25 +329,9 @@ def update_messages_list() -> None:
 
         _loading -= 1
 
-    def fetch_done_cb() -> None:
-        nonlocal running
-
-        running -= 1
-        if not running:
-            GLib.idle_add(update_messages_store)
-
-    def update_messages(author: Address) -> None:
-        global link_messages
-        nonlocal new_messages
-
-        if user:
-            new_messages += fetch_link_messages(user, author)
-
-        fetch_done_cb()
-
     _loading += 1
     for contact in address_book:
-        GLib.Thread.new(None, update_messages, Address(contact.address))
+        loop.create_task(update_messages(Address(contact.address)))
 
 
 def update_outbox() -> None:
@@ -362,10 +343,14 @@ def update_outbox() -> None:
 
     new_messages: list[Message] = []
 
-    def update_messages_store() -> None:
+    async def update_messages(author: Address) -> None:
         global _loading
         global outbox
         nonlocal new_messages
+
+        if user:
+            new_messages += await fetch_link_messages(user, author)
+            new_messages += await fetch_broadcasts(user, author)
 
         outbox.remove_all()
         for message in new_messages:
@@ -373,16 +358,5 @@ def update_outbox() -> None:
 
         _loading -= 1
 
-    def update_messages(author: Address) -> None:
-        global _loading
-        global outbox
-        nonlocal new_messages
-
-        if user:
-            new_messages += fetch_link_messages(user, author)
-            new_messages += fetch_broadcasts(user, author)
-
-        GLib.idle_add(update_messages_store)
-
     _loading += 1
-    GLib.Thread.new(None, update_messages, user.address)
+    loop.create_task(update_messages(user.address))
