@@ -19,8 +19,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from email.message import Message
-from re import sub
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 
 from gi.repository import Adw, Gdk, Gio, GObject, Gtk
 
@@ -29,53 +28,6 @@ from openemail.gtk.content_page import MailContentPage
 from openemail.gtk.message_view import MailMessageView
 from openemail.message import Envelope, Message
 from openemail.user import Address
-
-
-class MailMessage(GObject.Object):
-    """A Mail/HTTPS message."""
-
-    __gtype_name__ = "MailMessage"
-
-    message: Message | None = None
-
-    name = GObject.Property(type=str)
-    date = GObject.Property(type=str)
-    subject = GObject.Property(type=str)
-    contents = GObject.Property(type=str)
-    stripped_contents = GObject.Property(type=str)
-    profile_image = GObject.Property(type=Gdk.Paintable)
-
-    _name_binding: GObject.Binding | None = None
-    _image_binding: GObject.Binding | None = None
-
-    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-
-        if message:
-            self.set_from_message(message)
-
-    def set_from_message(self, message: Message) -> None:
-        """Update properties of the row from `message`."""
-        self.message = message
-
-        self.date = message.envelope.date.strftime("%x")
-        self.subject = message.envelope.subject
-        self.body = message.body
-        self.stripped_contents = (
-            sub(r"\n+", " ", message.body) if message.body else None
-        )
-
-        if self._name_binding:
-            self._name_binding.unbind()
-        self._name_binding = shared.profiles[message.envelope.author].bind_property(
-            "name", self, "name", GObject.BindingFlags.SYNC_CREATE
-        )
-
-        if self._image_binding:
-            self._image_binding.unbind()
-        self._image_binding = shared.profiles[message.envelope.author].bind_property(
-            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
-        )
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/messages-page.ui")
@@ -87,18 +39,32 @@ class MailMessagesPage(Adw.NavigationPage):
     content: MailContentPage = Gtk.Template.Child()  # type: ignore
     message_view: MailMessageView = Gtk.Template.Child()  # type: ignore
 
-    messages: Gio.ListStore
+    _folder: str | None = None
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    @GObject.Property(type=str)
+    def folder(self) -> str | None:
+        """Get the folder this page represents."""
+        return self._folder
 
-        self.messages = Gio.ListStore.new(MailMessage)
+    @folder.setter
+    def folder(self, folder: Literal["inbox", "broadcasts", "outbox"]) -> None:
+        model: Gio.ListModel
+        match folder:
+            case "inbox":
+                self.title = _("Inbox")
+                model = shared.link_messages
+            case "broadcasts":
+                self.title = _("Broadcasts")
+                model = shared.broadcasts
+            case "outbox":
+                self.title = _("Outbox")
+                model = shared.outbox
 
         self.content.model = (
             selection := Gtk.SingleSelection(
                 autoselect=False,
                 model=Gtk.SortListModel.new(
-                    self.messages,
+                    model,
                     Gtk.CustomSorter.new(
                         lambda a, b, _: int(
                             b.message.envelope.date.timestamp()
@@ -112,25 +78,19 @@ class MailMessagesPage(Adw.NavigationPage):
                 ),
             )
         )
+
         selection.connect("notify::selected", self.__on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{shared.PREFIX}/gtk/message-row.ui"
         )
 
-    def set_loading(self, loading: bool) -> None:
-        """Set whether or not to display a spinner."""
-        self.content.set_loading(loading)
-
-    def update_messages_list(self, messages: Sequence[Message] = ()) -> None:
-        """Update the list of messages in the view."""
-        self.messages.remove_all()
-        for message in messages:
-            self.messages.append(MailMessage(message))
-
-        self.set_loading(False)
+        self._folder = folder
 
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:  # type: ignore
-        if not isinstance(selected := selection.get_selected_item(), MailMessage):
+        if not isinstance(
+            selected := selection.get_selected_item(),
+            shared.MailMessage,
+        ):
             return
 
         self.message_view.set_from_message(selected.message)

@@ -20,7 +20,7 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gdk, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from openemail import shared
 from openemail.gtk.contacts_page import MailContactsPage
@@ -88,18 +88,11 @@ class MailContentView(Adw.BreakpointBin):
             )
             self.toast_overlay.add_toast(self.syncing_toast)
 
-        self.contacts_page.set_loading(True)
-        self.broadcasts_page.set_loading(True)
-        self.inbox_page.set_loading(True)
-        self.outbox_page.set_loading(True)
-
         def update_address_book_cb() -> None:
             shared.update_profiles()
-
-            self.contacts_page.set_loading(False)
-            shared.update_broadcasts_list(self.broadcasts_page.update_messages_list)
-            shared.update_messages_list(self.inbox_page.update_messages_list)
-            shared.update_outbox(self.outbox_page.update_messages_list)
+            shared.update_broadcasts_list()
+            shared.update_messages_list()
+            shared.update_outbox()
 
         shared.update_address_book(update_address_book_cb)
 

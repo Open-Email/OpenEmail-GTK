@@ -39,8 +39,6 @@ class MailContactsPage(Adw.NavigationPage):
     content: MailContentPage = Gtk.Template.Child()  # type: ignore
     profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
 
-    contacts: Gio.ListStore
-
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
@@ -58,12 +56,10 @@ class MailContactsPage(Adw.NavigationPage):
             None, f"{shared.PREFIX}/gtk/contact-row.ui"
         )
 
-    def set_loading(self, loading: bool) -> None:
-        """Set whether or not to display a spinner."""
-        self.content.set_loading(loading)
-
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not isinstance(selected := selection.get_selected_item(), shared.GProfile):
+        if not isinstance(
+            selected := selection.get_selected_item(), shared.MailProfile
+        ):
             return
 
         self.profile_view.profile = selected.profile

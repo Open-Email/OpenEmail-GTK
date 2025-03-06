@@ -112,7 +112,7 @@ template $MailContentView: Adw.BreakpointBin {
             name: "broadcasts";
 
             child: $MailMessagesPage broadcasts_page {
-              title: _("Broadcasts");
+              folder: "broadcasts";
             };
           }
 
@@ -120,7 +120,7 @@ template $MailContentView: Adw.BreakpointBin {
             name: "inbox";
 
             child: $MailMessagesPage inbox_page {
-              title: _("Inbox");
+              folder: "inbox";
             };
           }
 
@@ -128,7 +128,7 @@ template $MailContentView: Adw.BreakpointBin {
             name: "outbox";
 
             child: $MailMessagesPage outbox_page {
-              title: _("Outbox");
+              folder: "outbox";
             };
           }
 

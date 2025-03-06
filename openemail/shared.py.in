@@ -22,6 +22,7 @@
 
 from collections import defaultdict
 from pathlib import Path
+from re import sub
 from typing import Any, Callable, Iterable
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject
@@ -50,15 +51,11 @@ network.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
 
 user: User | None = None
 
-broadcasts: list[Message] = []
-link_messages: list[Message] = []
-outbox: list[Message] = []
 
-
-class GProfile(GObject.Object):
+class MailProfile(GObject.Object):
     """A GObject representation of a user profile."""
 
-    __gtype_name__ = "GProfile"
+    __gtype_name__ = "MailProfile"
 
     has_name = GObject.Property(type=bool, default=False)
     image = GObject.Property(type=Gdk.Paintable)
@@ -105,8 +102,61 @@ class GProfile(GObject.Object):
         self.has_name = name != self.address
 
 
-profiles: defaultdict[Address, GProfile] = defaultdict(GProfile)
-address_book = Gio.ListStore.new(GProfile)
+profiles: defaultdict[Address, MailProfile] = defaultdict(MailProfile)
+address_book = Gio.ListStore.new(MailProfile)
+
+
+class MailMessage(GObject.Object):
+    """A Mail/HTTPS message."""
+
+    __gtype_name__ = "MailMessage"
+
+    message: Message | None = None
+
+    name = GObject.Property(type=str)
+    date = GObject.Property(type=str)
+    subject = GObject.Property(type=str)
+    contents = GObject.Property(type=str)
+    stripped_contents = GObject.Property(type=str)
+    profile_image = GObject.Property(type=Gdk.Paintable)
+
+    _name_binding: GObject.Binding | None = None
+    _image_binding: GObject.Binding | None = None
+
+    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        if message:
+            self.set_from_message(message)
+
+    def set_from_message(self, message: Message) -> None:
+        """Update properties of the row from `message`."""
+        self.message = message
+
+        self.date = message.envelope.date.strftime("%x")
+        self.subject = message.envelope.subject
+        self.body = message.body
+        self.stripped_contents = (
+            sub(r"\n+", " ", message.body) if message.body else None
+        )
+
+        if self._name_binding:
+            self._name_binding.unbind()
+        self._name_binding = profiles[message.envelope.author].bind_property(
+            "name", self, "name", GObject.BindingFlags.SYNC_CREATE
+        )
+
+        if self._image_binding:
+            self._image_binding.unbind()
+        self._image_binding = profiles[message.envelope.author].bind_property(
+            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
+        )
+
+
+broadcasts = Gio.ListStore.new(MailMessage)
+link_messages = Gio.ListStore.new(MailMessage)
+outbox = Gio.ListStore.new(MailMessage)
+
 
 _loading = 0
 
@@ -225,32 +275,30 @@ def update_profiles() -> None:
         GLib.Thread.new(None, update_profile_image, Address(contact.address))
 
 
-def update_broadcasts_list(
-    callback: Callable[[list[Message]], Any] | None = None,
-) -> None:
+def update_broadcasts_list() -> None:
     """Update the broadcasts list of the user by fetching new data remotely."""
     global _loading
 
     running = len(address_book)
     new_broadcasts: list[Message] = []
 
-    def fetch_done_cb() -> None:
+    def update_broadcasts_store() -> None:
         global _loading
-        nonlocal running
         global broadcasts
+        nonlocal new_broadcasts
+
+        broadcasts.remove_all()
+        for broadcast in new_broadcasts:
+            broadcasts.append(MailMessage(broadcast))
+
+        _loading -= 1
+
+    def fetch_done_cb() -> None:
+        nonlocal running
 
         running -= 1
         if not running:
-            new_broadcasts.sort(
-                key=lambda message: message.envelope.date,
-                reverse=True,
-            )
-
-            broadcasts = new_broadcasts
-            _loading -= 1
-
-            if callback:
-                GLib.idle_add(callback, broadcasts)
+            GLib.idle_add(update_broadcasts_store)
 
     def update_broadcasts(author: Address) -> None:
         global broadcasts
@@ -266,27 +314,30 @@ def update_broadcasts_list(
         GLib.Thread.new(None, update_broadcasts, Address(contact.address))
 
 
-def update_messages_list(
-    callback: Callable[[list[Message]], Any] | None = None,
-) -> None:
+def update_messages_list() -> None:
     """Update the messages list of the user by fetching new data remotely."""
     global _loading
 
     running = len(address_book)
     new_messages: list[Message] = []
 
-    def fetch_done_cb() -> None:
+    def update_messages_store() -> None:
         global _loading
-        nonlocal running
         global link_messages
+        nonlocal new_messages
+
+        link_messages.remove_all()
+        for message in new_messages:
+            link_messages.append(MailMessage(message))
+
+        _loading -= 1
+
+    def fetch_done_cb() -> None:
+        nonlocal running
 
         running -= 1
         if not running:
-            link_messages = new_messages
-            _loading -= 1
-
-            if callback:
-                GLib.idle_add(callback, link_messages)
+            GLib.idle_add(update_messages_store)
 
     def update_messages(author: Address) -> None:
         global link_messages
@@ -302,9 +353,7 @@ def update_messages_list(
         GLib.Thread.new(None, update_messages, Address(contact.address))
 
 
-def update_outbox(
-    callback: Callable[[list[Message]], Any] | None = None,
-) -> None:
+def update_outbox() -> None:
     """Update the outbox of the user by fetching new data remotely."""
     global _loading
 
@@ -312,6 +361,17 @@ def update_outbox(
         return
 
     new_messages: list[Message] = []
+
+    def update_messages_store() -> None:
+        global _loading
+        global outbox
+        nonlocal new_messages
+
+        outbox.remove_all()
+        for message in new_messages:
+            outbox.append(MailMessage(message))
+
+        _loading -= 1
 
     def update_messages(author: Address) -> None:
         global _loading
@@ -322,11 +382,7 @@ def update_outbox(
             new_messages += fetch_link_messages(user, author)
             new_messages += fetch_broadcasts(user, author)
 
-        outbox = new_messages
-        _loading -= 1
-
-        if callback:
-            GLib.idle_add(callback, outbox)
+        GLib.idle_add(update_messages_store)
 
     _loading += 1
     GLib.Thread.new(None, update_messages, user.address)
