@@ -50,6 +50,8 @@ class MailContentPage(Adw.BreakpointBin):
     _model: Gtk.SelectionModel
     _loading: bool
 
+    show_sidebar = GObject.Signal()
+
     @GObject.Property(type=bool, default=False)
     def loading(self) -> bool:
         """Get whether or not to display a loading indicator in case the page is empty."""
@@ -70,10 +72,6 @@ class MailContentPage(Adw.BreakpointBin):
         self._model = model
 
         model.connect("items-changed", self.__update_loading)
-
-    @GObject.Signal(name="show-sidebar")
-    def show_sidebar(self) -> None:
-        """Notify listeners that the main sidebar should be shown."""
 
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:

@@ -48,9 +48,7 @@ class MailAuthView(Adw.Bin):
 
     button_child_name = GObject.Property(type=str, default="label")
 
-    @GObject.Signal(name="authenticated")
-    def authenticated(self) -> None:
-        """Notify listeners of a successful authentication."""
+    authenticated = GObject.Signal()
 
     def __init__(self, **kwargs: Any) -> None:
         self.email_status_page.set_icon_name(shared.APP_ID)
