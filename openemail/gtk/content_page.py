@@ -37,7 +37,6 @@ class MailContentPage(Adw.BreakpointBin):
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
 
     factory = GObject.Property(type=Gtk.ListItemFactory)
-    model = GObject.Property(type=Gtk.SelectionModel)
 
     sidebar_child_name = GObject.Property(type=str, default="content")
 
@@ -48,15 +47,33 @@ class MailContentPage(Adw.BreakpointBin):
     subject: Gtk.Text = Gtk.Template.Child()
     body: Gtk.TextView = Gtk.Template.Child()
 
+    _model: Gtk.SelectionModel
+    _loading: bool
+
+    @GObject.Property(type=bool, default=False)
+    def loading(self) -> bool:
+        """Get whether or not to display a loading indicator in case the page is empty."""
+        return self._loading
+
+    @loading.setter
+    def loading(self, loading: bool) -> None:
+        self._loading = loading
+        self.__update_loading()
+
+    @GObject.Property(type=Gtk.SelectionModel)
+    def model(self) -> Gtk.SelectionModel:
+        """Get the selection model."""
+        return self._model
+
+    @model.setter
+    def model(self, model: Gtk.SelectionModel) -> None:
+        self._model = model
+
+        model.connect("items-changed", self.__update_loading)
+
     @GObject.Signal(name="show-sidebar")
     def show_sidebar(self) -> None:
         """Notify listeners that the main sidebar should be shown."""
-
-    def set_loading(self, loading: bool) -> None:
-        """Set whether or not to display a spinner."""
-        self.sidebar_child_name = (
-            "spinner" if loading and (not self.model.get_n_items()) else "content"
-        )
 
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:
@@ -99,3 +116,8 @@ class MailContentPage(Adw.BreakpointBin):
         )
 
         self.compose_dialog.force_close()
+
+    def __update_loading(self, *_args: Any) -> None:
+        self.sidebar_child_name = (
+            "spinner" if self._loading and (not self.model.get_n_items()) else "content"
+        )

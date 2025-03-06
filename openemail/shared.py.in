@@ -22,9 +22,11 @@
 
 import asyncio
 from collections import defaultdict
+from functools import wraps
+from itertools import chain
 from pathlib import Path
 from re import sub
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Coroutine, Iterable, ParamSpec, TypeVar
 
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Adw, Gdk, Gio, GLib, GObject
@@ -166,197 +168,139 @@ outbox = Gio.ListStore.new(MailMessage)
 _loading = 0
 
 
+def _loads(func: Callable[..., Coroutine]) -> Callable[..., Coroutine]:
+    @wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Coroutine:
+        global _loading
+        _loading += 1
+        return await func(*args, **kwargs)
+        _loading -= 1
+
+    return wrapper
+
+
 def is_loading() -> bool:
     """Check whether or not an update is currently ongoing."""
     return bool(_loading)
 
 
-def update_user_profile(
-    callback: Callable[[Profile | None, Gdk.Paintable | None], Any] | None = None,
-) -> None:
+@_loads
+async def update_user_profile() -> None:
     """Update the profile of the user by fetching new data remotely."""
-    global _loading
+    if not user:
+        return
 
-    async def update_profile() -> None:
-        global _loading
+    if profile := await fetch_profile(user.address):
+        user.public_signing_key = profile.required["signing-key"].value
+        if key := profile.optional.get("encryption-key"):
+            user.public_encryption_key = key.value
 
-        if user:
-            if profile := await fetch_profile(user.address):
-                user.public_signing_key = profile.required["signing-key"].value
-                if key := profile.optional.get("encryption-key"):
-                    user.public_encryption_key = key.value
+    profiles[user.address].profile = profile
 
-            profiles[user.address].profile = profile
-
-            try:
-                profiles[user.address].image = Gdk.Texture.new_from_bytes(
-                    GLib.Bytes.new(await fetch_profile_image(user.address))  # type: ignore
-                )
-            except GLib.Error:
-                profiles[user.address].image = None
-
-        _loading -= 1
-
-        if callback and user:
-            callback(profiles[user.address].profile, profiles[user.address].image)
-
-    _loading += 1
-    loop.create_task(update_profile())
+    try:
+        profiles[user.address].image = Gdk.Texture.new_from_bytes(
+            GLib.Bytes.new(await fetch_profile_image(user.address))  # type: ignore
+        )
+    except GLib.Error:
+        profiles[user.address].image = None
 
 
-def update_address_book(callback: Callable[[], Any] | None = None) -> None:
+@_loads
+async def update_address_book() -> None:
     """Update the address book of the user by fetching new data remotely."""
-    global _loading
+    global address_book
+    global profiles
 
-    async def update_contacts() -> None:
-        global _loading
-        global address_book
-        global profiles
+    if not user:
+        return
 
-        if not user:
-            _loading -= 1
-            return
+    contacts = await fetch_contacts(user)
 
-        contacts = await fetch_contacts(user)
-
-        address_book.remove_all()
-        for contact in contacts:
-            profiles[contact].address = str(contact)
-            address_book.append(profiles[contact])
-
-        _loading -= 1
-
-        if callback:
-            callback()
-
-    _loading += 1
-    loop.create_task(update_contacts())
+    address_book.remove_all()
+    for contact in contacts:
+        profiles[contact].address = str(contact)
+        address_book.append(profiles[contact])
 
 
-def update_profiles() -> None:
+@_loads
+async def update_profiles() -> None:
     """Update the profiles for contacts in the user's address book by fetching new data remotely."""
-    global _loading
+    global profiles
 
-    running = 0
+    if not user:
+        return
 
-    async def update_profile(contact: Address) -> None:
-        global _loading
-        global profiles
+    async def update_profile(address: Address) -> None:
+        profiles[address].profile = await fetch_profile(address)
 
-        profiles[contact].profile = await fetch_profile(contact)
-        _loading -= 1
-
-    async def update_profile_image(contact: Address) -> None:
-        global _loading
-        global profiles
-
+    async def update_profile_image(address: Address) -> None:
         try:
-            profiles[contact].image = (
+            profiles[address].image = (
                 Gdk.Texture.new_from_bytes(
                     GLib.Bytes.new(image)  # type: ignore
                 )
-                if (image := await fetch_profile_image(contact))
+                if (image := await fetch_profile_image(address))
                 else None
             )
         except GLib.Error:
-            profiles[contact].image = None
+            profiles[address].image = None
 
-        _loading -= 1
-
-    if not user:
-        return
-
-    for contact in address_book:
-        _loading += 2
-        loop.create_task(update_profile(Address(contact.address)))
-        loop.create_task(update_profile_image(Address(contact.address)))
+    asyncio.gather(
+        *(update_profile(Address(contact.address)) for contact in address_book),
+        *(update_profile_image(Address(contact.address)) for contact in address_book),
+    )
 
 
-def update_broadcasts_list() -> None:
+@_loads
+async def update_broadcasts_list() -> None:
     """Update the broadcasts list of the user by fetching new data remotely."""
-    global _loading
-
-    running = len(address_book)
-    new_broadcasts: list[Message] = []
-
-    async def update_broadcasts(author: Address) -> None:
-        nonlocal running
-        global _loading
-        global broadcasts
-        nonlocal new_broadcasts
-
-        if user:
-            new_broadcasts += await fetch_broadcasts(user, author)
-
-        running -= 1
-        if running:
-            return
-
-        broadcasts.remove_all()
-        for broadcast in new_broadcasts:
-            broadcasts.append(MailMessage(broadcast))
-
-        _loading -= 1
-
-    _loading += 1
-    for contact in address_book:
-        loop.create_task(update_broadcasts(Address(contact.address)))
-
-
-def update_messages_list() -> None:
-    """Update the messages list of the user by fetching new data remotely."""
-    global _loading
-
-    running = len(address_book)
-    new_messages: list[Message] = []
-
-    async def update_messages(author: Address) -> None:
-        nonlocal running
-        global _loading
-        global link_messages
-        nonlocal new_messages
-
-        if user:
-            new_messages += await fetch_link_messages(user, author)
-
-        running -= 1
-        if running:
-            return
-
-        link_messages.remove_all()
-        for message in new_messages:
-            link_messages.append(MailMessage(message))
-
-        _loading -= 1
-
-    _loading += 1
-    for contact in address_book:
-        loop.create_task(update_messages(Address(contact.address)))
-
-
-def update_outbox() -> None:
-    """Update the outbox of the user by fetching new data remotely."""
-    global _loading
+    global broadcasts
 
     if not user:
         return
 
-    new_messages: list[Message] = []
+    result = await asyncio.gather(
+        *(fetch_broadcasts(user, Address(contact.address)) for contact in address_book)
+    )
 
-    async def update_messages(author: Address) -> None:
-        global _loading
-        global outbox
-        nonlocal new_messages
+    broadcasts.remove_all()
+    for message in chain(*result):
+        broadcasts.append(MailMessage(message))
 
-        if user:
-            new_messages += await fetch_link_messages(user, author)
-            new_messages += await fetch_broadcasts(user, author)
 
-        outbox.remove_all()
-        for message in new_messages:
-            outbox.append(MailMessage(message))
+@_loads
+async def update_messages_list() -> None:
+    """Update the messages list of the user by fetching new data remotely."""
+    global link_messages
 
-        _loading -= 1
+    if not user:
+        return
 
-    _loading += 1
-    loop.create_task(update_messages(user.address))
+    result = await asyncio.gather(
+        *(
+            fetch_link_messages(user, Address(contact.address))
+            for contact in address_book
+        )
+    )
+
+    link_messages.remove_all()
+    for message in chain(*result):
+        link_messages.append(MailMessage(message))
+
+
+@_loads
+async def update_outbox() -> None:
+    """Update the outbox of the user by fetching new data remotely."""
+    global outbox
+
+    if not user:
+        return
+
+    result = await asyncio.gather(
+        fetch_link_messages(user, user.address),
+        fetch_broadcasts(user, user.address),
+    )
+
+    outbox.remove_all()
+    for message in chain(*result):
+        outbox.append(MailMessage(message))
