@@ -25,9 +25,16 @@ template $MailContentPage: Adw.BreakpointBin {
         Adw.HeaderBar {
           [start]
           Button {
-            icon-name: _("sidebar-show-symbolic");
+            icon-name: "sidebar-show-symbolic";
             tooltip-text: _("Toggle Sidebar");
             clicked => $_show_sidebar();
+          }
+
+          [end]
+          Button {
+            icon-name: "mail-message-new-symbolic";
+            tooltip-text: _("New Message");
+            clicked => $_new_message();
           }
         }
 
@@ -70,6 +77,93 @@ template $MailContentPage: Adw.BreakpointBin {
         }
 
         content: bind template.details;
+      }
+    };
+  }
+}
+
+Adw.Dialog compose_dialog {
+  title: _("New Broadcast");
+  content-width: 650;
+  content-height: 500;
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      show-start-title-buttons: false;
+      show-end-title-buttons: false;
+
+      [start]
+      Button {
+        label: _("Cancel");
+        action-name: "window.close";
+      }
+
+      [end]
+      Button {
+        clicked => $_send_message();
+
+        Adw.ButtonContent {
+          label: _("Send");
+          icon-name: "send-symbolic";
+        }
+
+        styles [
+          "suggested-action",
+        ]
+      }
+    }
+
+    [top]
+    ActionBar {
+      Box {
+        margin-top: 4;
+        margin-start: 4;
+        orientation: vertical;
+
+        Separator {}
+
+        Box {
+          hexpand: true;
+
+          Label subject_label {
+            margin-end: 6;
+            label: _("Subject:");
+
+            styles [
+              "dim-label",
+            ]
+          }
+
+          Text subject {
+            height-request: 42;
+            hexpand: true;
+
+            accessibility {
+              labelled-by: subject_label;
+            }
+          }
+        }
+
+        Separator {}
+      }
+    }
+
+    content: ScrolledWindow {
+      TextView body {
+        top-margin: 6;
+        left-margin: 12;
+        right-margin: 12;
+        bottom-margin: 200;
+        wrap-mode: word_char;
+        
+        accessibility {
+          label: _("Message");
+        }
+
+        styles [
+          "inline",
+        ]
       }
     };
   }

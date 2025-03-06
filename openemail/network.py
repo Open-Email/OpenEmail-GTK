@@ -19,16 +19,25 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import json
+from base64 import b64decode, b64encode
+from datetime import datetime, timezone
+from hashlib import sha256
 from http.client import HTTPResponse
 from os import getenv
 from pathlib import Path
 from socket import setdefaulttimeout
-from typing import MutableMapping
+from typing import Iterable, MutableMapping
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from openemail.crypto import decrypt_anonymous, decrypt_xchacha20poly1305, get_nonce
+from openemail.crypto import (
+    decrypt_anonymous,
+    decrypt_xchacha20poly1305,
+    get_nonce,
+    random_string,
+    sign_data,
+)
 from openemail.message import Envelope, Message, generate_link
 from openemail.user import Address, Profile, User
 
@@ -43,13 +52,16 @@ def request(
     url: str,
     user: User | None = None,
     method: str | None = None,
+    headers: dict[str, str] = {},
+    data: bytes | None = None,
 ) -> HTTPResponse | None:
     """Make an HTTP request using `urllib.urlopen`, handling errors and authentication.
 
     If `user` is set, use it and `url`'s host to obtain an authentication nonce.
     """
+    headers["User-Agent"] = "Mozilla/5.0"
+
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
         if user:
             if not (agent := urlparse(url).hostname):
                 return None
@@ -64,7 +76,7 @@ def request(
                 }
             )
 
-        return urlopen(Request(url, headers=headers, method=method))
+        return urlopen(Request(url, method=method, headers=headers, data=data))
 
     except (HTTPError, URLError, ValueError, TimeoutError):
         return None
@@ -311,8 +323,8 @@ def fetch_messages(
 def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
     """Attempt to fetch broadcasts by `author`."""
     return fetch_messages(
-        _messages("{}", author),
-        _messages("{}", author) + "/{}",
+        _mail_messages("{}", author),
+        _mail_messages("{}", author) + "/{}",
         user,
         author,
     )
@@ -330,8 +342,97 @@ def fetch_link_messages(user: User, author: Address) -> tuple[Message, ...]:
     )
 
 
+def send_message(
+    user: User,
+    readers: Iterable[Address],
+    subject: str,
+    body: str,
+) -> None:
+    """Attempt to send `message` to `readers`.
+
+    If `readers` is empty, send a broadcast.
+    """
+    if readers:
+        raise NotImplementedError
+
+    if not body:
+        return
+
+    message_id = sha256(
+        "".join(
+            (
+                random_string(length=24),
+                user.address.host_part,
+                user.address.local_part,
+            )
+        ).encode("utf-8")
+    ).hexdigest()
+
+    content_headers: dict[str, str] = {
+        "Id": message_id,
+        "Author": str(user.address),
+        "Date": datetime.now(timezone.utc).isoformat(),
+        "Size": str(len(body.encode("utf-8"))),
+        "Checksum": ";".join(
+            (
+                "algorithm=sha256",
+                f"value={sha256(body.encode('utf-8')).hexdigest()}",
+            )
+        ),
+        "Subject": subject,
+        "Subject-Id": message_id,
+        "Category": "personal",
+    }
+    message_headers = "value=" + b64encode(
+        "\n".join(
+            (":".join((key, value)) for key, value in content_headers.items())
+        ).encode("utf-8")
+    ).decode("utf-8")
+
+    checksum = sha256((message_headers + message_id).encode("utf-8"))
+    try:
+        signature = sign_data(user.private_signing_key, checksum.digest())
+    except ValueError:
+        return
+
+    headers: dict[str, str] = {
+        "Content-Type": "application/octet-stream",
+        "Content-Length": content_headers["Size"],
+        "Message-Id": message_id,
+        "Message-Headers": message_headers,
+        "Message-Checksum": ";".join(
+            (
+                "algorithm=sha256",
+                f"order=Message-Headers:Message-Id",
+                f"value={checksum.hexdigest()}",
+            )
+        ),
+        "Message-Signature": ";".join(
+            (
+                f"id={user.public_encryption_key.key_id or ''}",
+                "algorithm=ed25519",
+                f"value={signature}",
+            )
+        ),
+    }
+
+    for agent in get_agents(user.address):
+        if request(
+            _home_messages(agent, user.address),
+            user,
+            method="POST",
+            headers=headers,
+            data=body.encode("utf-8"),
+        ):
+            return
+
+
 def _home(agent: str, address: Address) -> str:
     return f"https://{agent}/home/{address.host_part}/{address.local_part}"
+
+
+def _home_messages(agent: str, address: Address) -> str:
+    return f"{_home(agent, address)}/messages"
 
 
 def _mail_host(agent: str, address: Address) -> str:
@@ -342,7 +443,7 @@ def _mail(agent: str, address: Address) -> str:
     return f"{_mail_host(agent, address)}/{address.local_part}"
 
 
-def _messages(agent: str, address: Address) -> str:
+def _mail_messages(agent: str, address: Address) -> str:
     return f"{_mail(agent, address)}/messages"
 
 

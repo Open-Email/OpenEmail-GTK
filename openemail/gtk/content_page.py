@@ -24,7 +24,7 @@ from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import shared
 from openemail.gtk.profile_view import MailProfileView
-from openemail.network import fetch_contacts
+from openemail.network import send_message
 from openemail.user import Address
 
 
@@ -43,6 +43,10 @@ class MailContentPage(Adw.BreakpointBin):
 
     title = GObject.Property(type=str, default=_("Content"))
     details = GObject.Property(type=Gtk.Widget)
+
+    compose_dialog: Adw.Dialog = Gtk.Template.Child()
+    subject: Gtk.Text = Gtk.Template.Child()
+    body: Gtk.TextView = Gtk.Template.Child()
 
     @GObject.Signal(name="show-sidebar")
     def show_sidebar(self) -> None:
@@ -67,3 +71,31 @@ class MailContentPage(Adw.BreakpointBin):
             return
 
         split_view.set_show_sidebar(not split_view.get_show_sidebar())
+
+    @Gtk.Template.Callback()
+    def _new_message(self, *_args: Any) -> None:
+        self.subject.set_text("")
+        self.body.get_buffer().set_text("")
+
+        self.compose_dialog.present(self)
+        self.subject.grab_focus()
+
+    @Gtk.Template.Callback()
+    def _send_message(self, *_args: Any) -> None:
+        if not shared.user:
+            return
+
+        GLib.Thread.new(
+            None,
+            send_message,
+            shared.user,
+            (),
+            self.subject.get_text(),
+            (buffer := self.body.get_buffer()).get_text(
+                buffer.get_start_iter(),
+                buffer.get_end_iter(),
+                False,
+            ),
+        )
+
+        self.compose_dialog.force_close()

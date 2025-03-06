@@ -27,6 +27,7 @@ from typing import Any, Callable, Iterable
 from gi.repository import Adw, Gdk, Gio, GLib, GObject
 
 from openemail import network
+from openemail.crypto import Key
 from openemail.message import Message
 from openemail.network import (
     fetch_broadcasts,
@@ -125,7 +126,12 @@ def update_user_profile(
         global _loading
 
         if user:
-            profiles[user.address].profile = fetch_profile(user.address)
+            if profile := fetch_profile(user.address):
+                user.public_signing_key = profile.required["signing-key"].value
+                if key := profile.optional.get("encryption-key"):
+                    user.public_encryption_key = key.value
+
+            profiles[user.address].profile = profile
 
             try:
                 profiles[user.address].image = Gdk.Texture.new_from_bytes(
@@ -276,11 +282,6 @@ def update_messages_list(
 
         running -= 1
         if not running:
-            new_messages.sort(
-                key=lambda message: message.envelope.date,
-                reverse=True,
-            )
-
             link_messages = new_messages
             _loading -= 1
 
@@ -320,11 +321,6 @@ def update_outbox(
         if user:
             new_messages += fetch_link_messages(user, author)
             new_messages += fetch_broadcasts(user, author)
-
-        new_messages.sort(
-            key=lambda message: message.envelope.date,
-            reverse=True,
-        )
 
         outbox = new_messages
         _loading -= 1

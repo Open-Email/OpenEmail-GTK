@@ -4,8 +4,10 @@
     <file preprocess="xml-stripblanks">scalable/actions/home-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/key-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/mail-attachment-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">scalable/actions/mail-message-new-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/mailbox-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/open-menu-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">scalable/actions/send-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/sidebar-show-symbolic.svg</file>
     <file preprocess="xml-stripblanks">scalable/actions/sidebar-show-symbolic-rtl.svg</file>
     <!-- Sidebar -->

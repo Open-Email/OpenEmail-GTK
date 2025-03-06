@@ -50,7 +50,7 @@ class MailMessageView(Adw.Bin):
     name = GObject.Property(type=str)
     date = GObject.Property(type=str)
     subject = GObject.Property(type=str)
-    contents = GObject.Property(type=str)
+    body = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
     readers = GObject.Property(type=str)
 
@@ -71,7 +71,7 @@ class MailMessageView(Adw.Bin):
         self.message = message
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
-        self.contents = message.contents
+        self.body = message.body
 
         if self._name_binding:
             self._name_binding.unbind()

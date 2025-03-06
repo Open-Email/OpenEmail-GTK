@@ -60,9 +60,9 @@ class MailMessage(GObject.Object):
 
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
-        self.contents = message.contents
+        self.body = message.body
         self.stripped_contents = (
-            sub(r"\n+", " ", message.contents) if message.contents else None
+            sub(r"\n+", " ", message.body) if message.body else None
         )
 
         if self._name_binding:
@@ -101,9 +101,13 @@ class MailMessagesPage(Adw.NavigationPage):
                     self.messages,
                     Gtk.CustomSorter.new(
                         lambda a, b, _: int(
-                            b.message.envelope.date > a.message.envelope.date
+                            b.message.envelope.date.timestamp()
+                            > a.message.envelope.date.timestamp()
                         )
-                        - int(b.message.envelope.date < a.message.envelope.date)  # type: ignore
+                        - int(
+                            b.message.envelope.date.timestamp()
+                            < a.message.envelope.date.timestamp()
+                        )  # type: ignore
                     ),
                 ),
             )

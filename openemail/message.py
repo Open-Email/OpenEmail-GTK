@@ -170,7 +170,7 @@ class Message:
     """An envelope and its contents."""
 
     envelope: Envelope
-    contents: str | None = None
+    body: str | None = None
     attachment_url: str | None = None
 
     children: list[Self] = field(init=False, default_factory=list)
@@ -195,7 +195,7 @@ class Message:
                 pass
 
     def reconstruct_from_children(self) -> None:
-        """Attempt to reconstruct the entire contents of this message from all of its children.
+        """Attempt to reconstruct the entire content of this message from all of its children.
 
         Should only be called after all children have been fetched and added.
         """
@@ -221,7 +221,7 @@ class Message:
 
         parts.sort(key=lambda part: part.envelope.part)
         for part in parts:
-            self.contents = f"{self.contents or ''}{part.contents or ''}"
+            self.body = f"{self.body or ''}{part.body or ''}"
 
         for name, attachment in self.attachments.items():
             attachment.sort(key=lambda part: part.envelope.part)

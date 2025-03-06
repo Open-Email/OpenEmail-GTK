@@ -208,7 +208,7 @@ class Profile:
         self.required = {
             # Represents the display name associated with the address.
             "name": StringField(_("Name")),
-            "signing-key": StringField(),
+            "signing-key": KeyField(),
             "updated": DateTimeField(),
         }
 

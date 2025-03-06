@@ -35,11 +35,11 @@ SIGNING_ALGORITHM = "ed25519"
 
 
 class Key(NamedTuple):
-    """A cryptographic key using `algorithm` with the value of `bytes`, and an optional `id`."""
+    """A cryptographic key using `algorithm` with the value of `data`, and an optional `id`."""
 
     data: bytes
     algorithm: str = SIGNING_ALGORITHM
-    id: str | None = None
+    key_id: str | None = None
 
     def __str__(self) -> str:
         try:
