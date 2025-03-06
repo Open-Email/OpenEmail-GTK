@@ -161,7 +161,7 @@ class MailMessage(GObject.Object):
 
 
 broadcasts = Gio.ListStore.new(MailMessage)
-link_messages = Gio.ListStore.new(MailMessage)
+inbox = Gio.ListStore.new(MailMessage)
 outbox = Gio.ListStore.new(MailMessage)
 
 
@@ -272,7 +272,7 @@ async def update_broadcasts_list() -> None:
 @_loads
 async def update_messages_list() -> None:
     """Update the messages list of the user by fetching new data remotely."""
-    global link_messages
+    global inbox
 
     if not user:
         return
@@ -284,9 +284,9 @@ async def update_messages_list() -> None:
         )
     )
 
-    link_messages.remove_all()
+    inbox.remove_all()
     for message in chain(*result):
-        link_messages.append(MailMessage(message))
+        inbox.append(MailMessage(message))
 
 
 @_loads

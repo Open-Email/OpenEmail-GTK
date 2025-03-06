@@ -53,7 +53,7 @@ class MailMessagesPage(Adw.NavigationPage):
         match folder:
             case "inbox":
                 self.title = _("Inbox")
-                model = shared.link_messages
+                model = shared.inbox
             case "broadcasts":
                 self.title = _("Broadcasts")
                 model = shared.broadcasts
