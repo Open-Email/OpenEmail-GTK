@@ -173,8 +173,9 @@ def _loads(func: Callable[..., Coroutine]) -> Callable[..., Coroutine]:
     async def wrapper(*args: Any, **kwargs: Any) -> Coroutine:
         global _loading
         _loading += 1
-        return await func(*args, **kwargs)
+        result = await func(*args, **kwargs)
         _loading -= 1
+        return result
 
     return wrapper
 
