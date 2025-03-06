@@ -220,7 +220,7 @@ def update_profiles() -> None:
         return
 
     for contact in address_book:
-        _loading += 1
+        _loading += 2
         GLib.Thread.new(None, update_profile, Address(contact.address))
         GLib.Thread.new(None, update_profile_image, Address(contact.address))
 
