@@ -35,7 +35,10 @@ from urllib.request import Request, urlopen
 from openemail.crypto import (
     decrypt_anonymous,
     decrypt_xchacha20poly1305,
+    encrypt_anonymous,
+    encrypt_xchacha20poly1305,
     get_nonce,
+    random_bytes,
     random_string,
     sign_data,
 )
@@ -228,7 +231,7 @@ async def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | No
 
     try:
         return Envelope(message_id, headers, user)
-    except ValueError as error:
+    except ValueError:
         return None
 
 
@@ -260,7 +263,7 @@ async def fetch_message_from_agent(
     if (not envelope.is_broadcast) and envelope.access_key:
         try:
             contents = decrypt_xchacha20poly1305(contents, envelope.access_key)
-        except ValueError:
+        except ValueError as error:
             return None
 
     try:
@@ -357,12 +360,10 @@ async def send_message(
 
     If `readers` is empty, send a broadcast.
     """
-    if readers:
-        raise NotImplementedError
-
     if not body:
         return
 
+    body_bytes = body.encode("utf-8")
     message_id = sha256(
         "".join(
             (
@@ -373,53 +374,109 @@ async def send_message(
         ).encode("utf-8")
     ).hexdigest()
 
+    checksum_fields = ["Message-Id", "Message-Headers"]
+    headers: dict[str, str] = {
+        "Message-Id": message_id,
+        "Content-Type": "application/octet-stream",
+    }
     content_headers: dict[str, str] = {
         "Id": message_id,
         "Author": str(user.address),
         "Date": datetime.now(timezone.utc).isoformat(),
-        "Size": str(len(body.encode("utf-8"))),
+        "Size": str(len(body)),
         "Checksum": ";".join(
             (
                 "algorithm=sha256",
-                f"value={sha256(body.encode('utf-8')).hexdigest()}",
+                f"value={sha256(body_bytes).hexdigest()}",
             )
         ),
         "Subject": subject,
         "Subject-Id": message_id,
         "Category": "personal",
     }
-    message_headers = "value=" + b64encode(
-        "\n".join(
-            (":".join((key, value)) for key, value in content_headers.items())
-        ).encode("utf-8")
-    ).decode("utf-8")
 
-    checksum = sha256((message_headers + message_id).encode("utf-8"))
+    if readers:
+        content_headers["Readers"] = ",".join((str(reader) for reader in readers))
+
+    headers_bytes = "\n".join(
+        (":".join((key, value)) for key, value in content_headers.items())
+    ).encode("utf-8")
+
+    if readers:
+        checksum_fields += ("Message-Encryption", "Message-Access")
+        access_key = random_bytes(32)
+
+        groups: list[str] = []
+        for reader in (*readers, user.address):
+            if not (
+                (profile := await fetch_profile(reader))
+                and (field := profile.optional.get("encryption-key"))
+                and (key_id := field.value.key_id)
+            ):
+                return
+
+            try:
+                groups.append(
+                    ";".join(
+                        (
+                            f"link={generate_link(user.address, reader)}",
+                            f"fingerprint={sha256(bytes(profile.required['signing-key'].value)).hexdigest()}",
+                            f"value={b64encode(encrypt_anonymous(access_key, field.value)).decode('utf-8')}",
+                            f"id={key_id}",
+                        )
+                    )
+                )
+            except ValueError:
+                return
+
+        try:
+            body_bytes = encrypt_xchacha20poly1305(body_bytes, access_key)
+            headers_bytes = encrypt_xchacha20poly1305(headers_bytes, access_key)
+        except ValueError:
+            return
+
+        headers.update(
+            {
+                "Message-Access": ",".join(groups),
+                "Message-Encryption": "xchacha20poly1305",
+                "Message-Headers": f"algorithm=xchacha20poly1305;",
+            }
+        )
+
+    headers["Message-Headers"] = (
+        headers.get("Message-Headers", "")
+        + f"value={b64encode(headers_bytes).decode('utf-8')}"
+    )
+
+    checksum_fields.sort()
+    checksum = sha256(
+        ("".join(headers[field] for field in checksum_fields)).encode("utf-8")
+    )
+
     try:
         signature = sign_data(user.private_signing_key, checksum.digest())
     except ValueError:
         return
 
-    headers: dict[str, str] = {
-        "Content-Type": "application/octet-stream",
-        "Content-Length": content_headers["Size"],
-        "Message-Id": message_id,
-        "Message-Headers": message_headers,
-        "Message-Checksum": ";".join(
-            (
-                "algorithm=sha256",
-                f"order=Message-Headers:Message-Id",
-                f"value={checksum.hexdigest()}",
-            )
-        ),
-        "Message-Signature": ";".join(
-            (
-                f"id={user.public_encryption_key.key_id or ''}",
-                "algorithm=ed25519",
-                f"value={signature}",
-            )
-        ),
-    }
+    headers.update(
+        {
+            "Content-Length": str(len(body_bytes)),
+            "Message-Checksum": ";".join(
+                (
+                    "algorithm=sha256",
+                    f"order={':'.join(checksum_fields)}",
+                    f"value={checksum.hexdigest()}",
+                )
+            ),
+            "Message-Signature": ";".join(
+                (
+                    f"id={user.public_encryption_key.key_id or ''}",
+                    "algorithm=ed25519",
+                    f"value={signature}",
+                )
+            ),
+        }
+    )
 
     for agent in await get_agents(user.address):
         if await request(
@@ -427,7 +484,7 @@ async def send_message(
             user,
             method="POST",
             headers=headers,
-            data=body.encode("utf-8"),
+            data=body_bytes,
         ):
             return
 

@@ -83,7 +83,7 @@ template $MailContentPage: Adw.BreakpointBin {
 }
 
 Adw.Dialog compose_dialog {
-  title: _("New Broadcast");
+  title: _("New Message");
   content-width: 650;
   content-height: 500;
 
@@ -126,6 +126,74 @@ Adw.Dialog compose_dialog {
         Box {
           hexpand: true;
 
+          Overlay {
+            [overlay]
+            Revealer {
+              can-target: false;
+              reveal-child: bind broadcast_switch.active;
+              transition-type: crossfade;
+
+              Label {
+                halign: start;
+                label: _("Public Message");
+
+                styles [
+                  "dim-label",
+                ]
+              }
+            }
+
+            Revealer {
+              reveal-child: bind broadcast_switch.active inverted;
+              transition-type: crossfade;
+
+              Box {
+                Label readers_label {
+                  margin-end: 6;
+                  label: _("Readers:");
+
+                  styles [
+                    "dim-label",
+                  ]
+                }
+
+                Text readers {
+                  height-request: 42;
+                  hexpand: true;
+
+                  accessibility {
+                    labelled-by: readers_label;
+                  }
+                }
+              }
+            }
+          }
+
+          Label broadcast_label {
+            margin-start: 6;
+            margin-end: 6;
+            label: _("Broadcast");
+
+            styles [
+              "dim-label",
+            ]
+          }
+
+          Switch broadcast_switch {
+            valign: center;
+
+            accessibility {
+              labelled-by: broadcast_label;
+            }
+          }
+        }
+
+        Separator {}
+
+        Box {
+          hexpand: true;
+          margin-top: 6;
+
           Label subject_label {
             margin-end: 6;
             label: _("Subject:");
@@ -136,7 +204,7 @@ Adw.Dialog compose_dialog {
           }
 
           Text subject {
-            height-request: 42;
+            height-request: 30;
             hexpand: true;
 
             accessibility {
@@ -144,26 +212,33 @@ Adw.Dialog compose_dialog {
             }
           }
         }
-
-        Separator {}
       }
     }
 
     content: ScrolledWindow {
-      TextView body {
-        top-margin: 6;
-        left-margin: 12;
-        right-margin: 12;
-        bottom-margin: 200;
-        wrap-mode: word_char;
+      Box {
+        orientation: vertical;
 
-        accessibility {
-          label: _("Message");
+        Separator {
+          margin-start: 10;
+          margin-end: 12;
         }
 
-        styles [
-          "inline",
-        ]
+        TextView body {
+          top-margin: 6;
+          left-margin: 12;
+          right-margin: 12;
+          bottom-margin: 200;
+          wrap-mode: word_char;
+
+          accessibility {
+            label: _("Message");
+          }
+
+          styles [
+            "inline",
+          ]
+        }
       }
     };
   }

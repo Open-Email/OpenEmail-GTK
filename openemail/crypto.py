@@ -18,18 +18,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import random
 from base64 import b64decode, b64encode
+from random import choice
+from secrets import token_bytes
 from typing import NamedTuple
 
 from nacl.bindings import (
     crypto_aead_xchacha20poly1305_ietf_decrypt,
+    crypto_aead_xchacha20poly1305_ietf_encrypt,
     crypto_aead_xchacha20poly1305_ietf_NPUBBYTES,
     crypto_scalarmult_base,
 )
 from nacl.exceptions import CryptoError
-from nacl.public import PrivateKey, SealedBox
+from nacl.public import PrivateKey, PublicKey, SealedBox
 from nacl.signing import SigningKey
+from nacl.utils import random
 
 SIGNING_ALGORITHM = "ed25519"
 
@@ -73,10 +76,15 @@ def sign_data(private_key: Key, data: bytes) -> str:
         raise ValueError("Unable to sign data.") from error
 
 
+def random_bytes(length: int) -> bytes:
+    """Generate a byte sequence of a given `length`."""
+    return token_bytes(length)
+
+
 def random_string(length: int) -> str:
     """Generate a random string of a given `length` from characters 0..9, A..Z, and a..z."""
     return "".join(
-        random.choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+        choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
         for _ in range(length)
     )
 
@@ -110,6 +118,14 @@ def decrypt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> by
         raise ValueError("Unable to decrypt cipher text.") from error
 
 
+def encrypt_anonymous(data: bytes, public_key: Key) -> bytes:
+    """Attempt to encrypt `data` using the provided `public_key`."""
+    try:
+        return SealedBox(PublicKey(bytes(public_key))).encrypt(data)
+    except CryptoError as error:
+        raise ValueError("Unable to encrypt data.") from error
+
+
 def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
     """Attempt to decrypt `data` using `access_key`."""
     try:
@@ -121,3 +137,18 @@ def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
         )
     except CryptoError as error:
         raise ValueError("Unable to decrypt data.") from error
+
+
+def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
+    """Attempt to encrypt `data` using `access_key`."""
+    try:
+        return (
+            nonce := random(crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)
+        ) + crypto_aead_xchacha20poly1305_ietf_encrypt(
+            data,
+            None,
+            nonce,
+            access_key,
+        )
+    except CryptoError as error:
+        raise ValueError("Unable to encrypt data.") from error

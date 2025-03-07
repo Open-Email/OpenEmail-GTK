@@ -44,7 +44,9 @@ class MailContentPage(Adw.BreakpointBin):
     details = GObject.Property(type=Gtk.Widget)
 
     compose_dialog: Adw.Dialog = Gtk.Template.Child()
+    broadcast_switch: Gtk.Switch = Gtk.Template.Child()
     subject: Gtk.Text = Gtk.Template.Child()
+    readers: Gtk.Text = Gtk.Template.Child()
     body: Gtk.TextView = Gtk.Template.Child()
 
     _model: Gtk.SelectionModel
@@ -89,21 +91,31 @@ class MailContentPage(Adw.BreakpointBin):
 
     @Gtk.Template.Callback()
     def _new_message(self, *_args: Any) -> None:
+        self.readers.set_text("")
         self.subject.set_text("")
         self.body.get_buffer().set_text("")
+        self.broadcast_switch.set_active(False)
 
         self.compose_dialog.present(self)
-        self.subject.grab_focus()
+        self.readers.grab_focus()
 
     @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:
         if not shared.user:
             return
 
+        readers: list[Address] = []
+        if not self.broadcast_switch.get_active():
+            for reader in self.readers.get_text().split(","):
+                try:
+                    readers.append(Address(reader.strip()))
+                except ValueError:
+                    return
+
         shared.loop.create_task(
             send_message(
                 shared.user,
-                (),
+                readers,
                 self.subject.get_text(),
                 (buffer := self.body.get_buffer()).get_text(
                     buffer.get_start_iter(),
