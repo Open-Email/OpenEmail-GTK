@@ -20,14 +20,14 @@
 
 import asyncio
 import json
-from base64 import b64decode, b64encode
+from base64 import b64encode
 from datetime import datetime, timezone
 from hashlib import sha256
 from http.client import HTTPResponse
 from os import getenv
 from pathlib import Path
 from socket import setdefaulttimeout
-from typing import Iterable, MutableMapping
+from typing import Iterable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -263,7 +263,7 @@ async def fetch_message_from_agent(
     if (not envelope.is_broadcast) and envelope.access_key:
         try:
             contents = decrypt_xchacha20poly1305(contents, envelope.access_key)
-        except ValueError as error:
+        except ValueError:
             return None
 
     try:
@@ -277,8 +277,6 @@ async def fetch_message_ids(url: str, user: User, author: Address) -> tuple[str,
 
     `{}` in `url` will be substituted by the mail agent.
     """
-    link = generate_link(user.address, author)
-
     for agent in await get_agents(user.address):
         if not (response := await request(url.format(agent), user)):
             continue
@@ -439,7 +437,7 @@ async def send_message(
             {
                 "Message-Access": ",".join(groups),
                 "Message-Encryption": "xchacha20poly1305",
-                "Message-Headers": f"algorithm=xchacha20poly1305;",
+                "Message-Headers": "algorithm=xchacha20poly1305;",
             }
         )
 

@@ -21,11 +21,10 @@
 from dataclasses import dataclass
 from typing import Any
 
-from gi.repository import Adw, Gdk, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import shared
-from openemail.network import fetch_profile, fetch_profile_image
-from openemail.user import Address, Profile
+from openemail.user import Profile
 
 
 @dataclass

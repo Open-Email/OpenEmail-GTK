@@ -18,11 +18,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from re import sub
 from typing import Any
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
-from nacl.public import SealedBox
 
 from openemail import shared
 from openemail.crypto import decrypt_xchacha20poly1305
@@ -127,7 +125,7 @@ class MailMessageView(Adw.Bin):
             for part in parts:
                 if not (
                     (url := part.attachment_url)
-                    and (response := await request(part.attachment_url, shared.user))
+                    and (response := await request(url, shared.user))
                 ):
                     return
 

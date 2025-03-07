@@ -21,13 +21,11 @@
 from locale import strcoll
 from typing import Any
 
-from gi.repository import Adw, Gdk, Gio, GObject, Gtk
+from gi.repository import Adw, Gtk
 
 from openemail import shared
 from openemail.gtk.content_page import MailContentPage
 from openemail.gtk.profile_view import MailProfileView
-from openemail.network import fetch_contacts
-from openemail.user import Address, Profile
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")

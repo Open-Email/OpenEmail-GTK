@@ -19,7 +19,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from base64 import b64decode
-from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
@@ -154,7 +153,7 @@ class Envelope:
             if part := file_headers.get("part"):
                 try:
                     self.part = int(part.split("/")[0].strip())
-                except ValueError as error:
+                except ValueError:
                     pass
 
         if readers := headers.get("readers"):
@@ -191,7 +190,7 @@ class Message:
         if props.part:
             try:
                 child.envelope.part = int(props.part.split("/")[0].strip())
-            except ValueError as error:
+            except ValueError:
                 pass
 
     def reconstruct_from_children(self) -> None:

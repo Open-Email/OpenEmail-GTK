@@ -18,12 +18,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from typing import Any, Callable
+from typing import Any
 
-from gi.repository import Adw, GLib, GObject, Gtk
+from gi.repository import Adw, GObject, Gtk
 
 from openemail import shared
-from openemail.gtk.profile_view import MailProfileView
 from openemail.network import send_message
 from openemail.user import Address
 

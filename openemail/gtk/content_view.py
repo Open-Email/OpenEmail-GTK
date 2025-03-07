@@ -20,14 +20,13 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import shared
 from openemail.gtk.contacts_page import MailContactsPage
 from openemail.gtk.messages_page import MailMessagesPage
 from openemail.gtk.navigation_row import MailNavigationRow
 from openemail.gtk.profile_view import MailProfileView
-from openemail.user import Address, Profile
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/content-view.ui")

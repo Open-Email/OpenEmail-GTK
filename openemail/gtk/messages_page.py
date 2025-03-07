@@ -18,16 +18,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from email.message import Message
-from typing import Any, Literal, Sequence
+from typing import Any, Literal
 
-from gi.repository import Adw, Gdk, Gio, GObject, Gtk
+from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import shared
 from openemail.gtk.content_page import MailContentPage
 from openemail.gtk.message_view import MailMessageView
-from openemail.message import Envelope, Message
-from openemail.user import Address
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/messages-page.ui")
