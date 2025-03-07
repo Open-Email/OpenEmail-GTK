@@ -89,24 +89,25 @@ class MailContentView(Adw.BreakpointBin):
             self.toast_overlay.add_toast(self.syncing_toast)
 
         def update_address_book_cb() -> None:
-            shared.loop.create_task(shared.update_profiles())
-            shared.loop.create_task(shared.update_broadcasts_list()).add_done_callback(
-                lambda *_: self.broadcasts_page.content.set_property("loading", False)
+            shared.run_task(shared.update_profiles())
+            shared.run_task(
+                shared.update_broadcasts_list(),
+                lambda: self.broadcasts_page.content.set_property("loading", False),
             )
-            shared.loop.create_task(shared.update_messages_list()).add_done_callback(
-                lambda *_: self.inbox_page.content.set_property("loading", False)
+            shared.run_task(
+                shared.update_messages_list(),
+                lambda: self.inbox_page.content.set_property("loading", False),
             )
-            shared.loop.create_task(shared.update_outbox()).add_done_callback(
-                lambda *_: self.outbox_page.content.set_property("loading", False)
+            shared.run_task(
+                shared.update_outbox(),
+                lambda: self.outbox_page.content.set_property("loading", False),
             )
 
         self.contacts_page.content.loading = True
         self.broadcasts_page.content.loading = True
         self.inbox_page.content.loading = True
         self.outbox_page.content.loading = True
-        shared.loop.create_task(shared.update_address_book()).add_done_callback(
-            lambda *_: update_address_book_cb()
-        )
+        shared.run_task(shared.update_address_book(), update_address_book_cb)
 
         def update_user_profile_cb() -> None:
             if not shared.user:
@@ -118,9 +119,7 @@ class MailContentView(Adw.BreakpointBin):
             self.profile_stack_child_name = "profile"
 
         self.profile_stack_child_name = "spinner"
-        shared.loop.create_task(shared.update_user_profile()).add_done_callback(
-            lambda *_: update_user_profile_cb()
-        )
+        shared.run_task(shared.update_user_profile(), update_user_profile_cb)
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:  # type: ignore

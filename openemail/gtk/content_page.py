@@ -112,7 +112,7 @@ class MailContentPage(Adw.BreakpointBin):
                 except ValueError:
                     return
 
-        shared.loop.create_task(
+        shared.run_task(
             send_message(
                 shared.user,
                 readers,
@@ -122,8 +122,9 @@ class MailContentPage(Adw.BreakpointBin):
                     buffer.get_end_iter(),
                     False,
                 ),
-            )
-        ).add_done_callback(lambda *_: shared.loop.create_task(shared.update_outbox()))
+            ),
+            lambda: shared.run_task(shared.update_outbox()),
+        )
 
         self.compose_dialog.force_close()
 

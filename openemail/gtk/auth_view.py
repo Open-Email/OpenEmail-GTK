@@ -102,7 +102,7 @@ class MailAuthView(Adw.Bin):
             GLib.idle_add(self.emit, "authenticated")
             GLib.idle_add(self.set_property, "button-child-name", "label")
 
-        shared.loop.create_task(authenticate())
+        shared.run_task(authenticate())
 
     def __warn(self, warning: str) -> None:
         self.toast_overlay.add_toast(

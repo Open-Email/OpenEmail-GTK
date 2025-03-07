@@ -305,3 +305,18 @@ async def update_outbox() -> None:
     outbox.remove_all()
     for message in chain(*result):
         outbox.append(MailMessage(message))
+
+
+_tasks: set[asyncio.Task] = set()
+
+
+def run_task(
+    coro: Coroutine[Any, Any, Any],
+    callback: Callable[[], Any] | None = None,
+) -> None:
+    """Run a coroutine in a task, calling `callback` on finish."""
+    global _tasks
+
+    _tasks.add(task := loop.create_task(coro))
+    task.add_done_callback(lambda *_: callback() if callback else None)
+    task.add_done_callback(_tasks.discard)

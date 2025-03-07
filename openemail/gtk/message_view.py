@@ -168,7 +168,7 @@ class MailMessageView(Adw.Bin):
             except GLib.Error:
                 return
 
-            shared.loop.create_task(save(gfile))
+            shared.run_task(save(gfile))
 
         Gtk.FileDialog(
             initial_name=row.get_title(),
