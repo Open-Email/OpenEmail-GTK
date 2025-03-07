@@ -123,7 +123,7 @@ class MailContentPage(Adw.BreakpointBin):
                     False,
                 ),
             )
-        )
+        ).add_done_callback(lambda *_: shared.loop.create_task(shared.update_outbox()))
 
         self.compose_dialog.force_close()
 
