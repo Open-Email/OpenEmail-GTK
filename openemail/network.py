@@ -380,7 +380,7 @@ async def send_message(
     content_headers: dict[str, str] = {
         "Id": message_id,
         "Author": str(user.address),
-        "Date": datetime.now(timezone.utc).isoformat(),
+        "Date": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "Size": str(len(body)),
         "Checksum": ";".join(
             (
