@@ -114,8 +114,23 @@ class MailMessagesPage(Adw.NavigationPage):
 
         self._folder = folder
 
-    def new_message(self) -> None:
-        """Show a dialog in which the user can compose a message."""
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        self.add_controller(
+            controller := Gtk.ShortcutController(
+                scope=Gtk.ShortcutScope.GLOBAL,
+            )
+        )
+        controller.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("<primary>n"),
+                Gtk.CallbackAction.new(lambda *_: not (self._new_message())),
+            )
+        )
+
+    @Gtk.Template.Callback()
+    def _new_message(self, *_args: Any) -> None:
         self.readers.set_text("")
         self.subject.set_text("")
         self.body.get_buffer().set_text("")
@@ -123,10 +138,6 @@ class MailMessagesPage(Adw.NavigationPage):
 
         self.compose_dialog.present(self)
         self.readers.grab_focus()
-
-    @Gtk.Template.Callback()
-    def _new_message(self, *_args: Any) -> None:
-        self.new_message()
 
     @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:

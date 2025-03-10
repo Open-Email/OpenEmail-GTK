@@ -32,11 +32,25 @@ ShortcutsWindow help_overlay {
     }
 
     ShortcutsGroup {
-      title: _("Message");
+      title: _("Messages");
 
       ShortcutsShortcut {
-        title: _("Delete");
+        title: _("Delete Message");
         accelerator: "Delete";
+      }
+
+      ShortcutsShortcut {
+        title: _("New Message");
+        accelerator: "<primary>n";
+      }
+    }
+    
+    ShortcutsGroup {
+      title: _("Contacts");
+
+      ShortcutsShortcut {
+        title: _("New Contact");
+        accelerator: "<primary>n";
       }
     }
   }

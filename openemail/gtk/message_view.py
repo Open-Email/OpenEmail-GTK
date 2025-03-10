@@ -67,7 +67,6 @@ class MailMessageView(Adw.Bin):
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.attachment_messages = {}
-
         self.undo = {}
 
         def undo(*_args: Any) -> bool:
