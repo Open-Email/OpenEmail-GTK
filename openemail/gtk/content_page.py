@@ -84,9 +84,9 @@ class MailContentPage(Adw.BreakpointBin):
 
     def __update_loading(self, *_args: Any) -> None:
         self.sidebar_child_name = (
-            "spinner"
-            if self._loading
-            else "content"
+            "content"
             if self.model.get_n_items()
+            else "spinner"
+            if self._loading
             else "empty"
         )
