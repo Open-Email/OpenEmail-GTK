@@ -2,171 +2,173 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MailMessageView: Adw.Bin {
-  Adw.ToolbarView {
-    [top]
-    Adw.HeaderBar {
-      show-title: false;
+  Adw.ToastOverlay toast_overlay {
+    Adw.ToolbarView {
+      [top]
+      Adw.HeaderBar {
+        show-title: false;
 
-      [end]
-      Button {
-        visible: bind template.can-trash;
-        icon-name: "trash-symbolic";
-        tooltip-text: _("Trash Message");
-        clicked => $_trash();
-
-        styles [
-          "flat",
-        ]
-      }
-
-      [end]
-      Button {
-        visible: bind template.can-restore;
-        label: _("Restore");
-        clicked => $_restore();
-
-        styles [
-          "flat",
-        ]
-      }
-
-      [end]
-      Button {
-        visible: bind template.author-is-self;
-        icon-name: "trash-symbolic";
-        tooltip-text: _("Discard Message");
-        clicked => $_discard();
-
-        styles [
-          "flat",
-        ]
-      }
-    }
-
-    content: Stack {
-      visible-child-name: bind template.visible-child-name;
-
-      StackPage {
-        name: "empty";
-
-        child: Label {
-          label: _("No Message Selected");
-          wrap: true;
-          wrap-mode: word_char;
+        [end]
+        Button {
+          visible: bind template.can-trash;
+          icon-name: "trash-symbolic";
+          tooltip-text: _("Trash Message");
+          clicked => $_trash();
 
           styles [
-            "title-2",
-            "dim-label",
+            "flat",
           ]
-        };
+        }
+
+        [end]
+        Button {
+          visible: bind template.can-restore;
+          label: _("Restore");
+          clicked => $_restore();
+
+          styles [
+            "flat",
+          ]
+        }
+
+        [end]
+        Button {
+          visible: bind template.author-is-self;
+          icon-name: "trash-symbolic";
+          tooltip-text: _("Discard Message");
+          clicked => $_discard();
+
+          styles [
+            "flat",
+          ]
+        }
       }
 
-      StackPage {
-        name: "message";
+      content: Stack {
+        visible-child-name: bind template.visible-child-name;
 
-        child: ScrolledWindow {
-          Box {
-            margin-top: 12;
-            margin-bottom: 32;
-            margin-start: 24;
-            margin-end: 24;
-            orientation: vertical;
-            spacing: 18;
+        StackPage {
+          name: "empty";
 
+          child: Label {
+            label: _("No Message Selected");
+            wrap: true;
+            wrap-mode: word_char;
+
+            styles [
+              "title-2",
+              "dim-label",
+            ]
+          };
+        }
+
+        StackPage {
+          name: "message";
+
+          child: ScrolledWindow {
             Box {
-              valign: start;
-              spacing: 3;
-
-              Button {
-                valign: start;
-                tooltip-text: _("Profile");
-                clicked => $_show_profile_dialog();
-
-                Adw.Avatar {
-                  size: 48;
-                  text: bind template.name;
-                  custom-image: bind template.profile-image;
-                  show-initials: true;
-                }
-
-                styles [
-                  "circular",
-                  "avatar-button",
-                ]
-              }
+              margin-top: 12;
+              margin-bottom: 32;
+              margin-start: 24;
+              margin-end: 24;
+              orientation: vertical;
+              spacing: 18;
 
               Box {
-                margin-start: 6;
-                orientation: vertical;
+                valign: start;
                 spacing: 3;
 
+                Button {
+                  valign: start;
+                  tooltip-text: _("Profile");
+                  clicked => $_show_profile_dialog();
+
+                  Adw.Avatar {
+                    size: 48;
+                    text: bind template.name;
+                    custom-image: bind template.profile-image;
+                    show-initials: true;
+                  }
+
+                  styles [
+                    "circular",
+                    "avatar-button",
+                  ]
+                }
+
                 Box {
+                  margin-start: 6;
+                  orientation: vertical;
+                  spacing: 3;
+
+                  Box {
+                    Label {
+                      hexpand: true;
+                      halign: start;
+                      label: bind template.name;
+                      ellipsize: end;
+
+                      styles [
+                        "title-4",
+                      ]
+                    }
+
+                    Label {
+                      halign: end;
+                      label: bind template.date;
+                      ellipsize: end;
+
+                      styles [
+                        "numeric",
+                      ]
+                    }
+                  }
+
                   Label {
-                    hexpand: true;
                     halign: start;
-                    label: bind template.name;
-                    ellipsize: end;
+                    label: bind template.subject;
+                    wrap: true;
+                    selectable: true;
 
                     styles [
-                      "title-4",
+                      "heading",
                     ]
                   }
 
                   Label {
-                    halign: end;
-                    label: bind template.date;
-                    ellipsize: end;
+                    halign: start;
+                    label: bind template.readers;
+                    wrap: true;
+                    selectable: true;
 
                     styles [
-                      "numeric",
+                      "caption",
                     ]
                   }
-                }
-
-                Label {
-                  halign: start;
-                  label: bind template.subject;
-                  wrap: true;
-                  selectable: true;
-
-                  styles [
-                    "heading",
-                  ]
-                }
-
-                Label {
-                  halign: start;
-                  label: bind template.readers;
-                  wrap: true;
-                  selectable: true;
-
-                  styles [
-                    "caption",
-                  ]
                 }
               }
-            }
 
-            Label {
-              halign: start;
-              hexpand: true;
-              label: bind template.body;
-              wrap: true;
-              selectable: true;
-            }
+              Label {
+                halign: start;
+                hexpand: true;
+                label: bind template.body;
+                wrap: true;
+                selectable: true;
+              }
 
-            ListBox attachments {
-              selection-mode: none;
-              row-activated => $_open_attachment();
+              ListBox attachments {
+                selection-mode: none;
+                row-activated => $_open_attachment();
 
-              styles [
-                "boxed-list-separate",
-              ]
+                styles [
+                  "boxed-list-separate",
+                ]
+              }
             }
-          }
-        };
-      }
-    };
+          };
+        }
+      };
+    }
   }
 }
 

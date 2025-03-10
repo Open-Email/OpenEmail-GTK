@@ -35,6 +35,7 @@ class MailMessageView(Adw.Bin):
 
     __gtype_name__ = "MailMessageView"
 
+    toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
     attachments: Gtk.ListBox = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
@@ -203,21 +204,32 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        shared.settings.set_strv(
-            "trashed-message-ids",
-            shared.settings.get_strv("trashed-message-ids")
-            + [self.message.envelope.message_id],
-        )
+        shared.trash_message(message_id := self.message.envelope.message_id)
+
+        (
+            toast := Adw.Toast(
+                title=_("Message moved to trash"),
+                priority=Adw.ToastPriority.HIGH,
+                button_label=_("Undo"),
+            )
+        ).connect("button-clicked", lambda *_: shared.restore_message(message_id))
+        self.toast_overlay.add_toast(toast)
 
     @Gtk.Template.Callback()
     def _restore(self, *_args: Any) -> None:
         if not self.message:
             return
 
-        trashed = shared.settings.get_strv("trashed-message-ids")
-        trashed.remove(self.message.envelope.message_id)
+        shared.restore_message(message_id := self.message.envelope.message_id)
 
-        shared.settings.set_strv("trashed-message-ids", trashed)
+        (
+            toast := Adw.Toast(
+                title=_("Message restored"),
+                priority=Adw.ToastPriority.HIGH,
+                button_label=_("Undo"),
+            )
+        ).connect("button-clicked", lambda *_: shared.trash_message(message_id))
+        self.toast_overlay.add_toast(toast)
 
     @Gtk.Template.Callback()
     def _discard(self, *_args: Any) -> None:

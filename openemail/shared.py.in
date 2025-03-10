@@ -329,3 +329,18 @@ def run_task(
     _tasks.add(task := loop.create_task(coro))
     task.add_done_callback(lambda *_: callback() if callback else None)
     task.add_done_callback(_tasks.discard)
+
+
+def trash_message(message_id: str) -> None:
+    """Move the message associated with `message_id` to the trash."""
+    settings.set_strv(
+        "trashed-message-ids",
+        settings.get_strv("trashed-message-ids") + [message_id],
+    )
+
+
+def restore_message(message_id: str) -> None:
+    """Restore the message associated with `message_id` from the trash."""
+    trashed = settings.get_strv("trashed-message-ids")
+    trashed.remove(message_id)
+    settings.set_strv("trashed-message-ids", trashed)
