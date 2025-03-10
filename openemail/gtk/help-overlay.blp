@@ -9,6 +9,11 @@ ShortcutsWindow help_overlay {
 
     ShortcutsGroup {
       title: _("General");
+      
+      ShortcutsShortcut {
+        title: _("Undo");
+        accelerator: "<primary>z";
+      }
 
       ShortcutsShortcut {
         title: _("Preferences");
@@ -23,6 +28,15 @@ ShortcutsWindow help_overlay {
       ShortcutsShortcut {
         title: _("Quit");
         action-name: "app.quit";
+      }
+    }
+    
+    ShortcutsGroup {
+      title: _("Message");
+      
+      ShortcutsShortcut {
+        title: _("Delete");
+        accelerator: "Delete";
       }
     }
   }

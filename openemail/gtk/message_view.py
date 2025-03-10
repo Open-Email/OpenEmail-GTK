@@ -18,7 +18,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from typing import Any
+from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
@@ -62,9 +62,49 @@ class MailMessageView(Adw.Bin):
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
 
+    undo: dict[Adw.Toast, Callable[[], Any]]
+
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.attachment_messages = {}
+
+        self.undo = {}
+
+        def undo(*_args: Any) -> bool:
+            if not self.undo:
+                return False
+
+            toast, callback = self.undo.popitem()
+            toast.dismiss()
+            callback()
+
+            return True
+
+        self.add_controller(
+            controller := Gtk.ShortcutController(
+                scope=Gtk.ShortcutScope.GLOBAL,
+            )
+        )
+        controller.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("Delete|KP_Delete"),
+                Gtk.CallbackAction.new(
+                    lambda *_: not (
+                        self._discard
+                        if self.author_is_self
+                        else self._trash
+                        if self.can_trash
+                        else self._restore
+                    )()
+                ),
+            )
+        )
+        controller.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("<primary>z"),
+                Gtk.CallbackAction.new(undo),
+            )
+        )
 
         if message:
             self.set_from_message(message)
@@ -86,7 +126,7 @@ class MailMessageView(Adw.Bin):
             message.envelope.message_id
             not in shared.settings.get_strv("trashed-message-ids")
         )
-        self.can_restore = not self.can_trash
+        self.can_restore = not (self.can_trash or self.author_is_self)
 
         if self._name_binding:
             self._name_binding.unbind()
@@ -205,15 +245,10 @@ class MailMessageView(Adw.Bin):
             return
 
         shared.trash_message(message_id := self.message.envelope.message_id)
-
-        (
-            toast := Adw.Toast(
-                title=_("Message moved to trash"),
-                priority=Adw.ToastPriority.HIGH,
-                button_label=_("Undo"),
-            )
-        ).connect("button-clicked", lambda *_: shared.restore_message(message_id))
-        self.toast_overlay.add_toast(toast)
+        self.__add_to_undo(
+            _("Message moved to trash"),
+            lambda: shared.restore_message(message_id),
+        )
 
     @Gtk.Template.Callback()
     def _restore(self, *_args: Any) -> None:
@@ -221,15 +256,10 @@ class MailMessageView(Adw.Bin):
             return
 
         shared.restore_message(message_id := self.message.envelope.message_id)
-
-        (
-            toast := Adw.Toast(
-                title=_("Message restored"),
-                priority=Adw.ToastPriority.HIGH,
-                button_label=_("Undo"),
-            )
-        ).connect("button-clicked", lambda *_: shared.trash_message(message_id))
-        self.toast_overlay.add_toast(toast)
+        self.__add_to_undo(
+            _("Message restored"),
+            lambda: shared.trash_message(message_id),
+        )
 
     @Gtk.Template.Callback()
     def _discard(self, *_args: Any) -> None:
@@ -247,3 +277,17 @@ class MailMessageView(Adw.Bin):
             delete_message(self.message.envelope.message_id, shared.user),
             lambda: shared.run_task(shared.update_outbox()),
         )
+
+    def __add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
+        self.undo[
+            toast := Adw.Toast(
+                title=title,
+                priority=Adw.ToastPriority.HIGH,
+                button_label=_("Undo"),
+            )
+        ] = undo
+        toast.connect(
+            "button-clicked",
+            lambda *_: self.undo.pop(toast, lambda: None)(),
+        )
+        self.toast_overlay.add_toast(toast)

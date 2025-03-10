@@ -9,7 +9,7 @@ template $MailMessageView: Adw.Bin {
         show-title: false;
 
         [end]
-        Button {
+        Button trash_button {
           visible: bind template.can-trash;
           icon-name: "trash-symbolic";
           tooltip-text: _("Trash Message");
@@ -21,7 +21,7 @@ template $MailMessageView: Adw.Bin {
         }
 
         [end]
-        Button {
+        Button restore_button {
           visible: bind template.can-restore;
           label: _("Restore");
           clicked => $_restore();
@@ -32,7 +32,7 @@ template $MailMessageView: Adw.Bin {
         }
 
         [end]
-        Button {
+        Button discard_button {
           visible: bind template.author-is-self;
           icon-name: "trash-symbolic";
           tooltip-text: _("Discard Message");

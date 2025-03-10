@@ -341,6 +341,9 @@ def trash_message(message_id: str) -> None:
 
 def restore_message(message_id: str) -> None:
     """Restore the message associated with `message_id` from the trash."""
-    trashed = settings.get_strv("trashed-message-ids")
-    trashed.remove(message_id)
+    try:
+        (trashed := settings.get_strv("trashed-message-ids")).remove(message_id)
+    except ValueError:
+        return
+
     settings.set_strv("trashed-message-ids", trashed)
