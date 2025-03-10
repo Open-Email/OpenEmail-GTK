@@ -166,28 +166,23 @@ template $MailContentView: Adw.BreakpointBin {
 Adw.Dialog profile_dialog {
   content-width: 400;
 
-  Adw.ToolbarView {
-    [top]
-    Adw.HeaderBar {}
+  Stack profile_stack {
+    transition-type: crossfade;
+    visible-child-name: bind template.profile-stack-child-name;
 
-    content: Stack profile_stack {
-      transition-type: crossfade;
-      visible-child-name: bind template.profile-stack-child-name;
+    StackPage {
+      name: "spinner";
 
-      StackPage {
-        name: "spinner";
+      child: Adw.Spinner {};
+    }
 
-        child: Adw.Spinner {};
-      }
+    StackPage {
+      name: "profile";
 
-      StackPage {
-        name: "profile";
-
-        child: $MailProfileView profile_view {
-          paintable: bind template.profile-image;
-        };
-      }
-    };
+      child: $MailProfileView profile_view {
+        paintable: bind template.profile-image;
+      };
+    }
   }
 }
 

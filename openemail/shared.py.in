@@ -26,13 +26,12 @@ from functools import wraps
 from itertools import chain
 from pathlib import Path
 from re import sub
-from typing import Any, Callable, Coroutine, Iterable, ParamSpec, TypeVar
+from typing import Any, Callable, Coroutine
 
 from gi.events import GLibEventLoopPolicy
-from gi.repository import Adw, Gdk, Gio, GLib, GObject
+from gi.repository import Gdk, Gio, GLib, GObject
 
 from openemail import network
-from openemail.crypto import Key
 from openemail.message import Message
 from openemail.network import (
     fetch_broadcasts,

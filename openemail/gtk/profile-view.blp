@@ -2,68 +2,75 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MailProfileView: Adw.Bin {
-  Stack {
-    visible-child-name: bind template.visible-child-name;
-
-    StackPage {
-      name: "empty";
-
-      child: Adw.StatusPage {
-        title: _("No Profile Selected");
-        icon-name: "about-symbolic";
-      };
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      show-title: false;
     }
 
-    StackPage {
-      name: "not-found";
+    content: Stack {
+      visible-child-name: bind template.visible-child-name;
 
-      child: Adw.StatusPage {
-        title: _("Profile Not Found");
-        description: _("Couldn’t get information about the selected user");
-        icon-name: "about-symbolic";
-      };
-    }
+      StackPage {
+        name: "empty";
 
-    StackPage {
-      name: "profile";
+        child: Adw.StatusPage {
+          title: _("No Profile Selected");
+          icon-name: "about-symbolic";
+        };
+      }
 
-      child: Adw.PreferencesPage page {
-        Adw.PreferencesGroup {
-          Adw.Avatar {
-            size: 128;
-            text: bind template.name;
-            custom-image: bind template.paintable;
-            show-initials: true;
-          }
-        }
+      StackPage {
+        name: "not-found";
 
-        Adw.PreferencesGroup {
-          Label {
-            label: bind template.name;
+        child: Adw.StatusPage {
+          title: _("Profile Not Found");
+          description: _("Couldn’t get information about the selected user");
+          icon-name: "about-symbolic";
+        };
+      }
 
-            styles [
-              "title-1",
-            ]
-          }
+      StackPage {
+        name: "profile";
 
-          Label {
-            margin-top: 3;
-            label: bind template.address;
+        child: Adw.PreferencesPage page {
+          Adw.PreferencesGroup {
+            Adw.Avatar {
+              size: 128;
+              text: bind template.name;
+              custom-image: bind template.paintable;
+              show-initials: true;
+            }
           }
 
-          Label {
-            visible: bind template.away;
-            margin-top: 9;
-            halign: center;
-            label: _("Away");
+          Adw.PreferencesGroup {
+            Label {
+              label: bind template.name;
 
-            styles [
-              "caption",
-              "away-label",
-            ]
+              styles [
+                "title-1",
+              ]
+            }
+
+            Label {
+              margin-top: 3;
+              label: bind template.address;
+            }
+
+            Label {
+              visible: bind template.away;
+              margin-top: 9;
+              halign: center;
+              label: _("Away");
+
+              styles [
+                "caption",
+                "away-label",
+              ]
+            }
           }
-        }
-      };
-    }
+        };
+      }
+    };
   }
 }

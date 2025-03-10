@@ -69,15 +69,7 @@ template $MailContentPage: Adw.BreakpointBin {
 
     content: Adw.NavigationPage {
       title: _("Details");
-
-      Adw.ToolbarView {
-        [top]
-        Adw.HeaderBar {
-          show-title: false;
-        }
-
-        content: bind template.details;
-      }
+      child: bind template.details;
     };
   }
 }

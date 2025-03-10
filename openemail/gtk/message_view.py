@@ -26,7 +26,7 @@ from openemail import shared
 from openemail.crypto import decrypt_xchacha20poly1305
 from openemail.gtk.profile_view import MailProfileView
 from openemail.message import Message
-from openemail.network import request
+from openemail.network import delete_message, request
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/message-view.ui")
@@ -40,6 +40,8 @@ class MailMessageView(Adw.Bin):
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
     profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
 
+    confirm_discard_dialog: Adw.AlertDialog = Gtk.Template.Child()
+
     visible_child_name = GObject.Property(type=str, default="empty")
 
     message: Message | None = None
@@ -51,6 +53,7 @@ class MailMessageView(Adw.Bin):
     body = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
     readers = GObject.Property(type=str)
+    author_is_self = GObject.Property(type=bool, default=False)
 
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
@@ -70,6 +73,9 @@ class MailMessageView(Adw.Bin):
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
         self.body = message.body
+        self.author_is_self = shared.user and (
+            message.envelope.author == shared.user.address
+        )
 
         if self._name_binding:
             self._name_binding.unbind()
@@ -180,4 +186,21 @@ class MailMessageView(Adw.Bin):
         ).save(
             win if isinstance(win := self.get_root(), Gtk.Window) else None,
             callback=save_finish,
+        )
+
+    @Gtk.Template.Callback()
+    def _discard(self, *_args: Any) -> None:
+        self.confirm_discard_dialog.present(self)
+
+    @Gtk.Template.Callback()
+    def _confirm_discard(self, _obj: Any, response: str) -> None:
+        if response != "discard":
+            return
+
+        if not (self.message and shared.user):
+            return
+
+        shared.run_task(
+            delete_message(self.message.envelope.message_id, shared.user),
+            lambda: shared.run_task(shared.update_outbox()),
         )

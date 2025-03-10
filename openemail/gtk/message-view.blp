@@ -2,135 +2,161 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MailMessageView: Adw.Bin {
-  Stack {
-    visible-child-name: bind template.visible-child-name;
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      show-title: false;
 
-    StackPage {
-      name: "empty";
+      [end]
+      Button {
+        visible: bind template.author-is-self;
+        icon-name: "trash-symbolic";
+        tooltip-text: _("Discard Message");
+        clicked => $_discard();
 
-      child: Adw.StatusPage {
-        title: _("No Message Selected");
-        icon-name: "mailbox-symbolic";
-      };
+        styles [
+          "flat",
+        ]
+      }
     }
 
-    StackPage {
-      name: "message";
+    content: Stack {
+      visible-child-name: bind template.visible-child-name;
 
-      child: ScrolledWindow {
-        Box {
-          margin-top: 12;
-          margin-bottom: 32;
-          margin-start: 24;
-          margin-end: 24;
-          orientation: vertical;
-          spacing: 18;
+      StackPage {
+        name: "empty";
 
+        child: Adw.StatusPage {
+          title: _("No Message Selected");
+          icon-name: "mailbox-symbolic";
+        };
+      }
+
+      StackPage {
+        name: "message";
+
+        child: ScrolledWindow {
           Box {
-            valign: start;
-            spacing: 3;
-
-            Button {
-              valign: start;
-              tooltip-text: _("Profile");
-              clicked => $_show_profile_dialog();
-
-              Adw.Avatar {
-                size: 48;
-                text: bind template.name;
-                custom-image: bind template.profile-image;
-                show-initials: true;
-              }
-
-              styles [
-                "circular",
-                "avatar-button",
-              ]
-            }
+            margin-top: 12;
+            margin-bottom: 32;
+            margin-start: 24;
+            margin-end: 24;
+            orientation: vertical;
+            spacing: 18;
 
             Box {
-              margin-start: 6;
-              orientation: vertical;
+              valign: start;
               spacing: 3;
 
+              Button {
+                valign: start;
+                tooltip-text: _("Profile");
+                clicked => $_show_profile_dialog();
+
+                Adw.Avatar {
+                  size: 48;
+                  text: bind template.name;
+                  custom-image: bind template.profile-image;
+                  show-initials: true;
+                }
+
+                styles [
+                  "circular",
+                  "avatar-button",
+                ]
+              }
+
               Box {
+                margin-start: 6;
+                orientation: vertical;
+                spacing: 3;
+
+                Box {
+                  Label {
+                    hexpand: true;
+                    halign: start;
+                    label: bind template.name;
+                    ellipsize: end;
+
+                    styles [
+                      "title-4",
+                    ]
+                  }
+
+                  Label {
+                    halign: end;
+                    label: bind template.date;
+                    ellipsize: end;
+
+                    styles [
+                      "numeric",
+                    ]
+                  }
+                }
+
                 Label {
-                  hexpand: true;
                   halign: start;
-                  label: bind template.name;
-                  ellipsize: end;
+                  label: bind template.subject;
+                  wrap: true;
+                  selectable: true;
 
                   styles [
-                    "title-4",
+                    "heading",
                   ]
                 }
 
                 Label {
-                  halign: end;
-                  label: bind template.date;
-                  ellipsize: end;
+                  halign: start;
+                  label: bind template.readers;
+                  wrap: true;
+                  selectable: true;
 
                   styles [
-                    "numeric",
+                    "caption",
                   ]
                 }
-              }
-
-              Label {
-                halign: start;
-                label: bind template.subject;
-                wrap: true;
-                selectable: true;
-
-                styles [
-                  "heading",
-                ]
-              }
-
-              Label {
-                halign: start;
-                label: bind template.readers;
-                wrap: true;
-                selectable: true;
-
-                styles [
-                  "caption",
-                ]
               }
             }
-          }
 
-          Label {
-            halign: start;
-            hexpand: true;
-            label: bind template.body;
-            wrap: true;
-            selectable: true;
-          }
+            Label {
+              halign: start;
+              hexpand: true;
+              label: bind template.body;
+              wrap: true;
+              selectable: true;
+            }
 
-          ListBox attachments {
-            selection-mode: none;
-            row-activated => $_open_attachment();
+            ListBox attachments {
+              selection-mode: none;
+              row-activated => $_open_attachment();
 
-            styles [
-              "boxed-list-separate",
-            ]
+              styles [
+                "boxed-list-separate",
+              ]
+            }
           }
-        }
-      };
-    }
+        };
+      }
+    };
   }
 }
 
 Adw.Dialog profile_dialog {
   content-width: 400;
 
-  Adw.ToolbarView {
-    [top]
-    Adw.HeaderBar {}
-
-    content: $MailProfileView profile_view {
-      paintable: bind template.profile-image;
-    };
+  $MailProfileView profile_view {
+    paintable: bind template.profile-image;
   }
+}
+
+Adw.AlertDialog confirm_discard_dialog {
+  heading: _("Discard Message?");
+  body: _("It will be permanently deleted from the outbox and it will no longer be accessible to readers.");
+  close-response: "cancel";
+  response => $_confirm_discard();
+
+  responses [
+    cancel: _("Cancel"),
+    discard: _("Discard") destructive,
+  ]
 }

@@ -40,7 +40,10 @@ class MailPreferences(Adw.PreferencesDialog):
         self.confirm_remove_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _confirm_remove(self, *_args: Any) -> None:
+    def _confirm_remove(self, _obj: Any, response: str) -> None:
+        if response != "remove":
+            return
+
         if not shared.user:
             return
 

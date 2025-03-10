@@ -518,6 +518,25 @@ async def notify_readers(readers: Iterable[Address], user: User) -> None:
                 break
 
 
+async def delete_message(
+    message_id: str,
+    user: User,
+) -> bool:
+    """Attempt to delete `message_id`.
+
+    Returns `True` on success.
+    """
+    for agent in await get_agents(user.address):
+        if await request(
+            f"{_home_messages(agent, user.address)}/{message_id}",
+            user,
+            method="DELETE",
+        ):
+            return True
+
+    return False
+
+
 def _home(agent: str, address: Address) -> str:
     return f"https://{agent}/home/{address.host_part}/{address.local_part}"
 
