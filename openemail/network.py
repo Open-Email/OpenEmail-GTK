@@ -138,7 +138,7 @@ async def try_auth(user: User) -> bool:
 async def fetch_profile(address: Address) -> Profile | None:
     """Attempt to fetch the remote profile associated with a given `address`."""
     for agent in await get_agents(address):
-        if not (response := await request(f"{_mail(agent, address)}/profile")):
+        if not (response := await request(_profile(agent, address))):
             continue
 
         with response:
@@ -155,7 +155,7 @@ async def fetch_profile(address: Address) -> Profile | None:
 async def fetch_profile_image(address: Address) -> bytes | None:
     """Attempt to fetch the remote profile image associated with a given `address`."""
     for agent in await get_agents(address):
-        if not (response := await request(f"{_mail(agent, address)}/image")):
+        if not (response := await request(_image(agent, address))):
             continue
 
         with response:
@@ -170,12 +170,7 @@ async def fetch_contacts(user: User) -> tuple[Address, ...]:
     addresses = []
 
     for agent in await get_agents(user.address):
-        if not (
-            response := await request(
-                f"{_home(agent, user.address)}/links",
-                user,
-            )
-        ):
+        if not (response := await request(_links(agent, user.address), user)):
             continue
 
         with response:
@@ -203,6 +198,29 @@ async def fetch_contacts(user: User) -> tuple[Address, ...]:
         break
 
     return tuple(addresses)
+
+
+async def new_contact(address: Address, user: User) -> None:
+    """Add `address` to the user's address book."""
+    try:
+        data = b64encode(
+            encrypt_anonymous(
+                str(address).encode("utf-8"),
+                user.public_encryption_key,
+            )
+        )
+    except ValueError:
+        return
+
+    link = generate_link(address, user.address)
+    for agent in await get_agents(address):
+        if await request(
+            _home_link(agent, user.address, link),
+            user,
+            method="PUT",
+            data=data,
+        ):
+            return
 
 
 async def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
@@ -528,7 +546,7 @@ async def delete_message(
     """
     for agent in await get_agents(user.address):
         if await request(
-            f"{_home_messages(agent, user.address)}/{message_id}",
+            _home_message(agent, user.address, message_id),
             user,
             method="DELETE",
         ):
@@ -541,8 +559,20 @@ def _home(agent: str, address: Address) -> str:
     return f"https://{agent}/home/{address.host_part}/{address.local_part}"
 
 
+def _links(agent: str, address: Address) -> str:
+    return f"{_home(agent, address)}/links"
+
+
 def _home_messages(agent: str, address: Address) -> str:
     return f"{_home(agent, address)}/messages"
+
+
+def _home_message(agent: str, address: Address, message_id: str) -> str:
+    return f"{_home_messages(agent, address)}/{message_id}"
+
+
+def _home_link(agent: str, address: Address, link: str) -> str:
+    return f"{_home(agent, address)}/links/{link}"
 
 
 def _mail_host(agent: str, address: Address) -> str:
@@ -553,17 +583,25 @@ def _mail(agent: str, address: Address) -> str:
     return f"{_mail_host(agent, address)}/{address.local_part}"
 
 
+def _profile(agent: str, address: Address) -> str:
+    return f"{_mail(agent, address)}/profile"
+
+
+def _image(agent: str, address: Address) -> str:
+    return f"{_mail(agent, address)}/image"
+
+
 def _mail_messages(agent: str, address: Address) -> str:
     return f"{_mail(agent, address)}/messages"
 
 
-def _link(agent: str, address: Address, link: str) -> str:
+def _mail_link(agent: str, address: Address, link: str) -> str:
     return f"{_mail(agent, address)}/link/{link}"
 
 
 def _link_messages(agent: str, address: Address, link: str) -> str:
-    return f"{_link(agent, address, link)}/messages"
+    return f"{_mail_link(agent, address, link)}/messages"
 
 
 def _notifications(agent: str, address: Address, link: str) -> str:
-    return f"{_link(agent, address, link)}/notifications"
+    return f"{_mail_link(agent, address, link)}/notifications"

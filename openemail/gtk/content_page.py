@@ -23,8 +23,6 @@ from typing import Any
 from gi.repository import Adw, GObject, Gtk
 
 from openemail import shared
-from openemail.network import send_message
-from openemail.user import Address
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/content-page.ui")
@@ -41,13 +39,8 @@ class MailContentPage(Adw.BreakpointBin):
 
     title = GObject.Property(type=str, default=_("Content"))
     details = GObject.Property(type=Gtk.Widget)
+    add_button = GObject.Property(type=Gtk.Widget)
     empty_page = GObject.Property(type=Gtk.Widget)
-
-    compose_dialog: Adw.Dialog = Gtk.Template.Child()
-    broadcast_switch: Gtk.Switch = Gtk.Template.Child()
-    subject: Gtk.Text = Gtk.Template.Child()
-    readers: Gtk.Text = Gtk.Template.Child()
-    body: Gtk.TextView = Gtk.Template.Child()
 
     _model: Gtk.SelectionModel
     _loading: bool = False
@@ -75,16 +68,6 @@ class MailContentPage(Adw.BreakpointBin):
 
         model.connect("items-changed", self.__update_loading)
 
-    def new_message(self) -> None:
-        """Show a dialog in which the user can compose a message."""
-        self.readers.set_text("")
-        self.subject.set_text("")
-        self.body.get_buffer().set_text("")
-        self.broadcast_switch.set_active(False)
-
-        self.compose_dialog.present(self)
-        self.readers.grab_focus()
-
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:
         if not isinstance(
@@ -98,39 +81,6 @@ class MailContentPage(Adw.BreakpointBin):
             return
 
         split_view.set_show_sidebar(not split_view.get_show_sidebar())
-
-    @Gtk.Template.Callback()
-    def _new_message(self, *_args: Any) -> None:
-        self.new_message()
-
-    @Gtk.Template.Callback()
-    def _send_message(self, *_args: Any) -> None:
-        if not shared.user:
-            return
-
-        readers: list[Address] = []
-        if not self.broadcast_switch.get_active():
-            for reader in self.readers.get_text().split(","):
-                try:
-                    readers.append(Address(reader.strip()))
-                except ValueError:
-                    return
-
-        shared.run_task(
-            send_message(
-                shared.user,
-                readers,
-                self.subject.get_text(),
-                (buffer := self.body.get_buffer()).get_text(
-                    buffer.get_start_iter(),
-                    buffer.get_end_iter(),
-                    False,
-                ),
-            ),
-            lambda: shared.run_task(shared.update_outbox()),
-        )
-
-        self.compose_dialog.force_close()
 
     def __update_loading(self, *_args: Any) -> None:
         self.sidebar_child_name = (

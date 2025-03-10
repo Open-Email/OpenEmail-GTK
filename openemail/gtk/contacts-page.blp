@@ -9,9 +9,47 @@ template $MailContactsPage: Adw.NavigationPage {
 
     details: $MailProfileView profile_view {};
 
+    add-button: Button {
+      icon-name: "contact-new-symbolic";
+      tooltip-text: _("New Contact");
+      clicked => $_new_contact();
+    };
+
     empty-page: Adw.StatusPage {
       title: _("Empty Address Book");
       icon-name: "about-symbolic";
+    };
+  }
+}
+
+Adw.Dialog add_contact_dialog {
+  title: _("New Contact");
+  content-width: 400;
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {}
+
+    content: Adw.PreferencesPage {
+      Adw.PreferencesGroup {
+        separate-rows: true;
+
+        Adw.EntryRow address {
+          title: _("Address");
+          entry-activated => $_add_contact();
+          changed => $_address_changed();
+        }
+
+        Adw.ButtonRow add_button {
+          sensitive: false;
+          title: _("Add Contact");
+          activated => $_add_contact();
+
+          styles [
+            "suggested-action",
+          ]
+        }
+      }
     };
   }
 }

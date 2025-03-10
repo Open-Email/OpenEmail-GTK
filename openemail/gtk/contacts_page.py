@@ -26,6 +26,8 @@ from gi.repository import Adw, Gtk
 from openemail import shared
 from openemail.gtk.content_page import MailContentPage
 from openemail.gtk.profile_view import MailProfileView
+from openemail.network import new_contact
+from openemail.user import Address
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")
@@ -36,6 +38,10 @@ class MailContactsPage(Adw.NavigationPage):
 
     content: MailContentPage = Gtk.Template.Child()  # type: ignore
     profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
+
+    add_contact_dialog: Adw.Dialog = Gtk.Template.Child()
+    address: Adw.EntryRow = Gtk.Template.Child()
+    add_button: Adw.ButtonRow = Gtk.Template.Child()  # type: ignore
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -53,6 +59,41 @@ class MailContactsPage(Adw.NavigationPage):
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{shared.PREFIX}/gtk/contact-row.ui"
         )
+
+    @Gtk.Template.Callback()
+    def _new_contact(self, *_args: Any) -> None:
+        self.address.set_text("")
+        self.add_contact_dialog.present(self)
+
+    @Gtk.Template.Callback()
+    def _address_changed(self, entry: Adw.EntryRow) -> None:
+        try:
+            Address(entry.get_text())
+        except ValueError:
+            self.add_button.set_sensitive(False)
+            return
+
+        self.add_button.set_sensitive(True)
+
+    @Gtk.Template.Callback()
+    def _add_contact(self, *_args: Any) -> None:
+        if not shared.user:
+            return
+
+        try:
+            address = Address(self.address.get_text())
+        except ValueError:
+            return
+
+        shared.run_task(
+            new_contact(address, shared.user),
+            lambda: shared.run_task(
+                shared.update_address_book(),
+                lambda: shared.run_task(shared.update_profiles()),
+            ),
+        )
+
+        self.add_contact_dialog.force_close()
 
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not isinstance(
