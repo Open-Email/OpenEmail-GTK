@@ -49,7 +49,7 @@ class MailContentPage(Adw.BreakpointBin):
     body: Gtk.TextView = Gtk.Template.Child()
 
     _model: Gtk.SelectionModel
-    _loading: bool
+    _loading: bool = False
 
     show_sidebar = GObject.Signal()
 

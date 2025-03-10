@@ -139,6 +139,14 @@ template $MailContentView: Adw.BreakpointBin {
           }
 
           StackPage {
+            name: "trash";
+
+            child: $MailMessagesPage {
+              folder: "trash";
+            };
+          }
+
+          StackPage {
             name: "placeholder";
 
             child: Adw.ToolbarView {

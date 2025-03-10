@@ -53,7 +53,10 @@ class MailMessageView(Adw.Bin):
     body = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
     readers = GObject.Property(type=str)
+
     author_is_self = GObject.Property(type=bool, default=False)
+    can_trash = GObject.Property(type=bool, default=False)
+    can_restore = GObject.Property(type=bool, default=False)
 
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
@@ -73,9 +76,16 @@ class MailMessageView(Adw.Bin):
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
         self.body = message.body
+
         self.author_is_self = shared.user and (
             message.envelope.author == shared.user.address
         )
+
+        self.can_trash = (not self.author_is_self) and (
+            message.envelope.message_id
+            not in shared.settings.get_strv("trashed-message-ids")
+        )
+        self.can_restore = not self.can_trash
 
         if self._name_binding:
             self._name_binding.unbind()
@@ -187,6 +197,27 @@ class MailMessageView(Adw.Bin):
             win if isinstance(win := self.get_root(), Gtk.Window) else None,
             callback=save_finish,
         )
+
+    @Gtk.Template.Callback()
+    def _trash(self, *_args: Any) -> None:
+        if not self.message:
+            return
+
+        shared.settings.set_strv(
+            "trashed-message-ids",
+            shared.settings.get_strv("trashed-message-ids")
+            + [self.message.envelope.message_id],
+        )
+
+    @Gtk.Template.Callback()
+    def _restore(self, *_args: Any) -> None:
+        if not self.message:
+            return
+
+        trashed = shared.settings.get_strv("trashed-message-ids")
+        trashed.remove(self.message.envelope.message_id)
+
+        shared.settings.set_strv("trashed-message-ids", trashed)
 
     @Gtk.Template.Callback()
     def _discard(self, *_args: Any) -> None:

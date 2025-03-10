@@ -21,7 +21,7 @@
 from typing import Any
 
 import keyring
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, GLib, Gtk
 
 from openemail import shared
 from openemail.gtk.window import MailWindow
@@ -47,8 +47,17 @@ class MailPreferences(Adw.PreferencesDialog):
         if not shared.user:
             return
 
+        shared.profiles.clear()
+        shared.address_book.remove_all()
+        shared.broadcasts.remove_all()
+        shared.inbox.remove_all()
+        shared.outbox.remove_all()
+
         shared.settings.set_string("address", "")
+        shared.settings.set_value("trashed-message-ids", GLib.Variant.new_strv(()))  #  type: ignore
+
         keyring.delete_password(shared.secret_service, str(shared.user.address))
+
         shared.user = None
 
         if not isinstance(win := self.get_root(), MailWindow):  # type: ignore

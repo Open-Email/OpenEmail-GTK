@@ -9,6 +9,29 @@ template $MailMessageView: Adw.Bin {
 
       [end]
       Button {
+        visible: bind template.can-trash;
+        icon-name: "trash-symbolic";
+        tooltip-text: _("Trash Message");
+        clicked => $_trash();
+
+        styles [
+          "flat",
+        ]
+      }
+
+      [end]
+      Button {
+        visible: bind template.can-restore;
+        label: _("Restore");
+        clicked => $_restore();
+
+        styles [
+          "flat",
+        ]
+      }
+
+      [end]
+      Button {
         visible: bind template.author-is-self;
         icon-name: "trash-symbolic";
         tooltip-text: _("Discard Message");

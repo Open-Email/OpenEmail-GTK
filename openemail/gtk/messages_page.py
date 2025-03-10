@@ -48,34 +48,56 @@ class MailMessagesPage(Adw.NavigationPage):
     def folder(self, folder: Literal["inbox", "broadcasts", "outbox"]) -> None:
         model: Gio.ListModel
         match folder:
-            case "inbox":
-                self.title = _("Inbox")
-                model = shared.inbox
             case "broadcasts":
                 self.title = _("Broadcasts")
                 model = shared.broadcasts
+            case "inbox":
+                self.title = _("Inbox")
+                model = shared.inbox
             case "outbox":
                 self.title = _("Outbox")
                 model = shared.outbox
+            case "trash":
+                self.title = _("Trash")
+                inboxes = Gio.ListStore.new(Gio.ListModel)
+                inboxes.append(shared.broadcasts)
+                inboxes.append(shared.inbox)
+                model = Gtk.FlattenListModel.new(inboxes)
 
-        self.content.model = (
-            selection := Gtk.SingleSelection(
-                autoselect=False,
-                model=Gtk.SortListModel.new(
+        self.content.model = selection = Gtk.SingleSelection(
+            autoselect=False,
+            model=Gtk.SortListModel.new(
+                Gtk.FilterListModel.new(
                     model,
-                    Gtk.CustomSorter.new(
-                        lambda a, b, _: int(
-                            b.message.envelope.date.timestamp()
-                            > a.message.envelope.date.timestamp()
+                    (
+                        filter := Gtk.CustomFilter.new(
+                            lambda item: item.trashed
+                            if folder == "trash"
+                            else (not item.trashed)
                         )
-                        - int(
-                            b.message.envelope.date.timestamp()
-                            < a.message.envelope.date.timestamp()
-                        )  # type: ignore
                     ),
                 ),
-            )
+                Gtk.CustomSorter.new(
+                    lambda a, b, _: int(
+                        b.message.envelope.date.timestamp()
+                        > a.message.envelope.date.timestamp()
+                    )
+                    - int(
+                        b.message.envelope.date.timestamp()
+                        < a.message.envelope.date.timestamp()
+                    )  # type: ignore
+                ),
+            ),
         )
+
+        def on_settings_changed(_obj: Any, key: str) -> None:
+            if key != "trashed-message-ids":
+                return
+
+            filter.changed(Gtk.FilterChange.DIFFERENT)
+            selection.set_selected(0)
+
+        shared.settings.connect("changed", on_settings_changed)
 
         selection.connect("notify::selected", self.__on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
@@ -89,6 +111,10 @@ class MailMessagesPage(Adw.NavigationPage):
             selected := selection.get_selected_item(),
             shared.MailMessage,
         ):
+            self.message_view.visible_child_name = "empty"
+            self.message_view.author_is_self = False
+            self.message_view.can_trash = False
+            self.message_view.can_restore = False
             return
 
         self.message_view.set_from_message(selected.message)

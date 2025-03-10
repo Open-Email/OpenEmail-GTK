@@ -129,6 +129,16 @@ class MailMessage(GObject.Object):
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
 
+    @property
+    def trashed(self) -> bool:
+        """Whether the item is in the trash."""
+        if not self.message:
+            return False
+
+        return self.message.envelope.message_id in settings.get_strv(
+            "trashed-message-ids"
+        )
+
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 

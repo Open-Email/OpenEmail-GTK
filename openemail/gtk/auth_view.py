@@ -92,15 +92,18 @@ class MailAuthView(Adw.Bin):
             return
 
         async def authenticate() -> None:
-            GLib.idle_add(self.set_property, "button-child-name", "spinner")
+            self.set_property("button-child-name", "spinner")
             if not await try_auth(user):
-                GLib.idle_add(self.__warn, _("Authentication failed"))
-                GLib.idle_add(self.set_property, "button-child-name", "label")
+                self.__warn(_("Authentication failed"))
+                self.button_child_name = "label"
                 return
 
             shared.user = user
-            GLib.idle_add(self.emit, "authenticated")
-            GLib.idle_add(self.set_property, "button-child-name", "label")
+            self.emit("authenticated")
+            self.button_child_name = "label"
+
+            GLib.timeout_add_seconds(1, self.email_entry.set_text, "")
+            GLib.timeout_add_seconds(1, self.navigation_view.pop)
 
         shared.run_task(authenticate())
 

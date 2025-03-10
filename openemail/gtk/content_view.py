@@ -135,6 +135,8 @@ class MailContentView(Adw.BreakpointBin):
                 self.content_child_name = "inbox"
             case 2:
                 self.content_child_name = "outbox"
+            case 4:
+                self.content_child_name = "trash"
             case _:
                 self.empty_status_page.set_title(row.label)
                 self.empty_status_page.set_icon_name(row.icon_name)
