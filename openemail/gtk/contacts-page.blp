@@ -8,5 +8,10 @@ template $MailContactsPage: Adw.NavigationPage {
     title: bind template.title;
 
     details: $MailProfileView profile_view {};
+
+    empty-page: Adw.StatusPage {
+      title: _("Empty Address Book");
+      icon-name: "about-symbolic";
+    };
   }
 }

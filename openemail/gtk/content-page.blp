@@ -43,6 +43,14 @@ template $MailContentPage: Adw.BreakpointBin {
           visible-child-name: bind template.sidebar-child-name;
 
           StackPage {
+            name: "empty";
+
+            child: Adw.Bin {
+              child: bind template.empty-page;
+            };
+          }
+
+          StackPage {
             name: "content";
 
             child: ScrolledWindow {

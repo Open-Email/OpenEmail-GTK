@@ -37,10 +37,11 @@ class MailContentPage(Adw.BreakpointBin):
 
     factory = GObject.Property(type=Gtk.ListItemFactory)
 
-    sidebar_child_name = GObject.Property(type=str, default="content")
+    sidebar_child_name = GObject.Property(type=str, default="empty")
 
     title = GObject.Property(type=str, default=_("Content"))
     details = GObject.Property(type=Gtk.Widget)
+    empty_page = GObject.Property(type=Gtk.Widget)
 
     compose_dialog: Adw.Dialog = Gtk.Template.Child()
     broadcast_switch: Gtk.Switch = Gtk.Template.Child()
@@ -74,6 +75,16 @@ class MailContentPage(Adw.BreakpointBin):
 
         model.connect("items-changed", self.__update_loading)
 
+    def new_message(self) -> None:
+        """Show a dialog in which the user can compose a message."""
+        self.readers.set_text("")
+        self.subject.set_text("")
+        self.body.get_buffer().set_text("")
+        self.broadcast_switch.set_active(False)
+
+        self.compose_dialog.present(self)
+        self.readers.grab_focus()
+
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:
         if not isinstance(
@@ -90,13 +101,7 @@ class MailContentPage(Adw.BreakpointBin):
 
     @Gtk.Template.Callback()
     def _new_message(self, *_args: Any) -> None:
-        self.readers.set_text("")
-        self.subject.set_text("")
-        self.body.get_buffer().set_text("")
-        self.broadcast_switch.set_active(False)
-
-        self.compose_dialog.present(self)
-        self.readers.grab_focus()
+        self.new_message()
 
     @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:
@@ -129,5 +134,9 @@ class MailContentPage(Adw.BreakpointBin):
 
     def __update_loading(self, *_args: Any) -> None:
         self.sidebar_child_name = (
-            "spinner" if self._loading and (not self.model.get_n_items()) else "content"
+            "spinner"
+            if self._loading
+            else "content"
+            if self.model.get_n_items()
+            else "empty"
         )

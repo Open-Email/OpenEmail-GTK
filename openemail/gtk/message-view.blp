@@ -49,9 +49,15 @@ template $MailMessageView: Adw.Bin {
       StackPage {
         name: "empty";
 
-        child: Adw.StatusPage {
-          title: _("No Message Selected");
-          icon-name: "mailbox-symbolic";
+        child: Label {
+          label: _("No Message Selected");
+          wrap: true;
+          wrap-mode: word_char;
+
+          styles [
+            "title-2",
+            "dim-label",
+          ]
         };
       }
 

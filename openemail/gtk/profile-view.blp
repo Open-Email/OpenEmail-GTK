@@ -13,10 +13,16 @@ template $MailProfileView: Adw.Bin {
 
       StackPage {
         name: "empty";
-
-        child: Adw.StatusPage {
-          title: _("No Profile Selected");
-          icon-name: "about-symbolic";
+      
+        child: Label {
+          label: _("No Contact Selected");
+          wrap: true;
+          wrap-mode: word_char;
+      
+          styles [
+            "title-2",
+            "dim-label",
+          ]
         };
       }
 

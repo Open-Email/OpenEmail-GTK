@@ -6,5 +6,21 @@ template $MailMessagesPage: Adw.NavigationPage {
     title: bind template.title;
 
     details: $MailMessageView message_view {};
+
+    empty-page: Adw.StatusPage {
+      title: _("Empty Folder");
+      description: _("Select another folder or start a conversation");
+      icon-name: "mailbox-symbolic";
+
+      Button {
+        halign: center;
+        label: _("New Message");
+        clicked => $_new_message();
+
+        styles [
+          "pill",
+        ]
+      }
+    };
   }
 }

@@ -88,6 +88,8 @@ class MailContentView(Adw.BreakpointBin):
             self.toast_overlay.add_toast(self.syncing_toast)
 
         def update_address_book_cb() -> None:
+            self.contacts_page.content.loading = False
+
             shared.run_task(shared.update_profiles())
             shared.run_task(
                 shared.update_broadcasts_list(),

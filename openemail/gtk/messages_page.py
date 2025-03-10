@@ -106,6 +106,10 @@ class MailMessagesPage(Adw.NavigationPage):
 
         self._folder = folder
 
+    @Gtk.Template.Callback()
+    def _new_message(self, *_args: Any) -> None:
+        self.content.new_message()
+
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:  # type: ignore
         if not isinstance(
             selected := selection.get_selected_item(),
