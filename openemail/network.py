@@ -408,8 +408,8 @@ async def send_message(
         for reader in (*readers, user.address):
             if not (
                 (profile := await fetch_profile(reader))
-                and (field := profile.optional.get("encryption-key"))
-                and (key_id := field.value.key_id)
+                and (key_field := profile.optional.get("encryption-key"))
+                and (key_id := key_field.value.key_id)
             ):
                 return
 
@@ -419,7 +419,7 @@ async def send_message(
                         (
                             f"link={generate_link(user.address, reader)}",
                             f"fingerprint={sha256(bytes(profile.required['signing-key'].value)).hexdigest()}",
-                            f"value={b64encode(encrypt_anonymous(access_key, field.value)).decode('utf-8')}",
+                            f"value={b64encode(encrypt_anonymous(access_key, key_field.value)).decode('utf-8')}",
                             f"id={key_id}",
                         )
                     )
@@ -484,7 +484,38 @@ async def send_message(
             headers=headers,
             data=body_bytes,
         ):
-            return
+            await notify_readers(readers, user)
+            break
+
+
+async def notify_readers(readers: Iterable[Address], user: User) -> None:
+    """Attempt to notify `readers` of a new message."""
+    for reader in readers:
+        if not (
+            (profile := await fetch_profile(reader))
+            and (key_field := profile.optional.get("encryption-key"))
+        ):
+            continue
+
+        try:
+            address = b64encode(
+                encrypt_anonymous(
+                    str(user.address).encode("utf-8"),
+                    key_field.value,
+                )
+            )
+        except ValueError:
+            continue
+
+        link = generate_link(reader, user.address)
+        for agent in await get_agents(reader):
+            if await request(
+                _notifications(agent, reader, link),
+                user,
+                method="PUT",
+                data=address,
+            ):
+                break
 
 
 def _home(agent: str, address: Address) -> str:
@@ -507,5 +538,13 @@ def _mail_messages(agent: str, address: Address) -> str:
     return f"{_mail(agent, address)}/messages"
 
 
+def _link(agent: str, address: Address, link: str) -> str:
+    return f"{_mail(agent, address)}/link/{link}"
+
+
 def _link_messages(agent: str, address: Address, link: str) -> str:
-    return f"{_mail(agent, address)}/link/{link}/messages"
+    return f"{_link(agent, address, link)}/messages"
+
+
+def _notifications(agent: str, address: Address, link: str) -> str:
+    return f"{_link(agent, address, link)}/notifications"
