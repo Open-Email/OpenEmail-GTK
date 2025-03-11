@@ -43,14 +43,11 @@ class MailProfileView(Adw.Bin):
     address = GObject.Property(type=str)
     paintable = GObject.Property(type=Gdk.Paintable)
     away = GObject.Property(type=bool, default=False)
+    can_remove = GObject.Property(type=bool, default=False)
 
     visible_child_name = GObject.Property(type=str, default="empty")
 
     _profile: Profile | None = None
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self._groups = []
 
     @property
     def profile(self) -> Profile | None:
@@ -63,14 +60,24 @@ class MailProfileView(Adw.Bin):
 
         if not profile:
             self.visible_child_name = "not-found"
+            self.can_remove = False
             return
+
+        string = str(profile.address)
+        if any(contact.address == string for contact in shared.address_book):
+            self.can_remove = True
+        else:
+            self.can_remove = False
 
         self.name = str(profile.required["name"])
         self.address = profile.address
         self.away = away.value if (away := profile.optional.get("away")) else False
 
-        while self._groups:
-            self.page.remove(self._groups.pop())
+        if hasattr(self, "_groups"):
+            while self._groups:
+                self.page.remove(self._groups.pop())
+
+        self._groups = []
 
         for name, category in {
             _("General"): (

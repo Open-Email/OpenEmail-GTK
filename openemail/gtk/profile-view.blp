@@ -9,6 +9,7 @@ template $MailProfileView: Adw.Bin {
 
       [end]
       Button {
+        visible: bind template.can-remove;
         icon-name: "trash-symbolic";
         tooltip-text: _("Remove Contact");
         clicked => $_remove_contact();
