@@ -39,9 +39,8 @@ class MailContactsPage(Adw.NavigationPage):
     content: MailContentPage = Gtk.Template.Child()  # type: ignore
     profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
 
-    add_contact_dialog: Adw.Dialog = Gtk.Template.Child()
+    add_contact_dialog: Adw.AlertDialog = Gtk.Template.Child()
     address: Adw.EntryRow = Gtk.Template.Child()
-    add_button: Adw.ButtonRow = Gtk.Template.Child()  # type: ignore
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -82,13 +81,16 @@ class MailContactsPage(Adw.NavigationPage):
         try:
             Address(entry.get_text())
         except ValueError:
-            self.add_button.set_sensitive(False)
+            self.add_contact_dialog.set_response_enabled("add", False)
             return
 
-        self.add_button.set_sensitive(True)
+        self.add_contact_dialog.set_response_enabled("add", True)
 
     @Gtk.Template.Callback()
-    def _add_contact(self, *_args: Any) -> None:
+    def _add_contact(self, _obj: Any, response: str) -> None:
+        if response != "add":
+            return
+
         if not shared.user:
             return
 
@@ -97,11 +99,15 @@ class MailContactsPage(Adw.NavigationPage):
         except ValueError:
             return
 
+        def update_address_book_cb() -> None:
+            shared.run_task(shared.update_broadcasts_list())
+            shared.run_task(shared.update_messages_list())
+
         shared.run_task(
             new_contact(address, shared.user),
             lambda: shared.run_task(
                 shared.update_address_book(),
-                lambda: shared.run_task(shared.update_profiles()),
+                update_address_book_cb,
             ),
         )
 

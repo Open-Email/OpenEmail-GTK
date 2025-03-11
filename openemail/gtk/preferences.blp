@@ -25,6 +25,7 @@ Adw.AlertDialog confirm_remove_dialog {
   heading: _("Remove Account?");
   body: _("All local data will be deleted. Log in again to restore data.");
   close-response: "cancel";
+  default-response: "cancel";
   response => $_confirm_remove();
 
   responses [

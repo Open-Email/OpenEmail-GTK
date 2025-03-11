@@ -22,34 +22,21 @@ template $MailContactsPage: Adw.NavigationPage {
   }
 }
 
-Adw.Dialog add_contact_dialog {
-  title: _("New Contact");
-  content-width: 400;
-
-  Adw.ToolbarView {
-    [top]
-    Adw.HeaderBar {}
-
-    content: Adw.PreferencesPage {
-      Adw.PreferencesGroup {
-        separate-rows: true;
-
-        Adw.EntryRow address {
-          title: _("Address");
-          entry-activated => $_add_contact();
-          changed => $_address_changed();
-        }
-
-        Adw.ButtonRow add_button {
-          sensitive: false;
-          title: _("Add Contact");
-          activated => $_add_contact();
-
-          styles [
-            "suggested-action",
-          ]
-        }
-      }
-    };
+Adw.AlertDialog add_contact_dialog {
+  heading: _("New Contact");
+  close-response: "cancel";
+  default-response: "add";
+  response => $_add_contact();
+  
+  Adw.PreferencesGroup {
+    Adw.EntryRow address {
+      title: _("Address");
+      changed => $_address_changed();
+    }
   }
+
+  responses [
+    cancel: _("Cancel"),
+    add: _("Add") suggested disabled,
+  ]
 }

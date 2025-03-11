@@ -201,7 +201,7 @@ async def fetch_contacts(user: User) -> tuple[Address, ...]:
 
 
 async def new_contact(address: Address, user: User) -> None:
-    """Add `address` to the user's address book."""
+    """Attempt to add `address` to the user's address book."""
     try:
         data = b64encode(
             encrypt_anonymous(
@@ -553,6 +553,14 @@ async def delete_message(
             return True
 
     return False
+
+
+async def delete_contact(address: Address, user: User) -> None:
+    """Attempt to delete `address` from the user's address book."""
+    link = generate_link(address, user.address)
+    for agent in await get_agents(address):
+        if await request(_home_link(agent, user.address, link), user, method="DELETE"):
+            return
 
 
 def _home(agent: str, address: Address) -> str:

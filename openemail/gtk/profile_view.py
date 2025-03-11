@@ -24,6 +24,7 @@ from typing import Any
 from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import shared
+from openemail.network import delete_contact
 from openemail.user import Profile
 
 
@@ -37,6 +38,8 @@ class MailProfileView(Adw.Bin):
     _groups: list[Adw.PreferencesGroup]
 
     page: Adw.PreferencesPage = Gtk.Template.Child()
+
+    confirm_remove_dialog: Adw.Dialog = Gtk.Template.Child()
 
     name = GObject.Property(type=str)
     address = GObject.Property(type=str)
@@ -135,3 +138,27 @@ class MailProfileView(Adw.Bin):
                 group.add(row)
 
         self.visible_child_name = "profile"
+
+    @Gtk.Template.Callback()
+    def _remove_contact(self, *_args: Any) -> None:
+        self.confirm_remove_dialog.present(self)
+
+    @Gtk.Template.Callback()
+    def _confirm_remove(self, _obj: Any, response: str) -> None:
+        if response != "remove":
+            return
+
+        if not (self.profile and shared.user):
+            return
+
+        def update_address_book_cb() -> None:
+            shared.run_task(shared.update_broadcasts_list())
+            shared.run_task(shared.update_messages_list())
+
+        shared.run_task(
+            delete_contact(self.profile.address, shared.user),
+            lambda: shared.run_task(
+                shared.update_address_book(),
+                update_address_book_cb,
+            ),
+        )
