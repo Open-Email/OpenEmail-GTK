@@ -18,23 +18,23 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import sys
-from typing import Any, Callable, Sequence
-
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
 import json
+import sys
+from typing import Any, Callable, Sequence
 
 import keyring
 from gi.repository import Adw, Gio
 
-from openemail import shared
-from openemail.gtk.preferences import MailPreferences
-from openemail.gtk.window import MailWindow
-from openemail.user import User
+from . import shared
+from .core.user import User
+from .widgets.form import MailForm  # noqa: F401
+from .widgets.preferences import MailPreferences
+from .widgets.window import MailWindow
 
 
 class MailApplication(Adw.Application):

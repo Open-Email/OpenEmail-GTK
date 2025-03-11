@@ -26,8 +26,9 @@ import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import shared
-from openemail.gtk.auth_view import MailAuthView
-from openemail.gtk.content_view import MailContentView
+
+from .auth_view import MailAuthView
+from .content_view import MailContentView
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/window.ui")

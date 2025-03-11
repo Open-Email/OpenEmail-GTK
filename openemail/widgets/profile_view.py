@@ -18,17 +18,15 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from dataclasses import dataclass
 from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import shared
-from openemail.network import delete_contact
-from openemail.user import Profile
+from openemail.core.network import delete_contact
+from openemail.core.user import Profile
 
 
-@dataclass
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-view.ui")
 class MailProfileView(Adw.Bin):
     """A page presenting a user's profile."""

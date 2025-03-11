@@ -21,14 +21,12 @@ template $MailAuthView: Adw.Bin {
 
                 Adw.EntryRow email_entry {
                   title: _("Email");
-                  changed => $_email_changed();
                   entry-activated => $_log_in();
                 }
 
                 Button log_in_button {
                   margin-top: 24;
                   halign: center;
-                  sensitive: false;
                   label: _("Log In");
                   clicked => $_log_in();
 
@@ -60,20 +58,17 @@ template $MailAuthView: Adw.Bin {
 
                 Adw.PasswordEntryRow signing_key_entry {
                   title: _("Private Signing Key");
-                  changed => $_key_changed();
                   entry-activated => $_focus_encryption_key_entry();
                 }
 
                 Adw.PasswordEntryRow encryption_key_entry {
                   title: _("Private Encryption Key");
-                  changed => $_key_changed();
                   entry-activated => $_authenticate();
                 }
 
                 Button authenticate_button {
                   margin-top: 24;
                   halign: center;
-                  sensitive: false;
                   clicked => $_authenticate();
 
                   Stack {
@@ -108,4 +103,30 @@ template $MailAuthView: Adw.Bin {
       }
     }
   }
+}
+
+$MailForm {
+  form: template;
+  submit: log_in_button;
+
+  fields: StringList {
+    strings [
+      "address",
+      "email_entry",
+    ]
+  };
+}
+
+$MailForm {
+  form: template;
+  submit: authenticate_button;
+
+  fields: StringList {
+    strings [
+      "plain",
+      "encryption_key_entry",
+      "plain",
+      "signing_key_entry",
+    ]
+  };
 }

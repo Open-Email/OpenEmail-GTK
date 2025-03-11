@@ -23,10 +23,11 @@ from typing import Any, Callable
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from openemail import shared
-from openemail.crypto import decrypt_xchacha20poly1305
-from openemail.gtk.profile_view import MailProfileView
-from openemail.message import Message
-from openemail.network import delete_message, request
+from openemail.core.crypto import decrypt_xchacha20poly1305
+from openemail.core.message import Message
+from openemail.core.network import delete_message, request
+
+from .profile_view import MailProfileView
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/message-view.ui")

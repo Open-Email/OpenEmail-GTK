@@ -27,16 +27,27 @@ Adw.AlertDialog add_contact_dialog {
   close-response: "cancel";
   default-response: "add";
   response => $_add_contact();
-  
+
   Adw.PreferencesGroup {
     Adw.EntryRow address {
       title: _("Address");
-      changed => $_address_changed();
     }
   }
 
   responses [
     cancel: _("Cancel"),
-    add: _("Add") suggested disabled,
+    add: _("Add") suggested,
   ]
+}
+
+$MailForm {
+  form: template;
+  submit: add_contact_dialog;
+
+  fields: StringList {
+    strings [
+      "address",
+      "address",
+    ]
+  };
 }

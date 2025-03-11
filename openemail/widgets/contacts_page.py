@@ -24,10 +24,11 @@ from typing import Any
 from gi.repository import Adw, Gtk
 
 from openemail import shared
-from openemail.gtk.content_page import MailContentPage
-from openemail.gtk.profile_view import MailProfileView
-from openemail.network import new_contact
-from openemail.user import Address
+from openemail.core.network import new_contact
+from openemail.core.user import Address
+
+from .content_page import MailContentPage
+from .profile_view import MailProfileView
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")
@@ -75,16 +76,6 @@ class MailContactsPage(Adw.NavigationPage):
     def _new_contact(self, *_args: Any) -> None:
         self.address.set_text("")
         self.add_contact_dialog.present(self)
-
-    @Gtk.Template.Callback()
-    def _address_changed(self, entry: Adw.EntryRow) -> None:
-        try:
-            Address(entry.get_text())
-        except ValueError:
-            self.add_contact_dialog.set_response_enabled("add", False)
-            return
-
-        self.add_contact_dialog.set_response_enabled("add", True)
 
     @Gtk.Template.Callback()
     def _add_contact(self, _obj: Any, response: str) -> None:

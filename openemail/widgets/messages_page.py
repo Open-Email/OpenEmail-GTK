@@ -23,10 +23,11 @@ from typing import Any, Literal
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import shared
-from openemail.gtk.content_page import MailContentPage
-from openemail.gtk.message_view import MailMessageView
-from openemail.network import send_message
-from openemail.user import Address
+from openemail.core.network import send_message
+from openemail.core.user import Address
+
+from .content_page import MailContentPage
+from .message_view import MailMessageView
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/messages-page.ui")
@@ -40,12 +41,13 @@ class MailMessagesPage(Adw.NavigationPage):
 
     compose_dialog: Adw.Dialog = Gtk.Template.Child()
     broadcast_switch: Gtk.Switch = Gtk.Template.Child()
-    subject: Gtk.Text = Gtk.Template.Child()
     readers: Gtk.Text = Gtk.Template.Child()
-    body: Gtk.TextView = Gtk.Template.Child()
+    subject: Gtk.Text = Gtk.Template.Child()
+    body: Gtk.TextBuffer = Gtk.Template.Child()
 
     title = GObject.Property(type=str, default=_("Messages"))
     _folder: str | None = None
+    _previous_readers: str = ""
 
     @GObject.Property(type=str)
     def folder(self) -> str | None:
@@ -133,7 +135,7 @@ class MailMessagesPage(Adw.NavigationPage):
     def _new_message(self, *_args: Any) -> None:
         self.readers.set_text("")
         self.subject.set_text("")
-        self.body.get_buffer().set_text("")
+        self.body.set_text("")
         self.broadcast_switch.set_active(False)
 
         self.compose_dialog.present(self)
@@ -147,8 +149,11 @@ class MailMessagesPage(Adw.NavigationPage):
         readers: list[Address] = []
         if not self.broadcast_switch.get_active():
             for reader in self.readers.get_text().split(","):
+                if not (reader := reader.strip()):
+                    continue
+
                 try:
-                    readers.append(Address(reader.strip()))
+                    readers.append(Address(reader))
                 except ValueError:
                     return
 
@@ -157,9 +162,9 @@ class MailMessagesPage(Adw.NavigationPage):
                 shared.user,
                 readers,
                 self.subject.get_text(),
-                (buffer := self.body.get_buffer()).get_text(
-                    buffer.get_start_iter(),
-                    buffer.get_end_iter(),
+                self.body.get_text(
+                    self.body.get_start_iter(),
+                    self.body.get_end_iter(),
                     False,
                 ),
             ),
@@ -167,6 +172,17 @@ class MailMessagesPage(Adw.NavigationPage):
         )
 
         self.compose_dialog.force_close()
+
+    @Gtk.Template.Callback()
+    def _reveal_readers(self, revealer: Gtk.Revealer, *_args: Any) -> None:
+        if revealer.get_reveal_child():
+            self.readers.set_text(self._previous_readers)
+
+    @Gtk.Template.Callback()
+    def _readers_revealed(self, revealer: Gtk.Revealer, *_args: Any) -> None:
+        if not revealer.get_child_revealed():
+            self._previous_readers = self.readers.get_text()
+            self.readers.set_text("")
 
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:  # type: ignore
         if not isinstance(

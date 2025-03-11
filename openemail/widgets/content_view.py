@@ -23,10 +23,11 @@ from typing import Any
 from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import shared
-from openemail.gtk.contacts_page import MailContactsPage
-from openemail.gtk.messages_page import MailMessagesPage
-from openemail.gtk.navigation_row import MailNavigationRow
-from openemail.gtk.profile_view import MailProfileView
+
+from .contacts_page import MailContactsPage
+from .messages_page import MailMessagesPage
+from .navigation_row import MailNavigationRow
+from .profile_view import MailProfileView
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/content-view.ui")

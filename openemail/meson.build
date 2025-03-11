@@ -43,12 +43,7 @@ configure_file(
 )
 
 install_data([
-    '__init__.py',
-    'crypto.py',
     'main.py',
-    'message.py',
-    'network.py',
-    'user.py',
     configure_file(
       input:  'shared.py.in',
       output: 'shared.py',
@@ -58,17 +53,5 @@ install_data([
   install_dir: moduledir
 )
 
-install_data([
-    'gtk/auth_view.py',
-    'gtk/messages_page.py',
-    'gtk/contacts_page.py',
-    'gtk/content_page.py',
-    'gtk/content_view.py',
-    'gtk/message_view.py',
-    'gtk/navigation_row.py',
-    'gtk/preferences.py',
-    'gtk/profile_view.py',
-    'gtk/window.py',
-  ],
-  install_dir: join_paths(moduledir, 'gtk')
-)
+install_subdir('core', install_dir: moduledir)
+install_subdir('widgets', install_dir: moduledir)

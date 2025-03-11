@@ -23,8 +23,8 @@ from typing import Any
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import shared
-from openemail.network import try_auth
-from openemail.user import Address, User
+from openemail.core.network import try_auth
+from openemail.core.user import User
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/auth-view.ui")
@@ -38,13 +38,11 @@ class MailAuthView(Adw.Bin):
 
     email_status_page: Adw.StatusPage = Gtk.Template.Child()
     email_entry: Adw.EntryRow = Gtk.Template.Child()
-    log_in_button: Gtk.Button = Gtk.Template.Child()
 
     keys_status_page: Adw.StatusPage = Gtk.Template.Child()
     keys_page: Adw.NavigationPage = Gtk.Template.Child()
     signing_key_entry: Adw.EntryRow = Gtk.Template.Child()
     encryption_key_entry: Adw.EntryRow = Gtk.Template.Child()
-    authenticate_button: Gtk.Button = Gtk.Template.Child()
 
     button_child_name = GObject.Property(type=str, default="label")
 
@@ -52,22 +50,6 @@ class MailAuthView(Adw.Bin):
 
     def __init__(self, **kwargs: Any) -> None:
         self.email_status_page.set_icon_name(shared.APP_ID)
-
-    @Gtk.Template.Callback()
-    def _email_changed(self, *_args: Any) -> None:
-        try:
-            Address(self.email_entry.get_text())
-        except ValueError:
-            self.log_in_button.set_sensitive(False)
-        else:
-            self.log_in_button.set_sensitive(True)
-
-    @Gtk.Template.Callback()
-    def _key_changed(self, *_args: Any) -> None:
-        self.authenticate_button.set_sensitive(
-            bool(self.encryption_key_entry.get_text())
-            and bool(self.signing_key_entry.get_text())
-        )
 
     @Gtk.Template.Callback()
     def _log_in(self, *args: Any) -> None:

@@ -27,7 +27,7 @@ from typing import Generic, TypeVar, final
 
 from gi.repository.GLib import base64_decode
 
-from openemail.crypto import Key, get_keys
+from .crypto import Key, get_keys
 
 T = TypeVar("T")
 

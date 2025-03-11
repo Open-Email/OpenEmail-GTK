@@ -32,7 +32,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from openemail.crypto import (
+from .crypto import (
     decrypt_anonymous,
     decrypt_xchacha20poly1305,
     encrypt_anonymous,
@@ -42,8 +42,8 @@ from openemail.crypto import (
     random_string,
     sign_data,
 )
-from openemail.message import Envelope, Message, generate_link
-from openemail.user import Address, Profile, User
+from .message import Envelope, Message, generate_link
+from .user import Address, Profile, User
 
 setdefaulttimeout(5)
 

@@ -24,8 +24,8 @@ from datetime import datetime
 from hashlib import sha256
 from typing import NamedTuple, Self
 
-from openemail.crypto import decrypt_anonymous, decrypt_xchacha20poly1305
-from openemail.user import Address, User, parse_headers
+from .crypto import decrypt_anonymous, decrypt_xchacha20poly1305
+from .user import Address, User, parse_headers
 
 
 def generate_link(first: Address, second: Address) -> str:

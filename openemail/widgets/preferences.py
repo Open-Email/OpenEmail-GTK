@@ -24,7 +24,8 @@ import keyring
 from gi.repository import Adw, GLib, Gtk
 
 from openemail import shared
-from openemail.gtk.window import MailWindow
+
+from .window import MailWindow
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/preferences.ui")

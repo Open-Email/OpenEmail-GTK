@@ -19,15 +19,16 @@ openemail/gtk/preferences.blp
 openemail/gtk/profile-view.blp
 openemail/gtk/window.blp
 
-openemail/gtk/auth_view.py
-openemail/gtk/messages_page.py
-openemail/gtk/contacts_page.py
-openemail/gtk/content_page.py
-openemail/gtk/content_view.py
-openemail/gtk/message_view.py
-openemail/gtk/navigation_row.py
-openemail/gtk/preferences.py
-openemail/gtk/profile_view.py
-openemail/gtk/window.py
+openemail/widgets/auth_view.py
+openemail/widgets/messages_page.py
+openemail/widgets/contacts_page.py
+openemail/widgets/content_page.py
+openemail/widgets/content_view.py
+openemail/widgets/form.py
+openemail/widgets/message_view.py
+openemail/widgets/navigation_row.py
+openemail/widgets/preferences.py
+openemail/widgets/profile_view.py
+openemail/widgets/window.py
 openemail/main.py
 openemail/user.py

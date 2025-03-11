@@ -49,7 +49,7 @@ Adw.Dialog compose_dialog {
       }
 
       [end]
-      Button {
+      Button send_button {
         clicked => $_send_message();
 
         Adw.ButtonContent {
@@ -95,6 +95,9 @@ Adw.Dialog compose_dialog {
             Revealer {
               reveal-child: bind broadcast_switch.active inverted;
               transition-type: crossfade;
+
+              notify::reveal-child => $_reveal_readers();
+              notify::child-revealed => $_readers_revealed();
 
               Box {
                 Label readers_label {
@@ -173,12 +176,14 @@ Adw.Dialog compose_dialog {
           margin-end: 12;
         }
 
-        TextView body {
+        TextView {
           top-margin: 6;
           left-margin: 12;
           right-margin: 12;
           bottom-margin: 200;
           wrap-mode: word_char;
+
+          buffer: TextBuffer body {};
 
           accessibility {
             label: _("Message");
@@ -191,4 +196,20 @@ Adw.Dialog compose_dialog {
       }
     };
   }
+}
+
+$MailForm {
+  form: template;
+  submit: send_button;
+
+  fields: StringList {
+    strings [
+      "addresses",
+      "readers",
+      "plain",
+      "subject",
+      "plain",
+      "body",
+    ]
+  };
 }

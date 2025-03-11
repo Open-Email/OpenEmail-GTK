@@ -31,16 +31,16 @@ from typing import Any, Callable, Coroutine
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Gdk, Gio, GLib, GObject
 
-from openemail import network
-from openemail.message import Message
-from openemail.network import (
+from .core import network
+from .core.message import Message
+from .core.network import (
     fetch_broadcasts,
     fetch_contacts,
     fetch_link_messages,
     fetch_profile,
     fetch_profile_image,
 )
-from openemail.user import Address, Profile, User
+from .core.user import Address, Profile, User
 
 APP_ID = "@APP_ID@"
 VERSION = "@VERSION@"
