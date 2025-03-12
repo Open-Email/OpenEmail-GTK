@@ -26,6 +26,7 @@ from gi.repository import Adw, Gtk
 from openemail import shared
 from openemail.core.network import new_contact
 from openemail.core.user import Address
+from openemail.widgets.form import MailForm
 
 from .content_page import MailContentPage
 from .profile_view import MailProfileView
@@ -42,6 +43,7 @@ class MailContactsPage(Adw.NavigationPage):
 
     add_contact_dialog: Adw.AlertDialog = Gtk.Template.Child()
     address: Adw.EntryRow = Gtk.Template.Child()
+    address_form: MailForm = Gtk.Template.Child()
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -74,7 +76,7 @@ class MailContactsPage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _new_contact(self, *_args: Any) -> None:
-        self.address.set_text("")
+        self.address_form.reset()
         self.add_contact_dialog.present(self)
 
     @Gtk.Template.Callback()

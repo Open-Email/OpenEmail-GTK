@@ -66,7 +66,7 @@ template $MailAuthView: Adw.Bin {
                   entry-activated => $_authenticate();
                 }
 
-                Button authenticate_button {
+                Button auth_button {
                   margin-top: 24;
                   halign: center;
                   clicked => $_authenticate();
@@ -105,27 +105,24 @@ template $MailAuthView: Adw.Bin {
   }
 }
 
-$MailForm {
+$MailForm email_form {
   form: template;
   submit: log_in_button;
 
-  fields: StringList {
+  addresses: StringList {
     strings [
-      "address",
       "email_entry",
     ]
   };
 }
 
-$MailForm {
+$MailForm auth_form {
   form: template;
-  submit: authenticate_button;
+  submit: auth_button;
 
-  fields: StringList {
+  plain: StringList {
     strings [
-      "plain",
       "encryption_key_entry",
-      "plain",
       "signing_key_entry",
     ]
   };

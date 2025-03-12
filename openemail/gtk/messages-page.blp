@@ -198,18 +198,20 @@ Adw.Dialog compose_dialog {
   }
 }
 
-$MailForm {
+$MailForm compose_form {
   form: template;
   submit: send_button;
 
-  fields: StringList {
+  plain: StringList {
     strings [
-      "addresses",
-      "readers",
-      "plain",
       "subject",
-      "plain",
       "body",
+    ]
+  };
+    
+  address-lists: Gtk.StringList {
+    strings [
+      "readers",
     ]
   };
 }

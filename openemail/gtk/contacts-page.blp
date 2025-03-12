@@ -40,13 +40,12 @@ Adw.AlertDialog add_contact_dialog {
   ]
 }
 
-$MailForm {
+$MailForm address_form {
   form: template;
   submit: add_contact_dialog;
 
-  fields: StringList {
+  addresses: StringList {
     strings [
-      "address",
       "address",
     ]
   };

@@ -25,6 +25,7 @@ from gi.repository import Adw, GLib, GObject, Gtk
 from openemail import shared
 from openemail.core.network import try_auth
 from openemail.core.user import User
+from openemail.widgets.form import MailForm
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/auth-view.ui")
@@ -38,11 +39,13 @@ class MailAuthView(Adw.Bin):
 
     email_status_page: Adw.StatusPage = Gtk.Template.Child()
     email_entry: Adw.EntryRow = Gtk.Template.Child()
+    email_form: MailForm = Gtk.Template.Child()
 
     keys_status_page: Adw.StatusPage = Gtk.Template.Child()
     keys_page: Adw.NavigationPage = Gtk.Template.Child()
     signing_key_entry: Adw.EntryRow = Gtk.Template.Child()
     encryption_key_entry: Adw.EntryRow = Gtk.Template.Child()
+    auth_form: MailForm = Gtk.Template.Child()
 
     button_child_name = GObject.Property(type=str, default="label")
 
@@ -84,8 +87,9 @@ class MailAuthView(Adw.Bin):
             self.emit("authenticated")
             self.button_child_name = "label"
 
-            GLib.timeout_add_seconds(1, self.email_entry.set_text, "")
+            GLib.timeout_add_seconds(1, self.email_form.reset)
             GLib.timeout_add_seconds(1, self.navigation_view.pop)
+            GLib.timeout_add_seconds(1, self.auth_form.reset)
 
         shared.run_task(authenticate())
 

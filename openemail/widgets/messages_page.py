@@ -25,6 +25,7 @@ from gi.repository import Adw, Gio, GObject, Gtk
 from openemail import shared
 from openemail.core.network import send_message
 from openemail.core.user import Address
+from openemail.widgets.form import MailForm
 
 from .content_page import MailContentPage
 from .message_view import MailMessageView
@@ -44,6 +45,7 @@ class MailMessagesPage(Adw.NavigationPage):
     readers: Gtk.Text = Gtk.Template.Child()
     subject: Gtk.Text = Gtk.Template.Child()
     body: Gtk.TextBuffer = Gtk.Template.Child()
+    compose_form: MailForm = Gtk.Template.Child()
 
     title = GObject.Property(type=str, default=_("Messages"))
     _folder: str | None = None
@@ -133,9 +135,7 @@ class MailMessagesPage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _new_message(self, *_args: Any) -> None:
-        self.readers.set_text("")
-        self.subject.set_text("")
-        self.body.set_text("")
+        self.compose_form.reset()
         self.broadcast_switch.set_active(False)
 
         self.compose_dialog.present(self)

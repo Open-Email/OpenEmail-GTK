@@ -19,11 +19,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-from typing import Any, Literal
+from enum import Enum
+from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
 from openemail.core.user import Address
+
+
+class MailFormField(Enum):
+    """A type of field in a form."""
+
+    PLAIN = 1
+    ADDRESS = 2
+    ADDRESS_LIST = 3
 
 
 class MailForm(GObject.Object):
@@ -36,16 +45,53 @@ class MailForm(GObject.Object):
 
     invalid: set[Gtk.Editable | Gtk.TextBuffer]
 
-    _fields: Gtk.StringList | None = None
+    _fields: dict[MailFormField, Gtk.StringList]
 
     @GObject.Property(type=Gtk.StringList)
-    def fields(self) -> Gtk.StringList | None:
-        """Get the fields of the form."""
-        return self._fields
+    def plain(self) -> Gtk.StringList | None:
+        """Get the plain, text-only fields of the form."""
+        return self._fields.get(MailFormField.PLAIN)
 
-    @fields.setter
-    def fields(self, fields: Gtk.StringList) -> None:
-        self._fields = fields
+    @plain.setter
+    def plain(self, fields: Gtk.StringList) -> None:
+        self.__assign_fields(MailFormField.PLAIN, fields)
+
+    @GObject.Property(type=Gtk.StringList)
+    def addresses(self) -> Gtk.StringList | None:
+        """Get fields of the form for addresses."""
+        return self._fields.get(MailFormField.ADDRESS)
+
+    @addresses.setter
+    def addresses(self, fields: Gtk.StringList) -> None:
+        self.__assign_fields(MailFormField.ADDRESS, fields)
+
+    @GObject.Property(type=Gtk.StringList)
+    def address_lists(self) -> Gtk.StringList | None:
+        """Get fields of the form for comma-separated lists of addresses."""
+        return self._fields.get(MailFormField.ADDRESS_LIST)
+
+    @address_lists.setter
+    def address_lists(self, fields: Gtk.StringList) -> None:
+        self.__assign_fields(MailFormField.ADDRESS_LIST, fields)
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._fields = {}
+
+    def reset(self) -> None:
+        """Reset the state of the form.
+
+        Useful for reusable widgets after submission.
+        """
+        for fields in self._fields.values():
+            for field in fields:
+                try:
+                    getattr(self.form, field.get_string()).set_text("")
+                except AttributeError:
+                    continue
+
+    def __assign_fields(self, type: MailFormField, fields: Gtk.StringList) -> None:
+        self._fields[type] = fields
 
         if self.form.get_realized():
             self.__setup()
@@ -54,34 +100,29 @@ class MailForm(GObject.Object):
         self.form.connect("realize", self.__setup)
 
     def __setup(self, *_args: Any) -> None:
-        self.form.disconnect_by_func(self.__setup)
+        try:
+            self.form.disconnect_by_func(self.__setup)
+        except TypeError:
+            pass
+
         self.invalid = set()
 
-        type = None
-        for index, field in enumerate(self.fields):
-            field = field.get_string()
+        for type, fields in self._fields.items():
+            for field in fields:
+                try:
+                    field = getattr(self.form, field.get_string())
+                except AttributeError:
+                    continue
 
-            if not (index % 2):
-                type = field
-                continue
-
-            if not type:
-                continue
-
-            try:
-                field = getattr(self.form, field)
-            except AttributeError:
-                continue
-
-            field.connect("changed", self.__validate, type)
-            self.__validate(field, type)
+                field.connect("changed", self.__validate, type)
+                self.__validate(field, type)
 
         self.__verify()
 
     def __validate(
         self,
         field: Gtk.Editable | Gtk.TextBuffer,
-        type: Literal["plain", "address", "addresses"],
+        type: MailFormField,
     ) -> None:
         text = (
             field.get_text()
@@ -94,10 +135,10 @@ class MailForm(GObject.Object):
         )
 
         match type:
-            case "plain":
+            case MailFormField.PLAIN:
                 (self.__valid if text else self.__invalid)(field)
 
-            case "address":
+            case MailFormField.ADDRESS:
                 try:
                     Address(text)
                 except ValueError:
@@ -106,7 +147,7 @@ class MailForm(GObject.Object):
 
                 self.__valid(field)
 
-            case "addresses":
+            case MailFormField.ADDRESS_LIST:
                 for address in text.split(","):
                     if not (address := address.strip()):
                         continue

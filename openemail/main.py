@@ -32,7 +32,6 @@ from gi.repository import Adw, Gio
 
 from . import shared
 from .core.user import User
-from .widgets.form import MailForm  # noqa: F401
 from .widgets.preferences import MailPreferences
 from .widgets.window import MailWindow
 
