@@ -148,12 +148,19 @@ class MailForm(GObject.Object):
                 self.__valid(field)
 
             case MailFormField.ADDRESS_LIST:
-                for address in text.split(","):
-                    if not (address := address.strip()):
-                        continue
+                if not (
+                    addresses := tuple(
+                        stripped
+                        for address in text.split(",")
+                        if (stripped := address.strip())
+                    )
+                ):
+                    self.__invalid(field)
+                    return
 
+                for address in addresses:
                     try:
-                        Address(address.strip())
+                        Address(address)
                     except ValueError:
                         self.__invalid(field)
                         return
