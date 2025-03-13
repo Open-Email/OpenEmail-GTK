@@ -108,7 +108,7 @@ class Envelope:
                     message_headers = value
 
         if not message_headers:
-            raise ValueError("Empty message headers.")
+            raise ValueError("Empty message headers")
 
         try:
             header_bytes = b64decode(parse_headers(message_headers)["value"])
@@ -122,10 +122,10 @@ class Envelope:
                     for header in header_bytes.decode("utf-8").split("\n")
                 }
             except UnicodeDecodeError as error:
-                raise ValueError("Unable to decode headers.") from error
+                raise ValueError("Unable to decode headers") from error
 
         except (IndexError, KeyError, ValueError) as error:
-            raise ValueError("Could not parse headers.") from error
+            raise ValueError("Could not parse headers") from error
 
         try:
             self.message_id = headers["id"]
@@ -133,7 +133,7 @@ class Envelope:
             self.subject = headers["subject"]
             self.author = Address(headers["author"])
         except KeyError as error:
-            raise ValueError("Incomplete header contents.") from error
+            raise ValueError("Incomplete header contents") from error
 
         self.subject_id = headers.get("subject.id", self.message_id)
         self.parent_id = headers.get("parent-id")

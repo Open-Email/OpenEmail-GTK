@@ -24,7 +24,9 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
 import json
+import logging
 import sys
+from logging.handlers import RotatingFileHandler
 from typing import Any, Callable, Sequence
 
 import keyring
@@ -77,6 +79,14 @@ class MailApplication(Adw.Application):
         # Translators: Replace "translator-credits" with your name/username,
         # and optionally an email or URL.
         about.set_translator_credits(_("translator-credits"))
+
+        try:
+            about.set_debug_info(shared.log_file.read_text())
+        except FileNotFoundError:
+            pass
+        else:
+            about.set_debug_info_filename(shared.log_file.name)
+
         about.present(self.get_active_window())
 
     def on_preferences_action(self, *_args: Any) -> None:
@@ -134,4 +144,18 @@ class MailApplication(Adw.Application):
 
 def main() -> int:
     """Run the application."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(levelname)s: %(name)s %(module)s:%(lineno)d %(message)s",
+        handlers=(
+            (
+                logging.StreamHandler(),
+                RotatingFileHandler(
+                    shared.log_file,
+                    maxBytes=1000000,
+                ),
+            )
+        ),
+    )
+
     return MailApplication().run(sys.argv)

@@ -55,13 +55,13 @@ class Address:
             r"^[a-z0-9][a-z0-9\.\-_\+]{2,}@[a-z0-9.-]+\.[a-z]{2,}|xn--[a-z0-9]{2,}$",
             address := address.lower(),
         ):
-            raise ValueError(f'Email address "{address}" is invalid.')
+            raise ValueError(f'Email address "{address}" is invalid')
 
         try:
             self.local_part, self.host_part = address.split("@")
         except ValueError as error:
             raise ValueError(
-                f'Email address "{address}" contains more than a single @ character.'
+                f'Email address "{address}" contains more than a single @ character'
             ) from error
 
     def __str__(self) -> str:
@@ -100,7 +100,7 @@ class ProfileField(ABC, Generic[T]):
     def value(self) -> T:
         """The value of the field."""
         if self.default_value is None:
-            raise ValueError("Profile incorrectly initialized.")
+            raise ValueError("Profile incorrectly initialized")
 
         return self.default_value
 
@@ -294,7 +294,7 @@ class Profile:
                 if field.default_value is None:
                     match fields:
                         case self.required:
-                            raise ValueError(f'Required field "{key}" does not exist.')
+                            raise ValueError(f'Required field "{key}" does not exist')
                         case self.optional:
                             fields[key] = None
 

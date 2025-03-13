@@ -63,7 +63,7 @@ def get_keys(b64: str) -> tuple[Key, Key]:
         case 64:
             return Key(bytes[32:]), Key(bytes[:32])
         case length:
-            raise ValueError(f"Invalid key length of {length}.")
+            raise ValueError(f"Invalid key length of {length}")
 
 
 def sign_data(private_key: Key, data: bytes) -> str:
@@ -73,7 +73,7 @@ def sign_data(private_key: Key, data: bytes) -> str:
             SigningKey(bytes(private_key)).sign(data).signature,
         ).decode("utf-8")
     except (CryptoError, UnicodeDecodeError) as error:
-        raise ValueError("Unable to sign data.") from error
+        raise ValueError("Unable to sign data") from error
 
 
 def random_bytes(length: int) -> bytes:
@@ -102,7 +102,7 @@ def get_nonce(host: str, public_key: Key, private_key: Key) -> str:
             )
         )
     except ValueError as error:
-        raise ValueError("Unable to get authentication nonce.") from error
+        raise ValueError("Unable to get authentication nonce") from error
 
 
 def decrypt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> bytes:
@@ -110,12 +110,12 @@ def decrypt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> by
     try:
         data = b64decode(cipher_text)
     except ValueError as error:
-        raise ValueError("Invalid cipher text.") from error
+        raise ValueError("Invalid cipher text") from error
 
     try:
         return SealedBox(PrivateKey(bytes(private_key))).decrypt(data)
     except CryptoError as error:
-        raise ValueError("Unable to decrypt cipher text.") from error
+        raise ValueError("Unable to decrypt cipher text") from error
 
 
 def encrypt_anonymous(data: bytes, public_key: Key) -> bytes:
@@ -123,7 +123,7 @@ def encrypt_anonymous(data: bytes, public_key: Key) -> bytes:
     try:
         return SealedBox(PublicKey(bytes(public_key))).encrypt(data)
     except CryptoError as error:
-        raise ValueError("Unable to encrypt data.") from error
+        raise ValueError("Unable to encrypt data") from error
 
 
 def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
@@ -136,7 +136,7 @@ def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
             access_key,
         )
     except CryptoError as error:
-        raise ValueError("Unable to decrypt data.") from error
+        raise ValueError("Unable to decrypt data") from error
 
 
 def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
@@ -151,4 +151,4 @@ def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
             access_key,
         )
     except CryptoError as error:
-        raise ValueError("Unable to encrypt data.") from error
+        raise ValueError("Unable to encrypt data") from error
