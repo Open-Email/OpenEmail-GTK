@@ -371,10 +371,13 @@ async def send_message(
     readers: Iterable[Address],
     subject: str,
     body: str,
+    reply: str | None = None,
 ) -> None:
     """Attempt to send `message` to `readers`.
 
     If `readers` is empty, send a broadcast.
+
+    `reply` is an optional `Subject-ID` of a thread that the message should be part of.
     """
     if not body:
         return
@@ -407,7 +410,7 @@ async def send_message(
             )
         ),
         "Subject": subject,
-        "Subject-Id": message_id,
+        "Subject-Id": reply or message_id,
         "Category": "personal",
     }
 

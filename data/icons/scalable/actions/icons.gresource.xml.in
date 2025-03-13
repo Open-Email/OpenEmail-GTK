@@ -6,6 +6,7 @@
     <file preprocess="xml-stripblanks">key-symbolic.svg</file>
     <file preprocess="xml-stripblanks">mail-attachment-symbolic.svg</file>
     <file preprocess="xml-stripblanks">mail-message-new-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">mail-reply-sender-symbolic.svg</file>
     <file preprocess="xml-stripblanks">mailbox-symbolic.svg</file>
     <file preprocess="xml-stripblanks">open-menu-symbolic.svg</file>
     <file preprocess="xml-stripblanks">send-symbolic.svg</file>

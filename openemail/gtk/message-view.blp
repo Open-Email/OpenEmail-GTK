@@ -42,6 +42,17 @@ template $MailMessageView: Adw.Bin {
             "flat",
           ]
         }
+        
+        [end]
+        Button reply_button {
+          visible: bind template.can-reply;
+          icon-name: "mail-reply-sender-symbolic";
+          tooltip-text: _("Reply");
+        
+          styles [
+            "flat",
+          ]
+        }
       }
 
       content: Stack {

@@ -37,11 +37,12 @@ class MailMessageView(Adw.Bin):
     __gtype_name__ = "MailMessageView"
 
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
+
+    reply_button: Gtk.Button = Gtk.Template.Child()
     attachments: Gtk.ListBox = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
     profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
-
     confirm_discard_dialog: Adw.AlertDialog = Gtk.Template.Child()
 
     visible_child_name = GObject.Property(type=str, default="empty")
@@ -59,6 +60,7 @@ class MailMessageView(Adw.Bin):
     author_is_self = GObject.Property(type=bool, default=False)
     can_trash = GObject.Property(type=bool, default=False)
     can_restore = GObject.Property(type=bool, default=False)
+    can_reply = GObject.Property(type=bool, default=False)
 
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
@@ -117,6 +119,8 @@ class MailMessageView(Adw.Bin):
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
         self.body = message.body
+
+        self.can_reply = True
 
         self.author_is_self = shared.user and (
             message.envelope.author == shared.user.address

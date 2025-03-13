@@ -155,7 +155,7 @@ class MailForm(GObject.Object):
                         if (stripped := address.strip())
                     )
                 ):
-                    self.__invalid(field)
+                    self.__valid(field)
                     return
 
                 for address in addresses:

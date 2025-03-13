@@ -63,6 +63,8 @@ class Envelope:
     file_name: str | None = field(init=False, default=None)
     files: dict[str, AttachmentProperties] = field(init=False, default_factory=dict)
 
+    subject_id: str | None = field(init=False, default=None)
+
     @property
     def is_broadcast(self) -> bool:
         """Whether or not the message is a broadcast."""
@@ -133,6 +135,7 @@ class Envelope:
         except KeyError as error:
             raise ValueError("Incomplete header contents.") from error
 
+        self.subject_id = headers.get("subject.id", self.message_id)
         self.parent_id = headers.get("parent-id")
 
         if files := headers.get("files"):
