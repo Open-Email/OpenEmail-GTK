@@ -42,7 +42,7 @@ class MailMessageView(Adw.Bin):
     attachments: Gtk.ListBox = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
-    profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
+    profile_view: MailProfileView = Gtk.Template.Child()
     confirm_discard_dialog: Adw.AlertDialog = Gtk.Template.Child()
 
     visible_child_name = GObject.Property(type=str, default="empty")
@@ -216,7 +216,7 @@ class MailMessageView(Adw.Bin):
             except GLib.Error:
                 return
 
-            stream.write_bytes(GLib.Bytes.new(data))  # type: ignore
+            stream.write_bytes(GLib.Bytes.new(data))
             stream.close()
 
         def save_finish(dialog: Gtk.FileDialog, result: Gio.AsyncResult) -> None:

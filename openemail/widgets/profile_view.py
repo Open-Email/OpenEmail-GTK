@@ -64,7 +64,7 @@ class MailProfileView(Adw.Bin):
             return
 
         string = str(profile.address)
-        if any(contact.address == string for contact in shared.address_book):
+        if any(contact.address == string for contact in shared.address_book):  # type: ignore
             self.can_remove = True
         else:
             self.can_remove = False

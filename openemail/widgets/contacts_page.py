@@ -38,8 +38,8 @@ class MailContactsPage(Adw.NavigationPage):
 
     __gtype_name__ = "MailContactsPage"
 
-    content: MailContentPage = Gtk.Template.Child()  # type: ignore
-    profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
+    content: MailContentPage = Gtk.Template.Child()
+    profile_view: MailProfileView = Gtk.Template.Child()
 
     add_contact_dialog: Adw.AlertDialog = Gtk.Template.Child()
     address: Adw.EntryRow = Gtk.Template.Child()
@@ -53,7 +53,7 @@ class MailContactsPage(Adw.NavigationPage):
                 autoselect=False,
                 model=Gtk.SortListModel.new(
                     shared.address_book,
-                    Gtk.CustomSorter.new(lambda a, b, _: strcoll(a.name, b.name)),  # type: ignore
+                    Gtk.CustomSorter.new(lambda a, b, _: strcoll(a.name, b.name)),
                 ),
             )
         )

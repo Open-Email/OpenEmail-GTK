@@ -37,8 +37,8 @@ class MailWindow(Adw.ApplicationWindow):
 
     __gtype_name__ = "MailWindow"
 
-    auth_view: MailAuthView = Gtk.Template.Child()  # type: ignore
-    content_view: MailContentView = Gtk.Template.Child()  # type: ignore
+    auth_view: MailAuthView = Gtk.Template.Child()
+    content_view: MailContentView = Gtk.Template.Child()
 
     visible_child_name = GObject.Property(type=str, default="auth")
 

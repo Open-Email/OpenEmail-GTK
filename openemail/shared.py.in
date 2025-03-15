@@ -110,7 +110,7 @@ class MailProfile(GObject.Object):
 
 
 profiles: defaultdict[Address, MailProfile] = defaultdict(MailProfile)
-address_book = Gio.ListStore.new(MailProfile)
+address_book = Gio.ListStore.new(MailProfile)  # type: ignore
 
 
 class MailMessage(GObject.Object):
@@ -210,7 +210,7 @@ async def update_user_profile() -> None:
 
     try:
         profiles[user.address].image = Gdk.Texture.new_from_bytes(
-            GLib.Bytes.new(await fetch_profile_image(user.address))  # type: ignore
+            GLib.Bytes.new(await fetch_profile_image(user.address))
         )
     except GLib.Error:
         profiles[user.address].image = None
@@ -247,9 +247,7 @@ async def update_profiles() -> None:
     async def update_profile_image(address: Address) -> None:
         try:
             profiles[address].image = (
-                Gdk.Texture.new_from_bytes(
-                    GLib.Bytes.new(image)  # type: ignore
-                )
+                Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))
                 if (image := await fetch_profile_image(address))
                 else None
             )
@@ -257,8 +255,8 @@ async def update_profiles() -> None:
             profiles[address].image = None
 
     asyncio.gather(
-        *(update_profile(Address(contact.address)) for contact in address_book),
-        *(update_profile_image(Address(contact.address)) for contact in address_book),
+        *(update_profile(Address(contact.address)) for contact in address_book),  # type: ignore
+        *(update_profile_image(Address(contact.address)) for contact in address_book),  # type: ignore
     )
 
 
@@ -271,7 +269,7 @@ async def update_broadcasts_list() -> None:
         return
 
     result = await asyncio.gather(
-        *(fetch_broadcasts(user, Address(contact.address)) for contact in address_book)
+        *(fetch_broadcasts(user, Address(contact.address)) for contact in address_book)  # type: ignore
     )
 
     broadcasts.remove_all()
@@ -289,7 +287,7 @@ async def update_messages_list() -> None:
 
     result = await asyncio.gather(
         *(
-            fetch_link_messages(user, Address(contact.address))
+            fetch_link_messages(user, Address(contact.address))  # type: ignore
             for contact in address_book
         )
     )

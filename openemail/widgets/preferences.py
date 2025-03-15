@@ -55,14 +55,14 @@ class MailPreferences(Adw.PreferencesDialog):
         shared.outbox.remove_all()
 
         shared.settings.set_string("address", "")
-        shared.settings.set_value("trashed-message-ids", GLib.Variant.new_strv(()))  #  type: ignore
+        shared.settings.set_value("trashed-message-ids", GLib.Variant.new_strv(()))
 
         keyring.delete_password(shared.secret_service, str(shared.user.address))
 
         shared.user = None
 
-        if not isinstance(win := self.get_root(), MailWindow):  # type: ignore
+        if not isinstance(win := self.get_root(), MailWindow):
             return
 
-        win.visible_child_name = "auth"  # type: ignore
+        win.visible_child_name = "auth"
         self.force_close()

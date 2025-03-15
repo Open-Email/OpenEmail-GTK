@@ -38,8 +38,8 @@ class MailMessagesPage(Adw.NavigationPage):
 
     __gtype_name__ = "MailMessagesPage"
 
-    content: MailContentPage = Gtk.Template.Child()  # type: ignore
-    message_view: MailMessageView = Gtk.Template.Child()  # type: ignore
+    content: MailContentPage = Gtk.Template.Child()
+    message_view: MailMessageView = Gtk.Template.Child()
 
     compose_dialog: Adw.Dialog = Gtk.Template.Child()
     broadcast_switch: Gtk.Switch = Gtk.Template.Child()
@@ -100,7 +100,7 @@ class MailMessagesPage(Adw.NavigationPage):
                     - int(
                         b.message.envelope.date.timestamp()
                         < a.message.envelope.date.timestamp()
-                    )  # type: ignore
+                    )
                 ),
             ),
         )
@@ -221,10 +221,13 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_dialog.present(self)
         self.body_view.grab_focus()
 
-    def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:  # type: ignore
-        if not isinstance(
-            selected := selection.get_selected_item(),
-            shared.MailMessage,
+    def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+        if not (
+            isinstance(
+                selected := selection.get_selected_item(),
+                shared.MailMessage,
+            )
+            and selected.message
         ):
             self.message_view.visible_child_name = "empty"
             self.message_view.author_is_self = False

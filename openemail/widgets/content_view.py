@@ -42,14 +42,14 @@ class MailContentView(Adw.BreakpointBin):
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     contacts_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
-    profile_view: MailProfileView = Gtk.Template.Child()  # type: ignore
+    profile_view: MailProfileView = Gtk.Template.Child()
 
     empty_status_page: Adw.StatusPage = Gtk.Template.Child()
 
-    broadcasts_page: MailMessagesPage = Gtk.Template.Child()  # type: ignore
-    inbox_page: MailMessagesPage = Gtk.Template.Child()  # type: ignore
-    outbox_page: MailMessagesPage = Gtk.Template.Child()  # type: ignore
-    contacts_page: MailContactsPage = Gtk.Template.Child()  # type: ignore
+    broadcasts_page: MailMessagesPage = Gtk.Template.Child()
+    inbox_page: MailMessagesPage = Gtk.Template.Child()
+    outbox_page: MailMessagesPage = Gtk.Template.Child()
+    contacts_page: MailContactsPage = Gtk.Template.Child()
 
     syncing_toast: Adw.Toast | None = None
 
@@ -117,14 +117,14 @@ class MailContentView(Adw.BreakpointBin):
 
             profile = shared.profiles[shared.user.address]
             self.profile_view.profile = profile.profile
-            self.profile_image = self.profile_view.profile_image = profile.image
+            self.profile_image = profile.image
             self.profile_stack_child_name = "profile"
 
         self.profile_stack_child_name = "spinner"
         shared.run_task(shared.update_user_profile(), update_user_profile_cb)
 
     @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:  # type: ignore
+    def _on_row_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:
         if not row:
             return
 
@@ -149,7 +149,7 @@ class MailContentView(Adw.BreakpointBin):
             self.split_view.set_show_sidebar(False)
 
     @Gtk.Template.Callback()
-    def _on_contacts_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:  # type: ignore
+    def _on_contacts_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:
         if not row:
             return
 

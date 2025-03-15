@@ -61,7 +61,7 @@ class MailApplication(Adw.Application):
 
         Called when the application is activated.
         """
-        (self.get_active_window() or MailWindow(application=self)).present()  # type: ignore
+        (self.get_active_window() or MailWindow(application=self)).present()
 
     def on_about_action(self, *_args: Any) -> None:
         """Present the about dialog."""
@@ -97,14 +97,14 @@ class MailApplication(Adw.Application):
         ):
             return
 
-        MailPreferences().present(win)  # type: ignore
+        MailPreferences().present(win)
 
     def on_sync_action(self, *_args: Any) -> None:
         """Sync remote content."""
-        if not isinstance(win := self.get_active_window(), MailWindow):  # type: ignore
+        if not isinstance(win := self.get_active_window(), MailWindow):
             return
 
-        win.content_view.load_content(first_sync=False)  # type: ignore
+        win.content_view.load_content(first_sync=False)
 
     def create_action(
         self,
