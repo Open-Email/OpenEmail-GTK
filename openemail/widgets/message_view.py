@@ -18,6 +18,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import asyncio
 from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
@@ -181,7 +182,21 @@ class MailMessageView(Adw.Bin):
         if not (parts := self.attachment_messages.get(row)):
             return
 
-        async def save(gfile: Gio.File) -> None:
+        async def save() -> None:
+            try:
+                gfile = await Gtk.FileDialog(  # type: ignore
+                    initial_name=row.get_title(),
+                    initial_folder=Gio.File.new_for_path(downloads)
+                    if (
+                        downloads := GLib.get_user_special_dir(
+                            GLib.UserDirectory.DIRECTORY_DOWNLOAD
+                        )
+                    )
+                    else None,
+                ).save(win if isinstance(win := self.get_root(), Gtk.Window) else None)
+            except GLib.Error:
+                return
+
             data = b""
             for part in parts:
                 if not (
@@ -216,32 +231,10 @@ class MailMessageView(Adw.Bin):
             except GLib.Error:
                 return
 
-            stream.write_bytes(GLib.Bytes.new(data))
-            stream.close()
+            await stream.write_bytes_async(GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT)
+            await stream.close_async(GLib.PRIORITY_DEFAULT)
 
-        def save_finish(dialog: Gtk.FileDialog, result: Gio.AsyncResult) -> None:
-            try:
-                if not (gfile := dialog.save_finish(result)):
-                    return
-
-            except GLib.Error:
-                return
-
-            shared.run_task(save(gfile))
-
-        Gtk.FileDialog(
-            initial_name=row.get_title(),
-            initial_folder=Gio.File.new_for_path(downloads)
-            if (
-                downloads := GLib.get_user_special_dir(
-                    GLib.UserDirectory.DIRECTORY_DOWNLOAD
-                )
-            )
-            else None,
-        ).save(
-            win if isinstance(win := self.get_root(), Gtk.Window) else None,
-            callback=save_finish,
-        )
+        shared.run_task(save())
 
     @Gtk.Template.Callback()
     def _trash(self, *_args: Any) -> None:
