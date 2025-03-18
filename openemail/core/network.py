@@ -203,17 +203,34 @@ async def fetch_contacts(user: User) -> tuple[Address, ...]:
                 continue
 
             try:
+                contact = decrypt_anonymous(
+                    parts[1].strip(),
+                    user.private_encryption_key,
+                    user.public_encryption_key,
+                ).decode("utf-8")
+            except ValueError:
+                continue
+
+            # For backwards-compatibility with contacts added before 1.0
+            try:
+                addresses.append(Address(contact))
+            except (ValueError, UnicodeDecodeError):
+                pass
+            else:
+                continue
+
+            try:
                 addresses.append(
                     Address(
-                        decrypt_anonymous(
-                            parts[1].strip(),
-                            user.private_encryption_key,
-                            user.public_encryption_key,
-                        ).decode("utf-8")
+                        {
+                            (split := attr.strip().split("=", 1))[0].lower(): split[1]
+                            for attr in contact.split(";")
+                        }["address"]
                     )
                 )
-            except (ValueError, UnicodeDecodeError):
+            except (IndexError, KeyError, ValueError):
                 continue
+
         break
 
     logging.debug("Contact list fetched")
@@ -227,7 +244,7 @@ async def new_contact(address: Address, user: User) -> None:
     try:
         data = b64encode(
             encrypt_anonymous(
-                str(address).encode("utf-8"),
+                f"address={address};broadcasts=yes".encode("utf-8"),
                 user.public_encryption_key,
             )
         )
