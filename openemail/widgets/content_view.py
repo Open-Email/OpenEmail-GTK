@@ -27,7 +27,7 @@ from openemail import shared
 from .contacts_page import MailContactsPage
 from .messages_page import MailMessagesPage
 from .navigation_row import MailNavigationRow
-from .profile_view import MailProfileView
+from .profile_settings import MailProfileSettings
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/content-view.ui")
@@ -41,8 +41,7 @@ class MailContentView(Adw.BreakpointBin):
 
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     contacts_sidebar: Gtk.ListBox = Gtk.Template.Child()
-    profile_dialog: Adw.Dialog = Gtk.Template.Child()
-    profile_view: MailProfileView = Gtk.Template.Child()
+    profile_settings: MailProfileSettings = Gtk.Template.Child()
 
     empty_status_page: Adw.StatusPage = Gtk.Template.Child()
 
@@ -54,8 +53,10 @@ class MailContentView(Adw.BreakpointBin):
     syncing_toast: Adw.Toast | None = None
 
     content_child_name = GObject.Property(type=str, default="inbox")
-    profile_stack_child_name = GObject.Property(type=str, default="spinner")
+    profile_stack_child_name = GObject.Property(type=str, default="loading")
     profile_image = GObject.Property(type=Gdk.Paintable)
+
+    _image_binding: GObject.Binding | None = None
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -116,8 +117,18 @@ class MailContentView(Adw.BreakpointBin):
                 return
 
             profile = shared.profiles[shared.user.address]
-            self.profile_view.profile = profile.profile
-            self.profile_image = profile.image
+
+            if self._image_binding:
+                self._image_binding.unbind()
+
+            self._image_binding = profile.bind_property(
+                "image",
+                self,
+                "profile-image",
+                GObject.BindingFlags.DEFAULT | GObject.BindingFlags.SYNC_CREATE,
+            )
+
+            self.profile_settings.profile = profile.profile
             self.profile_stack_child_name = "profile"
 
         self.profile_stack_child_name = "spinner"
@@ -163,7 +174,7 @@ class MailContentView(Adw.BreakpointBin):
 
     @Gtk.Template.Callback()
     def _on_profile_button_clciked(self, *_args: Any) -> None:
-        self.profile_dialog.present(self)
+        self.profile_settings.present(self)
 
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:

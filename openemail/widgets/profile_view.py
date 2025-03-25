@@ -41,7 +41,7 @@ class MailProfileView(Adw.Bin):
 
     name = GObject.Property(type=str)
     address = GObject.Property(type=str)
-    paintable = GObject.Property(type=Gdk.Paintable)
+    profile_image = GObject.Property(type=Gdk.Paintable)
     away = GObject.Property(type=bool, default=False)
     can_remove = GObject.Property(type=bool, default=False)
 
@@ -73,76 +73,46 @@ class MailProfileView(Adw.Bin):
         self.address = profile.address
         self.away = away.value if (away := profile.optional.get("away")) else False
 
-        if hasattr(self, "_groups"):
-            while self._groups:
-                self.page.remove(self._groups.pop())
+        while self._groups:
+            self.page.remove(self._groups.pop())
 
         self._groups = []
 
-        for name, category in {
-            _("General"): (
-                "status",
-                "about",
-            ),
-            _("Personal"): (
-                "gender",
-                "relationship-status",
-                "birthday",
-                "education",
-                "languages",
-                "places-lived",
-                "notes",
-            ),
-            _("Work"): (
-                "work",
-                "organization",
-                "department",
-                "job-title",
-            ),
-            _("Interests"): (
-                "interests",
-                "books",
-                "movies",
-                "music",
-                "sports",
-            ),
-            _("Contacts"): (
-                "website",
-                "location",
-                "mailing-address",
-                "phone",
-            ),
-        }.items():
+        for category, fields in shared.profile_categories.items():
             group = None
-            for key in category:
-                if not ((field := profile.optional.get(key)) and field.name):
+            for ident, name in fields.items():
+                if not (profile_field := profile.optional.get(ident)):
                     continue
 
                 if not group:
                     self._groups.append(
                         group := Adw.PreferencesGroup(
-                            title=name,
+                            title=category.name,
                             separate_rows=True,  # type: ignore
                         )
                     )
                     self.page.add(group)
 
                 row = Adw.ActionRow(
-                    title=field.name,
-                    subtitle=str(field),
+                    title=name,
+                    subtitle=str(profile_field),
                     subtitle_selectable=True,
                 )
                 row.add_css_class("property")
                 row.add_prefix(
                     Gtk.Image(
                         valign=Gtk.Align.START,
-                        icon_name=f"{key}-symbolic",
+                        icon_name=f"{ident}-symbolic",
                         margin_top=18,
                     )
                 )
                 group.add(row)
 
         self.visible_child_name = "profile"
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._groups = []
 
     @Gtk.Template.Callback()
     def _remove_contact(self, *_args: Any) -> None:

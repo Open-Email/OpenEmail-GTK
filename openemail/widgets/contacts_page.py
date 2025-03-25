@@ -113,6 +113,6 @@ class MailContactsPage(Adw.NavigationPage):
             return
 
         self.profile_view.profile = selected.profile
-        self.profile_view.paintable = selected.image
+        self.profile_view.profile_image = selected.image
 
         self.content.split_view.set_show_content(True)

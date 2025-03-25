@@ -93,7 +93,6 @@ class Address:
 class ProfileField(ABC, Generic[T]):
     """A generic profile field."""
 
-    name: str | None = None
     default_value: T | None = None
 
     @property
@@ -126,7 +125,7 @@ class BoolField(ProfileField[bool]):
     """A profile field representing a boolean."""
 
     def __str__(self) -> str:
-        return _("Yes") if self.value else _("No")
+        return "Yes" if self.value else "No"
 
     def update_value(self, data: str | None) -> None:
         """Attempt to update `self.value` from `data`."""
@@ -206,76 +205,40 @@ class Profile:
         self.address = address
 
         self.required = {
-            # Represents the display name associated with the address.
-            "name": StringField(_("Name")),
+            "name": StringField(),
             "signing-key": KeyField(),
             "updated": DateTimeField(),
         }
 
         self.optional = {
-            # Provides a brief description or summary of the profile owner's background,
-            # interests, or personal statement.
-            "about": StringField(_("About")),
-            # Indicates that the user may not read messages until the away status is removed.
-            "away": BoolField(_("Away"), default_value=False),
+            "about": StringField(),
+            "away": BoolField(False),
             "away-warning": StringField(),
-            # Indicates the date of birth of the profile owner
-            "birthday": DateField(_("Birthday")),
-            # Lists literary works or genres that the profile owner likes to read.
-            "books": StringField(_("Books")),
-            # Denotes the specific department or division
-            # within the organization where the profile owner works.
-            "department": StringField(_("Department")),
-            # Provides information about the educational background of the profile owner,
-            # including schools attended and degrees earned.
-            "education": StringField(_("Education")),
+            "birthday": DateField(),
+            "books": StringField(),
+            "department": StringField(),
+            "education": StringField(),
             "encryption-key": KeyField(),
-            # Represents the gender identity or gender expression of the profile owner.
-            "gender": StringField(_("Gender")),
-            # Lists hobbies, activities, or topics of interest
-            # that the profile owner has indicated.
-            "interests": StringField(_("Interests")),
-            # Describes the job title or position held by the profile owner
-            # within their organization.
-            "job-title": StringField(_("Job Title")),
-            # Indicates the languages spoken or understood by the profile owner.
-            "languages": StringField(_("Languages")),
-            "last-seen-public": BoolField(default_value=True),
+            "gender": StringField(),
+            "interests": StringField(),
+            "job-title": StringField(),
+            "languages": StringField(),
+            "last-seen-public": BoolField(True),
             "last-signing-key": KeyField(),
-            # May indicate the geographical location
-            # such as address or GPS coordinates of the profile owner.
-            "location": StringField(_("Location")),
-            # Represents the physical address or mailing address of the profile owner.
-            # Not to be confused with profile's Mail/HTTPS address.
-            "mailing-address": StringField(_("Mailing Address")),
-            # Lists films or movie genres that the profile owner enjoys.
-            "movies": StringField(_("Movies")),
-            # Indicates the profile owner's preferred music genres, artists, or songs.
-            "music": StringField(_("Music")),
-            # Allows for additional remarks or notes about the profile owner,
-            # such as preferences, interests, or specific instructions.
-            "notes": StringField(_("Notes")),
-            # Denotes the name of the company, organization, or institution
-            # the profile owner is affiliated with.
-            "organization": StringField(_("Organization")),
-            # The telephone contact numbers associated with the profile owner.
-            "phone": StringField(_("Phone")),
-            # Information about the profile owner's previous or current places of residence
-            # or significant locations in their life.
-            "place-slived": StringField(_("Places Lived")),
-            "public-access": BoolField(default_value=True),
-            # Indicates the current relationship status of the profile owner
-            # (e.g., single, in a relationship, married, looking, etc.).
-            "relationship-status": StringField(_("Relationship Status")),
-            # May lists sports activities or teams
-            # that the profile owner follows or participates in.
-            "sports": StringField(_("Sports")),
-            # Provides the current status message or context of the profile owner.
-            "status": StringField(_("Status")),
-            # Lists the website(s) associated with the profile owner.
-            "website": StringField(_("Website")),
-            # Provides details about the professional work experience of the profile owner.
-            "work": StringField(_("Work")),
+            "location": StringField(),
+            "mailing-address": StringField(),
+            "movies": StringField(),
+            "music": StringField(),
+            "notes": StringField(),
+            "organization": StringField(),
+            "phone": StringField(),
+            "place-slived": StringField(),
+            "public-access": BoolField(True),
+            "relationship-status": StringField(),
+            "sports": StringField(),
+            "status": StringField(),
+            "website": StringField(),
+            "work": StringField(),
         }
 
         parsed_fields = {

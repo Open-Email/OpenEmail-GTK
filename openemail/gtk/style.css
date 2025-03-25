@@ -1,3 +1,10 @@
+/* https://gitlab.gnome.org/GNOME/gnome-control-center/-/blob/d3946ec05b4431dde45974749db720decbe9ae0d/panels/system/users/users.css#L2 */
+.cutout-button {
+  background-color: var(--window-bg-color);
+  border-radius: 9999px;
+  padding: 2px;
+}
+
 .avatar-button {
   transition: filter 0.3s;
 }

@@ -86,7 +86,7 @@ class MailContentPage(Adw.BreakpointBin):
         self.sidebar_child_name = (
             "content"
             if self.model.get_n_items()
-            else "spinner"
+            else "loading"
             if self._loading
             else "empty"
         )

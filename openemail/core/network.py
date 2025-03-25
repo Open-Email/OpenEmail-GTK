@@ -34,6 +34,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from .crypto import (
+    SIGNING_ALGORITHM,
     decrypt_anonymous,
     decrypt_xchacha20poly1305,
     encrypt_anonymous,
@@ -46,11 +47,11 @@ from .crypto import (
 from .message import Envelope, Message, generate_link
 from .user import Address, Profile, User
 
-setdefaulttimeout(5)
-
 cache_dir: Path = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
 
 _agents: dict[str, tuple[str, ...]] = {}
+
+setdefaulttimeout(5)
 
 
 async def request(
@@ -167,6 +168,48 @@ async def fetch_profile(address: Address) -> Profile | None:
     return None
 
 
+async def update_profile(user: User, values: dict[str, str]) -> None:
+    """Attempt to update `user`'s public profile with `values`."""
+    logging.debug("Updating user profile…")
+
+    values.update(
+        {
+            "Updated": datetime.now().isoformat(timespec="seconds"),
+            "Encryption-Key": "; ".join(
+                (
+                    f"id={user.public_encryption_key.key_id or 0}",
+                    f"algorithm={user.public_encryption_key.algorithm}",
+                    f"value={user.public_encryption_key}",
+                )
+            ),
+            "Signing-Key": "; ".join(
+                (
+                    f"algorithm={user.public_signing_key.algorithm}",
+                    f"value={user.public_signing_key}",
+                )
+            ),
+        }
+    )
+
+    data = (
+        f"## Profile of {user.address}\n"
+        + "\n".join((": ".join((k.title(), v))) for k, v in values.items() if v)
+        + "\n##End of profile"
+    ).encode("utf-8")
+
+    for agent in await get_agents(user.address):
+        if await request(
+            _home_profile(agent, user.address),
+            user,
+            method="PUT",
+            data=data,
+        ):
+            logging.info("Profile updated")
+            return
+
+    logging.error("Failed to update profile with values %s", values)
+
+
 async def fetch_profile_image(address: Address) -> bytes | None:
     """Attempt to fetch the remote profile image associated with a given `address`."""
     logging.debug("Fetching profile image for %s…", address)
@@ -181,6 +224,17 @@ async def fetch_profile_image(address: Address) -> bytes | None:
 
     logging.warning("Could not fetch profile image for %s", address)
     return None
+
+
+async def delete_profile_image(user: User) -> None:
+    """Attempt to delete `user`'s profile image."""
+    logging.debug("Deleting profile image…")
+    for agent in await get_agents(user.address):
+        if await request(_home_image(agent, user.address), user, method="DELETE"):
+            logging.info("Deleted profile image.")
+            return
+
+    logging.error("Deleting profile image failed.")
 
 
 async def fetch_contacts(user: User) -> tuple[Address, ...]:
@@ -268,6 +322,18 @@ async def new_contact(address: Address, user: User) -> None:
             return
 
     logging.error("Failed adding %s to address book", address)
+
+
+async def delete_contact(address: Address, user: User) -> None:
+    """Attempt to delete `address` from the user's address book."""
+    logging.debug("Deleting contact %s…", address)
+    link = generate_link(address, user.address)
+    for agent in await get_agents(address):
+        if await request(_home_link(agent, user.address, link), user, method="DELETE"):
+            logging.info("Deleted contact %s", address)
+            return
+
+    logging.error("Deleting contact %s failed", address)
 
 
 async def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
@@ -571,8 +637,8 @@ async def send_message(
             ),
             "Message-Signature": ";".join(
                 (
-                    f"id={user.public_encryption_key.key_id or ''}",
-                    "algorithm=ed25519",
+                    f"id={user.public_encryption_key.key_id or 0}",
+                    f"algorithm={SIGNING_ALGORITHM}",
                     f"value={signature}",
                 )
             ),
@@ -658,24 +724,20 @@ async def delete_message(
     return False
 
 
-async def delete_contact(address: Address, user: User) -> None:
-    """Attempt to delete `address` from the user's address book."""
-    logging.debug("Deleting contact %s…", address)
-    link = generate_link(address, user.address)
-    for agent in await get_agents(address):
-        if await request(_home_link(agent, user.address, link), user, method="DELETE"):
-            logging.info("Deleted contact %s", address)
-            return
-
-    logging.error("Deleting contact %s failed", address)
-
-
 def _home(agent: str, address: Address) -> str:
     return f"https://{agent}/home/{address.host_part}/{address.local_part}"
 
 
 def _links(agent: str, address: Address) -> str:
     return f"{_home(agent, address)}/links"
+
+
+def _home_profile(agent: str, address: Address) -> str:
+    return f"{_home(agent, address)}/profile"
+
+
+def _home_image(agent: str, address: Address) -> str:
+    return f"{_home(agent, address)}/image"
 
 
 def _home_messages(agent: str, address: Address) -> str:

@@ -19,14 +19,16 @@
     <file preprocess="xml-stripblanks">inbox-symbolic.svg</file>
     <file preprocess="xml-stripblanks">outbox-symbolic.svg</file>
     <file preprocess="xml-stripblanks">trash-symbolic.svg</file>
-    <!-- Profile Fields -->
+    <!-- Profiles -->
     <file preprocess="xml-stripblanks">about-symbolic.svg</file>
     <file preprocess="xml-stripblanks">away-symbolic.svg</file>
     <file preprocess="xml-stripblanks">birthday-symbolic.svg</file>
     <file preprocess="xml-stripblanks">books-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">configuration-symbolic.svg</file>
     <file preprocess="xml-stripblanks">department-symbolic.svg</file>
     <file preprocess="xml-stripblanks">education-symbolic.svg</file>
     <file preprocess="xml-stripblanks">gender-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">general-symbolic.svg</file>
     <file preprocess="xml-stripblanks">interests-symbolic.svg</file>
     <file preprocess="xml-stripblanks">job-title-symbolic.svg</file>
     <file preprocess="xml-stripblanks">languages-symbolic.svg</file>
@@ -36,6 +38,7 @@
     <file preprocess="xml-stripblanks">music-symbolic.svg</file>
     <file preprocess="xml-stripblanks">notes-symbolic.svg</file>
     <file preprocess="xml-stripblanks">organization-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">personal-symbolic.svg</file>
     <file preprocess="xml-stripblanks">phone-symbolic.svg</file>
     <file preprocess="xml-stripblanks">places-lived-symbolic.svg</file>
     <file preprocess="xml-stripblanks">relationship-status-symbolic.svg</file>

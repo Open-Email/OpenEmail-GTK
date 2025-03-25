@@ -26,7 +26,7 @@ from functools import wraps
 from itertools import chain
 from pathlib import Path
 from re import sub
-from typing import Any, Callable, Coroutine
+from typing import Any, Callable, Coroutine, NamedTuple
 
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Gdk, Gio, GLib, GObject
@@ -107,6 +107,49 @@ class MailProfile(GObject.Object):
     def name(self, name: str) -> None:
         self._name = name
         self.has_name = name != self.address
+
+
+class ProfileCategory(NamedTuple):
+    """A category of profile fields."""
+
+    ident: str
+    name: str
+
+
+profile_categories: dict[ProfileCategory, dict[str, str]] = {
+    ProfileCategory("general", _("General")): {
+        "status": _("Status"),
+        "about": _("About"),
+    },
+    ProfileCategory("personal", _("Personal")): {
+        "gender": _("Gender"),
+        "relationship-status": _("Relationship Status"),
+        "birthday": _("Birthday"),
+        "education": _("Education"),
+        "languages": _("Languages"),
+        "places-lived": _("Places Lived"),
+        "notes": _("Notes"),
+    },
+    ProfileCategory("work", _("Work")): {
+        "work": _("Work"),
+        "organization": _("Organization"),
+        "department": _("Department"),
+        "job-title": _("Job Title"),
+    },
+    ProfileCategory("interests", _("Interests")): {
+        "interests": _("Interests"),
+        "books": _("Books"),
+        "movies": _("Movies"),
+        "music": _("Music"),
+        "sports": _("Sports"),
+    },
+    ProfileCategory("contacts", _("Contacts")): {
+        "website": _("Website"),
+        "location": _("Location"),
+        "mailing-address": _("Mailing Address"),
+        "phone": _("Phone"),
+    },
+}
 
 
 profiles: defaultdict[Address, MailProfile] = defaultdict(MailProfile)

@@ -42,13 +42,13 @@ template $MailMessageView: Adw.Bin {
             "flat",
           ]
         }
-        
+
         [end]
         Button reply_button {
           visible: bind template.can-reply;
           icon-name: "mail-reply-sender-symbolic";
           tooltip-text: _("Reply");
-        
+
           styles [
             "flat",
           ]
@@ -187,7 +187,7 @@ Adw.Dialog profile_dialog {
   content-width: 400;
 
   $MailProfileView profile_view {
-    paintable: bind template.profile-image;
+    profile-image: bind template.profile-image;
   }
 }
 

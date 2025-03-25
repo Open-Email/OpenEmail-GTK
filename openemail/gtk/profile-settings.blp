@@ -1,0 +1,111 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailProfileSettings: Adw.PreferencesDialog {
+  content-width: 400;
+  title: _("Profile Settings");
+  closed => $_closed();
+
+  Adw.PreferencesPage {
+    title: _("General");
+    icon-name: "general-symbolic";
+
+    Adw.PreferencesGroup {
+      Stack {
+        vexpand: true;
+        visible-child-name: bind template.visible-child-name;
+
+        StackPage {
+          name: "loading";
+
+          child: Adw.Spinner {};
+        }
+
+        StackPage {
+          name: "profile";
+
+          child: Box {
+            orientation: vertical;
+            spacing: 24;
+
+            Overlay {
+              halign: center;
+
+              [overlay]
+              Adw.Bin {
+                visible: bind $_is_image(template.profile-image) as <bool>;
+                halign: end;
+                valign: start;
+
+                Button {
+                  sensitive: bind template.can-delete;
+                  icon-name: "trash-symbolic";
+                  tooltip-text: _("Delete Image");
+                  clicked => $_delete_image();
+
+                  styles [
+                    "circular",
+                    "destructive-action",
+                  ]
+                }
+
+                styles [
+                  "cutout-button",
+                ]
+              }
+
+              Adw.Avatar {
+                size: 128;
+                text: bind name.text;
+                custom-image: bind template.profile-image;
+                show-initials: true;
+              }
+            }
+
+            Label {
+              label: bind template.address;
+
+              styles [
+                "title-2",
+              ]
+            }
+
+            Adw.PreferencesGroup {
+              separate-rows: true;
+
+              Adw.EntryRow name {
+                title: _("Name");
+              }
+
+              Adw.SwitchRow away {
+                title: _("Away");
+              }
+
+              Adw.EntryRow status {
+                title: _("Status");
+
+                [prefix]
+                Image {
+                  valign: start;
+                  icon-name: "status-symbolic";
+                  margin-top: 18;
+                }
+              }
+
+              Adw.EntryRow about {
+                title: _("About");
+
+                [prefix]
+                Image {
+                  valign: start;
+                  icon-name: "about-symbolic";
+                  margin-top: 18;
+                }
+              }
+            }
+          };
+        }
+      }
+    }
+  }
+}

@@ -77,7 +77,7 @@ class MailAuthView(Adw.Bin):
             return
 
         async def authenticate() -> None:
-            self.set_property("button-child-name", "spinner")
+            self.set_property("button-child-name", "loading")
             if not await try_auth(user):
                 self.__warn(_("Authentication failed"))
                 self.button_child_name = "label"
