@@ -86,7 +86,7 @@ class MailForm(GObject.Object):
         for fields in self._fields.values():
             for field in fields:
                 try:
-                    getattr(self.form, field.get_string()).set_text("")
+                    getattr(self.form, field.get_string()).set_text("")  # type: ignore
                 except AttributeError:
                     continue
 
@@ -110,7 +110,7 @@ class MailForm(GObject.Object):
         for type, fields in self._fields.items():
             for field in fields:
                 try:
-                    field = getattr(self.form, field.get_string())
+                    field = getattr(self.form, field.get_string())  # type: ignore
                 except AttributeError:
                     continue
 
