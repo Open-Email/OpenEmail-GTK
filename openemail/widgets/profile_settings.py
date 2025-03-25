@@ -26,6 +26,7 @@ from gi.repository import Adw, Gdk, GObject, Gtk
 from openemail import shared
 from openemail.core.network import delete_profile_image, update_profile
 from openemail.core.user import Profile
+from openemail.widgets.form import MailForm
 
 
 @Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-settings.ui")
@@ -38,6 +39,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
     away: Adw.SwitchRow = Gtk.Template.Child()
     status: Adw.EntryRow = Gtk.Template.Child()
     about: Adw.EntryRow = Gtk.Template.Child()
+    name_form: MailForm = Gtk.Template.Child()
 
     _pages: list[Adw.PreferencesPage]
     _fields: dict[str, Callable[[], str]]
@@ -148,7 +150,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def _closed(self, *_args: Any) -> None:
-        if not shared.user:
+        if (not shared.user) or self.name_form.invalid:
             return
 
         shared.run_task(

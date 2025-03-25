@@ -175,6 +175,14 @@ class MailForm(GObject.Object):
             self.submit.set_response_enabled(default, not self.invalid)
             return
 
+        if isinstance(self.submit, Adw.EntryRow):
+            (
+                self.submit.add_css_class
+                if self.invalid
+                else self.submit.remove_css_class
+            )("error")
+            return
+
         if isinstance(self.submit, Gtk.Widget):
             self.submit.set_sensitive(not self.invalid)
 

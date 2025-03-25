@@ -109,3 +109,14 @@ template $MailProfileSettings: Adw.PreferencesDialog {
     }
   }
 }
+
+$MailForm name_form {
+  form: template;
+  submit: name;
+
+  plain: StringList {
+    strings [
+      "name",
+    ]
+  };
+}
