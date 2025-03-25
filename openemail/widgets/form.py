@@ -36,7 +36,7 @@ class MailFormField(Enum):
 
 
 class MailForm(GObject.Object):
-    """A split view for content and details."""
+    """An abstract representation of a form in UI with validation."""
 
     __gtype_name__ = "MailForm"
 
