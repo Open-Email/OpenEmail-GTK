@@ -18,7 +18,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import asyncio
 from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
