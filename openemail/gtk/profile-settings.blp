@@ -14,6 +14,7 @@ template $MailProfileSettings: Adw.PreferencesDialog {
       Stack {
         vexpand: true;
         visible-child-name: bind template.visible-child-name;
+        transition-type: crossfade;
 
         StackPage {
           name: "loading";
@@ -101,8 +102,6 @@ template $MailProfileSettings: Adw.PreferencesDialog {
             Adw.PreferencesGroup {
               Adw.ExpanderRow away {
                 show-enable-switch: true;
-
-                /* enable-expansion: false; */
                 title: _("Away");
                 notify::enable-expansion => $_on_change();
 

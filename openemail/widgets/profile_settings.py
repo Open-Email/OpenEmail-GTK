@@ -67,6 +67,9 @@ class MailProfileSettings(Adw.PreferencesDialog):
     def profile(self, profile: Profile | None) -> None:
         self._profile = profile
 
+        while self._pages:
+            self.remove(self._pages.pop())
+
         if not profile:
             self.visible_child_name = "loading"
             self._changed = False
@@ -81,9 +84,6 @@ class MailProfileSettings(Adw.PreferencesDialog):
         self.status.set_text(str(profile.optional.get("status") or ""))
         self.about.set_text(str(profile.optional.get("about") or ""))
 
-        while self._pages:
-            self.remove(self._pages.pop())
-
         for category, fields in shared.profile_categories.items():
             if category.ident == "general":  # Already added manually
                 continue
@@ -95,15 +95,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
                 )
             )
             self.add(page)
-            page.add(outer := Adw.PreferencesGroup())
-            outer.add(stack := Gtk.Stack(vexpand=True))
-            stack.add_named(Adw.Spinner(), "loading")  # type: ignore
-            stack.add_named(
-                inner := Adw.PreferencesGroup(
-                    separate_rows=True,  # type: ignore
-                ),
-                "profile",
-            )
+            page.add(group := Adw.PreferencesGroup())
 
             for ident, name in fields.items():
                 profile_field = profile.optional.get(ident)
@@ -121,10 +113,8 @@ class MailProfileSettings(Adw.PreferencesDialog):
                     )
                 )
                 row.connect("changed", self._on_change)
-                inner.add(row)
+                group.add(row)
                 self._fields[ident] = row.get_text
-
-            self.bind_property("visible-child-name", stack, "visible-child-name")
 
         self.visible_child_name = "profile"
         self._changed = False
