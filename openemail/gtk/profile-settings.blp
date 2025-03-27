@@ -33,22 +33,43 @@ template $MailProfileSettings: Adw.PreferencesDialog {
 
               [overlay]
               Adw.Bin {
+                halign: end;
+                valign: end;
+
+                Button {
+                  sensitive: bind template.pending inverted;
+                  icon-name: "edit-symbolic";
+                  tooltip-text: _("Replace Image");
+                  clicked => $_replace_image();
+
+                  styles [
+                    "circular",
+                  ]
+                }
+
+                styles [
+                  "cutout-button",
+                ]
+              }
+              
+              [overlay]
+              Adw.Bin {
                 visible: bind $_is_image(template.profile-image) as <bool>;
                 halign: end;
                 valign: start;
-
+              
                 Button {
-                  sensitive: bind template.can-delete;
+                  sensitive: bind template.pending inverted;
                   icon-name: "trash-symbolic";
                   tooltip-text: _("Delete Image");
                   clicked => $_delete_image();
-
+              
                   styles [
                     "circular",
                     "destructive-action",
                   ]
                 }
-
+              
                 styles [
                   "cutout-button",
                 ]

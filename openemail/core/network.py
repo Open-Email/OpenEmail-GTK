@@ -226,6 +226,22 @@ async def fetch_profile_image(address: Address) -> bytes | None:
     return None
 
 
+async def update_profile_image(user: User, image: bytes) -> None:
+    """Attempt to upload `image` to be used as the user's profile image."""
+    logging.debug("Updating profile image…")
+    for agent in await get_agents(user.address):
+        if await request(
+            _home_image(agent, user.address),
+            user,
+            method="PUT",
+            data=image,
+        ):
+            logging.info("Updated profile image.")
+            return
+
+    logging.error("Updating profile image failed.")
+
+
 async def delete_profile_image(user: User) -> None:
     """Attempt to delete `user`'s profile image."""
     logging.debug("Deleting profile image…")

@@ -21,10 +21,14 @@
 
 from typing import Any, Callable
 
-from gi.repository import Adw, Gdk, GObject, Gtk
+from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail import shared
-from openemail.core.network import delete_profile_image, update_profile
+from openemail.core.network import (
+    delete_profile_image,
+    update_profile,
+    update_profile_image,
+)
 from openemail.core.user import Profile
 from openemail.widgets.form import MailForm
 
@@ -47,7 +51,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
     address = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
 
-    can_delete = GObject.Property(type=bool, default=True)
+    pending = GObject.Property(type=bool, default=False)
     visible_child_name = GObject.Property(type=str, default="loading")
 
     _profile: Profile | None = None
@@ -139,14 +143,18 @@ class MailProfileSettings(Adw.PreferencesDialog):
         if not shared.user:
             return
 
-        self.can_delete = False
+        self.pending = True
         shared.run_task(
             delete_profile_image(shared.user),
             lambda: shared.run_task(
                 shared.update_user_profile(),
-                self.set_property("can-delete", True),
+                self.set_property("pending", False),
             ),
         )
+
+    @Gtk.Template.Callback()
+    def _replace_image(self, *_args: Any) -> None:
+        shared.run_task(self.__replace_image())
 
     @Gtk.Template.Callback()
     def _closed(self, *_args: Any) -> None:
@@ -160,3 +168,99 @@ class MailProfileSettings(Adw.PreferencesDialog):
             ),
             lambda: shared.run_task(shared.update_user_profile()),
         )
+
+    async def __replace_image(self) -> None:
+        if not shared.user:
+            return
+
+        (filters := Gio.ListStore.new(Gtk.FileFilter)).append(
+            Gtk.FileFilter(
+                name=_("Images"),
+                mime_types=tuple(
+                    mime_type
+                    for pixbuf_format in GdkPixbuf.Pixbuf.get_formats()
+                    for mime_type in (pixbuf_format.get_mime_types() or ())
+                ),
+            )
+        )
+
+        try:
+            if not (
+                (
+                    gfile := await Gtk.FileDialog(  # type: ignore
+                        initial_name=_("Select an Image"), filters=filters
+                    ).open(
+                        win if isinstance(win := self.get_root(), Gtk.Window) else None
+                    )
+                )
+                and (path := gfile.get_path())
+            ):
+                return
+        except GLib.Error:
+            return
+
+        try:
+            if not (pixbuf := GdkPixbuf.Pixbuf.new_from_file(path)):
+                return
+        except GLib.Error:
+            return
+
+        if (width := pixbuf.get_width()) > (height := pixbuf.get_height()):
+            if width > 800:
+                pixbuf = (
+                    pixbuf.scale_simple(
+                        dest_width=int(width * (800 / height)),
+                        dest_height=800,
+                        interp_type=GdkPixbuf.InterpType.BILINEAR,
+                    )
+                    or pixbuf
+                )
+
+                width = pixbuf.get_width()
+                height = pixbuf.get_height()
+
+            pixbuf = pixbuf.new_subpixbuf(
+                src_x=int((width - height) / 2),
+                src_y=0,
+                width=height,
+                height=height,
+            )
+        else:
+            if height > 800:
+                pixbuf = (
+                    pixbuf.scale_simple(
+                        dest_width=800,
+                        dest_height=int(height * (800 / width)),
+                        interp_type=GdkPixbuf.InterpType.BILINEAR,
+                    )
+                    or pixbuf
+                )
+
+                width = pixbuf.get_width()
+                height = pixbuf.get_height()
+
+            if height > width:
+                pixbuf = pixbuf.new_subpixbuf(
+                    src_x=0,
+                    src_y=int((height - width) / 2),
+                    height=width,
+                    width=width,
+                )
+
+        try:
+            success, data = pixbuf.save_to_bufferv(
+                type="jpeg",
+                option_keys=("quality",),
+                option_values=("80",),
+            )
+
+            if not success:
+                return
+
+        except GLib.Error:
+            return
+
+        self.pending = True
+        await update_profile_image(shared.user, data)
+        await shared.update_user_profile()
+        self.pending = False
