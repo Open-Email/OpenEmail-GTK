@@ -31,8 +31,25 @@ template $MailContentPage: Adw.BreakpointBin {
           }
 
           [end]
+          ToggleButton search_button {
+            icon-name: "search-symbolic";
+            tooltip-text: _("Search");
+          }
+
+          [end]
           Adw.Bin {
             child: bind template.add-button;
+          }
+        }
+
+        [top]
+        SearchBar search_bar {
+          search-mode-enabled: bind search_button.active bidirectional;
+
+          SearchEntry {
+            hexpand: true;
+            placeholder-text: _("Search");
+            text: bind template.search-text bidirectional;
           }
         }
 
@@ -68,6 +85,16 @@ template $MailContentPage: Adw.BreakpointBin {
             name: "loading";
 
             child: Adw.Spinner {};
+          }
+
+          StackPage {
+            name: "no-results";
+
+            child: Adw.StatusPage {
+              icon-name: "search-symbolic";
+              title: _("No Results Found");
+              description: _("Try a different search");
+            };
           }
         };
       }

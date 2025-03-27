@@ -11,6 +11,11 @@ ShortcutsWindow help_overlay {
       title: _("General");
 
       ShortcutsShortcut {
+        title: _("Search");
+        accelerator: "<primary>f";
+      }
+
+      ShortcutsShortcut {
         title: _("Undo");
         accelerator: "<primary>z";
       }
@@ -33,15 +38,15 @@ ShortcutsWindow help_overlay {
 
     ShortcutsGroup {
       title: _("Messages");
+      
+      ShortcutsShortcut {
+        title: _("New Message");
+        accelerator: "<primary>n";
+      }
 
       ShortcutsShortcut {
         title: _("Delete Message");
         accelerator: "Delete";
-      }
-
-      ShortcutsShortcut {
-        title: _("New Message");
-        accelerator: "<primary>n";
       }
     }
 
@@ -51,6 +56,11 @@ ShortcutsWindow help_overlay {
       ShortcutsShortcut {
         title: _("New Contact");
         accelerator: "<primary>n";
+      }
+      
+      ShortcutsShortcut {
+        title: _("Remove Contact");
+        accelerator: "Delete";
       }
     }
   }

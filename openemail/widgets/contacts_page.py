@@ -52,11 +52,32 @@ class MailContactsPage(Adw.NavigationPage):
             selection := Gtk.SingleSelection(
                 autoselect=False,
                 model=Gtk.SortListModel.new(
-                    shared.address_book,
+                    Gtk.FilterListModel.new(
+                        shared.address_book,
+                        (
+                            filter := Gtk.CustomFilter.new(
+                                lambda item: (
+                                    (lowered := self.content.search_text.lower())
+                                    in item.address.lower()
+                                    or lowered in item.name.lower()
+                                )
+                                if self.content.search_text
+                                else True
+                            )
+                        ),
+                    ),
                     Gtk.CustomSorter.new(lambda a, b, _: strcoll(a.name, b.name)),
                 ),
             )
         )
+
+        self.content.connect(
+            "notify::search-text",
+            lambda *_: filter.changed(
+                Gtk.FilterChange.DIFFERENT,
+            ),
+        )
+
         selection.connect("notify::selected", self.__on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{shared.PREFIX}/gtk/contact-row.ui"

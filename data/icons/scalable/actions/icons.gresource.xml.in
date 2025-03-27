@@ -10,6 +10,7 @@
     <file preprocess="xml-stripblanks">mail-reply-sender-symbolic.svg</file>
     <file preprocess="xml-stripblanks">mailbox-symbolic.svg</file>
     <file preprocess="xml-stripblanks">open-menu-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">search-symbolic.svg</file>
     <file preprocess="xml-stripblanks">send-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic-rtl.svg</file>

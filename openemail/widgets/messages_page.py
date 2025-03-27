@@ -86,9 +86,21 @@ class MailMessagesPage(Adw.NavigationPage):
                     model,
                     (
                         filter := Gtk.CustomFilter.new(
-                            lambda item: item.trashed
-                            if folder == "trash"
-                            else (not item.trashed)
+                            lambda item: (
+                                item.trashed
+                                if folder == "trash"
+                                else (not item.trashed)
+                            )
+                            and (
+                                (
+                                    (lowered := self.content.search_text.lower())
+                                    in item.name.lower()
+                                    or lowered in item.subject.lower()
+                                    or lowered in item.stripped_contents.lower()
+                                )
+                                if self.content.search_text
+                                else True
+                            )
                         )
                     ),
                 ),
@@ -113,6 +125,12 @@ class MailMessagesPage(Adw.NavigationPage):
             selection.set_selected(0)
 
         shared.settings.connect("changed", on_settings_changed)
+        self.content.connect(
+            "notify::search-text",
+            lambda *_: filter.changed(
+                Gtk.FilterChange.DIFFERENT,
+            ),
+        )
 
         selection.connect("notify::selected", self.__on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(

@@ -32,17 +32,19 @@ class MailContentPage(Adw.BreakpointBin):
     __gtype_name__ = "MailContentPage"
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
+    search_bar: Gtk.SearchBar = Gtk.Template.Child()
 
     factory = GObject.Property(type=Gtk.ListItemFactory)
 
     sidebar_child_name = GObject.Property(type=str, default="empty")
+    search_text = GObject.Property(type=str)
 
     title = GObject.Property(type=str, default=_("Content"))
     details = GObject.Property(type=Gtk.Widget)
     add_button = GObject.Property(type=Gtk.Widget)
     empty_page = GObject.Property(type=Gtk.Widget)
 
-    _model: Gtk.SelectionModel
+    _model: Gtk.SelectionModel | None = None
     _loading: bool = False
 
     show_sidebar = GObject.Signal()
@@ -55,18 +57,49 @@ class MailContentPage(Adw.BreakpointBin):
     @loading.setter
     def loading(self, loading: bool) -> None:
         self._loading = loading
-        self.__update_loading()
+        self.__update_stack()
 
     @GObject.Property(type=Gtk.SelectionModel)
-    def model(self) -> Gtk.SelectionModel:
+    def model(self) -> Gtk.SelectionModel | None:
         """Get the selection model."""
         return self._model
 
     @model.setter
     def model(self, model: Gtk.SelectionModel) -> None:
+        if self._model:
+            self._model.disconnect_by_func(self.__update_stack)
+
         self._model = model
 
-        model.connect("items-changed", self.__update_loading)
+        model.connect("items-changed", self.__update_stack)
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        self.add_controller(
+            controller := Gtk.ShortcutController(
+                scope=Gtk.ShortcutScope.GLOBAL,
+            )
+        )
+        controller.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("<primary>f"),
+                Gtk.CallbackAction.new(
+                    lambda *_: not (
+                        self.search_bar.set_search_mode(
+                            not self.search_bar.get_search_mode(),
+                        )
+                    )
+                ),
+            )
+        )
+
+        self.connect(
+            "realize",
+            lambda *_: self.search_bar.set_key_capture_widget(root)
+            if isinstance(root := self.get_root(), Gtk.Widget)
+            else None,
+        )
 
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:
@@ -82,11 +115,13 @@ class MailContentPage(Adw.BreakpointBin):
 
         split_view.set_show_sidebar(not split_view.get_show_sidebar())
 
-    def __update_loading(self, *_args: Any) -> None:
+    def __update_stack(self, *_args: Any) -> None:
         self.sidebar_child_name = (
             "content"
             if self.model.get_n_items()
             else "loading"
             if self._loading
+            else "no-results"
+            if self.search_text
             else "empty"
         )

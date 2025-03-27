@@ -114,6 +114,20 @@ class MailProfileView(Adw.Bin):
         super().__init__(**kwargs)
         self._groups = []
 
+        self.add_controller(
+            controller := Gtk.ShortcutController(
+                scope=Gtk.ShortcutScope.GLOBAL,
+            )
+        )
+        controller.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("Delete|KP_Delete"),
+                Gtk.CallbackAction.new(
+                    lambda *_: not (self._remove_contact() if self.can_remove else None)
+                ),
+            )
+        )
+
     @Gtk.Template.Callback()
     def _remove_contact(self, *_args: Any) -> None:
         self.confirm_remove_dialog.present(self)
