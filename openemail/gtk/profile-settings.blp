@@ -100,17 +100,6 @@ template $MailProfileSettings: Adw.PreferencesDialog {
             }
 
             Adw.PreferencesGroup {
-              Adw.ExpanderRow away {
-                show-enable-switch: true;
-                title: _("Away");
-                notify::enable-expansion => $_on_change();
-
-                Adw.EntryRow away_warning {
-                  title: _("Reason");
-                  changed => $_on_change();
-                }
-              }
-
               Adw.EntryRow status {
                 title: _("Status");
                 changed => $_on_change();
@@ -120,6 +109,17 @@ template $MailProfileSettings: Adw.PreferencesDialog {
                   valign: start;
                   icon-name: "status-symbolic";
                   margin-top: 18;
+                }
+              }
+
+              Adw.ExpanderRow away {
+                show-enable-switch: true;
+                title: _("Away");
+                notify::enable-expansion => $_on_change();
+
+                Adw.EntryRow away_warning {
+                  title: _("Reason");
+                  changed => $_on_change();
                 }
               }
             }
