@@ -51,25 +51,25 @@ template $MailProfileSettings: Adw.PreferencesDialog {
                   "cutout-button",
                 ]
               }
-              
+
               [overlay]
               Adw.Bin {
                 visible: bind $_is_image(template.profile-image) as <bool>;
                 halign: end;
                 valign: start;
-              
+
                 Button {
                   sensitive: bind template.pending inverted;
                   icon-name: "trash-symbolic";
                   tooltip-text: _("Delete Image");
                   clicked => $_delete_image();
-              
+
                   styles [
                     "circular",
                     "destructive-action",
                   ]
                 }
-              
+
                 styles [
                   "cutout-button",
                 ]
@@ -92,18 +92,29 @@ template $MailProfileSettings: Adw.PreferencesDialog {
             }
 
             Adw.PreferencesGroup {
-              separate-rows: true;
-
               Adw.EntryRow name {
                 title: _("Name");
+                changed => $_on_change();
               }
+            }
 
-              Adw.SwitchRow away {
+            Adw.PreferencesGroup {
+              Adw.ExpanderRow away {
+                show-enable-switch: true;
+
+                /* enable-expansion: false; */
                 title: _("Away");
+                notify::enable-expansion => $_on_change();
+
+                Adw.EntryRow away_warning {
+                  title: _("Reason");
+                  changed => $_on_change();
+                }
               }
 
               Adw.EntryRow status {
                 title: _("Status");
+                changed => $_on_change();
 
                 [prefix]
                 Image {
@@ -112,9 +123,12 @@ template $MailProfileSettings: Adw.PreferencesDialog {
                   margin-top: 18;
                 }
               }
+            }
 
+            Adw.PreferencesGroup {
               Adw.EntryRow about {
                 title: _("About");
+                changed => $_on_change();
 
                 [prefix]
                 Image {

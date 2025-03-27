@@ -40,13 +40,15 @@ class MailProfileSettings(Adw.PreferencesDialog):
     __gtype_name__ = "MailProfileSettings"
 
     name: Adw.EntryRow = Gtk.Template.Child()
-    away: Adw.SwitchRow = Gtk.Template.Child()
+    away: Adw.ExpanderRow = Gtk.Template.Child()
+    away_warning: Adw.EntryRow = Gtk.Template.Child()
     status: Adw.EntryRow = Gtk.Template.Child()
     about: Adw.EntryRow = Gtk.Template.Child()
     name_form: MailForm = Gtk.Template.Child()
 
     _pages: list[Adw.PreferencesPage]
     _fields: dict[str, Callable[[], str]]
+    _changed: bool = False
 
     address = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
@@ -67,16 +69,17 @@ class MailProfileSettings(Adw.PreferencesDialog):
 
         if not profile:
             self.visible_child_name = "loading"
+            self._changed = False
             return
 
-        self.name.set_text(str(profile.required["name"]))
-        self.status.set_text(str(profile.optional.get("status") or ""))
-        self.about.set_text(str(profile.optional.get("about") or ""))
-
         self.address = profile.address
-        self.away.set_active(
+        self.name.set_text(str(profile.required["name"]))
+        self.away.props.enable_expansion = self.away.props.expanded = (
             away.value if (away := profile.optional.get("away")) else False
         )
+        self.away_warning.set_text(str(profile.optional.get("away-warning") or ""))
+        self.status.set_text(str(profile.optional.get("status") or ""))
+        self.about.set_text(str(profile.optional.get("about") or ""))
 
         while self._pages:
             self.remove(self._pages.pop())
@@ -117,19 +120,22 @@ class MailProfileSettings(Adw.PreferencesDialog):
                         margin_top=18,
                     )
                 )
+                row.connect("changed", self._on_change)
                 inner.add(row)
                 self._fields[ident] = row.get_text
 
             self.bind_property("visible-child-name", stack, "visible-child-name")
 
         self.visible_child_name = "profile"
+        self._changed = False
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._pages = []
         self._fields = {
             "name": self.name.get_text,
-            "away": lambda: "Yes" if self.away.get_active() else "No",
+            "away": lambda: "Yes" if self.away.get_enable_expansion() else "No",
+            "away-warning": self.away_warning.get_text,
             "status": self.status.get_text,
             "about": self.about.get_text,
         }
@@ -157,9 +163,18 @@ class MailProfileSettings(Adw.PreferencesDialog):
         shared.run_task(self.__replace_image())
 
     @Gtk.Template.Callback()
+    def _on_change(self, *_args: Any) -> None:
+        self._changed = True
+
+    @Gtk.Template.Callback()
     def _closed(self, *_args: Any) -> None:
-        if (not shared.user) or self.name_form.invalid:
+        if (not shared.user) or (not self._changed) or self.name_form.invalid:
             return
+
+        if not self.away.get_enable_expansion():
+            self.away_warning.set_text("")
+
+        self._changed = False
 
         shared.run_task(
             update_profile(
