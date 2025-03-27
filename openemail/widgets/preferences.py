@@ -48,6 +48,9 @@ class MailPreferences(Adw.PreferencesDialog):
         if not shared.user:
             return
 
+        for profile in shared.profiles.values():
+            profile.profile = None
+
         shared.profiles.clear()
         shared.address_book.remove_all()
         shared.broadcasts.remove_all()

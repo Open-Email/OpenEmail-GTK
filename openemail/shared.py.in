@@ -81,6 +81,7 @@ class MailProfile(GObject.Object):
         self._profile = profile
 
         if not profile:
+            self.image = None
             return
 
         self.address = str(profile.address)
