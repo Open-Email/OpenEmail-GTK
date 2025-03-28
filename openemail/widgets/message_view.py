@@ -122,8 +122,6 @@ class MailMessageView(Adw.Bin):
 
         self.body_label.set_attributes(attr_list)
 
-        return
-
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.attachment_messages = {}
