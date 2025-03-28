@@ -84,14 +84,14 @@ class MailMessageView(Adw.Bin):
 
         attr_list = Pango.AttrList.new()
         patterns = (
-            (r"(?m)^[> ]+(.*)$", Pango.attr_foreground_new(13621, 33924, 58596)),
-            (r"(?m)^(?:[> ]+)?#+ (.*)$", Pango.attr_weight_new(Pango.Weight.BOLD)),
-            (r"(?m)^(?:[> ]+)?###### (.*)$", Pango.attr_size_new(16000)),
-            (r"(?m)^(?:[> ]+)?##### (.*)$", Pango.attr_size_new(18000)),
-            (r"(?m)^(?:[> ]+)?#### (.*)$", Pango.attr_size_new(20000)),
-            (r"(?m)^(?:[> ]+)?### (.*)$", Pango.attr_size_new(22000)),
-            (r"(?m)^(?:[> ]+)?## (.*)$", Pango.attr_size_new(24000)),
-            (r"(?m)^(?:[> ]+)?# (.*)$", Pango.attr_size_new(26000)),
+            (r"(?m)^(?=>)[> ]*(.*)$", Pango.attr_foreground_new(13621, 33924, 58596)),
+            (r"(?m)^(?:(?=>)[> ]*)?#+ (.*)$", Pango.attr_weight_new(Pango.Weight.BOLD)),
+            (r"(?m)^(?:(?=>)[> ]*)?###### (.*)$", Pango.attr_size_new(16000)),
+            (r"(?m)^(?:(?=>)[> ]*)?##### (.*)$", Pango.attr_size_new(18000)),
+            (r"(?m)^(?:(?=>)[> ]*)?#### (.*)$", Pango.attr_size_new(20000)),
+            (r"(?m)^(?:(?=>)[> ]*)?### (.*)$", Pango.attr_size_new(22000)),
+            (r"(?m)^(?:(?=>)[> ]*)?## (.*)$", Pango.attr_size_new(24000)),
+            (r"(?m)^(?:(?=>)[> ]*)?# (.*)$", Pango.attr_size_new(26000)),
             (r"~~(.+?)~~", Pango.attr_strikethrough_new(True)),
             (r"\*(.+?)\*", Pango.attr_style_new(Pango.Style.ITALIC)),
             (r"\*\*(.+?)\*\*", Pango.attr_weight_new(Pango.Weight.BOLD)),
