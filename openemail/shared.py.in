@@ -198,7 +198,7 @@ class MailMessage(GObject.Object):
         self.subject = message.envelope.subject
         self.body = message.body
         self.stripped_contents = (
-            sub(r"\n+", " ", message.body) if message.body else None
+            sub(r"\n(?:> )?", " ", message.body) if message.body else None
         )
 
         if self._name_binding:

@@ -117,7 +117,8 @@ template $MailMessageView: Adw.Bin {
                       hexpand: true;
                       halign: start;
                       label: bind template.name;
-                      ellipsize: end;
+                      wrap: true;
+                      wrap-mode: word_char;
 
                       styles [
                         "title-4",
@@ -125,12 +126,16 @@ template $MailMessageView: Adw.Bin {
                     }
 
                     Label {
+                      margin-start: 6;
                       halign: end;
                       label: bind template.date;
-                      ellipsize: end;
+                      wrap: true;
+                      wrap-mode: word_char;
+                      justify: right;
 
                       styles [
                         "numeric",
+                        "caption",
                       ]
                     }
                   }
@@ -139,6 +144,7 @@ template $MailMessageView: Adw.Bin {
                     halign: start;
                     label: bind template.subject;
                     wrap: true;
+                    wrap-mode: word_char;
                     selectable: true;
 
                     styles [
@@ -150,6 +156,7 @@ template $MailMessageView: Adw.Bin {
                     halign: start;
                     label: bind template.readers;
                     wrap: true;
+                    wrap-mode: word_char;
                     selectable: true;
 
                     styles [
@@ -159,12 +166,14 @@ template $MailMessageView: Adw.Bin {
                 }
               }
 
-              Label {
+              Label body_label {
                 halign: start;
                 hexpand: true;
                 label: bind template.body;
                 wrap: true;
+                wrap-mode: word_char;
                 selectable: true;
+                use-markup: true;
               }
 
               ListBox attachments {

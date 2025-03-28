@@ -18,9 +18,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from re import compile
 from typing import Any, Callable
 
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango
 
 from openemail import shared
 from openemail.core.crypto import decrypt_xchacha20poly1305
@@ -39,6 +40,7 @@ class MailMessageView(Adw.Bin):
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
 
     reply_button: Gtk.Button = Gtk.Template.Child()
+    body_label: Gtk.Label = Gtk.Template.Child()
     attachments: Gtk.ListBox = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
@@ -53,7 +55,6 @@ class MailMessageView(Adw.Bin):
     name = GObject.Property(type=str)
     date = GObject.Property(type=str)
     subject = GObject.Property(type=str)
-    body = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
     readers = GObject.Property(type=str)
 
@@ -62,10 +63,66 @@ class MailMessageView(Adw.Bin):
     can_restore = GObject.Property(type=bool, default=False)
     can_reply = GObject.Property(type=bool, default=False)
 
+    _body: str | None = None
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
 
     undo: dict[Adw.Toast, Callable[[], Any]]
+
+    @GObject.Property(type=str)
+    def body(self) -> str | None:
+        """Get the formatted message body."""
+        return self._body
+
+    @body.setter
+    def body(self, body: str | None) -> None:
+        self._body = body
+
+        if not body:
+            self.body_label.set_attributes(None)
+            return
+
+        attr_list = Pango.AttrList.new()
+        patterns = (
+            (r"(?m)^[> ]+(.*)$", Pango.attr_foreground_new(13621, 33924, 58596)),
+            (r"(?m)^(?:[> ]+)?#+ (.*)$", Pango.attr_weight_new(Pango.Weight.BOLD)),
+            (r"(?m)^(?:[> ]+)?###### (.*)$", Pango.attr_size_new(16000)),
+            (r"(?m)^(?:[> ]+)?##### (.*)$", Pango.attr_size_new(18000)),
+            (r"(?m)^(?:[> ]+)?#### (.*)$", Pango.attr_size_new(20000)),
+            (r"(?m)^(?:[> ]+)?### (.*)$", Pango.attr_size_new(22000)),
+            (r"(?m)^(?:[> ]+)?## (.*)$", Pango.attr_size_new(24000)),
+            (r"(?m)^(?:[> ]+)?# (.*)$", Pango.attr_size_new(26000)),
+            (r"~~(.+?)~~", Pango.attr_strikethrough_new(True)),
+            (r"\*(.+?)\*", Pango.attr_style_new(Pango.Style.ITALIC)),
+            (r"\*\*(.+?)\*\*", Pango.attr_weight_new(Pango.Weight.BOLD)),
+            (r"\*\*(.+?)\*\*", Pango.attr_style_new(Pango.Style.NORMAL)),
+            (r"\*\*\*(.+?)\*\*\*", Pango.attr_style_new(Pango.Style.ITALIC)),
+        )
+
+        for pattern, attr in patterns:
+            for match in compile(pattern).finditer(body):
+                if set(match.group()) <= {">", " "}:
+                    transparent = Pango.attr_foreground_alpha_new(1)
+                    transparent.start_index = match.start()
+                    transparent.end_index = match.end()
+                    attr_list.insert(transparent)
+                    continue
+
+                start_syntax = Pango.attr_size_new(1)
+                end_syntax = Pango.attr_size_new(1)
+
+                start_syntax.start_index = match.start()
+                start_syntax.end_index = attr.start_index = match.start(1)
+                end_syntax.start_index = attr.end_index = match.end(1)
+                end_syntax.end_index = match.end()
+
+                attr_list.insert(start_syntax)
+                attr_list.insert(attr)
+                attr_list.insert(end_syntax)
+
+        self.body_label.set_attributes(attr_list)
+
+        return
 
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -116,7 +173,11 @@ class MailMessageView(Adw.Bin):
         self.visible_child_name = "message"
 
         self.message = message
-        self.date = message.envelope.date.strftime("%x")
+        # Date, time
+        self.date = _("{} at {}").format(
+            message.envelope.date.strftime("%x"),
+            message.envelope.date.strftime("%H:%M"),
+        )
         self.subject = message.envelope.subject
         self.body = message.body
 

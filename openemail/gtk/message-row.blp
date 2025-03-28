@@ -48,6 +48,7 @@ template ListItem {
         label: bind template.item as <$MailMessage>.subject;
         ellipsize: end;
         wrap: true;
+        wrap-mode: word_char;
         lines: 2;
 
         styles [
@@ -61,6 +62,7 @@ template ListItem {
         label: bind template.item as <$MailMessage>.stripped-contents;
         ellipsize: end;
         wrap: true;
+        wrap-mode: word_char;
         lines: 3;
 
         styles [

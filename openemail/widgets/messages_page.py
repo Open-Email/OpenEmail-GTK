@@ -18,6 +18,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from re import M, sub
 from typing import Any, Literal
 
 from gi.repository import Adw, Gio, GObject, Gtk
@@ -51,7 +52,6 @@ class MailMessagesPage(Adw.NavigationPage):
 
     title = GObject.Property(type=str, default=_("Messages"))
     _folder: str | None = None
-    _previous_readers: str = ""
     _subject_id: str | None = None
 
     @GObject.Property(type=str)
@@ -201,14 +201,9 @@ class MailMessagesPage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _reveal_readers(self, revealer: Gtk.Revealer, *_args: Any) -> None:
-        if revealer.get_reveal_child():
-            self.readers.set_text(self._previous_readers)
-
-    @Gtk.Template.Callback()
-    def _readers_revealed(self, revealer: Gtk.Revealer, *_args: Any) -> None:
-        if not revealer.get_child_revealed():
-            self._previous_readers = self.readers.get_text()
-            self.readers.set_text("")
+        self.compose_form.address_lists = Gtk.StringList.new(
+            ("readers",) if revealer.get_reveal_child() else ()
+        )
 
     def __reply(self, *_args: Any) -> None:
         if not self.message_view.message:
@@ -232,6 +227,21 @@ class MailMessagesPage(Adw.NavigationPage):
                 if (not shared.user) or (reader != shared.user.address)
             )
         )
+
+        if body := self.message_view.message.body:
+            self.body.set_text(
+                # Date, time, author
+                _("On {}, {}, {} wrote:").format(
+                    envelope.date.strftime("%x"),
+                    envelope.date.strftime("%H:%M"),
+                    profile.name
+                    if (profile := shared.profiles.get(envelope.author))
+                    else envelope.author,
+                )
+                + "\n"
+                + sub(r"^(?!>)", r"> ", body, flags=M)
+                + "\n\n"
+            )
 
         self.subject.set_text(envelope.subject)
         self._subject_id = envelope.subject_id

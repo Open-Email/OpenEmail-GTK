@@ -96,7 +96,6 @@ Adw.Dialog compose_dialog {
               reveal-child: bind broadcast_switch.active inverted;
               transition-type: crossfade;
               notify::reveal-child => $_reveal_readers();
-              notify::child-revealed => $_readers_revealed();
 
               Box {
                 Label readers_label {
