@@ -64,7 +64,7 @@ class MailWindow(Adw.ApplicationWindow):
             Gio.SettingsBindFlags.DEFAULT,
         )
 
-        self.content_view.load_content()
+        self.content_view.load_content(periodic=True)
         self.visible_child_name = "content"
 
     @Gtk.Template.Callback()

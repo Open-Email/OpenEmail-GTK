@@ -20,7 +20,7 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gdk, GObject, Gtk
+from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
 from openemail import shared
 
@@ -62,12 +62,15 @@ class MailContentView(Adw.BreakpointBin):
         super().__init__(**kwargs)
         self.sidebar.select_row(self.sidebar.get_row_at_index(1))
 
-    def load_content(self, first_sync: bool = True) -> None:
+    def load_content(self, first_sync: bool = True, periodic: bool = False) -> None:
         """Populate the content view by fetching the local user's data.
 
         Shows a placeholder page while loading if `first_sync` is set to True.
         Otherwise, a toast is presented at the start and end.
         """
+        if periodic:
+            GLib.timeout_add_seconds(900, self.load_content, False, True)
+
         if not first_sync:
             if shared.is_loading():
                 if self.syncing_toast:
