@@ -101,7 +101,7 @@ class MailMessageView(Adw.Bin):
 
         for pattern, attr in patterns:
             for match in compile(pattern).finditer(body):
-                if set(match.group()) <= {">", " "}:
+                if match.start(1) - match.start() == len(match.group()):
                     transparent = Pango.attr_foreground_alpha_new(1)
                     transparent.start_index = match.start()
                     transparent.end_index = match.end()
