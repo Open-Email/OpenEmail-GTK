@@ -4,6 +4,9 @@
 		<key name="address" type="s">
 			<default>""</default>
 		</key>
+		<key name="sync-interval" type="u">
+			<default>900</default>
+		</key>
 		<key name="trashed-message-ids" type="as">
 			<default>[]</default>
 		</key>

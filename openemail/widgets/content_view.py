@@ -68,8 +68,21 @@ class MailContentView(Adw.BreakpointBin):
         Shows a placeholder page while loading if `first_sync` is set to True.
         Otherwise, a toast is presented at the start and end.
         """
-        if periodic:
-            GLib.timeout_add_seconds(900, self.load_content, False, True)
+        if periodic and (interval := shared.settings.get_uint("sync-interval")):
+            GLib.timeout_add_seconds(
+                interval or 60,
+                self.load_content,
+                False,
+                True,
+            )
+
+            # The user chose manual sync, check again in a minute
+            if not interval:
+                return
+
+            # Assume that nobody is logged in, skip sync for now
+            if not shared.settings.get_string("address"):
+                return
 
         if not first_sync:
             if shared.is_loading():

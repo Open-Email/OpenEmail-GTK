@@ -7,6 +7,26 @@ template $MailPreferences: Adw.PreferencesDialog {
   Adw.PreferencesPage {
     title: _("General");
     icon-name: "settings-symbolic";
+    
+    Adw.PreferencesGroup {
+      title: _("Sync");
+      
+      Adw.ComboRow sync_interval_combo_row {
+        title: _("Check Notifications Every");
+        notify::selected => $_sync_interval_selected();
+
+        model: StringList {
+          strings [
+            _("Manual"),
+            _("1 minute"),
+            _("5 minutes"),
+            _("15 minutes"),
+            _("30 minutes"),
+            _("60 minutes"),
+          ]
+        };
+      }
+    }
 
     Adw.PreferencesGroup {
       title: _("Account");

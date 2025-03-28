@@ -22,7 +22,7 @@ from base64 import b64encode
 from typing import Any
 
 import keyring
-from gi.repository import Adw, GLib, GObject, Gtk
+from gi.repository import Adw, GObject, Gtk
 
 from openemail import shared
 
@@ -36,11 +36,14 @@ class MailPreferences(Adw.PreferencesDialog):
     __gtype_name__ = "MailPreferences"
 
     confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()
+    sync_interval_combo_row: Adw.ComboRow = Gtk.Template.Child()
 
     private_signing_key = GObject.Property(type=str)
     private_encryption_key = GObject.Property(type=str)
     public_signing_key = GObject.Property(type=str)
     public_encryption_key = GObject.Property(type=str)
+
+    _intervals = (0, 60, 300, 900, 1800, 3600)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -52,6 +55,19 @@ class MailPreferences(Adw.PreferencesDialog):
         self.private_encryption_key = str(shared.user.private_encryption_key)
         self.public_signing_key = str(shared.user.public_signing_key)
         self.public_encryption_key = str(shared.user.public_encryption_key)
+
+        try:
+            self.sync_interval_combo_row.set_selected(
+                self._intervals.index(
+                    shared.settings.get_uint("sync-interval"),
+                )
+            )
+        except ValueError:
+            pass
+
+    @Gtk.Template.Callback()
+    def _sync_interval_selected(self, row: Adw.ComboRow, *_args: Any) -> None:
+        shared.settings.set_uint("sync-interval", self._intervals[row.get_selected()])
 
     @Gtk.Template.Callback()
     def _remove_account(self, *_args: Any) -> None:
@@ -71,8 +87,9 @@ class MailPreferences(Adw.PreferencesDialog):
         shared.inbox.remove_all()
         shared.outbox.remove_all()
 
-        shared.settings.set_string("address", "")
-        shared.settings.set_value("trashed-message-ids", GLib.Variant.new_strv(()))
+        shared.settings.reset("address")
+        shared.settings.reset("sync-interval")
+        shared.settings.reset("trashed-message-ids")
 
         keyring.delete_password(shared.secret_service, str(shared.user.address))
 
