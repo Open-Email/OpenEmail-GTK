@@ -167,9 +167,6 @@ class MailMessagesPage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:
-        if not shared.user:
-            return
-
         readers: list[Address] = []
         if not self.broadcast_switch.get_active():
             for reader in self.readers.get_text().split(","):
@@ -214,17 +211,13 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_form.reset()
 
         self.broadcast_switch.set_active(
-            bool(
-                envelope.is_broadcast
-                and shared.user
-                and (envelope.author == shared.user.address)
-            )
+            bool(envelope.is_broadcast and (envelope.author == shared.user.address))
         )
         self.readers.set_text(
             ", ".join(
                 str(reader)
                 for reader in list(dict.fromkeys(envelope.readers + [envelope.author]))
-                if (not shared.user) or (reader != shared.user.address)
+                if (reader != shared.user.address)
             )
         )
 

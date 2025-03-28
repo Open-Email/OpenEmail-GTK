@@ -105,9 +105,6 @@ class MailContactsPage(Adw.NavigationPage):
         if response != "add":
             return
 
-        if not shared.user:
-            return
-
         try:
             address = Address(self.address.get_text())
         except ValueError:

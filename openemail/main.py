@@ -126,7 +126,7 @@ class MailApplication(Adw.Application):
         if shortcuts:
             self.set_accels_for_action(f"app.{name}", shortcuts)
 
-    def __get_local_user(self) -> None | User:
+    def __get_local_user(self) -> User | None:
         if not (
             (address := shared.settings.get_string("address"))
             and (keys := keyring.get_password(shared.secret_service, address))

@@ -64,17 +64,11 @@ class MailWindow(Adw.ApplicationWindow):
             Gio.SettingsBindFlags.DEFAULT,
         )
 
-        if not shared.user:
-            return
-
         self.content_view.load_content()
         self.visible_child_name = "content"
 
     @Gtk.Template.Callback()
     def _on_auth(self, *_args: Any) -> None:
-        if not shared.user:
-            return
-
         try:
             keyring.set_password(
                 f"{shared.APP_ID}.Keys",

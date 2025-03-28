@@ -113,9 +113,6 @@ class MailContentView(Adw.BreakpointBin):
         shared.run_task(shared.update_address_book(), update_address_book_cb)
 
         def update_user_profile_cb() -> None:
-            if not shared.user:
-                return
-
             profile = shared.profiles[shared.user.address]
 
             if self._image_binding:

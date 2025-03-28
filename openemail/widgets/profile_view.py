@@ -137,7 +137,7 @@ class MailProfileView(Adw.Bin):
         if response != "remove":
             return
 
-        if not (self.profile and shared.user):
+        if not self.profile:
             return
 
         def update_address_book_cb() -> None:

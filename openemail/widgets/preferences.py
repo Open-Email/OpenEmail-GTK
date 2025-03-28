@@ -45,9 +45,6 @@ class MailPreferences(Adw.PreferencesDialog):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        if not shared.user:
-            return
-
         self.private_signing_key = b64encode(
             bytes(shared.user.private_signing_key)
             + bytes(shared.user.public_signing_key)
@@ -65,9 +62,6 @@ class MailPreferences(Adw.PreferencesDialog):
         if response != "remove":
             return
 
-        if not shared.user:
-            return
-
         for profile in shared.profiles.values():
             profile.profile = None
 
@@ -82,7 +76,7 @@ class MailPreferences(Adw.PreferencesDialog):
 
         keyring.delete_password(shared.secret_service, str(shared.user.address))
 
-        shared.user = None
+        del shared.user
 
         if not isinstance(win := self.get_root(), MailWindow):
             return

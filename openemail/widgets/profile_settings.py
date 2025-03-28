@@ -130,9 +130,6 @@ class MailProfileSettings(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def _delete_image(self, *_args: Any) -> None:
-        if not shared.user:
-            return
-
         self.pending = True
         shared.run_task(
             delete_profile_image(shared.user),
@@ -152,7 +149,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def _closed(self, *_args: Any) -> None:
-        if (not shared.user) or (not self._changed) or self.name_form.invalid:
+        if (not self._changed) or self.name_form.invalid:
             return
 
         if not self.away.get_enable_expansion():
@@ -169,9 +166,6 @@ class MailProfileSettings(Adw.PreferencesDialog):
         )
 
     async def __replace_image(self) -> None:
-        if not shared.user:
-            return
-
         (filters := Gio.ListStore.new(Gtk.FileFilter)).append(
             Gtk.FileFilter(
                 name=_("Images"),

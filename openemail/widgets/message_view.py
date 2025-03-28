@@ -183,9 +183,7 @@ class MailMessageView(Adw.Bin):
 
         self.can_reply = True
 
-        self.author_is_self = shared.user and (
-            message.envelope.author == shared.user.address
-        )
+        self.author_is_self = message.envelope.author == shared.user.address
 
         self.can_trash = (not self.author_is_self) and (
             message.envelope.message_id
@@ -218,12 +216,10 @@ class MailMessageView(Adw.Bin):
             return
 
         self.readers = _("Readers: ")
-        self.readers += str(
-            shared.profiles[shared.user.address].name if shared.user else _("Me")
-        )
+        self.readers += str(shared.profiles[shared.user.address].name)
 
         for reader in message.envelope.readers:
-            if shared.user and reader == shared.user.address:
+            if reader == shared.user.address:
                 continue
 
             self.readers += f", {profile.name if (profile := shared.profiles.get(reader)) else reader}"
@@ -327,7 +323,7 @@ class MailMessageView(Adw.Bin):
         if response != "discard":
             return
 
-        if not (self.message and shared.user):
+        if not self.message:
             return
 
         shared.run_task(
