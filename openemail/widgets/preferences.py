@@ -18,10 +18,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from base64 import b64encode
 from typing import Any
 
 import keyring
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import shared
 
@@ -35,6 +36,25 @@ class MailPreferences(Adw.PreferencesDialog):
     __gtype_name__ = "MailPreferences"
 
     confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()
+
+    private_signing_key = GObject.Property(type=str)
+    private_encryption_key = GObject.Property(type=str)
+    public_signing_key = GObject.Property(type=str)
+    public_encryption_key = GObject.Property(type=str)
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        if not shared.user:
+            return
+
+        self.private_signing_key = b64encode(
+            bytes(shared.user.private_signing_key)
+            + bytes(shared.user.public_signing_key)
+        ).decode("utf-8")
+        self.private_encryption_key = str(shared.user.private_encryption_key)
+        self.public_signing_key = str(shared.user.public_signing_key)
+        self.public_encryption_key = str(shared.user.public_encryption_key)
 
     @Gtk.Template.Callback()
     def _remove_account(self, *_args: Any) -> None:

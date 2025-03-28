@@ -3,7 +3,6 @@
   <gresource prefix="@PREFIX@/icons/scalable/actions">
     <file preprocess="xml-stripblanks">contact-new-symbolic.svg</file>
     <file preprocess="xml-stripblanks">edit-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">home-symbolic.svg</file>
     <file preprocess="xml-stripblanks">key-symbolic.svg</file>
     <file preprocess="xml-stripblanks">mail-attachment-symbolic.svg</file>
     <file preprocess="xml-stripblanks">mail-message-new-symbolic.svg</file>
@@ -12,6 +11,7 @@
     <file preprocess="xml-stripblanks">open-menu-symbolic.svg</file>
     <file preprocess="xml-stripblanks">search-symbolic.svg</file>
     <file preprocess="xml-stripblanks">send-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">settings-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic-rtl.svg</file>
     <!-- Sidebar -->
@@ -26,7 +26,6 @@
     <file preprocess="xml-stripblanks">away-symbolic.svg</file>
     <file preprocess="xml-stripblanks">birthday-symbolic.svg</file>
     <file preprocess="xml-stripblanks">books-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">configuration-symbolic.svg</file>
     <file preprocess="xml-stripblanks">department-symbolic.svg</file>
     <file preprocess="xml-stripblanks">education-symbolic.svg</file>
     <file preprocess="xml-stripblanks">gender-symbolic.svg</file>

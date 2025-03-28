@@ -2,19 +2,75 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MailPreferences: Adw.PreferencesDialog {
-  content-width: 200;
+  content-width: 550;
+  content-height: 500;
 
   Adw.PreferencesPage {
     title: _("General");
-    icon-name: _("home-symbolic");
+    icon-name: "settings-symbolic";
 
     Adw.PreferencesGroup {
+      title: _("Account");
+
       Adw.ButtonRow {
         title: _("Remove Account");
         activated => $_remove_account();
 
         styles [
           "destructive-action",
+        ]
+      }
+    }
+  }
+
+  Adw.PreferencesPage {
+    title: _("Keys");
+    icon-name: "key-symbolic";
+
+    Adw.PreferencesGroup {
+      title: _("Private Keys");
+
+      Adw.ActionRow {
+        title: _("Private Signing Key");
+        subtitle: bind template.private-signing-key;
+        subtitle-selectable: true;
+
+        styles [
+          "property",
+        ]
+      }
+
+      Adw.ActionRow {
+        title: _("Private Encryption Key");
+        subtitle: bind template.private-encryption-key;
+        subtitle-selectable: true;
+
+        styles [
+          "property",
+        ]
+      }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("Public Keys");
+
+      Adw.ActionRow {
+        title: _("Public Signing Key");
+        subtitle: bind template.public-signing-key;
+        subtitle-selectable: true;
+
+        styles [
+          "property",
+        ]
+      }
+
+      Adw.ActionRow {
+        title: _("Public Encryption Key");
+        subtitle: bind template.public-encryption-key;
+        subtitle-selectable: true;
+
+        styles [
+          "property",
         ]
       }
     }

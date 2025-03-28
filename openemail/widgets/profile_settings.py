@@ -105,13 +105,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
                     text=str(profile_field or ""),
                 )
                 row.add_css_class("property")
-                row.add_prefix(
-                    Gtk.Image(
-                        valign=Gtk.Align.START,
-                        icon_name=f"{ident}-symbolic",
-                        margin_top=18,
-                    )
-                )
+                row.add_prefix(Gtk.Image(icon_name=f"{ident}-symbolic"))
                 row.connect("changed", self._on_change)
                 group.add(row)
                 self._fields[ident] = row.get_text
