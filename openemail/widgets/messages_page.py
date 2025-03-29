@@ -96,7 +96,7 @@ class MailMessagesPage(Adw.NavigationPage):
                                     (lowered := self.content.search_text.lower())
                                     in item.name.lower()
                                     or lowered in item.subject.lower()
-                                    or lowered in item.stripped_contents.lower()
+                                    or lowered in item.body.lower()
                                 )
                                 if self.content.search_text
                                 else True

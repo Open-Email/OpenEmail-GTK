@@ -55,16 +55,11 @@ template ListItem {
           "caption-heading",
         ]
       }
-
-      Label {
-        halign: start;
-        hexpand: true;
-        label: bind template.item as <$MailMessage>.stripped-contents;
-        ellipsize: end;
-        wrap: true;
-        wrap-mode: word_char;
-        lines: 3;
-
+      
+      $MailMessageBody {
+        summary: true;
+        text: bind template.item as <$MailMessage>.body;
+        
         styles [
           "caption",
         ]

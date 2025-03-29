@@ -165,14 +165,9 @@ template $MailMessageView: Adw.Bin {
                   }
                 }
               }
-
-              Label body_label {
-                halign: start;
-                hexpand: true;
-                label: bind template.body;
-                wrap: true;
-                wrap-mode: word_char;
-                selectable: true;
+              
+              $MailMessageBody message_body {
+                text: bind template.body;
               }
 
               ListBox attachments {

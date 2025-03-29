@@ -167,8 +167,7 @@ class MailMessage(GObject.Object):
     name = GObject.Property(type=str)
     date = GObject.Property(type=str)
     subject = GObject.Property(type=str)
-    contents = GObject.Property(type=str)
-    stripped_contents = GObject.Property(type=str)
+    body = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
 
     _name_binding: GObject.Binding | None = None
@@ -197,9 +196,6 @@ class MailMessage(GObject.Object):
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
         self.body = message.body
-        self.stripped_contents = (
-            sub(r"\n(?:> )?", " ", message.body) if message.body else None
-        )
 
         if self._name_binding:
             self._name_binding.unbind()
