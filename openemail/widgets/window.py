@@ -69,22 +69,19 @@ class MailWindow(Adw.ApplicationWindow):
 
     @Gtk.Template.Callback()
     def _on_auth(self, *_args: Any) -> None:
-        try:
-            keyring.set_password(
-                f"{shared.APP_ID}.Keys",
-                str(shared.user.address),
-                json.dumps(
-                    {
-                        "privateEncryptionKey": str(shared.user.private_encryption_key),
-                        "privateSigningKey": b64encode(
-                            bytes(shared.user.private_signing_key)
-                            + bytes(shared.user.public_signing_key)
-                        ).decode("utf-8"),
-                    }
-                ),
-            )
-        except UnicodeDecodeError:
-            return
+        keyring.set_password(
+            f"{shared.APP_ID}.Keys",
+            str(shared.user.address),
+            json.dumps(
+                {
+                    "privateEncryptionKey": str(shared.user.private_encryption_key),
+                    "privateSigningKey": b64encode(
+                        bytes(shared.user.private_signing_key)
+                        + bytes(shared.user.public_signing_key)
+                    ).decode("utf-8"),
+                }
+            ),
+        )
 
         shared.settings.set_string("address", str(shared.user.address))
 
