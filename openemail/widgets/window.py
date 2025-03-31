@@ -65,7 +65,9 @@ class MailWindow(Adw.ApplicationWindow):
         )
 
         self.content_view.load_content(periodic=True)
-        self.visible_child_name = "content"
+
+        if hasattr(shared, "user"):
+            self.visible_child_name = "content"
 
     @Gtk.Template.Callback()
     def _on_auth(self, *_args: Any) -> None:
