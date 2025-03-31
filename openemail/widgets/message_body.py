@@ -101,14 +101,14 @@ class MailMessageBody(Adw.Bin):
                         attrs.append(Pango.attr_style_new(Pango.Style.ITALIC))
 
                     case "escape":
-                        attrs.append(Pango.attr_scale_new(0))
+                        attrs.append(Pango.attr_size_new(1))
 
                 for attr in attrs:
                     attr.start_index, attr.end_index = match.span(1)
                     attr_list.insert(attr)
 
-                start_syntax = Pango.attr_scale_new(0)
-                end_syntax = Pango.attr_scale_new(0)
+                start_syntax = Pango.attr_size_new(1)
+                end_syntax = Pango.attr_size_new(1)
 
                 start_syntax.start_index, end_syntax.end_index = match.span()
                 start_syntax.end_index, end_syntax.start_index = match.span(1)
