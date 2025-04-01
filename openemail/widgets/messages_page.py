@@ -28,6 +28,7 @@ from openemail.core.message import Envelope
 from openemail.core.network import send_message
 from openemail.core.user import Address
 from openemail.widgets.form import MailForm
+from openemail.widgets.message_body import MailMessageBody
 
 from .content_page import MailContentPage
 from .message_view import MailMessageView
@@ -46,11 +47,13 @@ class MailMessagesPage(Adw.NavigationPage):
     broadcast_switch: Gtk.Switch = Gtk.Template.Child()
     readers: Gtk.Text = Gtk.Template.Child()
     subject: Gtk.Text = Gtk.Template.Child()
-    body_view: Gtk.TextView = Gtk.Template.Child()
-    body: Gtk.TextBuffer = Gtk.Template.Child()
+    body_view: MailMessageBody = Gtk.Template.Child()
     compose_form: MailForm = Gtk.Template.Child()
 
+    body: Gtk.TextBuffer
+
     title = GObject.Property(type=str, default=_("Messages"))
+
     _folder: str | None = None
     _subject_id: str | None = None
 
@@ -61,7 +64,6 @@ class MailMessagesPage(Adw.NavigationPage):
 
     @folder.setter
     def folder(self, folder: Literal["inbox", "broadcasts", "outbox"]) -> None:
-        model: Gio.ListModel
         match folder:
             case "broadcasts":
                 self.title = _("Broadcasts")
@@ -141,6 +143,8 @@ class MailMessagesPage(Adw.NavigationPage):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
+        self.body = self.body_view.get_buffer()
 
         self.message_view.reply_button.connect("clicked", self.__reply)
 

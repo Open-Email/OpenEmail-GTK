@@ -7,13 +7,13 @@ template $MailPreferences: Adw.PreferencesDialog {
   Adw.PreferencesPage {
     title: _("General");
     icon-name: "settings-symbolic";
-    
+
     Adw.PreferencesGroup {
       title: _("Sync");
-      
+
       Adw.ComboRow sync_interval_combo_row {
         title: _("Check Notifications Every");
-        notify::selected => $_sync_interval_selected();
+        notify::selected => $_sync_interval_selected();
 
         model: StringList {
           strings [

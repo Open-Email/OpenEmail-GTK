@@ -21,132 +21,132 @@
 from re import compile, search
 from typing import Any
 
-from gi.repository import Adw, GObject, Gtk, Pango
+from gi.repository import GLib, GObject, Gtk, Pango
 
 
-class MailMessageBody(Adw.Bin):
-    """A widget ideal for displaying a message's body with Markdown support."""
+class MailMessageBody(Gtk.TextView):
+    """A widget for displaying a message's (optionally editable) body with Markdown support."""
 
     __gtype_name__ = "MailMessageBody"
 
-    label: Gtk.Label
-
-    _text: str | None = None
-    _summary: bool = False
+    summary = GObject.Property(type=bool, default=False)
 
     @GObject.Property(type=str)
     def text(self) -> str | None:
-        """Get the formatted message body."""
-        return self._text
+        """Get the message's formatted body."""
+        (buffer := self.get_buffer()).get_text(
+            buffer.get_start_iter(),
+            buffer.get_end_iter(),
+            include_hidden_chars=True,
+        )
 
     @text.setter
-    def text(self, text: str | None) -> None:
-        if not text:
-            self.label.set_attributes(None)
-            self._text = None
-            return
-
+    def text(self, text: str) -> None:
         if self.summary:
-            if len(lines := tuple(line for line in text.split("\n") if line)) <= 5:
-                text = "\n".join(lines)
-            else:
-                text = "\n".join(lines[:5]) + "…"
+            text = (
+                "\n".join(lines)
+                if len(lines := tuple(line for line in text.split("\n") if line)) <= 5
+                else "\n".join(lines[:5]) + "…"
+            )
 
-        attr_list = Pango.AttrList.new()
-        patterns = {
-            "blockquote": rb"(?m)^(?=>)[(?<!\\)> ]*(.*)$",
-            "heading": rb"(?m)^(?:(?=>)[(?<!\\)> ]*)?(?<!\\)#+ (.*)$",
-            "strikethrough": rb"(?<!\\)~~(.+?)(?<!\\)~~",
-            "italic": rb"(?<!\\)\*(.+?)(?<!\\)\*",
-            "bold": rb"(?<!\\)\*\*(.+?)(?<!\\)\*\*",
-            "bold italic": rb"(?<!\\)\*\*\*(.+?)(?<!\\)\*\*\*",
-            "escape": rb"(?<!\\)(\\)[>#~*]",
-        }
+        (buffer := self.get_buffer()).remove_all_tags(
+            buffer.get_start_iter(),
+            buffer.get_end_iter(),
+        )
 
-        for name, pattern in patterns.items():
-            for match in compile(pattern).finditer(text.encode("utf-8")):
-                if match.start(1) - match.start() == len(match.group()):
-                    transparent = Pango.attr_foreground_alpha_new(1)
-                    transparent.start_index, transparent.end_index = match.span()
-                    attr_list.insert(transparent)
+        if not self.get_editable():
+            buffer.set_text(text.replace("\n", " ") if self.summary else text)
+
+        for name, pattern in {
+            "blockquote": r"(?m)^(?=>)[(?<!\\)> ]*(.*)$",
+            "heading": r"(?m)^(?:(?=>)[(?<!\\)> ]*)?(?<!\\)#+ (.*)$",
+            "strikethrough": r"(?<!\\)~~(.+?)(?<!\\)~~",
+            "italic": r"(?<!\\)\*(.+?)(?<!\\)\*",
+            "bold": r"(?<!\\)\*\*(.+?)(?<!\\)\*\*",
+            "bold italic": r"(?<!\\)\*\*\*(.+?)(?<!\\)\*\*\*",
+            "escape": r"(?<!\\)(\\)[>#~*]",
+        }.items():
+            for match in compile(pattern).finditer(text):
+                if (not self.get_editable()) and (
+                    match.start(1) - match.start() == len(match.group())
+                ):
+                    buffer.apply_tag_by_name(
+                        "invisible",
+                        buffer.get_iter_at_offset(match.start()),
+                        buffer.get_iter_at_offset(match.end()),
+                    )
                     continue
 
-                attrs = []
-                match name:
-                    case "blockquote":
-                        attrs.append(Pango.attr_foreground_new(13621, 33924, 58596))
-                        attrs.append(Pango.attr_weight_new(Pango.Weight.MEDIUM))
+                buffer.apply_tag_by_name(
+                    "bold"
+                    if self.summary
+                    else "heading "
+                    + str(
+                        len(m.group())
+                        if (m := search(r"(#{1,6})", match.group()))
+                        else 6
+                    )
+                    if name == "heading"
+                    else "none"
+                    if ((name == "escape") and self.get_editable())
+                    else name,
+                    buffer.get_iter_at_offset(match.start()),
+                    buffer.get_iter_at_offset(match.end()),
+                )
 
-                    case "heading":
-                        attrs.append(Pango.attr_weight_new(Pango.Weight.BOLD))
+                if self.get_editable():
+                    continue
 
-                        if (not self.summary) and (
-                            m := search(rb"(#{1,6})", match.group())
-                        ):
-                            attrs.append(
-                                Pango.attr_scale_new(1 + ((7 - len(m.group())) * 0.1))
-                            )
-
-                    case "strikethrough":
-                        attrs.append(Pango.attr_strikethrough_new(True))
-
-                    case "italic":
-                        attrs.append(Pango.attr_style_new(Pango.Style.ITALIC))
-
-                    case "bold":
-                        attrs.append(Pango.attr_weight_new(Pango.Weight.BOLD))
-                        attrs.append(Pango.attr_style_new(Pango.Style.NORMAL))
-
-                    case "bold italic":
-                        attrs.append(Pango.attr_style_new(Pango.Style.ITALIC))
-
-                    case "escape":
-                        attrs.append(Pango.attr_size_new(1))
-
-                for attr in attrs:
-                    attr.start_index, attr.end_index = match.span(1)
-                    attr_list.insert(attr)
-
-                start_syntax = Pango.attr_size_new(1)
-                end_syntax = Pango.attr_size_new(1)
-
-                start_syntax.start_index, end_syntax.end_index = match.span()
-                start_syntax.end_index, end_syntax.start_index = match.span(1)
-
-                attr_list.insert(start_syntax)
-                attr_list.insert(end_syntax)
-
-        if self.summary:
-            text = text.replace("\n", " ")
-
-        self.label.set_attributes(attr_list)
-        self._text = text
-
-    @GObject.Property(type=bool, default=False)
-    def summary(self) -> bool:
-        """Get whether or not to display the full contents or just the first few lines."""
-        return self._summary
-
-    @summary.setter
-    def summary(self, summary: bool) -> None:
-        self._summary = summary
-
-        self.label.set_selectable(not summary)
-        self.label.set_lines(3 if summary else -1)
-        self.label.set_ellipsize(
-            Pango.EllipsizeMode.END if summary else Pango.EllipsizeMode.NONE
-        )
+                buffer.apply_tag_by_name(
+                    "invisible",
+                    buffer.get_iter_at_offset(match.start()),
+                    buffer.get_iter_at_offset(match.start(1)),
+                )
+                buffer.apply_tag_by_name(
+                    "invisible",
+                    buffer.get_iter_at_offset(match.end(1)),
+                    buffer.get_iter_at_offset(match.end()),
+                )
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.label = Gtk.Label(
-            halign=Gtk.Align.START,
-            hexpand=True,
-            wrap=True,
-            wrap_mode=Pango.WrapMode.WORD_CHAR,
-            selectable=True,
-        )
+        self.add_css_class("inline")
 
-        self.set_child(self.label)
-        self.bind_property("text", self.label, "label")
+        buffer = self.get_buffer()
+        buffer.create_tag("none")
+        buffer.create_tag("invisible", invisible=True)
+        buffer.create_tag("blockquote", foreground="#3584e4", weight=500)
+        buffer.create_tag("heading 1", weight=700, scale=1.6)
+        buffer.create_tag("heading 2", weight=700, scale=1.5)
+        buffer.create_tag("heading 3", weight=700, scale=1.4)
+        buffer.create_tag("heading 4", weight=700, scale=1.3)
+        buffer.create_tag("heading 5", weight=700, scale=1.2)
+        buffer.create_tag("heading 6", weight=700, scale=1.1)
+        buffer.create_tag("strikethrough", strikethrough=True)
+        buffer.create_tag("italic", style=Pango.Style.ITALIC)
+        buffer.create_tag("bold", weight=700, style=Pango.Style.NORMAL)
+        buffer.create_tag("bold italic", style=Pango.Style.ITALIC)
+        buffer.create_tag("escape", invisible=True)
+
+        def edited(*_args: Any) -> None:
+            self.text = buffer.get_text(
+                buffer.get_start_iter(),
+                buffer.get_end_iter(),
+                include_hidden_chars=True,
+            )
+
+        def editable_changed(*_args: Any) -> None:
+            if self.get_editable():
+                buffer.connect("changed", edited)
+            else:
+                buffer.disconnect_by_func(edited)
+
+        self.connect("notify::editable", editable_changed)
+        editable_changed()
+
+        # HACK: Fix for a nasty GTK bug I haven't been able to diagnose... In the future
+        # if after removing this the layout of the sidebar doesn't break, it's safe to remove.
+        #
+        # PS: It probably won't be, "Nobody wants to work on TextView."
+        self.connect("map", lambda *_: GLib.timeout_add(10, self.queue_resize))

@@ -174,14 +174,12 @@ Adw.Dialog compose_dialog {
           margin-end: 12;
         }
 
-        TextView body_view {
+        $MailMessageBody body_view {
           top-margin: 6;
           left-margin: 12;
           right-margin: 12;
           bottom-margin: 200;
-          wrap-mode: word_char;
-
-          buffer: TextBuffer body {};
+          wrap-mode: GTK_WRAP_WORD_CHAR;
 
           accessibility {
             label: _("Message");
