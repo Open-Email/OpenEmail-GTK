@@ -43,6 +43,7 @@ class MailMessageBody(Gtk.TextView):
     @text.setter
     def text(self, text: str) -> None:
         if self.summary:
+            # TODO: Ellipsize at n words/chars, not just lines.
             text = (
                 "\n".join(lines)
                 if len(lines := tuple(line for line in text.split("\n") if line)) <= 5
