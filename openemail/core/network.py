@@ -117,18 +117,18 @@ async def get_agents(address: Address) -> tuple[str, ...]:
             except UnicodeError:
                 continue
 
-        for agent in (
-            agents := [
-                stripped
-                for line in contents.split("\n")
-                if (stripped := line.strip()) and (not stripped.startswith("#"))
-            ]
-        ).copy():
-            if not await request(_mail_host(agent, address), method="HEAD"):
-                agents.remove(agent)
+        index = 0
+        async for agent in (
+            stripped
+            for line in contents.split("\n")
+            if (stripped := line.strip()) and (not stripped.startswith("#"))
+            if await request(_mail_host(stripped, address), method="HEAD")
+        ):
+            if index > 2:
+                break
 
-        if agents:
-            _agents[address.host_part] = tuple(agents[:3])
+            index += 1
+            _agents[address.host_part] = _agents.get(address.host_part, ()) + (agent,)
 
         break
 
