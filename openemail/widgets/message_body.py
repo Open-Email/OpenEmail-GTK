@@ -43,7 +43,6 @@ class MailMessageBody(Gtk.TextView):
     @text.setter
     def text(self, text: str) -> None:
         if self.summary:
-            # TODO: Ellipsize at n words/chars, not just lines.
             text = (
                 "\n".join(lines)
                 if len(lines := tuple(line for line in text.split("\n") if line)) <= 5
@@ -56,7 +55,13 @@ class MailMessageBody(Gtk.TextView):
         )
 
         if not self.get_editable():
-            buffer.set_text(text.replace("\n", " ") if self.summary else text)
+            buffer.set_text(
+                summary
+                if len(summary := text.replace("\n", " ")) <= 100
+                else summary[:100] + "…"
+                if self.summary
+                else text
+            )
 
         for name, pattern in {
             "blockquote": r"(?m)^(?=>)[(?<!\\)> ]*(.*)$",
