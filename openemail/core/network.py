@@ -24,7 +24,7 @@ import logging
 from base64 import b64encode
 from datetime import datetime, timezone
 from hashlib import sha256
-from http.client import HTTPResponse
+from http.client import HTTPResponse, InvalidURL
 from os import getenv
 from pathlib import Path
 from socket import setdefaulttimeout
@@ -86,7 +86,7 @@ async def request(
             urlopen, Request(url, method=method, headers=headers, data=data)
         )
 
-    except (HTTPError, URLError, ValueError, TimeoutError) as error:
+    except (InvalidURL, URLError, HTTPError, TimeoutError, ValueError) as error:
         logging.debug(
             "%s, URL: %s, Method: %s, Authorization: %s",
             error,
@@ -123,10 +123,9 @@ async def get_agents(address: Address) -> tuple[str, ...]:
                 for line in contents.split("\n")
                 if (stripped := line.strip()) and (not stripped.startswith("#"))
             ]
-        ):
+        ).copy():
             if not await request(_mail_host(agent, address), method="HEAD"):
                 agents.remove(agent)
-                continue
 
         if agents:
             _agents[address.host_part] = tuple(agents[:3])

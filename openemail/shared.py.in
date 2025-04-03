@@ -25,7 +25,6 @@ from collections import defaultdict
 from functools import wraps
 from itertools import chain
 from pathlib import Path
-from re import sub
 from typing import Any, Callable, Coroutine, NamedTuple
 
 from gi.events import GLibEventLoopPolicy
@@ -238,8 +237,7 @@ def is_loading() -> bool:
 @_loads
 async def update_user_profile() -> None:
     """Update the profile of the user by fetching new data remotely."""
-    if not user:
-        return
+    global user
 
     if profile := await fetch_profile(user.address):
         user.public_signing_key = profile.required["signing-key"].value
@@ -259,12 +257,6 @@ async def update_user_profile() -> None:
 @_loads
 async def update_address_book() -> None:
     """Update the address book of the user by fetching new data remotely."""
-    global address_book
-    global profiles
-
-    if not user:
-        return
-
     contacts = await fetch_contacts(user)
 
     address_book.remove_all()
@@ -276,10 +268,6 @@ async def update_address_book() -> None:
 @_loads
 async def update_profiles() -> None:
     """Update the profiles for contacts in the user's address book by fetching new data remotely."""
-    global profiles
-
-    if not user:
-        return
 
     async def update_profile(address: Address) -> None:
         profiles[address].profile = await fetch_profile(address)
@@ -303,11 +291,6 @@ async def update_profiles() -> None:
 @_loads
 async def update_broadcasts_list() -> None:
     """Update the broadcasts list of the user by fetching new data remotely."""
-    global broadcasts
-
-    if not user:
-        return
-
     result = await asyncio.gather(
         *(fetch_broadcasts(user, Address(contact.address)) for contact in address_book)  # type: ignore
     )
@@ -320,11 +303,6 @@ async def update_broadcasts_list() -> None:
 @_loads
 async def update_messages_list() -> None:
     """Update the messages list of the user by fetching new data remotely."""
-    global inbox
-
-    if not user:
-        return
-
     result = await asyncio.gather(
         *(
             fetch_link_messages(user, Address(contact.address))  # type: ignore
@@ -340,11 +318,6 @@ async def update_messages_list() -> None:
 @_loads
 async def update_outbox() -> None:
     """Update the outbox of the user by fetching new data remotely."""
-    global outbox
-
-    if not user:
-        return
-
     result = await asyncio.gather(
         fetch_link_messages(user, user.address),
         fetch_broadcasts(user, user.address),
@@ -363,8 +336,6 @@ def run_task(
     callback: Callable[[], Any] | None = None,
 ) -> None:
     """Run a coroutine in a task, calling `callback` on finish."""
-    global _tasks
-
     _tasks.add(task := loop.create_task(coro))
     task.add_done_callback(lambda *_: callback() if callback else None)
     task.add_done_callback(_tasks.discard)
