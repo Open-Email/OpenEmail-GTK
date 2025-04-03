@@ -19,17 +19,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from base64 import b64encode
+from dataclasses import fields
 from typing import Any
 
 import keyring
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import shared
+from openemail.core.user import User
+from openemail.shared import PREFIX, secret_service, settings, user
+from openemail.store import address_book, broadcasts, inbox, outbox, profiles
 
 from .window import MailWindow
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/preferences.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/preferences.ui")
 class MailPreferences(Adw.PreferencesDialog):
     """The application's preferences dialog."""
 
@@ -49,17 +52,16 @@ class MailPreferences(Adw.PreferencesDialog):
         super().__init__(**kwargs)
 
         self.private_signing_key = b64encode(
-            bytes(shared.user.private_signing_key)
-            + bytes(shared.user.public_signing_key)
+            bytes(user.private_signing_key) + bytes(user.public_signing_key)
         ).decode("utf-8")
-        self.private_encryption_key = str(shared.user.private_encryption_key)
-        self.public_signing_key = str(shared.user.public_signing_key)
-        self.public_encryption_key = str(shared.user.public_encryption_key)
+        self.private_encryption_key = str(user.private_encryption_key)
+        self.public_signing_key = str(user.public_signing_key)
+        self.public_encryption_key = str(user.public_encryption_key)
 
         try:
             self.sync_interval_combo_row.set_selected(
                 self._intervals.index(
-                    shared.settings.get_uint("sync-interval"),
+                    settings.get_uint("sync-interval"),
                 )
             )
         except ValueError:
@@ -67,7 +69,7 @@ class MailPreferences(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def _sync_interval_selected(self, row: Adw.ComboRow, *_args: Any) -> None:
-        shared.settings.set_uint("sync-interval", self._intervals[row.get_selected()])
+        settings.set_uint("sync-interval", self._intervals[row.get_selected()])
 
     @Gtk.Template.Callback()
     def _remove_account(self, *_args: Any) -> None:
@@ -78,22 +80,23 @@ class MailPreferences(Adw.PreferencesDialog):
         if response != "remove":
             return
 
-        for profile in shared.profiles.values():
+        for profile in profiles.values():
             profile.profile = None
 
-        shared.profiles.clear()
-        shared.address_book.remove_all()
-        shared.broadcasts.remove_all()
-        shared.inbox.remove_all()
-        shared.outbox.remove_all()
+        profiles.clear()
+        address_book.clear()
+        broadcasts.clear()
+        inbox.clear()
+        outbox.clear()
 
-        shared.settings.reset("address")
-        shared.settings.reset("sync-interval")
-        shared.settings.reset("trashed-message-ids")
+        settings.reset("address")
+        settings.reset("sync-interval")
+        settings.reset("trashed-message-ids")
 
-        keyring.delete_password(shared.secret_service, str(shared.user.address))
+        keyring.delete_password(secret_service, str(user.address))
 
-        del shared.user
+        for field in fields(User):
+            delattr(user, field.name)
 
         if not isinstance(win := self.get_root(), MailWindow):
             return

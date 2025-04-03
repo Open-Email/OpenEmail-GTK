@@ -18,6 +18,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from dataclasses import fields
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -32,8 +34,8 @@ from typing import Any, Callable, Sequence
 import keyring
 from gi.repository import Adw, Gio
 
-from . import shared
 from .core.user import User
+from .shared import APP_ID, PREFIX, log_file, secret_service, settings, user
 from .widgets.preferences import MailPreferences
 from .widgets.window import MailWindow
 
@@ -43,7 +45,7 @@ class MailApplication(Adw.Application):
 
     def __init__(self) -> None:
         super().__init__(
-            application_id=shared.APP_ID,
+            application_id=APP_ID,
             flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
         )
         self.create_action("quit", lambda *_: self.quit(), ("<primary>q",))
@@ -51,10 +53,11 @@ class MailApplication(Adw.Application):
         self.create_action("preferences", self.on_preferences_action)
         self.create_action("sync", self.on_sync_action)
 
-        if not (user := self.__get_local_user()):
+        if not (new_user := self.__get_local_user()):
             return
 
-        shared.user = user
+        for field in fields(User):
+            setattr(user, field.name, getattr(new_user, field.name))
 
     def do_activate(self) -> None:
         """Raise the application's main window, creating it if necessary.
@@ -65,9 +68,7 @@ class MailApplication(Adw.Application):
 
     def on_about_action(self, *_args: Any) -> None:
         """Present the about dialog."""
-        about = Adw.AboutDialog.new_from_appdata(
-            f"{shared.PREFIX}/{shared.APP_ID}.metainfo.xml"
-        )
+        about = Adw.AboutDialog.new_from_appdata(f"{PREFIX}/{APP_ID}.metainfo.xml")
         about.set_developers(("kramo https://kramo.page",))
         about.set_designers(
             (
@@ -81,11 +82,11 @@ class MailApplication(Adw.Application):
         about.set_translator_credits(_("translator-credits"))
 
         try:
-            about.set_debug_info(shared.log_file.read_text())
+            about.set_debug_info(log_file.read_text())
         except FileNotFoundError:
             pass
         else:
-            about.set_debug_info_filename(shared.log_file.name)
+            about.set_debug_info_filename(log_file.name)
 
         about.present(self.get_active_window())
 
@@ -128,8 +129,8 @@ class MailApplication(Adw.Application):
 
     def __get_local_user(self) -> User | None:
         if not (
-            (address := shared.settings.get_string("address"))
-            and (keys := keyring.get_password(shared.secret_service, address))
+            (address := settings.get_string("address"))
+            and (keys := keyring.get_password(secret_service, address))
             and (keys := json.loads(keys))
             and (encryption_key := keys.get("privateEncryptionKey"))
             and (signing_key := keys.get("privateSigningKey"))
@@ -151,7 +152,7 @@ def main() -> int:
             (
                 logging.StreamHandler(),
                 RotatingFileHandler(
-                    shared.log_file,
+                    log_file,
                     maxBytes=1000000,
                 ),
             )

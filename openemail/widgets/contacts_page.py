@@ -23,16 +23,17 @@ from typing import Any
 
 from gi.repository import Adw, Gtk
 
-from openemail import shared
 from openemail.core.network import new_contact
 from openemail.core.user import Address
+from openemail.shared import PREFIX, run_task, user
+from openemail.store import MailProfile, address_book, broadcasts, inbox
 from openemail.widgets.form import MailForm
 
 from .content_page import MailContentPage
 from .profile_view import MailProfileView
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/contacts-page.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/contacts-page.ui")
 class MailContactsPage(Adw.NavigationPage):
     """A page with the contents of the user's address book."""
 
@@ -53,7 +54,7 @@ class MailContactsPage(Adw.NavigationPage):
                 autoselect=False,
                 model=Gtk.SortListModel.new(
                     Gtk.FilterListModel.new(
-                        shared.address_book,
+                        address_book,
                         (
                             filter := Gtk.CustomFilter.new(
                                 lambda item: (
@@ -80,7 +81,7 @@ class MailContactsPage(Adw.NavigationPage):
 
         selection.connect("notify::selected", self.__on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
-            None, f"{shared.PREFIX}/gtk/contact-row.ui"
+            None, f"{PREFIX}/gtk/contact-row.ui"
         )
 
         self.add_controller(
@@ -111,13 +112,13 @@ class MailContactsPage(Adw.NavigationPage):
             return
 
         def update_address_book_cb() -> None:
-            shared.run_task(shared.update_broadcasts_list())
-            shared.run_task(shared.update_messages_list())
+            run_task(broadcasts.update())
+            run_task(inbox.update())
 
-        shared.run_task(
-            new_contact(address, shared.user),
-            lambda: shared.run_task(
-                shared.update_address_book(),
+        run_task(
+            new_contact(address, user),
+            lambda: run_task(
+                address_book.update(),
                 update_address_book_cb,
             ),
         )
@@ -125,9 +126,7 @@ class MailContactsPage(Adw.NavigationPage):
         self.add_contact_dialog.force_close()
 
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not isinstance(
-            selected := selection.get_selected_item(), shared.MailProfile
-        ):
+        if not isinstance(selected := selection.get_selected_item(), MailProfile):
             return
 
         self.profile_view.profile = selected.profile

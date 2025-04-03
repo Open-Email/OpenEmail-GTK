@@ -45,6 +45,7 @@ configure_file(
 
 install_data([
     'main.py',
+    'store.py',
     configure_file(
       input:  'shared.py.in',
       output: 'shared.py',

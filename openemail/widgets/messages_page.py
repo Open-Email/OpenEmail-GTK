@@ -23,10 +23,17 @@ from typing import Any, Literal
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import shared
 from openemail.core.message import Envelope
 from openemail.core.network import send_message
 from openemail.core.user import Address
+from openemail.shared import PREFIX, run_task, settings, user
+from openemail.store import (
+    MailMessage,
+    broadcasts,
+    inbox,
+    outbox,
+    profiles,
+)
 from openemail.widgets.form import MailForm
 from openemail.widgets.message_body import MailMessageBody
 
@@ -34,7 +41,7 @@ from .content_page import MailContentPage
 from .message_view import MailMessageView
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/messages-page.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/messages-page.ui")
 class MailMessagesPage(Adw.NavigationPage):
     """A page listing a subset of the user's messages."""
 
@@ -67,18 +74,18 @@ class MailMessagesPage(Adw.NavigationPage):
         match folder:
             case "broadcasts":
                 self.title = _("Broadcasts")
-                model = shared.broadcasts
+                model = broadcasts
             case "inbox":
                 self.title = _("Inbox")
-                model = shared.inbox
+                model = inbox
             case "outbox":
                 self.title = _("Outbox")
-                model = shared.outbox
+                model = outbox
             case "trash":
                 self.title = _("Trash")
                 inboxes = Gio.ListStore.new(Gio.ListModel)
-                inboxes.append(shared.broadcasts)
-                inboxes.append(shared.inbox)
+                inboxes.append(broadcasts)
+                inboxes.append(inbox)
                 model = Gtk.FlattenListModel.new(inboxes)
 
         self.content.model = selection = Gtk.SingleSelection(
@@ -126,7 +133,7 @@ class MailMessagesPage(Adw.NavigationPage):
             filter.changed(Gtk.FilterChange.DIFFERENT)
             selection.set_selected(0)
 
-        shared.settings.connect("changed", on_settings_changed)
+        settings.connect("changed", on_settings_changed)
         self.content.connect(
             "notify::search-text",
             lambda *_: filter.changed(
@@ -136,7 +143,7 @@ class MailMessagesPage(Adw.NavigationPage):
 
         selection.connect("notify::selected", self.__on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
-            None, f"{shared.PREFIX}/gtk/message-row.ui"
+            None, f"{PREFIX}/gtk/message-row.ui"
         )
 
         self._folder = folder
@@ -182,9 +189,9 @@ class MailMessagesPage(Adw.NavigationPage):
                 except ValueError:
                     return
 
-        shared.run_task(
+        run_task(
             send_message(
-                shared.user,
+                user,
                 readers,
                 self.subject.get_text(),
                 self.body.get_text(
@@ -194,7 +201,7 @@ class MailMessagesPage(Adw.NavigationPage):
                 ),
                 self._subject_id,
             ),
-            lambda: shared.run_task(shared.update_outbox()),
+            lambda: run_task(outbox.update()),
         )
 
         self._subject_id = None
@@ -215,13 +222,13 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_form.reset()
 
         self.broadcast_switch.set_active(
-            bool(envelope.is_broadcast and (envelope.author == shared.user.address))
+            bool(envelope.is_broadcast and (envelope.author == user.address))
         )
         self.readers.set_text(
             ", ".join(
                 str(reader)
                 for reader in list(dict.fromkeys(envelope.readers + [envelope.author]))
-                if (reader != shared.user.address)
+                if (reader != user.address)
             )
         )
 
@@ -232,7 +239,7 @@ class MailMessagesPage(Adw.NavigationPage):
                     envelope.date.strftime("%x"),
                     envelope.date.strftime("%H:%M"),
                     profile.name
-                    if (profile := shared.profiles.get(envelope.author))
+                    if (profile := profiles.get(envelope.author))
                     else envelope.author,
                 )
                 + "\n"
@@ -250,7 +257,7 @@ class MailMessagesPage(Adw.NavigationPage):
         if not (
             isinstance(
                 selected := selection.get_selected_item(),
-                shared.MailMessage,
+                MailMessage,
             )
             and selected.message
         ):

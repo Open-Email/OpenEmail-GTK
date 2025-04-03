@@ -18,17 +18,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from dataclasses import fields
 from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import shared
 from openemail.core.network import try_auth
 from openemail.core.user import User
+from openemail.shared import APP_ID, PREFIX, run_task, user
 from openemail.widgets.form import MailForm
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/auth-view.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/auth-view.ui")
 class MailAuthView(Adw.Bin):
     """A view prompting the user to log in."""
 
@@ -52,7 +53,7 @@ class MailAuthView(Adw.Bin):
     authenticated = GObject.Signal()
 
     def __init__(self, **kwargs: Any) -> None:
-        self.email_status_page.set_icon_name(shared.APP_ID)
+        self.email_status_page.set_icon_name(APP_ID)
 
     @Gtk.Template.Callback()
     def _log_in(self, *args: Any) -> None:
@@ -67,7 +68,7 @@ class MailAuthView(Adw.Bin):
     @Gtk.Template.Callback()
     def _authenticate(self, *_args: Any) -> None:
         try:
-            user = User(
+            new_user = User(
                 self.email_entry.get_text(),
                 self.encryption_key_entry.get_text(),
                 self.signing_key_entry.get_text(),
@@ -78,12 +79,14 @@ class MailAuthView(Adw.Bin):
 
         async def authenticate() -> None:
             self.set_property("button-child-name", "loading")
-            if not await try_auth(user):
+            if not await try_auth(new_user):
                 self.__warn(_("Authentication failed"))
                 self.button_child_name = "label"
                 return
 
-            shared.user = user
+            for field in fields(User):
+                setattr(user, field.name, getattr(new_user, field.name))
+
             self.emit("authenticated")
             self.button_child_name = "label"
 
@@ -91,7 +94,7 @@ class MailAuthView(Adw.Bin):
             GLib.timeout_add_seconds(1, self.navigation_view.pop)
             GLib.timeout_add_seconds(1, self.auth_form.reset)
 
-        shared.run_task(authenticate())
+        run_task(authenticate())
 
     def __warn(self, warning: str) -> None:
         self.toast_overlay.add_toast(

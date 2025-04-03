@@ -20,10 +20,10 @@
 
 from gi.repository import GObject, Gtk
 
-from openemail import shared
+from openemail.shared import PREFIX
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/navigation-row.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/navigation-row.ui")
 class MailNavigationRow(Gtk.ListBoxRow):
     """An item in the main sidebar."""
 

@@ -22,10 +22,10 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import shared
+from openemail.shared import PREFIX
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/content-page.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/content-page.ui")
 class MailContentPage(Adw.BreakpointBin):
     """A split view for content and details."""
 

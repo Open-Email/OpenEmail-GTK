@@ -23,17 +23,18 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
-from openemail import shared
 from openemail.core.network import (
     delete_profile_image,
     update_profile,
     update_profile_image,
 )
 from openemail.core.user import Profile
+from openemail.shared import PREFIX, run_task, user
+from openemail.store import profile_categories, update_user_profile
 from openemail.widgets.form import MailForm
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-settings.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-settings.ui")
 class MailProfileSettings(Adw.PreferencesDialog):
     """A page presenting the local user's editable public profile."""
 
@@ -84,7 +85,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
         self.status.set_text(str(profile.optional.get("status") or ""))
         self.about.set_text(str(profile.optional.get("about") or ""))
 
-        for category, fields in shared.profile_categories.items():
+        for category, fields in profile_categories.items():
             if category.ident == "general":  # Already added manually
                 continue
 
@@ -131,17 +132,17 @@ class MailProfileSettings(Adw.PreferencesDialog):
     @Gtk.Template.Callback()
     def _delete_image(self, *_args: Any) -> None:
         self.pending = True
-        shared.run_task(
-            delete_profile_image(shared.user),
-            lambda: shared.run_task(
-                shared.update_user_profile(),
+        run_task(
+            delete_profile_image(user),
+            lambda: run_task(
+                update_user_profile(),
                 self.set_property("pending", False),
             ),
         )
 
     @Gtk.Template.Callback()
     def _replace_image(self, *_args: Any) -> None:
-        shared.run_task(self.__replace_image())
+        run_task(self.__replace_image())
 
     @Gtk.Template.Callback()
     def _on_change(self, *_args: Any) -> None:
@@ -157,12 +158,12 @@ class MailProfileSettings(Adw.PreferencesDialog):
 
         self._changed = False
 
-        shared.run_task(
+        run_task(
             update_profile(
-                shared.user,
+                user,
                 {key: f() for key, f in self._fields.items()},
             ),
-            lambda: shared.run_task(shared.update_user_profile()),
+            lambda: run_task(update_user_profile()),
         )
 
     async def __replace_image(self) -> None:
@@ -254,6 +255,6 @@ class MailProfileSettings(Adw.PreferencesDialog):
             return
 
         self.pending = True
-        await update_profile_image(shared.user, data)
-        await shared.update_user_profile()
+        await update_profile_image(user, data)
+        await update_user_profile()
         self.pending = False

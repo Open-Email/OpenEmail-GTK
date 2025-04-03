@@ -22,12 +22,13 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail import shared
 from openemail.core.network import delete_contact
 from openemail.core.user import Profile
+from openemail.shared import PREFIX, run_task, user
+from openemail.store import address_book, broadcasts, inbox, profile_categories
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/profile-view.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-view.ui")
 class MailProfileView(Adw.Bin):
     """A page presenting a user's profile."""
 
@@ -64,7 +65,7 @@ class MailProfileView(Adw.Bin):
             return
 
         string = str(profile.address)
-        if any(contact.address == string for contact in shared.address_book):  # type: ignore
+        if any(contact.address == string for contact in address_book):  # type: ignore
             self.can_remove = True
         else:
             self.can_remove = False
@@ -78,7 +79,7 @@ class MailProfileView(Adw.Bin):
 
         self._groups = []
 
-        for category, fields in shared.profile_categories.items():
+        for category, fields in profile_categories.items():
             group = None
             for ident, name in fields.items():
                 if not (profile_field := profile.optional.get(ident)):
@@ -141,13 +142,13 @@ class MailProfileView(Adw.Bin):
             return
 
         def update_address_book_cb() -> None:
-            shared.run_task(shared.update_broadcasts_list())
-            shared.run_task(shared.update_messages_list())
+            run_task(broadcasts.update())
+            run_task(inbox.update())
 
-        shared.run_task(
-            delete_contact(self.profile.address, shared.user),
-            lambda: shared.run_task(
-                shared.update_address_book(),
+        run_task(
+            delete_contact(self.profile.address, user),
+            lambda: run_task(
+                address_book.update(),
                 update_address_book_cb,
             ),
         )

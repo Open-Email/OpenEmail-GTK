@@ -248,13 +248,13 @@ class Profile:
         }
 
         for fields in self.required, self.optional:
-            for key, field in fields.items():
-                if not field:
+            for key, value in fields.items():
+                if not value:
                     continue
 
-                field.update_value(parsed_fields.get(key))
+                value.update_value(parsed_fields.get(key))
 
-                if field.default_value is None:
+                if value.default_value is None:
                     match fields:
                         case self.required:
                             raise ValueError(f'Required field "{key}" does not exist')
@@ -274,16 +274,24 @@ class User:
     public_signing_key: Key
     private_signing_key: Key
 
-    def __init__(self, address: str, encryption_key: str, signing_key: str) -> None:
+    def __init__(
+        self,
+        address: str | None = None,
+        encryption_key: str | None = None,
+        signing_key: str | None = None,
+    ) -> None:
         """Try to create a local user for the provided `address` and Base64-encoded keys."""
         try:
-            self.public_encryption_key, self.private_encryption_key = get_keys(
-                encryption_key,
-            )
-            self.public_signing_key, self.private_signing_key = get_keys(
-                signing_key,
-            )
-            self.address = Address(address)
+            if encryption_key:
+                self.public_encryption_key, self.private_encryption_key = get_keys(
+                    encryption_key,
+                )
+            if signing_key:
+                self.public_signing_key, self.private_signing_key = get_keys(
+                    signing_key,
+                )
+            if address:
+                self.address = Address(address)
         except ValueError as error:
             raise ValueError(
                 "Attempt to construct local user with incorrect data."

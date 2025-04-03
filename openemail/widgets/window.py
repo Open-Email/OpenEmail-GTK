@@ -25,13 +25,13 @@ from typing import Any
 import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import shared
+from openemail.shared import APP_ID, PREFIX, settings, state_settings, user
 
 from .auth_view import MailAuthView
 from .content_view import MailContentView
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/window.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/window.ui")
 class MailWindow(Adw.ApplicationWindow):
     """The main application window."""
 
@@ -45,19 +45,19 @@ class MailWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        shared.state_settings.bind(
+        state_settings.bind(
             "width",
             self,
             "default-width",
             Gio.SettingsBindFlags.DEFAULT,
         )
-        shared.state_settings.bind(
+        state_settings.bind(
             "height",
             self,
             "default-height",
             Gio.SettingsBindFlags.DEFAULT,
         )
-        shared.state_settings.bind(
+        state_settings.bind(
             "show-sidebar",
             self.content_view.split_view,
             "show-sidebar",
@@ -66,26 +66,25 @@ class MailWindow(Adw.ApplicationWindow):
 
         self.content_view.load_content(periodic=True)
 
-        if hasattr(shared, "user"):
+        if user.address:
             self.visible_child_name = "content"
 
     @Gtk.Template.Callback()
     def _on_auth(self, *_args: Any) -> None:
         keyring.set_password(
-            f"{shared.APP_ID}.Keys",
-            str(shared.user.address),
+            f"{APP_ID}.Keys",
+            str(user.address),
             json.dumps(
                 {
-                    "privateEncryptionKey": str(shared.user.private_encryption_key),
+                    "privateEncryptionKey": str(user.private_encryption_key),
                     "privateSigningKey": b64encode(
-                        bytes(shared.user.private_signing_key)
-                        + bytes(shared.user.public_signing_key)
+                        bytes(user.private_signing_key) + bytes(user.public_signing_key)
                     ).decode("utf-8"),
                 }
             ),
         )
 
-        shared.settings.set_string("address", str(shared.user.address))
+        settings.set_string("address", str(user.address))
 
         self.content_view.load_content()
         self.visible_child_name = "content"

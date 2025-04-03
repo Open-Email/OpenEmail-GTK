@@ -22,16 +22,17 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
-from openemail import shared
 from openemail.core.crypto import decrypt_xchacha20poly1305
 from openemail.core.message import Message
 from openemail.core.network import delete_message, request
+from openemail.shared import PREFIX, run_task, settings, user
+from openemail.store import outbox, profiles, restore_message, trash_message
 
 from .message_body import MailMessageBody
 from .profile_view import MailProfileView
 
 
-@Gtk.Template(resource_path=f"{shared.PREFIX}/gtk/message-view.ui")
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/message-view.ui")
 class MailMessageView(Adw.Bin):
     """A view displaying metadata about, and the contents of a message."""
 
@@ -128,23 +129,22 @@ class MailMessageView(Adw.Bin):
 
         self.can_reply = True
 
-        self.author_is_self = message.envelope.author == shared.user.address
+        self.author_is_self = message.envelope.author == user.address
 
         self.can_trash = (not self.author_is_self) and (
-            message.envelope.message_id
-            not in shared.settings.get_strv("trashed-message-ids")
+            message.envelope.message_id not in settings.get_strv("trashed-message-ids")
         )
         self.can_restore = not (self.can_trash or self.author_is_self)
 
         if self._name_binding:
             self._name_binding.unbind()
-        self._name_binding = shared.profiles[message.envelope.author].bind_property(
+        self._name_binding = profiles[message.envelope.author].bind_property(
             "name", self, "name", GObject.BindingFlags.SYNC_CREATE
         )
 
         if self._image_binding:
             self._image_binding.unbind()
-        self._image_binding = shared.profiles[message.envelope.author].bind_property(
+        self._image_binding = profiles[message.envelope.author].bind_property(
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
@@ -161,20 +161,20 @@ class MailMessageView(Adw.Bin):
             return
 
         self.readers = _("Readers: ")
-        self.readers += str(shared.profiles[shared.user.address].name)
+        self.readers += str(profiles[user.address].name)
 
         for reader in message.envelope.readers:
-            if reader == shared.user.address:
+            if reader == user.address:
                 continue
 
-            self.readers += f", {profile.name if (profile := shared.profiles.get(reader)) else reader}"
+            self.readers += (
+                f", {profile.name if (profile := profiles.get(reader)) else reader}"
+            )
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:
         self.profile_view.profile = (
-            shared.profiles[self.message.envelope.author].profile
-            if self.message
-            else None
+            profiles[self.message.envelope.author].profile if self.message else None
         )
         self.profile_dialog.present(self)
 
@@ -202,7 +202,7 @@ class MailMessageView(Adw.Bin):
             for part in parts:
                 if not (
                     (url := part.attachment_url)
-                    and (response := await request(url, shared.user))
+                    and (response := await request(url, user))
                 ):
                     return
 
@@ -235,17 +235,17 @@ class MailMessageView(Adw.Bin):
             await stream.write_bytes_async(GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT)
             await stream.close_async(GLib.PRIORITY_DEFAULT)
 
-        shared.run_task(save())
+        run_task(save())
 
     @Gtk.Template.Callback()
     def _trash(self, *_args: Any) -> None:
         if not self.message:
             return
 
-        shared.trash_message(message_id := self.message.envelope.message_id)
+        trash_message(message_id := self.message.envelope.message_id)
         self.__add_to_undo(
             _("Message moved to trash"),
-            lambda: shared.restore_message(message_id),
+            lambda: restore_message(message_id),
         )
 
     @Gtk.Template.Callback()
@@ -253,10 +253,10 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        shared.restore_message(message_id := self.message.envelope.message_id)
+        restore_message(message_id := self.message.envelope.message_id)
         self.__add_to_undo(
             _("Message restored"),
-            lambda: shared.trash_message(message_id),
+            lambda: trash_message(message_id),
         )
 
     @Gtk.Template.Callback()
@@ -271,9 +271,9 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        shared.run_task(
-            delete_message(self.message.envelope.message_id, shared.user),
-            lambda: shared.run_task(shared.update_outbox()),
+        run_task(
+            delete_message(self.message.envelope.message_id, user),
+            lambda: run_task(outbox.update()),
         )
 
     def __add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
