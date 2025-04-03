@@ -34,6 +34,8 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from .crypto import (
+    CHECKSUM_ALGORITHM,
+    ENCRYPTION_ALGORITHM,
     SIGNING_ALGORITHM,
     decrypt_anonymous,
     decrypt_xchacha20poly1305,
@@ -45,7 +47,7 @@ from .crypto import (
     sign_data,
 )
 from .message import Envelope, Message, generate_link
-from .user import Address, Profile, User
+from .user import Address, Profile, User, parse_headers
 
 cache_dir: Path = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
 
@@ -289,15 +291,8 @@ async def fetch_contacts(user: User) -> tuple[Address, ...]:
                 continue
 
             try:
-                addresses.append(
-                    Address(
-                        {
-                            (split := attr.strip().split("=", 1))[0].lower(): split[1]
-                            for attr in contact.split(";")
-                        }["address"]
-                    )
-                )
-            except (IndexError, KeyError, ValueError):
+                addresses.append(Address(parse_headers(contact)["address"]))
+            except KeyError:
                 continue
 
         break
@@ -564,7 +559,7 @@ async def send_message(
         "Size": str(len(body)),
         "Checksum": ";".join(
             (
-                "algorithm=sha256",
+                f"algorithm={CHECKSUM_ALGORITHM}",
                 f"value={sha256(body_bytes).hexdigest()}",
             )
         ),
@@ -619,8 +614,8 @@ async def send_message(
         headers.update(
             {
                 "Message-Access": ",".join(groups),
-                "Message-Encryption": "xchacha20poly1305",
-                "Message-Headers": "algorithm=xchacha20poly1305;",
+                "Message-Encryption": ENCRYPTION_ALGORITHM,
+                "Message-Headers": f"algorithm={ENCRYPTION_ALGORITHM};",
             }
         )
 
@@ -645,7 +640,7 @@ async def send_message(
             "Content-Length": str(len(body_bytes)),
             "Message-Checksum": ";".join(
                 (
-                    "algorithm=sha256",
+                    f"algorithm={CHECKSUM_ALGORITHM}",
                     f"order={':'.join(checksum_fields)}",
                     f"value={checksum.hexdigest()}",
                 )

@@ -24,7 +24,7 @@ from datetime import datetime
 from hashlib import sha256
 from typing import NamedTuple, Self
 
-from .crypto import decrypt_anonymous, decrypt_xchacha20poly1305
+from .crypto import CHECKSUM_ALGORITHM, decrypt_anonymous, decrypt_xchacha20poly1305
 from .user import Address, User, parse_headers
 
 
@@ -55,6 +55,8 @@ class Envelope:
     author: Address = field(init=False)
     readers: list[Address] = field(init=False, default_factory=list)
 
+    checksum: str | None = field(init=False, default=None)
+
     access_links: str | None = field(init=False, default=None)
     access_key: bytes | None = field(init=False, default=None)
 
@@ -78,9 +80,11 @@ class Envelope:
     def __post_init__(self) -> None:
         message_headers: str | None = None
 
-        for key, value in self.headers.items():
-            key, value = key.lower(), value.strip()
+        self.headers = {
+            key.lower(): value.strip() for key, value in self.headers.items()
+        }
 
+        for key, value in self.headers.items():
             match key:
                 case "message-access":
                     self.access_links = value
@@ -107,8 +111,40 @@ class Envelope:
                 case "message-headers":
                     message_headers = value
 
+                case "message-checksum":
+                    self.checksum = value
+
         if not message_headers:
             raise ValueError("Empty message headers")
+
+        if not self.checksum:
+            raise ValueError("Missing checksum")
+
+        sum = parse_headers(self.checksum)
+
+        try:
+            if sum["algorithm"] != CHECKSUM_ALGORITHM:
+                raise ValueError("Unsupported checksum algorithm")
+
+            if (
+                sum["value"]
+                != sha256(
+                    (
+                        "".join(
+                            tuple(
+                                self.headers.get(field.lower(), "")
+                                for field in (
+                                    header.strip() for header in sum["order"].split(":")
+                                )
+                            )
+                        )
+                    ).encode("utf-8")
+                ).hexdigest()
+            ):
+                raise ValueError("Invalid checksum")
+
+        except KeyError as error:
+            raise ValueError("Bad checksum format") from error
 
         try:
             header_bytes = b64decode(parse_headers(message_headers)["value"])

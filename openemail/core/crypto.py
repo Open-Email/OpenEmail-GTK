@@ -34,7 +34,9 @@ from nacl.public import PrivateKey, PublicKey, SealedBox
 from nacl.signing import SigningKey
 from nacl.utils import random
 
+ENCRYPTION_ALGORITHM = "xchacha20poly1305"
 SIGNING_ALGORITHM = "ed25519"
+CHECKSUM_ALGORITHM = "sha256"
 
 
 class Key(NamedTuple):
