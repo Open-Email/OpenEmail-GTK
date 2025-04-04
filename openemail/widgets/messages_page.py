@@ -24,9 +24,7 @@ from typing import Any, Literal
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail.core.message import Envelope
-from openemail.core.network import send_message
-from openemail.core.user import Address
-from openemail.shared import PREFIX, run_task, settings, user
+from openemail.shared import PREFIX, settings, user
 from openemail.store import MailMessage, broadcasts, inbox, outbox, profiles
 
 from .compose_dialog import MailComposeDialog
@@ -157,37 +155,6 @@ class MailMessagesPage(Adw.NavigationPage):
 
         self.compose_dialog.present(self)
         self.compose_dialog.readers.grab_focus()
-
-    @Gtk.Template.Callback()
-    def _send_message(self, *_args: Any) -> None:
-        readers: list[Address] = []
-        if not self.compose_dialog.broadcast_switch.get_active():
-            for reader in self.compose_dialog.readers.get_text().split(","):
-                if not (reader := reader.strip()):
-                    continue
-
-                try:
-                    readers.append(Address(reader))
-                except ValueError:
-                    return
-
-        run_task(
-            send_message(
-                user,
-                readers,
-                self.compose_dialog.subject.get_text(),
-                self.compose_dialog.body.get_text(
-                    self.compose_dialog.body.get_start_iter(),
-                    self.compose_dialog.body.get_end_iter(),
-                    False,
-                ),
-                self._subject_id,
-            ),
-            lambda: run_task(outbox.update()),
-        )
-
-        self._subject_id = None
-        self.compose_dialog.force_close()
 
     def __reply(self, *_args: Any) -> None:
         if not self.message_view.message:

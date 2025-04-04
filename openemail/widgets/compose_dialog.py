@@ -51,15 +51,6 @@ class MailComposeDialog(Adw.Dialog):
         self.body = self.body_view.get_buffer()
 
     @Gtk.Template.Callback()
-    def _new_message(self, *_args: Any) -> None:
-        self.subject_id = None
-        self.compose_form.reset()
-        self.broadcast_switch.set_active(False)
-
-        self.present(self)
-        self.readers.grab_focus()
-
-    @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:
         readers: list[Address] = []
         if not self.broadcast_switch.get_active():
