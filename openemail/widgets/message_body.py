@@ -56,18 +56,18 @@ class MailMessageBody(Gtk.TextView):
 
         if not self.get_editable():
             buffer.set_text(
-                summary
+                text
+                if not self.summary
+                else summary
                 if len(summary := text.replace("\n", " ")) <= 100
                 else summary[:100] + "…"
-                if self.summary
-                else text
             )
 
         for name, pattern in {
             "blockquote": r"(?m)^(?=>)[(?<!\\)> ]*(.*)$",
             "heading": r"(?m)^(?:(?=>)[(?<!\\)> ]*)?(?<!\\)#+ (.*)$",
             "strikethrough": r"(?<!\\)~~(.+?)(?<!\\)~~",
-            "italic": r"(?<!\\)\*(.+?)(?<!\\)\*",
+            "italic": r"(?<!\*)(?<!\\)\*(.+?)(?<!\\)\*",
             "bold": r"(?<!\\)\*\*(.+?)(?<!\\)\*\*",
             "bold italic": r"(?<!\\)\*\*\*(.+?)(?<!\\)\*\*\*",
             "escape": r"(?<!\\)(\\)[>#~*]",
@@ -84,18 +84,18 @@ class MailMessageBody(Gtk.TextView):
                     continue
 
                 buffer.apply_tag_by_name(
-                    "bold"
+                    "none"
+                    if ((name == "escape") and self.get_editable())
+                    else name
+                    if name != "heading"
+                    else "bold"
                     if self.summary
                     else "heading "
                     + str(
                         len(m.group())
                         if (m := search(r"(#{1,6})", match.group()))
                         else 6
-                    )
-                    if name == "heading"
-                    else "none"
-                    if ((name == "escape") and self.get_editable())
-                    else name,
+                    ),
                     buffer.get_iter_at_offset(match.start()),
                     buffer.get_iter_at_offset(match.end()),
                 )
@@ -155,4 +155,4 @@ class MailMessageBody(Gtk.TextView):
         # if after removing this the layout of the sidebar doesn't break, it's safe to remove.
         #
         # PS: It probably won't be, "Nobody wants to work on TextView."
-        self.connect("map", lambda *_: GLib.timeout_add(15, self.queue_resize))
+        self.connect("map", lambda *_: GLib.timeout_add(20, self.queue_resize))

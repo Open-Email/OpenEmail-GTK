@@ -27,16 +27,9 @@ from openemail.core.message import Envelope
 from openemail.core.network import send_message
 from openemail.core.user import Address
 from openemail.shared import PREFIX, run_task, settings, user
-from openemail.store import (
-    MailMessage,
-    broadcasts,
-    inbox,
-    outbox,
-    profiles,
-)
-from openemail.widgets.form import MailForm
-from openemail.widgets.message_body import MailMessageBody
+from openemail.store import MailMessage, broadcasts, inbox, outbox, profiles
 
+from .compose_dialog import MailComposeDialog
 from .content_page import MailContentPage
 from .message_view import MailMessageView
 
@@ -49,20 +42,11 @@ class MailMessagesPage(Adw.NavigationPage):
 
     content: MailContentPage = Gtk.Template.Child()
     message_view: MailMessageView = Gtk.Template.Child()
-
-    compose_dialog: Adw.Dialog = Gtk.Template.Child()
-    broadcast_switch: Gtk.Switch = Gtk.Template.Child()
-    readers: Gtk.Text = Gtk.Template.Child()
-    subject: Gtk.Text = Gtk.Template.Child()
-    body_view: MailMessageBody = Gtk.Template.Child()
-    compose_form: MailForm = Gtk.Template.Child()
-
-    body: Gtk.TextBuffer
+    compose_dialog: MailComposeDialog = Gtk.Template.Child()
 
     title = GObject.Property(type=str, default=_("Messages"))
 
     _folder: str | None = None
-    _subject_id: str | None = None
 
     @GObject.Property(type=str)
     def folder(self) -> str | None:
@@ -151,8 +135,6 @@ class MailMessagesPage(Adw.NavigationPage):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.body = self.body_view.get_buffer()
-
         self.message_view.reply_button.connect("clicked", self.__reply)
 
         self.add_controller(
@@ -170,17 +152,17 @@ class MailMessagesPage(Adw.NavigationPage):
     @Gtk.Template.Callback()
     def _new_message(self, *_args: Any) -> None:
         self._subject_id = None
-        self.compose_form.reset()
-        self.broadcast_switch.set_active(False)
+        self.compose_dialog.broadcast_switch.set_active(False)
+        self.compose_dialog.compose_form.reset()
 
         self.compose_dialog.present(self)
-        self.readers.grab_focus()
+        self.compose_dialog.readers.grab_focus()
 
     @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:
         readers: list[Address] = []
-        if not self.broadcast_switch.get_active():
-            for reader in self.readers.get_text().split(","):
+        if not self.compose_dialog.broadcast_switch.get_active():
+            for reader in self.compose_dialog.readers.get_text().split(","):
                 if not (reader := reader.strip()):
                     continue
 
@@ -193,10 +175,10 @@ class MailMessagesPage(Adw.NavigationPage):
             send_message(
                 user,
                 readers,
-                self.subject.get_text(),
-                self.body.get_text(
-                    self.body.get_start_iter(),
-                    self.body.get_end_iter(),
+                self.compose_dialog.subject.get_text(),
+                self.compose_dialog.body.get_text(
+                    self.compose_dialog.body.get_start_iter(),
+                    self.compose_dialog.body.get_end_iter(),
                     False,
                 ),
                 self._subject_id,
@@ -207,24 +189,17 @@ class MailMessagesPage(Adw.NavigationPage):
         self._subject_id = None
         self.compose_dialog.force_close()
 
-    @Gtk.Template.Callback()
-    def _reveal_readers(self, revealer: Gtk.Revealer, *_args: Any) -> None:
-        self.compose_form.address_lists = Gtk.StringList.new(
-            ("readers",) if revealer.get_reveal_child() else ()
-        )
-
     def __reply(self, *_args: Any) -> None:
         if not self.message_view.message:
             return self._new_message()
 
         envelope: Envelope = self.message_view.message.envelope
 
-        self.compose_form.reset()
-
-        self.broadcast_switch.set_active(
+        self.compose_dialog.compose_form.reset()
+        self.compose_dialog.broadcast_switch.set_active(
             bool(envelope.is_broadcast and (envelope.author == user.address))
         )
-        self.readers.set_text(
+        self.compose_dialog.readers.set_text(
             ", ".join(
                 str(reader)
                 for reader in list(dict.fromkeys(envelope.readers + [envelope.author]))
@@ -233,7 +208,7 @@ class MailMessagesPage(Adw.NavigationPage):
         )
 
         if body := self.message_view.message.body:
-            self.body.set_text(
+            self.compose_dialog.body.set_text(
                 # Date, time, author
                 _("On {}, {}, {} wrote:").format(
                     envelope.date.strftime("%x"),
@@ -247,11 +222,11 @@ class MailMessagesPage(Adw.NavigationPage):
                 + "\n\n"
             )
 
-        self.subject.set_text(envelope.subject)
+        self.compose_dialog.subject.set_text(envelope.subject)
         self._subject_id = envelope.subject_id
 
         self.compose_dialog.present(self)
-        self.body_view.grab_focus()
+        self.compose_dialog.body_view.grab_focus()
 
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not (

@@ -1,0 +1,222 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailComposeDialog: Adw.Dialog {
+  title: _("New Message");
+  content-width: 650;
+  content-height: 500;
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      show-start-title-buttons: false;
+      show-end-title-buttons: false;
+
+      [start]
+      Button {
+        label: _("Cancel");
+        action-name: "window.close";
+      }
+
+      [end]
+      Button send_button {
+        clicked => $_send_message();
+
+        Adw.ButtonContent {
+          label: _("Send");
+          icon-name: "send-symbolic";
+        }
+
+        styles [
+          "suggested-action",
+        ]
+      }
+    }
+
+    [top]
+    ActionBar {
+      [start]
+      Box {
+        margin-top: 4;
+        margin-start: 4;
+        orientation: vertical;
+
+        Separator {}
+
+        Box {
+          hexpand: true;
+
+          Overlay {
+            [overlay]
+            Revealer {
+              can-target: false;
+              reveal-child: bind broadcast_switch.active;
+              transition-type: crossfade;
+
+              Label {
+                halign: start;
+                label: _("Public Message");
+
+                styles [
+                  "dim-label",
+                ]
+              }
+            }
+
+            Revealer {
+              reveal-child: bind broadcast_switch.active inverted;
+              transition-type: crossfade;
+              notify::reveal-child => $_reveal_readers();
+
+              Box {
+                Label readers_label {
+                  margin-end: 6;
+                  label: _("Readers:");
+
+                  styles [
+                    "dim-label",
+                  ]
+                }
+
+                Text readers {
+                  height-request: 42;
+                  hexpand: true;
+
+                  accessibility {
+                    labelled-by: readers_label;
+                  }
+                }
+              }
+            }
+          }
+
+          Label broadcast_label {
+            margin-start: 6;
+            margin-end: 6;
+            label: _("Broadcast");
+
+            styles [
+              "dim-label",
+            ]
+          }
+
+          Switch broadcast_switch {
+            valign: center;
+
+            accessibility {
+              labelled-by: broadcast_label;
+            }
+          }
+        }
+
+        Separator {}
+
+        Box {
+          hexpand: true;
+          margin-top: 6;
+
+          Label subject_label {
+            margin-end: 6;
+            label: _("Subject:");
+
+            styles [
+              "dim-label",
+            ]
+          }
+
+          Text subject {
+            height-request: 30;
+            hexpand: true;
+
+            accessibility {
+              labelled-by: subject_label;
+            }
+          }
+        }
+      }
+    }
+
+    content: ScrolledWindow {
+      Box {
+        orientation: vertical;
+
+        Separator {
+          margin-start: 10;
+          margin-end: 12;
+        }
+
+        $MailMessageBody body_view {
+          top-margin: 6;
+          left-margin: 12;
+          right-margin: 12;
+          bottom-margin: 120;
+          wrap-mode: GTK_WRAP_WORD_CHAR;
+
+          accessibility {
+            label: _("Message");
+          }
+
+          styles [
+            "inline",
+          ]
+        }
+      }
+    };
+
+    [bottom]
+    ActionBar {
+      [start]
+      Button {
+        icon-name: "text-bold-symbolic";
+        tooltip-text: _("Bold");
+        clicked => $_format_bold();
+      }
+
+      [start]
+      Button {
+        icon-name: "text-italic-symbolic";
+        tooltip-text: _("Italic");
+        clicked => $_format_italic();
+      }
+
+      [start]
+      Button {
+        icon-name: "text-strikethrough-symbolic";
+        tooltip-text: _("Strikethrough");
+        clicked => $_format_strikethrough();
+      }
+
+      [start]
+      Button {
+        icon-name: "text-heading-symbolic";
+        tooltip-text: _("Increase Heading Level");
+        clicked => $_format_heading();
+      }
+
+      [start]
+      Button {
+        icon-name: "quotation-symbolic";
+        tooltip-text: _("Quote");
+        clicked => $_format_quote();
+      }
+    }
+  }
+}
+
+$MailForm compose_form {
+  form: template;
+  submit: send_button;
+
+  plain: StringList {
+    strings [
+      "subject",
+      "body",
+    ]
+  };
+
+  address-lists: Gtk.StringList {
+    strings [
+      "readers",
+    ]
+  };
+}

@@ -14,6 +14,12 @@
     <file preprocess="xml-stripblanks">settings-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic-rtl.svg</file>
+    <!-- Text Editing -->
+    <file preprocess="xml-stripblanks">quotation-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">text-bold-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">text-heading-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">text-italic-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">text-strikethrough-symbolic.svg</file>
     <!-- Sidebar -->
     <file preprocess="xml-stripblanks">broadcasts-symbolic.svg</file>
     <file preprocess="xml-stripblanks">contacts-symbolic.svg</file>
