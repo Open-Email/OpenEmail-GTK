@@ -253,13 +253,14 @@ class Profile:
                     continue
 
                 value.update_value(parsed_fields.get(key))
+                if value.default_value is not None:
+                    continue
 
-                if value.default_value is None:
-                    match fields:
-                        case self.required:
-                            raise ValueError(f'Required field "{key}" does not exist')
-                        case self.optional:
-                            fields[key] = None
+                match fields:
+                    case self.required:
+                        raise ValueError(f'Required field "{key}" does not exist')
+                    case self.optional:
+                        fields[key] = None
 
 
 @dataclass(slots=True)
