@@ -151,6 +151,19 @@ template $MailMessageView: Adw.Bin {
                       "heading",
                     ]
                   }
+                  
+                  Label {
+                    halign: start;
+                    label: bind template.original_author;
+                    visible: bind template.different-author;
+                    wrap: true;
+                    wrap-mode: word_char;
+                    selectable: true;
+
+                    styles [
+                      "caption",
+                    ]
+                  }
 
                   Label {
                     halign: start;

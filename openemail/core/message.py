@@ -48,11 +48,12 @@ class Envelope:
 
     message_id: str
     headers: dict[str, str]
+    author: Address
     user: User | None = None
 
     date: datetime = field(init=False)
     subject: str = field(init=False)
-    author: Address = field(init=False)
+    original_author: Address = field(init=False)
     readers: list[Address] = field(init=False, default_factory=list)
 
     checksum: str | None = field(init=False, default=None)
@@ -167,7 +168,7 @@ class Envelope:
             self.message_id = headers["id"]
             self.date = datetime.fromisoformat(headers["date"])
             self.subject = headers["subject"]
-            self.author = Address(headers["author"])
+            self.original_author = Address(headers["author"])
         except KeyError as error:
             raise ValueError("Incomplete header contents") from error
 

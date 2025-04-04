@@ -57,10 +57,12 @@ class MailMessageView(Adw.Bin):
     date = GObject.Property(type=str)
     subject = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
+    original_author = GObject.Property(type=str)
     readers = GObject.Property(type=str)
     body = GObject.Property(type=str)
 
     author_is_self = GObject.Property(type=bool, default=False)
+    different_author = GObject.Property(type=bool, default=False)
     can_trash = GObject.Property(type=bool, default=False)
     can_restore = GObject.Property(type=bool, default=False)
     can_reply = GObject.Property(type=bool, default=False)
@@ -156,12 +158,18 @@ class MailMessageView(Adw.Bin):
             self.attachment_messages[row] = parts
             self.attachments.append(row)
 
+        self.original_author = (
+            f"{_('Original Author:')} {str(message.envelope.original_author)}"
+        )
+        self.different_author = (
+            message.envelope.author != message.envelope.original_author
+        )
+
         if message.envelope.is_broadcast:
             self.readers = _("Broadcast")
             return
 
-        self.readers = _("Readers: ")
-        self.readers += str(profiles[user.address].name)
+        self.readers = f"{_('Readers:')} {str(profiles[user.address].name)}"
 
         for reader in message.envelope.readers:
             if reader == user.address:

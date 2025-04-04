@@ -346,7 +346,9 @@ async def delete_contact(address: Address, user: User) -> None:
     logging.error("Deleting contact %s failed", address)
 
 
-async def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | None:
+async def fetch_envelope(
+    url: str, message_id: str, user: User, author: Address
+) -> Envelope | None:
     """Perform a HEAD request to the specified URL and retrieve response headers.
 
     Args:
@@ -375,14 +377,14 @@ async def fetch_envelope(url: str, message_id: str, user: User) -> Envelope | No
 
     try:
         logging.debug("Fetched envelope %s", message_id[:8])
-        return Envelope(message_id, headers, user)
+        return Envelope(message_id, headers, author, user)
     except ValueError as error:
         logging.error("Fetching envelope %s failed: %s", message_id[:8], error)
         return None
 
 
 async def fetch_message_from_agent(
-    url: str, user: User, message_id: str
+    url: str, user: User, author: Address, message_id: str
 ) -> Message | None:
     """Attempt to fetch a message from the provided `agent`."""
     logging.debug("Fetching message %s…", message_id[:8])
@@ -390,7 +392,7 @@ async def fetch_message_from_agent(
         logging.error("Fetching message %s failed: Invalid URL", message_id[:8])
         return None
 
-    if not (envelope := await fetch_envelope(url, message_id, user)):
+    if not (envelope := await fetch_envelope(url, message_id, user, author)):
         return None
 
     if envelope.is_child:  # TODO: This probably won't work for split messages
@@ -477,7 +479,7 @@ async def fetch_messages(
     for message_id in await fetch_message_ids(id_url, user, author):
         for agent in await get_agents(user.address):
             if message := await fetch_message_from_agent(
-                url.format(agent, message_id), user, message_id
+                url.format(agent, message_id), user, author, message_id
             ):
                 messages[message.envelope.message_id] = message
                 break
