@@ -22,11 +22,13 @@
 import asyncio
 from abc import abstractmethod
 from collections import defaultdict
+from functools import wraps
 from typing import (
     Any,
     AsyncGenerator,
     AsyncIterable,
     Callable,
+    Coroutine,
     Generic,
     NamedTuple,
     TypeVar,
@@ -57,6 +59,20 @@ def is_loading() -> bool:
     return bool(_loading)
 
 
+def _loads(
+    func: Callable[..., Coroutine[Any, Any, Any]],
+) -> Callable[..., Coroutine[Any, Any, Any]]:
+    @wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Coroutine[Any, Any, Any]:
+        global _loading
+        _loading += 1
+        result = await func(*args, **kwargs)
+        _loading -= 1
+        return result
+
+    return wrapper
+
+
 class DictStore(GObject.Object, Gio.ListModel, Generic[T, U]):  # type: ignore
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
 
@@ -84,6 +100,7 @@ class DictStore(GObject.Object, Gio.ListModel, Generic[T, U]):  # type: ignore
         return len(self._items)
 
     @abstractmethod
+    @_loads
     async def update(self) -> None:
         """Update `self` asynchronously using `self.fetch()`."""
 
@@ -160,11 +177,9 @@ class MailMessageStore(DictStore[str, MailMessage]):
 
         self.fetch = fetch
 
+    @_loads
     async def update(self) -> None:
         """Update `self` asynchronously using `self.fetch()`."""
-        global _loading
-        _loading += 1
-
         message_ids: set[str] = set()
 
         async for message in self.fetch():
@@ -183,8 +198,6 @@ class MailMessageStore(DictStore[str, MailMessage]):
             self._items.pop(message_id)
             self.items_changed(index - removed, 1, 0)
             removed += 1
-
-        _loading -= 1
 
 
 def trash_message(message_id: str) -> None:
@@ -297,11 +310,9 @@ class MailContactsStore(DictStore[Address, MailProfile]):
         super().__init__(**kwargs)
         self.item_type = MailProfile
 
+    @_loads
     async def update(self) -> None:
         """Update `self` asynchronously."""
-        global _loading
-        _loading += 1
-
         contacts: set[Address] = set()
 
         for contact in await fetch_contacts(user):
@@ -322,18 +333,43 @@ class MailContactsStore(DictStore[Address, MailProfile]):
             self.items_changed(index - removed, 1, 0)
             removed += 1
 
-        _loading -= 1
+    @_loads
+    async def update_profiles(self) -> None:
+        """Update the profiles of contacts in the user's address book."""
+        await asyncio.gather(
+            *(
+                self.__update_profile(Address(contact.address))  # type: ignore
+                for contact in self
+            ),
+            *(
+                self.__update_profile_image(Address(contact.address))  # type: ignore
+                for contact in self
+            ),
+        )
+
+    @staticmethod
+    async def __update_profile(address: Address) -> None:
+        profiles[address].profile = await fetch_profile(address)
+
+    @staticmethod
+    async def __update_profile_image(address: Address) -> None:
+        try:
+            profiles[address].image = (
+                Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))
+                if (image := await fetch_profile_image(address))
+                else None
+            )
+        except GLib.Error:
+            profiles[address].image = None
 
 
 profiles: defaultdict[Address, MailProfile] = defaultdict(MailProfile)
 address_book = MailContactsStore()
 
 
+@_loads
 async def update_user_profile() -> None:
     """Update the profile of the user by fetching new data remotely."""
-    global _loading
-    _loading += 1
-
     if profile := await fetch_profile(user.address):
         user.public_signing_key = profile.required["signing-key"].value
         if key := profile.optional.get("encryption-key"):
@@ -347,34 +383,6 @@ async def update_user_profile() -> None:
         )
     except GLib.Error:
         profiles[user.address].image = None
-
-    _loading -= 1
-
-
-async def update_profiles() -> None:
-    """Update the profiles for contacts in the user's address book by fetching new data remotely."""
-    global _loading
-    _loading += 1
-
-    async def update_profile(address: Address) -> None:
-        profiles[address].profile = await fetch_profile(address)
-
-    async def update_profile_image(address: Address) -> None:
-        try:
-            profiles[address].image = (
-                Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))
-                if (image := await fetch_profile_image(address))
-                else None
-            )
-        except GLib.Error:
-            profiles[address].image = None
-
-    await asyncio.gather(
-        *(update_profile(Address(contact.address)) for contact in address_book),  # type: ignore
-        *(update_profile_image(Address(contact.address)) for contact in address_book),  # type: ignore
-    )
-
-    _loading += 1
 
 
 class ProfileCategory(NamedTuple):

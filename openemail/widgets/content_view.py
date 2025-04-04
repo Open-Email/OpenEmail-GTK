@@ -30,7 +30,6 @@ from openemail.store import (
     is_loading,
     outbox,
     profiles,
-    update_profiles,
     update_user_profile,
 )
 
@@ -118,7 +117,7 @@ class MailContentView(Adw.BreakpointBin):
         def update_address_book_cb() -> None:
             self.contacts_page.content.loading = False
 
-            run_task(update_profiles())
+            run_task(address_book.update_profiles())
             run_task(
                 broadcasts.update(),
                 lambda: self.broadcasts_page.content.set_property("loading", False),
