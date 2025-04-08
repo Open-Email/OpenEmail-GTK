@@ -218,7 +218,7 @@ def restore_message(message_id: str) -> None:
     settings.set_strv("trashed-message-ids", trashed)
 
 
-async def __fetch_broadcasts() -> AsyncGenerator[Message]:
+async def __fetch_broadcasts() -> AsyncGenerator[Message, None]:
     async for messages in asyncio.as_completed(
         fetch_broadcasts(user, Address(contact.address))  # type: ignore
         for contact in address_book
@@ -227,7 +227,7 @@ async def __fetch_broadcasts() -> AsyncGenerator[Message]:
             yield message
 
 
-async def __fetch_inbox() -> AsyncGenerator[Message]:
+async def __fetch_inbox() -> AsyncGenerator[Message, None]:
     async for messages in asyncio.as_completed(
         fetch_link_messages(user, Address(contact.address))  # type: ignore
         for contact in address_book
@@ -236,7 +236,7 @@ async def __fetch_inbox() -> AsyncGenerator[Message]:
             yield message
 
 
-async def __fetch_outbox() -> AsyncGenerator[Message]:
+async def __fetch_outbox() -> AsyncGenerator[Message, None]:
     async for messages in asyncio.as_completed(
         (
             fetch_link_messages(user, user.address),
