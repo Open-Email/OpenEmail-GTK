@@ -264,3 +264,14 @@ class Message:
 
         for name, attachment in self.attachments.items():
             attachment.sort(key=lambda part: part.envelope.part)
+
+
+@dataclass(slots=True)
+class Notification:
+    """A Mail/HTTPS notification."""
+
+    ident: str
+    received_on: datetime
+    link: str
+    notifier: Address
+    fp: str
