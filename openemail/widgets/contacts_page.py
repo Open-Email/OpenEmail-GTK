@@ -125,17 +125,12 @@ class MailContactsPage(Adw.NavigationPage):
         except ValueError:
             return
 
-        def update_address_book_cb() -> None:
-            run_task(broadcasts.update())
-            run_task(inbox.update())
+        run_task(new_contact(address))
 
-        run_task(
-            new_contact(address),
-            lambda: run_task(
-                address_book.update(),
-                update_address_book_cb,
-            ),
-        )
+        address_book.add(address)
+        run_task(address_book.update_profiles())
+        run_task(broadcasts.update())
+        run_task(inbox.update())
 
         self.add_contact_dialog.force_close()
 

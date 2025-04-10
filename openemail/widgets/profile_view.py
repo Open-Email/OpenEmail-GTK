@@ -141,15 +141,8 @@ class MailProfileView(Adw.Bin):
         if not self.profile:
             return
 
-        def update_address_book_cb() -> None:
-            run_task(address_book.update_profiles())
-            run_task(broadcasts.update())
-            run_task(inbox.update())
+        run_task(delete_contact(self.profile.address))
 
-        run_task(
-            delete_contact(self.profile.address),
-            lambda: run_task(
-                address_book.update(),
-                update_address_book_cb,
-            ),
-        )
+        address_book.remove(self.profile.address)
+        run_task(broadcasts.update())
+        run_task(inbox.update())
