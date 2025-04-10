@@ -115,4 +115,3 @@ class MailPreferences(Adw.PreferencesDialog):
             return
 
         win.visible_child_name = "auth"
-        self.force_close()

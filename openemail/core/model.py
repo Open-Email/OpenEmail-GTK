@@ -316,7 +316,7 @@ class Message:
                 pass
 
     def reconstruct_from_children(self) -> None:
-        """Attempt to reconstruct the entire content of this message from all of its children.
+        """Reconstruct the entire content of this message from all of its children.
 
         Should only be called after all children have been fetched and added.
         """
@@ -391,7 +391,7 @@ class ProfileField(ABC, Generic[T]):
 
     @abstractmethod
     def update_value(self, data: str | None) -> None:
-        """Attempt to update `self.value` from `data`."""
+        """Update `self.value` from `data`."""
 
 
 class StringField(ProfileField[str]):
@@ -412,7 +412,7 @@ class BoolField(ProfileField[bool]):
         return "Yes" if self.value else "No"
 
     def update_value(self, data: str | None) -> None:
-        """Attempt to update `self.value` from `data`."""
+        """Update `self.value` from `data`."""
         if data is not None:
             self.default_value = data == "Yes"
 
@@ -424,7 +424,7 @@ class DateField(ProfileField[date]):
         return self.value.strftime("%x")
 
     def update_value(self, data: str | None) -> None:
-        """Attempt to update `self.value` from `data`."""
+        """Update `self.value` from `data`."""
         if not data:
             return
 
@@ -441,7 +441,7 @@ class DateTimeField(ProfileField[datetime]):
         return self.value.strftime("%c")
 
     def update_value(self, data: str | None) -> None:
-        """Attempt to update `self.value` from `data`."""
+        """Update `self.value` from `data`."""
         if not data:
             return
 
@@ -458,7 +458,7 @@ class KeyField(ProfileField[Key]):
         return str(self.value)
 
     def update_value(self, data: str | None) -> None:
-        """Attempt to update `self.value` from `data`."""
+        """Update `self.value` from `data`."""
         if not data:
             return
 

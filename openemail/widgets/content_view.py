@@ -23,7 +23,7 @@ from typing import Any
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
 from openemail.core.client import user
-from openemail.shared import PREFIX, run_task, settings
+from openemail.shared import PREFIX, notifier, run_task, settings
 from openemail.store import (
     address_book,
     broadcasts,
@@ -71,6 +71,8 @@ class MailContentView(Adw.BreakpointBin):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.sidebar.select_row(self.sidebar.get_row_at_index(1))
+
+        notifier.connect("send", self.__display_notification)
 
     def load_content(self, first_sync: bool = True, periodic: bool = False) -> None:
         """Populate the content view by fetching the local user's data.
@@ -202,3 +204,11 @@ class MailContentView(Adw.BreakpointBin):
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:
         self.split_view.set_show_sidebar(not self.split_view.get_show_sidebar())
+
+    def __display_notification(self, _obj: Any, title: str) -> None:
+        self.toast_overlay.add_toast(
+            Adw.Toast(
+                title=title,
+                priority=Adw.ToastPriority.HIGH,
+            )
+        )

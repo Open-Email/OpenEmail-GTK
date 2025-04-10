@@ -23,13 +23,14 @@ import json
 import logging
 from base64 import b64encode
 from datetime import datetime, timezone
+from functools import wraps
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
 from json import JSONDecodeError
 from os import getenv
 from pathlib import Path
 from socket import setdefaulttimeout
-from typing import AsyncGenerator, Iterable
+from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -59,13 +60,36 @@ from .model import (
     parse_headers,
 )
 
+setdefaulttimeout(5)
 user: User = User()
 cache_dir = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
 data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
 
 _agents: dict[str, tuple[str, ...]] = {}
+_writing = 0
 
-setdefaulttimeout(5)
+
+def is_writing() -> bool:
+    """Check whether or not a write update is currently ongoing."""
+    return bool(_writing)
+
+
+def _writes(
+    func: Callable[..., Coroutine[Any, Any, Any]],
+) -> Callable[..., Coroutine[Any, Any, Any]]:
+    @wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Coroutine[Any, Any, Any]:
+        global _writing
+        _writing += 1
+        result = await func(*args, **kwargs)
+        _writing -= 1
+        return result
+
+    return wrapper
+
+
+class WriteError(Exception):
+    """An exception raised if writing to the server fails."""
 
 
 async def request(
@@ -162,7 +186,7 @@ async def try_auth() -> bool:
 
 
 async def fetch_profile(address: Address) -> Profile | None:
-    """Attempt to fetch the remote profile associated with a given `address`."""
+    """Fetch the remote profile associated with a given `address`."""
     logging.debug("Fetching profile for %s…", address)
     for agent in await get_agents(address):
         if not (response := await request(_Mail(agent, address).profile)):
@@ -181,8 +205,9 @@ async def fetch_profile(address: Address) -> Profile | None:
     return None
 
 
+@_writes
 async def update_profile(values: dict[str, str]) -> None:
-    """Attempt to update `user`'s public profile with `values`."""
+    """Update `user`'s public profile with `values`."""
     logging.debug("Updating user profile…")
 
     values.update(
@@ -221,10 +246,11 @@ async def update_profile(values: dict[str, str]) -> None:
             return
 
     logging.error("Failed to update profile with values %s", values)
+    raise WriteError
 
 
 async def fetch_profile_image(address: Address) -> bytes | None:
-    """Attempt to fetch the remote profile image associated with a given `address`."""
+    """Fetch the remote profile image associated with a given `address`."""
     logging.debug("Fetching profile image for %s…", address)
     for agent in await get_agents(address):
         if not (response := await request(_Mail(agent, address).image)):
@@ -239,8 +265,9 @@ async def fetch_profile_image(address: Address) -> bytes | None:
     return None
 
 
+@_writes
 async def update_profile_image(image: bytes) -> None:
-    """Attempt to upload `image` to be used as the user's profile image."""
+    """Upload `image` to be used as the user's profile image."""
     logging.debug("Updating profile image…")
     for agent in await get_agents(user.address):
         if await request(
@@ -253,10 +280,12 @@ async def update_profile_image(image: bytes) -> None:
             return
 
     logging.error("Updating profile image failed.")
+    raise WriteError
 
 
+@_writes
 async def delete_profile_image() -> None:
-    """Attempt to delete `user`'s profile image."""
+    """Delete `user`'s profile image."""
     logging.debug("Deleting profile image…")
     for agent in await get_agents(user.address):
         if await request(_Home(agent, user.address).image, user, method="DELETE"):
@@ -264,10 +293,11 @@ async def delete_profile_image() -> None:
             return
 
     logging.error("Deleting profile image failed.")
+    raise WriteError
 
 
 async def fetch_contacts() -> tuple[Address, ...]:
-    """Attempt to fetch the `user`'s contact list."""
+    """Fetch the `user`'s contact list."""
     logging.debug("Fetching contact list…")
     addresses = []
 
@@ -313,8 +343,9 @@ async def fetch_contacts() -> tuple[Address, ...]:
     return tuple(addresses)
 
 
+@_writes
 async def new_contact(address: Address) -> None:
-    """Attempt to add `address` to the user's address book."""
+    """Add `address` to the user's address book."""
     logging.debug("Adding %s to address book…", address)
 
     try:
@@ -330,7 +361,7 @@ async def new_contact(address: Address) -> None:
             address,
             error,
         )
-        return
+        raise WriteError
 
     link = generate_link(address, user.address)
     for agent in await get_agents(address):
@@ -344,10 +375,12 @@ async def new_contact(address: Address) -> None:
             return
 
     logging.error("Failed adding %s to address book", address)
+    raise WriteError
 
 
+@_writes
 async def delete_contact(address: Address) -> None:
-    """Attempt to delete `address` from the user's address book."""
+    """Delete `address` from the user's address book."""
     logging.debug("Deleting contact %s…", address)
     link = generate_link(address, user.address)
     for agent in await get_agents(address):
@@ -360,6 +393,7 @@ async def delete_contact(address: Address) -> None:
             return
 
     logging.error("Deleting contact %s failed", address)
+    raise WriteError
 
 
 async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope | None:
@@ -402,7 +436,7 @@ async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope
 async def fetch_message_from_agent(
     url: str, author: Address, message_id: str
 ) -> Message | None:
-    """Attempt to fetch a message from the provided agent `url`."""
+    """Fetch a message from the provided agent `url`."""
     logging.debug("Fetching message %s…", message_id[:8])
     if not (agent := urlparse(url).hostname):
         logging.error("Fetching message %s failed: Invalid URL", message_id[:8])
@@ -457,7 +491,7 @@ async def fetch_message_from_agent(
 
 
 async def fetch_message_ids(url: str, author: Address) -> tuple[str, ...]:
-    """Attempt to fetch message IDs by `author`, addressed to `user` from `url`.
+    """Fetch message IDs by `author`, addressed to `user` from `url`.
 
     `{}` in `url` will be substituted by the mail agent.
     """
@@ -482,7 +516,7 @@ async def fetch_message_ids(url: str, author: Address) -> tuple[str, ...]:
 
 
 async def fetch_messages(id_url: str, url: str, author: Address) -> tuple[Message, ...]:
-    """Attempt to fetch messages by `author` from `url` with IDs at `id_url`.
+    """Fetch messages by `author` from `url` with IDs at `id_url`.
 
     `{}` in `id_url` will be substituted by the mail agent.
 
@@ -510,7 +544,7 @@ async def fetch_messages(id_url: str, url: str, author: Address) -> tuple[Messag
 
 
 async def fetch_broadcasts(author: Address) -> tuple[Message, ...]:
-    """Attempt to fetch broadcasts by `author`."""
+    """Fetch broadcasts by `author`."""
     logging.debug("Fetching broadcasts from %s…", author)
     return await fetch_messages(
         _Mail("{}", author).messages,
@@ -520,7 +554,7 @@ async def fetch_broadcasts(author: Address) -> tuple[Message, ...]:
 
 
 async def fetch_link_messages(author: Address) -> tuple[Message, ...]:
-    """Attempt to fetch messages by `author`, addressed to `user`."""
+    """Fetch messages by `author`, addressed to `user`."""
     logging.debug("Fetching link messages messages from %s…", author)
     link = generate_link(user.address, author)
 
@@ -531,13 +565,14 @@ async def fetch_link_messages(author: Address) -> tuple[Message, ...]:
     )
 
 
+@_writes
 async def send_message(
     readers: Iterable[Address],
     subject: str,
     body: str,
     reply: str | None = None,
 ) -> None:
-    """Attempt to send `message` to `readers`.
+    """Send `message` to `readers`.
 
     If `readers` is empty, send a broadcast.
 
@@ -546,7 +581,7 @@ async def send_message(
     logging.debug("Sending message…")
     if not body:
         logging.warning("Failed sending message: Empty body")
-        return
+        raise WriteError
 
     body_bytes = body.encode("utf-8")
     message_id = sha256(
@@ -599,7 +634,7 @@ async def send_message(
                 and (key_id := key_field.value.key_id)
             ):
                 logging.error("Failed sending message: Could not fetch reader profiles")
-                return
+                raise WriteError
 
             try:
                 groups.append(
@@ -614,14 +649,14 @@ async def send_message(
                 )
             except ValueError as error:
                 logging.error("Error sending message: %s", error)
-                return
+                raise WriteError
 
         try:
             body_bytes = encrypt_xchacha20poly1305(body_bytes, access_key)
             headers_bytes = encrypt_xchacha20poly1305(headers_bytes, access_key)
         except ValueError as error:
             logging.error("Error sending message: %s", error)
-            return
+            raise WriteError
 
         headers.update(
             {
@@ -643,7 +678,7 @@ async def send_message(
         signature = sign_data(user.private_signing_key, checksum.digest())
     except ValueError as error:
         logging.error("Error sending message: %s", error)
-        return
+        raise WriteError
 
     headers.update(
         {
@@ -677,10 +712,12 @@ async def send_message(
             return
 
     logging.error("Failed sending message")
+    raise WriteError
 
 
+@_writes
 async def notify_readers(readers: Iterable[Address]) -> None:
-    """Attempt to notify `readers` of a new message."""
+    """Notify `readers` of a new message."""
     logging.debug("Notifying readers…")
     for reader in readers:
         if not (
@@ -719,11 +756,11 @@ async def notify_readers(readers: Iterable[Address]) -> None:
                 logging.debug("Notified %s", reader)
                 break
 
-        logging.warning("Failed notifying %s")
+        logging.warning("Failed notifying %s", reader)
 
 
 async def fetch_notifications() -> AsyncGenerator[Notification, None]:
-    """Attempt to fetch all of `user`'s new notifications.
+    """Fetch all of `user`'s new notifications.
 
     Note that this generator is assumes that you process all notifications yielded by it
     and a subsequent iteration will not yield "old" notifications that were already processed.
@@ -802,11 +839,9 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
     logging.debug("Notifications fetched")
 
 
-async def delete_message(message_id: str) -> bool:
-    """Attempt to delete `message_id`.
-
-    Returns `True` on success.
-    """
+@_writes
+async def delete_message(message_id: str) -> None:
+    """Delete `message_id`."""
     logging.debug("Deleting message %s…", message_id[:8])
     for agent in await get_agents(user.address):
         if await request(
@@ -815,10 +850,10 @@ async def delete_message(message_id: str) -> bool:
             method="DELETE",
         ):
             logging.info("Deleted message %s", message_id[:8])
-            return True
+            return
 
     logging.error("Deleting message %s failed", message_id[:8])
-    return False
+    raise WriteError
 
 
 class _Home:

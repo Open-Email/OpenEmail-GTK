@@ -24,7 +24,7 @@ from gi.repository import Adw, Gtk
 
 from openemail.core.client import send_message
 from openemail.core.model import Address
-from openemail.shared import PREFIX, run_task
+from openemail.shared import PREFIX, notifier, run_task
 from openemail.store import outbox
 from openemail.widgets.form import MailForm
 from openemail.widgets.message_body import MailMessageBody
@@ -63,6 +63,8 @@ class MailComposeDialog(Adw.Dialog):
                 except ValueError:
                     return
 
+        notifier.send(_("Sending message…"))
+
         run_task(
             send_message(
                 readers,
@@ -75,6 +77,7 @@ class MailComposeDialog(Adw.Dialog):
                 self.subject_id,
             ),
             lambda: run_task(outbox.update()),
+            lambda: notifier.send(_("Failed to send message")),
         )
 
         self.subject_id = None

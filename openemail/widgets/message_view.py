@@ -25,7 +25,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 from openemail.core.client import delete_message, request, user
 from openemail.core.crypto import decrypt_xchacha20poly1305
 from openemail.core.model import Message
-from openemail.shared import PREFIX, run_task, settings
+from openemail.shared import PREFIX, notifier, run_task, settings
 from openemail.store import outbox, profiles, restore_message, trash_message
 
 from .message_body import MailMessageBody
@@ -282,6 +282,7 @@ class MailMessageView(Adw.Bin):
         run_task(
             delete_message(self.message.envelope.message_id),
             lambda: run_task(outbox.update()),
+            lambda: notifier.send(_("Failed to discard message")),
         )
 
     def __add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:

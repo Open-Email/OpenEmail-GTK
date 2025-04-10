@@ -25,7 +25,7 @@ from typing import Any
 import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail.core.client import user
+from openemail.core.client import is_writing, user
 from openemail.shared import APP_ID, PREFIX, settings, state_settings
 
 from .auth_view import MailAuthView
@@ -42,6 +42,8 @@ class MailWindow(Adw.ApplicationWindow):
     content_view: MailContentView = Gtk.Template.Child()
 
     visible_child_name = GObject.Property(type=str, default="auth")
+
+    _quit: bool = False
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -64,6 +66,8 @@ class MailWindow(Adw.ApplicationWindow):
             "show-sidebar",
             Gio.SettingsBindFlags.DEFAULT,
         )
+
+        self.connect("close-request", self.__close)
 
         self.content_view.load_content(periodic=True)
 
@@ -91,3 +95,27 @@ class MailWindow(Adw.ApplicationWindow):
 
         self.content_view.load_content()
         self.visible_child_name = "content"
+
+    def __close(self, *_args: Any) -> bool:
+        if self._quit or (not is_writing()):
+            return False
+
+        def on_response(_obj: Any, response: str) -> None:
+            if response != "quit":
+                return
+
+            self._quit = True
+            self.close()
+
+        (
+            alert := Adw.AlertDialog.new(
+                _("Upload Ongoing"),
+                _("Quitting now will make you lose data such as sent messages"),
+            )
+        ).connect("response", on_response)
+        alert.add_response("cancel", _("Cancel"))
+        alert.add_response("quit", _("Quit"))
+        alert.set_response_appearance("quit", Adw.ResponseAppearance.DESTRUCTIVE)
+
+        alert.present(self)
+        return True

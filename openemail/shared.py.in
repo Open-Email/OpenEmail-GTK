@@ -19,11 +19,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import asyncio
+from asyncio import Task
 from pathlib import Path
 from typing import Any, Callable, Coroutine
 
 from gi.events import GLibEventLoopPolicy
-from gi.repository import Gio, GLib
+from gi.repository import Gio, GLib, GObject
 
 from .core import client
 
@@ -39,17 +40,44 @@ log_file = Path(GLib.get_user_state_dir()) / "openemail.log"
 client.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
 client.data_dir = Path(GLib.get_user_data_dir()) / "openemail"
 
-asyncio.set_event_loop_policy(policy := GLibEventLoopPolicy())
-loop: asyncio.AbstractEventLoop = policy.get_event_loop()
-
-_tasks: set[asyncio.Task] = set()
+asyncio.set_event_loop_policy(_policy := GLibEventLoopPolicy())
+_loop: asyncio.AbstractEventLoop = _policy.get_event_loop()
+_tasks: set[Task] = set()
 
 
 def run_task(
     coro: Coroutine[Any, Any, Any],
-    callback: Callable[[], Any] | None = None,
+    on_success: Callable[[], Any] | None = None,
+    on_failure: Callable[[], Any] | None = None,
 ) -> None:
-    """Run a coroutine in a task, calling `callback` on finish."""
-    _tasks.add(task := loop.create_task(coro))
-    task.add_done_callback(lambda *_: callback() if callback else None)
-    task.add_done_callback(_tasks.discard)
+    """Run a coroutine in a task.
+
+    Calls the `on_success` callback if no exceptions were raised and `on_failure` otherwise.
+    """
+    _tasks.add(task := _loop.create_task(coro))
+
+    def done_callback(task: Task[Any]) -> None:
+        if task.exception():
+            if on_failure:
+                on_failure()
+                return
+
+        if on_success:
+            on_success()
+
+        _tasks.discard(task)
+
+    task.add_done_callback(done_callback)
+
+
+class Notifier(GObject.Object):
+    """Used for sending user-facing notifications throughout the application."""
+
+    send_notification = GObject.Signal(name="send", arg_types=(str,))
+
+    def send(self, title: str) -> None:
+        """Emit the `Notifier::send` signal with `title`."""
+        self.emit("send", title)
+
+
+notifier = Notifier()

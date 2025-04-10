@@ -24,7 +24,7 @@ from gi.repository import GObject, Gtk
 
 from openemail.core.client import new_contact
 from openemail.core.model import Address
-from openemail.shared import PREFIX, run_task, settings
+from openemail.shared import PREFIX, notifier, run_task, settings
 from openemail.store import address_book, broadcasts, inbox
 
 
@@ -45,7 +45,13 @@ class MailRequestButtons(Gtk.Box):
         except ValueError:
             return
 
-        run_task(new_contact(address))
+        def addition_failed() -> None:
+            notifier.send(_("Failed to add contact"))
+            address_book.remove(address)
+            run_task(broadcasts.update())
+            run_task(inbox.update())
+
+        run_task(new_contact(address), on_failure=addition_failed)
 
         address_book.add(address)
         run_task(address_book.update_profiles())

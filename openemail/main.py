@@ -51,10 +51,14 @@ class MailApplication(Adw.Application):
             application_id=APP_ID,
             flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
         )
-        self.create_action("quit", lambda *_: self.quit(), ("<primary>q",))
-        self.create_action("about", self.on_about_action)
-        self.create_action("preferences", self.on_preferences_action)
         self.create_action("sync", self.on_sync_action)
+        self.create_action("preferences", self.on_preferences_action)
+        self.create_action("about", self.on_about_action)
+        self.create_action(
+            "quit",
+            lambda *_: win.close() if (win := self.get_active_window()) else None,
+            ("<primary>q",),
+        )
 
         if not (
             (address := settings.get_string("address"))

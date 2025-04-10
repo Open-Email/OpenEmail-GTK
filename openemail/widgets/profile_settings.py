@@ -24,12 +24,13 @@ from typing import Any, Callable
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail.core.client import (
+    WriteError,
     delete_profile_image,
     update_profile,
     update_profile_image,
 )
 from openemail.core.model import Profile
-from openemail.shared import PREFIX, run_task
+from openemail.shared import PREFIX, notifier, run_task
 from openemail.store import profile_categories, update_user_profile
 from openemail.widgets.form import MailForm
 
@@ -132,11 +133,17 @@ class MailProfileSettings(Adw.PreferencesDialog):
     @Gtk.Template.Callback()
     def _delete_image(self, *_args: Any) -> None:
         self.pending = True
+
         run_task(
             delete_profile_image(),
             lambda: run_task(
                 update_user_profile(),
                 self.set_property("pending", False),
+            ),
+            lambda: self.add_toast(
+                Adw.Toast.new(
+                    _("Failed to delete profile image"),
+                )
             ),
         )
 
@@ -161,6 +168,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
         run_task(
             update_profile({key: f() for key, f in self._fields.items()}),
             lambda: run_task(update_user_profile()),
+            lambda: notifier.send(_("Failed to update profile")),
         )
 
     async def __replace_image(self) -> None:
@@ -252,6 +260,11 @@ class MailProfileSettings(Adw.PreferencesDialog):
             return
 
         self.pending = True
-        await update_profile_image(data)
+
+        try:
+            await update_profile_image(data)
+        except WriteError:
+            self.add_toast(Adw.Toast.new(_("Failed to update profile image")))
+
         await update_user_profile()
         self.pending = False

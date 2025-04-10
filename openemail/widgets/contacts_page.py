@@ -25,7 +25,7 @@ from gi.repository import Adw, Gio, Gtk
 
 from openemail.core.client import new_contact
 from openemail.core.model import Address
-from openemail.shared import PREFIX, run_task
+from openemail.shared import PREFIX, notifier, run_task
 from openemail.store import (
     MailProfile,
     address_book,
@@ -125,14 +125,18 @@ class MailContactsPage(Adw.NavigationPage):
         except ValueError:
             return
 
-        run_task(new_contact(address))
+        def addition_failed() -> None:
+            notifier.send(_("Failed to add contact"))
+            address_book.remove(address)
+            run_task(broadcasts.update())
+            run_task(inbox.update())
+
+        run_task(new_contact(address), on_failure=addition_failed)
 
         address_book.add(address)
         run_task(address_book.update_profiles())
         run_task(broadcasts.update())
         run_task(inbox.update())
-
-        self.add_contact_dialog.force_close()
 
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not isinstance(selected := selection.get_selected_item(), MailProfile):

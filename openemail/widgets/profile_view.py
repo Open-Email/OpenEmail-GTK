@@ -24,7 +24,7 @@ from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail.core.client import delete_contact
 from openemail.core.model import Profile
-from openemail.shared import PREFIX, run_task
+from openemail.shared import PREFIX, notifier, run_task
 from openemail.store import address_book, broadcasts, inbox, profile_categories
 
 
@@ -141,7 +141,15 @@ class MailProfileView(Adw.Bin):
         if not self.profile:
             return
 
-        run_task(delete_contact(self.profile.address))
+        address = self.profile.address
+
+        def removal_failed() -> None:
+            notifier.send(_("Failed to remove contact"))
+            address_book.add(address)
+            run_task(broadcasts.update())
+            run_task(inbox.update())
+
+        run_task(delete_contact(address), on_failure=removal_failed)
 
         address_book.remove(self.profile.address)
         run_task(broadcasts.update())

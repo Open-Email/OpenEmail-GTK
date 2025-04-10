@@ -109,7 +109,7 @@ def get_nonce(host: str, public_key: Key, private_key: Key) -> str:
 
 
 def decrypt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> bytes:
-    """Attempt to decrypt `cipher_text` using the provided keys."""
+    """Decrypt `cipher_text` using the provided keys."""
     try:
         data = b64decode(cipher_text)
     except ValueError as error:
@@ -122,7 +122,7 @@ def decrypt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> by
 
 
 def encrypt_anonymous(data: bytes, public_key: Key) -> bytes:
-    """Attempt to encrypt `data` using the provided `public_key`."""
+    """Encrypt `data` using the provided `public_key`."""
     try:
         return SealedBox(PublicKey(bytes(public_key))).encrypt(data)
     except CryptoError as error:
@@ -130,7 +130,7 @@ def encrypt_anonymous(data: bytes, public_key: Key) -> bytes:
 
 
 def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
-    """Attempt to decrypt `data` using `access_key`."""
+    """Decrypt `data` using `access_key`."""
     try:
         return crypto_aead_xchacha20poly1305_ietf_decrypt(
             data[crypto_aead_xchacha20poly1305_ietf_NPUBBYTES:],
@@ -143,7 +143,7 @@ def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
 
 
 def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
-    """Attempt to encrypt `data` using `access_key`."""
+    """Encrypt `data` using `access_key`."""
     try:
         return (
             nonce := random(crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)
