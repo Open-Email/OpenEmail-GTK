@@ -275,3 +275,8 @@ class Notification:
     link: str
     notifier: Address
     fp: str
+
+    @property
+    def is_expired(self) -> bool:
+        """Whether or not the notification has already expired."""
+        return (self.received_on - datetime.now()).days >= 7

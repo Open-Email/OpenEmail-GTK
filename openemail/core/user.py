@@ -43,7 +43,6 @@ def parse_headers(data: str) -> dict[str, str]:
         return {}
 
 
-@dataclass(slots=True)
 class Address:
     """A Mail/HTTPS address."""
 
@@ -63,6 +62,9 @@ class Address:
             raise ValueError(
                 f'Email address "{address}" contains more than a single @ character'
             ) from error
+
+    def __repr__(self) -> str:
+        return str(self)
 
     def __str__(self) -> str:
         return f"{self.local_part}@{self.host_part}"

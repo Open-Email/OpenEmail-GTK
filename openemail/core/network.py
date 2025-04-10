@@ -22,10 +22,10 @@ import asyncio
 import json
 import logging
 from base64 import b64encode
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
+from json.decoder import JSONDecodeError
 from os import getenv
 from pathlib import Path
 from socket import setdefaulttimeout
@@ -51,7 +51,8 @@ from .crypto import (
 from .message import Envelope, Message, Notification, generate_link
 from .user import Address, Profile, User, parse_headers
 
-cache_dir: Path = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
+cache_dir = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
+data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
 
 _agents: dict[str, tuple[str, ...]] = {}
 
@@ -369,9 +370,11 @@ async def fetch_envelope(
         logging.error("Fetching envelope %s failed: Invalid URL", message_id[:8])
         return None
 
-    if (envelope_path := cache_dir / "envelopes" / agent / message_id).is_file():
+    envelope_path = cache_dir / "envelopes" / agent / message_id
+
+    try:
         headers = json.load(envelope_path.open("r"))
-    else:
+    except (FileNotFoundError, JSONDecodeError):
         if not (response := await request(url, user, method="HEAD")):
             logging.error("Fetching envelope %s failed", message_id[:8])
             return None
@@ -405,9 +408,11 @@ async def fetch_message_from_agent(
         logging.debug("Fetched message %s", message_id[:8])
         return Message(envelope, attachment_url=url)
 
-    if (message_path := cache_dir / "messages" / agent / message_id).is_file():
+    message_path = cache_dir / "messages" / agent / message_id
+
+    try:
         contents = message_path.read_bytes()
-    else:
+    except FileNotFoundError:
         if not (response := await request(url, user)):
             logging.error(
                 "Fetching message %s failed: Failed fetching body",
@@ -719,7 +724,11 @@ async def notify_readers(readers: Iterable[Address], user: User) -> None:
 
 
 async def fetch_notifications(user: User) -> AsyncGenerator[Notification, None]:
-    """Attempt to fetch all of `user`'s new notifications."""
+    """Attempt to fetch all of `user`'s new notifications.
+
+    Note that this generator is assumes that you process all notifications yielded by it
+    and a subsequent iteration will not yield "old" notifications that were already processed.
+    """
     contents = None
     logging.debug("Fetching notifications…")
     for agent in await get_agents(user.address):
@@ -735,6 +744,13 @@ async def fetch_notifications(user: User) -> AsyncGenerator[Notification, None]:
         break
 
     if contents:
+        notifications_path = data_dir / "notifications.json"
+
+        try:
+            notifications = set(json.load(notifications_path.open("r")))
+        except (FileNotFoundError, JSONDecodeError):
+            notifications = set()
+
         for notification in contents.split("\n"):
             if not (stripped := notification.strip()):
                 continue
@@ -747,7 +763,8 @@ async def fetch_notifications(user: User) -> AsyncGenerator[Notification, None]:
                 logging.debug("Invalid notification: %s", notification)
                 continue
 
-            # TODO: Store notifications, check if they were already processed
+            if ident in notifications:
+                continue
 
             try:
                 notifier = Address(
@@ -777,7 +794,11 @@ async def fetch_notifications(user: User) -> AsyncGenerator[Notification, None]:
                 logging.debug("Fingerprint mismatch for notification: %s", notification)
                 continue
 
+            notifications.add(ident)
             yield Notification(ident, datetime.now(), link, notifier, signing_key_fp)
+
+        notifications_path.parent.mkdir(parents=True, exist_ok=True)
+        json.dump(tuple(notifications), notifications_path.open("w"))
 
     logging.debug("Notifications fetched")
 
@@ -804,87 +825,34 @@ async def delete_message(
     return False
 
 
-@dataclass(slots=True)
-class _Location:
-    agent: str
-    address: Address
+class _Home:
+    def __init__(self, agent: str, address: Address) -> None:
+        self.home = f"https://{agent}/home/{address.host_part}/{address.local_part}"
+        self.links = f"{self.home}/links"
+        self.profile = f"{self.home}/profile"
+        self.image = f"{self.home}/image"
+        self.messages = f"{self.home}/messages"
+        self.notifications = f"{self.home}/notifications"
 
 
-@dataclass(slots=True)
-class _Home(_Location):
-    @property
-    def home(self) -> str:
-        return f"https://{self.agent}/home/{self.address.host_part}/{self.address.local_part}"
-
-    @property
-    def links(self) -> str:
-        return f"{self.home}/links"
-
-    @property
-    def profile(self) -> str:
-        return f"{self.home}/profile"
-
-    @property
-    def image(self) -> str:
-        return f"{self.home}/image"
-
-    @property
-    def messages(self) -> str:
-        return f"{self.home}/messages"
-
-    @property
-    def notifications(self) -> str:
-        return f"{self.home}/notifications"
-
-
-@dataclass(slots=True)
-class _Mail(_Location):
-    @property
-    def host(self) -> str:
-        return f"https://{self.agent}/mail/{self.address.host_part}"
-
-    @property
-    def mail(self) -> str:
-        return f"{self.host}/{self.address.local_part}"
-
-    @property
-    def profile(self) -> str:
-        return f"{self.mail}/profile"
-
-    @property
-    def image(self) -> str:
-        return f"{self.mail}/image"
-
-    @property
-    def messages(self) -> str:
-        return f"{self.mail}/messages"
-
-
-@dataclass(slots=True)
 class _Message(_Home):
-    message_id: str
-
-    @property
-    def message(self) -> str:
-        return f"{self.messages}/{self.message_id}"
+    def __init__(self, agent: str, address: Address, message_id: str) -> None:
+        super().__init__(agent, address)
+        self.message = f"{self.messages}/{message_id}"
 
 
-@dataclass(slots=True)
-class _Link(_Location):
-    link: str
+class _Mail:
+    def __init__(self, agent: str, address: Address) -> None:
+        self.host = f"https://{agent}/mail/{address.host_part}"
+        self.mail = f"{self.host}/{address.local_part}"
+        self.profile = f"{self.mail}/profile"
+        self.image = f"{self.mail}/image"
+        self.messages = f"{self.mail}/messages"
 
-    @property
-    def home(self) -> str:
-        return f"{_Home(self.agent, self.address).home}/links/{self.link}"
 
-    @property
-    def mail(self) -> str:
-        return f"{_Mail(self.agent, self.address).mail}/link/{self.link}"
-
-    @property
-    def messages(self) -> str:
-        return f"{self.mail}/messages"
-
-    @property
-    def notifications(self) -> str:
-        return f"{self.home}/notifications"
+class _Link:
+    def __init__(self, agent: str, address: Address, link: str) -> None:
+        self.home = f"{_Home(agent, address).home}/links/{link}"
+        self.mail = f"{_Mail(agent, address).mail}/link/{link}"
+        self.messages = f"{self.mail}/messages"
+        self.notifications = f"{self.home}/notifications"

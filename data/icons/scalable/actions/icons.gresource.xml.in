@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="@PREFIX@/icons/scalable/actions">
+    <file preprocess="xml-stripblanks">accept-symbolic.svg</file>
     <file preprocess="xml-stripblanks">contact-new-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">decline-symbolic.svg</file>
     <file preprocess="xml-stripblanks">edit-symbolic.svg</file>
     <file preprocess="xml-stripblanks">key-symbolic.svg</file>
     <file preprocess="xml-stripblanks">mail-attachment-symbolic.svg</file>

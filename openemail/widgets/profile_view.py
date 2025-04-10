@@ -142,6 +142,7 @@ class MailProfileView(Adw.Bin):
             return
 
         def update_address_book_cb() -> None:
+            run_task(address_book.update_profiles())
             run_task(broadcasts.update())
             run_task(inbox.update())
 
