@@ -23,8 +23,9 @@ from typing import Any, Literal
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail.core.message import Envelope
-from openemail.shared import PREFIX, settings, user
+from openemail.core.client import user
+from openemail.core.model import Envelope
+from openemail.shared import PREFIX, settings
 from openemail.store import MailMessage, broadcasts, inbox, outbox, profiles
 
 from .compose_dialog import MailComposeDialog
@@ -112,7 +113,7 @@ class MailMessagesPage(Adw.NavigationPage):
             filter.changed(Gtk.FilterChange.DIFFERENT)
             selection.set_selected(0)
 
-        settings.connect("changed::trashed-message-ids", on_trash_changed)
+        settings.connect("changed::trashed-messages", on_trash_changed)
         self.content.connect(
             "notify::search-text",
             lambda *_: filter.changed(

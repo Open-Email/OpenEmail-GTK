@@ -20,14 +20,23 @@
 
 from base64 import b64encode
 from dataclasses import fields
+from shutil import rmtree
 from typing import Any
 
 import keyring
 from gi.repository import Adw, GObject, Gtk
 
-from openemail.core.user import User
-from openemail.shared import PREFIX, secret_service, settings, user
-from openemail.store import address_book, broadcasts, inbox, outbox, profiles
+from openemail.core.client import data_dir, user
+from openemail.core.model import User
+from openemail.shared import PREFIX, secret_service, settings
+from openemail.store import (
+    address_book,
+    broadcasts,
+    contact_requests,
+    inbox,
+    outbox,
+    profiles,
+)
 
 from .window import MailWindow
 
@@ -85,15 +94,19 @@ class MailPreferences(Adw.PreferencesDialog):
 
         profiles.clear()
         address_book.clear()
+        contact_requests.clear()
         broadcasts.clear()
         inbox.clear()
         outbox.clear()
 
         settings.reset("address")
         settings.reset("sync-interval")
-        settings.reset("trashed-message-ids")
+        settings.reset("contact-requests")
+        settings.reset("trashed-messages")
 
         keyring.delete_password(secret_service, str(user.address))
+
+        rmtree(data_dir, ignore_errors=True)
 
         for field in fields(User):
             delattr(user, field.name)

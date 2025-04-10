@@ -25,8 +25,7 @@ from typing import Any, Callable, Coroutine
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Gio, GLib
 
-from .core import network
-from .core.user import User
+from .core import client
 
 APP_ID = "@APP_ID@"
 VERSION = "@VERSION@"
@@ -37,13 +36,11 @@ settings = Gio.Settings.new(APP_ID)
 state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
 log_file = Path(GLib.get_user_state_dir()) / "openemail.log"
-network.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
-network.data_dir = Path(GLib.get_user_data_dir()) / "openemail"
+client.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
+client.data_dir = Path(GLib.get_user_data_dir()) / "openemail"
 
 asyncio.set_event_loop_policy(policy := GLibEventLoopPolicy())
 loop: asyncio.AbstractEventLoop = policy.get_event_loop()
-
-user: User = User()
 
 _tasks: set[asyncio.Task] = set()
 

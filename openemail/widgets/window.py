@@ -25,7 +25,8 @@ from typing import Any
 import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail.shared import APP_ID, PREFIX, settings, state_settings, user
+from openemail.core.client import user
+from openemail.shared import APP_ID, PREFIX, settings, state_settings
 
 from .auth_view import MailAuthView
 from .content_view import MailContentView
@@ -66,8 +67,10 @@ class MailWindow(Adw.ApplicationWindow):
 
         self.content_view.load_content(periodic=True)
 
-        if user.address:
-            self.visible_child_name = "content"
+        if not user.logged_in:
+            return
+
+        self.visible_child_name = "content"
 
     @Gtk.Template.Callback()
     def _on_auth(self, *_args: Any) -> None:

@@ -23,13 +23,13 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
-from openemail.core.network import (
+from openemail.core.client import (
     delete_profile_image,
     update_profile,
     update_profile_image,
 )
-from openemail.core.user import Profile
-from openemail.shared import PREFIX, run_task, user
+from openemail.core.model import Profile
+from openemail.shared import PREFIX, run_task
 from openemail.store import profile_categories, update_user_profile
 from openemail.widgets.form import MailForm
 
@@ -133,7 +133,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
     def _delete_image(self, *_args: Any) -> None:
         self.pending = True
         run_task(
-            delete_profile_image(user),
+            delete_profile_image(),
             lambda: run_task(
                 update_user_profile(),
                 self.set_property("pending", False),
@@ -159,10 +159,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
         self._changed = False
 
         run_task(
-            update_profile(
-                user,
-                {key: f() for key, f in self._fields.items()},
-            ),
+            update_profile({key: f() for key, f in self._fields.items()}),
             lambda: run_task(update_user_profile()),
         )
 
@@ -255,6 +252,6 @@ class MailProfileSettings(Adw.PreferencesDialog):
             return
 
         self.pending = True
-        await update_profile_image(user, data)
+        await update_profile_image(data)
         await update_user_profile()
         self.pending = False

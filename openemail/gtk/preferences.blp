@@ -32,7 +32,7 @@ template $MailPreferences: Adw.PreferencesDialog {
       title: _("Account");
 
       Adw.ButtonRow {
-        title: _("Remove Account");
+        title: _("Log Out");
         activated => $_remove_account();
 
         styles [
@@ -101,7 +101,7 @@ template $MailPreferences: Adw.PreferencesDialog {
 }
 
 Adw.AlertDialog confirm_remove_dialog {
-  heading: _("Remove Account?");
+  heading: _("Log Out?");
   body: _("All local data will be deleted. Log in again to restore data.");
   close-response: "cancel";
   default-response: "cancel";
@@ -109,6 +109,6 @@ Adw.AlertDialog confirm_remove_dialog {
 
   responses [
     cancel: _("Cancel"),
-    remove: _("Remove Account") destructive,
+    remove: _("Log Out") destructive,
   ]
 }

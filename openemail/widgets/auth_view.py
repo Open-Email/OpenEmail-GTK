@@ -18,14 +18,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from dataclasses import fields
 from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail.core.network import try_auth
-from openemail.core.user import User
-from openemail.shared import APP_ID, PREFIX, run_task, user
+from openemail.core.client import try_auth, user
+from openemail.core.crypto import get_keys
+from openemail.core.model import Address
+from openemail.shared import APP_ID, PREFIX, run_task
 from openemail.widgets.form import MailForm
 
 
@@ -68,24 +68,24 @@ class MailAuthView(Adw.Bin):
     @Gtk.Template.Callback()
     def _authenticate(self, *_args: Any) -> None:
         try:
-            new_user = User(
-                self.email_entry.get_text(),
-                self.encryption_key_entry.get_text(),
-                self.signing_key_entry.get_text(),
+            user.address = Address(self.email_entry.get_text())
+            user.public_encryption_key, user.private_encryption_key = get_keys(
+                self.encryption_key_entry.get_text()
             )
+            user.public_signing_key, user.private_signing_key = get_keys(
+                self.signing_key_entry.get_text()
+            )
+
         except ValueError:
             self.__warn(_("Incorrect key format"))
             return
 
         async def authenticate() -> None:
             self.set_property("button-child-name", "loading")
-            if not await try_auth(new_user):
+            if not await try_auth():
                 self.__warn(_("Authentication failed"))
                 self.button_child_name = "label"
                 return
-
-            for field in fields(User):
-                setattr(user, field.name, getattr(new_user, field.name))
 
             self.emit("authenticated")
             self.button_child_name = "label"

@@ -22,10 +22,10 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
+from openemail.core.client import delete_message, request, user
 from openemail.core.crypto import decrypt_xchacha20poly1305
-from openemail.core.message import Message
-from openemail.core.network import delete_message, request
-from openemail.shared import PREFIX, run_task, settings, user
+from openemail.core.model import Message
+from openemail.shared import PREFIX, run_task, settings
 from openemail.store import outbox, profiles, restore_message, trash_message
 
 from .message_body import MailMessageBody
@@ -134,7 +134,7 @@ class MailMessageView(Adw.Bin):
         self.author_is_self = message.envelope.author == user.address
 
         self.can_trash = (not self.author_is_self) and (
-            message.envelope.message_id not in settings.get_strv("trashed-message-ids")
+            message.envelope.message_id not in settings.get_strv("trashed-messages")
         )
         self.can_restore = not (self.can_trash or self.author_is_self)
 
@@ -280,7 +280,7 @@ class MailMessageView(Adw.Bin):
             return
 
         run_task(
-            delete_message(self.message.envelope.message_id, user),
+            delete_message(self.message.envelope.message_id),
             lambda: run_task(outbox.update()),
         )
 

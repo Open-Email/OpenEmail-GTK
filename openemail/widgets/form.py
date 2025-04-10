@@ -24,7 +24,7 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail.core.user import Address
+from openemail.core.model import Address
 
 
 class MailFormField(Enum):

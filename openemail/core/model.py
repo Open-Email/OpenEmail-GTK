@@ -1,4 +1,4 @@
-# message.py
+# model.py
 #
 # Authors: kramo
 # Copyright 2025 Mercata Sagl
@@ -18,14 +18,72 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from abc import ABC, abstractmethod
 from base64 import b64decode
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass, field, fields
+from datetime import date, datetime
 from hashlib import sha256
-from typing import NamedTuple, Self
+from re import match
+from typing import Generic, NamedTuple, Self, TypeVar
 
-from .crypto import CHECKSUM_ALGORITHM, decrypt_anonymous, decrypt_xchacha20poly1305
-from .user import Address, User, parse_headers
+from gi.repository.GLib import base64_decode
+
+from .crypto import (
+    CHECKSUM_ALGORITHM,
+    Key,
+    decrypt_anonymous,
+    decrypt_xchacha20poly1305,
+)
+
+T = TypeVar("T")
+
+
+class Address:
+    """A Mail/HTTPS address."""
+
+    local_part: str
+    host_part: str
+
+    def __init__(self, address: str) -> None:
+        if not match(
+            r"^[a-z0-9][a-z0-9\.\-_\+]{2,}@[a-z0-9.-]+\.[a-z]{2,}|xn--[a-z0-9]{2,}$",
+            address := address.lower(),
+        ):
+            raise ValueError(f'Email address "{address}" is invalid')
+
+        try:
+            self.local_part, self.host_part = address.split("@")
+        except ValueError as error:
+            raise ValueError(
+                f'Email address "{address}" contains more than a single @ character'
+            ) from error
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def __str__(self) -> str:
+        return f"{self.local_part}@{self.host_part}"
+
+    def __eq__(self, other: object) -> bool:
+        return str(self) == str(other)
+
+    def __ne__(self, other: object) -> bool:
+        return str(self) != str(other)
+
+    def __lt__(self, other: object) -> bool:
+        return str(self) < str(other)
+
+    def __gt__(self, other: object) -> bool:
+        return str(self) > str(other)
+
+    def __le__(self, other: object) -> bool:
+        return str(self) >= str(other)
+
+    def __ge__(self, other: object) -> bool:
+        return str(self) <= str(other)
+
+    def __hash__(self) -> int:
+        return hash(str(self))
 
 
 def generate_link(first: Address, second: Address) -> str:
@@ -33,6 +91,30 @@ def generate_link(first: Address, second: Address) -> str:
     return sha256(
         f"{min(first, second)}{max(first, second)}".encode("ascii")
     ).hexdigest()
+
+
+@dataclass(slots=True)
+class User:
+    """A local user."""
+
+    address: Address
+
+    public_encryption_key: Key
+    private_encryption_key: Key
+
+    public_signing_key: Key
+    private_signing_key: Key
+
+    @property
+    def logged_in(self) -> bool:
+        """Whether or not the user has valid credentials."""
+        for f in fields(User):
+            if not hasattr(self, f.name):
+                return False
+
+        return True
+
+    def __init__(self) -> None: ...
 
 
 class AttachmentProperties(NamedTuple):
@@ -253,9 +335,9 @@ class Message:
             if not child.envelope.file_name:
                 continue
 
-            # TODO: Check if "name" is how you're supposed to reconstruct these
             if not (attachment := self.attachments.get(child.envelope.file_name)):
                 attachment = self.attachments[child.envelope.file_name] = []
+
             attachment.append(child)
 
         parts.sort(key=lambda part: part.envelope.part)
@@ -280,3 +362,183 @@ class Notification:
     def is_expired(self) -> bool:
         """Whether or not the notification has already expired."""
         return (self.received_on - datetime.now()).days >= 7
+
+
+def parse_headers(data: str) -> dict[str, str]:
+    """Parse `data` into a dictionary of headers."""
+    try:
+        return {
+            (split := attr.strip().split("=", 1))[0].lower(): split[1]
+            for attr in data.split(";")
+        }
+    except (IndexError, ValueError):
+        return {}
+
+
+@dataclass(slots=True)
+class ProfileField(ABC, Generic[T]):
+    """A generic profile field."""
+
+    default_value: T | None = None
+
+    @property
+    def value(self) -> T:
+        """The value of the field."""
+        if self.default_value is None:
+            raise ValueError("Profile incorrectly initialized")
+
+        return self.default_value
+
+    @abstractmethod
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
+
+
+class StringField(ProfileField[str]):
+    """A profile field representing a string."""
+
+    def __str__(self) -> str:
+        return self.value
+
+    def update_value(self, data: str | None) -> None:
+        """Update `self.value` to `data`."""
+        self.default_value = data
+
+
+class BoolField(ProfileField[bool]):
+    """A profile field representing a boolean."""
+
+    def __str__(self) -> str:
+        return "Yes" if self.value else "No"
+
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
+        if data is not None:
+            self.default_value = data == "Yes"
+
+
+class DateField(ProfileField[date]):
+    """A profile field representing a date."""
+
+    def __str__(self) -> str:
+        return self.value.strftime("%x")
+
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
+        if not data:
+            return
+
+        try:
+            self.default_value = date.fromisoformat(data)
+        except ValueError:
+            pass
+
+
+class DateTimeField(ProfileField[datetime]):
+    """A profile field representing a date and time."""
+
+    def __str__(self) -> str:
+        return self.value.strftime("%c")
+
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
+        if not data:
+            return
+
+        try:
+            self.default_value = datetime.fromisoformat(data)
+        except ValueError:
+            pass
+
+
+class KeyField(ProfileField[Key]):
+    """A profile field representing a key."""
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def update_value(self, data: str | None) -> None:
+        """Attempt to update `self.value` from `data`."""
+        if not data:
+            return
+
+        attrs = parse_headers(data)
+
+        try:
+            self.default_value = Key(
+                base64_decode(attrs["value"]),
+                attrs["algorithm"],
+                attrs.get("id"),
+            )
+        except (KeyError, ValueError):
+            pass
+
+
+class Profile:
+    """A user's profile."""
+
+    address: Address
+
+    required: dict[str, ProfileField]
+    optional: dict[str, ProfileField | None]
+
+    def __init__(self, address: Address, data: str) -> None:
+        self.address = address
+
+        self.required = {
+            "name": StringField(),
+            "signing-key": KeyField(),
+            "updated": DateTimeField(),
+        }
+
+        self.optional = {
+            "about": StringField(),
+            "away": BoolField(False),
+            "away-warning": StringField(),
+            "birthday": DateField(),
+            "books": StringField(),
+            "department": StringField(),
+            "education": StringField(),
+            "encryption-key": KeyField(),
+            "gender": StringField(),
+            "interests": StringField(),
+            "job-title": StringField(),
+            "languages": StringField(),
+            "last-seen-public": BoolField(True),
+            "last-signing-key": KeyField(),
+            "location": StringField(),
+            "mailing-address": StringField(),
+            "movies": StringField(),
+            "music": StringField(),
+            "notes": StringField(),
+            "organization": StringField(),
+            "phone": StringField(),
+            "place-slived": StringField(),
+            "public-access": BoolField(True),
+            "relationship-status": StringField(),
+            "sports": StringField(),
+            "status": StringField(),
+            "website": StringField(),
+            "work": StringField(),
+        }
+
+        parsed_fields = {
+            (split := field.split(":", 1))[0].strip().lower(): split[1].strip()
+            for field in (line.strip() for line in data.split("\n") if ":" in line)
+            if not field.startswith("#")
+        }
+
+        for f in self.required, self.optional:
+            for key, value in f.items():
+                if not value:
+                    continue
+
+                value.update_value(parsed_fields.get(key))
+                if value.default_value is not None:
+                    continue
+
+                match f:
+                    case self.required:
+                        raise ValueError(f'Required field "{key}" does not exist')
+                    case self.optional:
+                        f[key] = None

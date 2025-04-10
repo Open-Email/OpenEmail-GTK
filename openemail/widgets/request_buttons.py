@@ -22,9 +22,9 @@ from typing import Any
 
 from gi.repository import GObject, Gtk
 
-from openemail.core.network import new_contact
-from openemail.core.user import Address
-from openemail.shared import PREFIX, run_task, settings, user
+from openemail.core.client import new_contact
+from openemail.core.model import Address
+from openemail.shared import PREFIX, run_task, settings
 from openemail.store import address_book, broadcasts, inbox
 
 
@@ -45,7 +45,7 @@ class MailRequestButtons(Gtk.Box):
         except ValueError:
             return
 
-        run_task(new_contact(address, user))
+        run_task(new_contact(address))
 
         address_book.add(address)
         run_task(address_book.update_profiles())

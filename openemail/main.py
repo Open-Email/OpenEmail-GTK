@@ -22,6 +22,8 @@ from dataclasses import fields
 
 import gi
 
+from openemail.core.crypto import get_keys
+
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
@@ -34,8 +36,9 @@ from typing import Any, Callable, Sequence
 import keyring
 from gi.repository import Adw, Gio
 
-from .core.user import User
-from .shared import APP_ID, PREFIX, log_file, secret_service, settings, user
+from .core.client import user
+from .core.model import Address, User
+from .shared import APP_ID, PREFIX, log_file, secret_service, settings
 from .widgets.preferences import MailPreferences
 from .widgets.window import MailWindow
 
@@ -53,11 +56,25 @@ class MailApplication(Adw.Application):
         self.create_action("preferences", self.on_preferences_action)
         self.create_action("sync", self.on_sync_action)
 
-        if not (new_user := self.__get_local_user()):
+        if not (
+            (address := settings.get_string("address"))
+            and (keys := keyring.get_password(secret_service, address))
+            and (keys := json.loads(keys))
+            and (encryption_key := keys.get("privateEncryptionKey"))
+            and (signing_key := keys.get("privateSigningKey"))
+        ):
             return
 
-        for field in fields(User):
-            setattr(user, field.name, getattr(new_user, field.name))
+        try:
+            user.address = Address(address)
+            user.public_encryption_key, user.private_encryption_key = get_keys(
+                encryption_key,
+            )
+            user.public_signing_key, user.private_signing_key = get_keys(
+                signing_key,
+            )
+        except ValueError:
+            return
 
     def do_activate(self) -> None:
         """Raise the application's main window, creating it if necessary.
@@ -126,21 +143,6 @@ class MailApplication(Adw.Application):
         self.add_action(action)
         if shortcuts:
             self.set_accels_for_action(f"app.{name}", shortcuts)
-
-    def __get_local_user(self) -> User | None:
-        if not (
-            (address := settings.get_string("address"))
-            and (keys := keyring.get_password(secret_service, address))
-            and (keys := json.loads(keys))
-            and (encryption_key := keys.get("privateEncryptionKey"))
-            and (signing_key := keys.get("privateSigningKey"))
-        ):
-            return None
-
-        try:
-            return User(address, encryption_key, signing_key)
-        except ValueError:
-            return None
 
 
 def main() -> int:

@@ -37,18 +37,18 @@ from typing import (
 
 from gi.repository import Gdk, Gio, GLib, GObject
 
-from openemail.core.network import (
+from openemail.core.client import (
     fetch_broadcasts,
     fetch_contacts,
     fetch_link_messages,
     fetch_notifications,
     fetch_profile,
     fetch_profile_image,
+    user,
 )
 
-from .core.message import Message
-from .core.user import Address, Profile
-from .shared import run_task, settings, user
+from .core.model import Address, Message, Profile
+from .shared import run_task, settings
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -135,9 +135,7 @@ class MailMessage(GObject.Object):
         if not self.message:
             return False
 
-        return self.message.envelope.message_id in settings.get_strv(
-            "trashed-message-ids"
-        )
+        return self.message.envelope.message_id in settings.get_strv("trashed-messages")
 
     def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -205,24 +203,24 @@ class MailMessageStore(DictStore[str, MailMessage]):
 def trash_message(message_id: str) -> None:
     """Move the message associated with `message_id` to the trash."""
     settings.set_strv(
-        "trashed-message-ids",
-        settings.get_strv("trashed-message-ids") + [message_id],
+        "trashed-messages",
+        settings.get_strv("trashed-messages") + [message_id],
     )
 
 
 def restore_message(message_id: str) -> None:
     """Restore the message associated with `message_id` from the trash."""
     try:
-        (trashed := settings.get_strv("trashed-message-ids")).remove(message_id)
+        (trashed := settings.get_strv("trashed-messages")).remove(message_id)
     except ValueError:
         return
 
-    settings.set_strv("trashed-message-ids", trashed)
+    settings.set_strv("trashed-messages", trashed)
 
 
 async def __fetch_broadcasts() -> AsyncGenerator[Message, None]:
     async for messages in asyncio.as_completed(
-        fetch_broadcasts(user, Address(contact.address))  # type: ignore
+        fetch_broadcasts(Address(contact.address))  # type: ignore
         for contact in address_book
     ):
         for message in await messages:
@@ -233,7 +231,7 @@ async def __fetch_inbox() -> AsyncGenerator[Message, None]:
     known_notifiers = set()
     other_contacts = {Address(contact.address) for contact in address_book}  # type: ignore
 
-    async for notification in fetch_notifications(user):
+    async for notification in fetch_notifications():
         if notification.is_expired:
             continue
 
@@ -253,8 +251,8 @@ async def __fetch_inbox() -> AsyncGenerator[Message, None]:
 
     async for messages in asyncio.as_completed(
         (
-            *(fetch_link_messages(user, notifier) for notifier in known_notifiers),
-            *(fetch_link_messages(user, contact) for contact in other_contacts),
+            *(fetch_link_messages(notifier) for notifier in known_notifiers),
+            *(fetch_link_messages(contact) for contact in other_contacts),
         )
     ):
         for message in await messages:
@@ -264,8 +262,8 @@ async def __fetch_inbox() -> AsyncGenerator[Message, None]:
 async def __fetch_outbox() -> AsyncGenerator[Message, None]:
     async for messages in asyncio.as_completed(
         (
-            fetch_link_messages(user, user.address),
-            fetch_broadcasts(user, user.address),
+            fetch_link_messages(user.address),
+            fetch_broadcasts(user.address),
         )
     ):
         for message in await messages:
@@ -339,7 +337,8 @@ class MailContactStore(DictStore[Address, MailProfile]):
     def add(self, contact: Address) -> None:
         """Manually add `contact` to `self`.
 
-        Note that this item will be removed after `update()` is called.
+        Note that this item will be removed after `update()` is called
+        and if is not part of the user's remote address book.
         """
         if contact in self._items:
             return
@@ -350,7 +349,8 @@ class MailContactStore(DictStore[Address, MailProfile]):
     def remove(self, contact: Address) -> None:
         """Remove `contact` from `self`.
 
-        Note that this item may be automatically added back after `update()` is called.
+        Note that this item may be automatically added back after `update()` is called
+        if is part of the user's remote address book.
         """
         index = list(self._items.keys()).index(contact)
         self._items.pop(contact)
@@ -361,7 +361,7 @@ class MailContactStore(DictStore[Address, MailProfile]):
         """Update `self` from remote data asynchronously."""
         contacts: set[Address] = set()
 
-        for contact in await fetch_contacts(user):
+        for contact in await fetch_contacts():
             contacts.add(contact)
             self.add(contact)
 

@@ -7,10 +7,10 @@
 		<key name="sync-interval" type="u">
 			<default>900</default>
 		</key>
-		<key name="trashed-message-ids" type="as">
+		<key name="contact-requests" type="as">
 			<default>[]</default>
 		</key>
-		<key name="contact-requests" type="as">
+		<key name="trashed-messages" type="as">
 			<default>[]</default>
 		</key>
 	</schema>

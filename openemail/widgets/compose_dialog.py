@@ -22,9 +22,9 @@ from typing import Any
 
 from gi.repository import Adw, Gtk
 
-from openemail.core.network import send_message
-from openemail.core.user import Address
-from openemail.shared import PREFIX, run_task, user
+from openemail.core.client import send_message
+from openemail.core.model import Address
+from openemail.shared import PREFIX, run_task
 from openemail.store import outbox
 from openemail.widgets.form import MailForm
 from openemail.widgets.message_body import MailMessageBody
@@ -65,7 +65,6 @@ class MailComposeDialog(Adw.Dialog):
 
         run_task(
             send_message(
-                user,
                 readers,
                 self.subject.get_text(),
                 self.body.get_text(

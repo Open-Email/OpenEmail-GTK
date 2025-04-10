@@ -22,7 +22,8 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
-from openemail.shared import PREFIX, run_task, settings, user
+from openemail.core.client import user
+from openemail.shared import PREFIX, run_task, settings
 from openemail.store import (
     address_book,
     broadcasts,

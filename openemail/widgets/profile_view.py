@@ -22,9 +22,9 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail.core.network import delete_contact
-from openemail.core.user import Profile
-from openemail.shared import PREFIX, run_task, user
+from openemail.core.client import delete_contact
+from openemail.core.model import Profile
+from openemail.shared import PREFIX, run_task
 from openemail.store import address_book, broadcasts, inbox, profile_categories
 
 
@@ -147,7 +147,7 @@ class MailProfileView(Adw.Bin):
             run_task(inbox.update())
 
         run_task(
-            delete_contact(self.profile.address, user),
+            delete_contact(self.profile.address),
             lambda: run_task(
                 address_book.update(),
                 update_address_book_cb,

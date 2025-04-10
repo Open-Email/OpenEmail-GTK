@@ -23,9 +23,9 @@ from typing import Any
 
 from gi.repository import Adw, Gio, Gtk
 
-from openemail.core.network import new_contact
-from openemail.core.user import Address
-from openemail.shared import PREFIX, run_task, user
+from openemail.core.client import new_contact
+from openemail.core.model import Address
+from openemail.shared import PREFIX, run_task
 from openemail.store import (
     MailProfile,
     address_book,
@@ -130,7 +130,7 @@ class MailContactsPage(Adw.NavigationPage):
             run_task(inbox.update())
 
         run_task(
-            new_contact(address, user),
+            new_contact(address),
             lambda: run_task(
                 address_book.update(),
                 update_address_book_cb,
