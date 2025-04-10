@@ -25,10 +25,11 @@ from base64 import b64encode
 from datetime import datetime, timezone
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
+from json.decoder import JSONDecodeError
 from os import getenv
 from pathlib import Path
 from socket import setdefaulttimeout
-from typing import Iterable
+from typing import AsyncGenerator, Iterable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -41,15 +42,17 @@ from .crypto import (
     decrypt_xchacha20poly1305,
     encrypt_anonymous,
     encrypt_xchacha20poly1305,
+    fingerprint,
     get_nonce,
     random_bytes,
     random_string,
     sign_data,
 )
-from .message import Envelope, Message, generate_link
+from .message import Envelope, Message, Notification, generate_link
 from .user import Address, Profile, User, parse_headers
 
-cache_dir: Path = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
+cache_dir = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
+data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
 
 _agents: dict[str, tuple[str, ...]] = {}
 
@@ -124,7 +127,7 @@ async def get_agents(address: Address) -> tuple[str, ...]:
             stripped
             for line in contents.split("\n")
             if (stripped := line.strip()) and (not stripped.startswith("#"))
-            if await request(_mail_host(stripped, address), method="HEAD")
+            if await request(_Mail(stripped, address).host, method="HEAD")
         ):
             if index > 2:
                 break
@@ -141,7 +144,7 @@ async def try_auth(user: User) -> bool:
     """Get whether authentication was successful for the given `user`."""
     logging.debug("Attempting authentication…")
     for agent in await get_agents(user.address):
-        if await request(_home(agent, user.address), user, method="HEAD"):
+        if await request(_Home(agent, user.address).home, user, method="HEAD"):
             logging.info("Authentication successful")
             return True
 
@@ -153,7 +156,7 @@ async def fetch_profile(address: Address) -> Profile | None:
     """Attempt to fetch the remote profile associated with a given `address`."""
     logging.debug("Fetching profile for %s…", address)
     for agent in await get_agents(address):
-        if not (response := await request(_profile(agent, address))):
+        if not (response := await request(_Mail(agent, address).profile)):
             continue
 
         with response:
@@ -200,7 +203,7 @@ async def update_profile(user: User, values: dict[str, str]) -> None:
 
     for agent in await get_agents(user.address):
         if await request(
-            _home_profile(agent, user.address),
+            _Home(agent, user.address).profile,
             user,
             method="PUT",
             data=data,
@@ -215,7 +218,7 @@ async def fetch_profile_image(address: Address) -> bytes | None:
     """Attempt to fetch the remote profile image associated with a given `address`."""
     logging.debug("Fetching profile image for %s…", address)
     for agent in await get_agents(address):
-        if not (response := await request(_image(agent, address))):
+        if not (response := await request(_Mail(agent, address).image)):
             continue
 
         with response:
@@ -232,7 +235,7 @@ async def update_profile_image(user: User, image: bytes) -> None:
     logging.debug("Updating profile image…")
     for agent in await get_agents(user.address):
         if await request(
-            _home_image(agent, user.address),
+            _Home(agent, user.address).image,
             user,
             method="PUT",
             data=image,
@@ -247,7 +250,7 @@ async def delete_profile_image(user: User) -> None:
     """Attempt to delete `user`'s profile image."""
     logging.debug("Deleting profile image…")
     for agent in await get_agents(user.address):
-        if await request(_home_image(agent, user.address), user, method="DELETE"):
+        if await request(_Home(agent, user.address).image, user, method="DELETE"):
             logging.info("Deleted profile image.")
             return
 
@@ -260,7 +263,7 @@ async def fetch_contacts(user: User) -> tuple[Address, ...]:
     addresses = []
 
     for agent in await get_agents(user.address):
-        if not (response := await request(_links(agent, user.address), user)):
+        if not (response := await request(_Home(agent, user.address).links, user)):
             continue
 
         with response:
@@ -323,7 +326,7 @@ async def new_contact(address: Address, user: User) -> None:
     link = generate_link(address, user.address)
     for agent in await get_agents(address):
         if await request(
-            _home_link(agent, user.address, link),
+            _Link(agent, user.address, link).home,
             user,
             method="PUT",
             data=data,
@@ -339,7 +342,11 @@ async def delete_contact(address: Address, user: User) -> None:
     logging.debug("Deleting contact %s…", address)
     link = generate_link(address, user.address)
     for agent in await get_agents(address):
-        if await request(_home_link(agent, user.address, link), user, method="DELETE"):
+        if await request(
+            _Link(agent, user.address, link).home,
+            user,
+            method="DELETE",
+        ):
             logging.info("Deleted contact %s", address)
             return
 
@@ -363,9 +370,11 @@ async def fetch_envelope(
         logging.error("Fetching envelope %s failed: Invalid URL", message_id[:8])
         return None
 
-    if (envelope_path := cache_dir / "envelopes" / agent / message_id).is_file():
+    envelope_path = cache_dir / "envelopes" / agent / message_id
+
+    try:
         headers = json.load(envelope_path.open("r"))
-    else:
+    except (FileNotFoundError, JSONDecodeError):
         if not (response := await request(url, user, method="HEAD")):
             logging.error("Fetching envelope %s failed", message_id[:8])
             return None
@@ -386,7 +395,7 @@ async def fetch_envelope(
 async def fetch_message_from_agent(
     url: str, user: User, author: Address, message_id: str
 ) -> Message | None:
-    """Attempt to fetch a message from the provided `agent`."""
+    """Attempt to fetch a message from the provided agent `url`."""
     logging.debug("Fetching message %s…", message_id[:8])
     if not (agent := urlparse(url).hostname):
         logging.error("Fetching message %s failed: Invalid URL", message_id[:8])
@@ -395,13 +404,15 @@ async def fetch_message_from_agent(
     if not (envelope := await fetch_envelope(url, message_id, user, author)):
         return None
 
-    if envelope.is_child:  # TODO: This probably won't work for split messages
+    if envelope.is_child:
         logging.debug("Fetched message %s", message_id[:8])
         return Message(envelope, attachment_url=url)
 
-    if (message_path := cache_dir / "messages" / agent / message_id).is_file():
+    message_path = cache_dir / "messages" / agent / message_id
+
+    try:
         contents = message_path.read_bytes()
-    else:
+    except FileNotFoundError:
         if not (response := await request(url, user)):
             logging.error(
                 "Fetching message %s failed: Failed fetching body",
@@ -500,8 +511,8 @@ async def fetch_broadcasts(user: User, author: Address) -> tuple[Message, ...]:
     """Attempt to fetch broadcasts by `author`."""
     logging.debug("Fetching broadcasts from %s…", author)
     return await fetch_messages(
-        _mail_messages("{}", author),
-        _mail_messages("{}", author) + "/{}",
+        _Mail("{}", author).messages,
+        _Mail("{}", author).messages + "/{}",
         user,
         author,
     )
@@ -513,8 +524,8 @@ async def fetch_link_messages(user: User, author: Address) -> tuple[Message, ...
     link = generate_link(user.address, author)
 
     return await fetch_messages(
-        _link_messages("{}", author, link),
-        _link_messages("{}", author, link) + "/{}",
+        _Link("{}", author, link).messages,
+        _Link("{}", author, link).messages + "/{}",
         user,
         author,
     )
@@ -596,7 +607,7 @@ async def send_message(
                     ";".join(
                         (
                             f"link={generate_link(user.address, reader)}",
-                            f"fingerprint={sha256(bytes(profile.required['signing-key'].value)).hexdigest()}",
+                            f"fingerprint={fingerprint(profile.required['signing-key'].value)}",
                             f"value={b64encode(encrypt_anonymous(access_key, key_field.value)).decode('utf-8')}",
                             f"id={key_id}",
                         )
@@ -627,9 +638,7 @@ async def send_message(
     )
 
     checksum_fields.sort()
-    checksum = sha256(
-        ("".join(headers[field] for field in checksum_fields)).encode("utf-8")
-    )
+    checksum = sha256(("".join(headers[f] for f in checksum_fields)).encode("utf-8"))
 
     try:
         signature = sign_data(user.private_signing_key, checksum.digest())
@@ -659,7 +668,7 @@ async def send_message(
 
     for agent in await get_agents(user.address):
         if await request(
-            _home_messages(agent, user.address),
+            _Home(agent, user.address).messages,
             user,
             headers=headers,
             data=body_bytes,
@@ -703,7 +712,7 @@ async def notify_readers(readers: Iterable[Address], user: User) -> None:
         link = generate_link(reader, user.address)
         for agent in await get_agents(reader):
             if await request(
-                _notifications(agent, reader, link),
+                _Link(agent, reader, link).notifications,
                 user,
                 method="PUT",
                 data=address,
@@ -712,6 +721,86 @@ async def notify_readers(readers: Iterable[Address], user: User) -> None:
                 break
 
         logging.warning("Failed notifying %s")
+
+
+async def fetch_notifications(user: User) -> AsyncGenerator[Notification, None]:
+    """Attempt to fetch all of `user`'s new notifications.
+
+    Note that this generator is assumes that you process all notifications yielded by it
+    and a subsequent iteration will not yield "old" notifications that were already processed.
+    """
+    contents = None
+    logging.debug("Fetching notifications…")
+    for agent in await get_agents(user.address):
+        if not (
+            response := await request(
+                _Home(agent, user.address).notifications,
+                user,
+            )
+        ):
+            continue
+
+        contents = response.read().decode("utf-8")
+        break
+
+    if contents:
+        notifications_path = data_dir / "notifications.json"
+
+        try:
+            notifications = set(json.load(notifications_path.open("r")))
+        except (FileNotFoundError, JSONDecodeError):
+            notifications = set()
+
+        for notification in contents.split("\n"):
+            if not (stripped := notification.strip()):
+                continue
+
+            try:
+                ident, link, signing_key_fp, encrypted_notifier = (
+                    part.strip() for part in stripped.split(",", 4)
+                )
+            except IndexError:
+                logging.debug("Invalid notification: %s", notification)
+                continue
+
+            if ident in notifications:
+                continue
+
+            try:
+                notifier = Address(
+                    decrypt_anonymous(
+                        encrypted_notifier,
+                        user.private_encryption_key,
+                        user.public_encryption_key,
+                    ).decode("utf-8")
+                )
+            except ValueError:
+                logging.debug("Unable to decrypt notification: %s", notification)
+                continue
+
+            if not (profile := await fetch_profile(notifier)):
+                logging.error(
+                    "Failed to fetch notification: Could not fetch profile for %s",
+                    notifier,
+                )
+                continue
+
+            if not (
+                signing_key_fp == fingerprint(profile.required["signing-key"].value)
+            ) or (
+                (last_signing_key := profile.optional.get("last-signing-key"))
+                and (signing_key_fp == fingerprint(last_signing_key.value))
+            ):
+                logging.debug("Fingerprint mismatch for notification: %s", notification)
+                continue
+
+            notifications.add(ident)
+            yield Notification(ident, datetime.now(), link, notifier, signing_key_fp)
+
+        notifications_path.parent.mkdir(parents=True, exist_ok=True)
+        json.dump(tuple(notifications), notifications_path.open("w"))
+
+    logging.debug("Notifications fetched")
 
 
 async def delete_message(
@@ -725,7 +814,7 @@ async def delete_message(
     logging.debug("Deleting message %s…", message_id[:8])
     for agent in await get_agents(user.address):
         if await request(
-            _home_message(agent, user.address, message_id),
+            _Message(agent, user.address, message_id).message,
             user,
             method="DELETE",
         ):
@@ -736,61 +825,34 @@ async def delete_message(
     return False
 
 
-def _home(agent: str, address: Address) -> str:
-    return f"https://{agent}/home/{address.host_part}/{address.local_part}"
+class _Home:
+    def __init__(self, agent: str, address: Address) -> None:
+        self.home = f"https://{agent}/home/{address.host_part}/{address.local_part}"
+        self.links = f"{self.home}/links"
+        self.profile = f"{self.home}/profile"
+        self.image = f"{self.home}/image"
+        self.messages = f"{self.home}/messages"
+        self.notifications = f"{self.home}/notifications"
 
 
-def _links(agent: str, address: Address) -> str:
-    return f"{_home(agent, address)}/links"
+class _Message(_Home):
+    def __init__(self, agent: str, address: Address, message_id: str) -> None:
+        super().__init__(agent, address)
+        self.message = f"{self.messages}/{message_id}"
 
 
-def _home_profile(agent: str, address: Address) -> str:
-    return f"{_home(agent, address)}/profile"
+class _Mail:
+    def __init__(self, agent: str, address: Address) -> None:
+        self.host = f"https://{agent}/mail/{address.host_part}"
+        self.mail = f"{self.host}/{address.local_part}"
+        self.profile = f"{self.mail}/profile"
+        self.image = f"{self.mail}/image"
+        self.messages = f"{self.mail}/messages"
 
 
-def _home_image(agent: str, address: Address) -> str:
-    return f"{_home(agent, address)}/image"
-
-
-def _home_messages(agent: str, address: Address) -> str:
-    return f"{_home(agent, address)}/messages"
-
-
-def _home_message(agent: str, address: Address, message_id: str) -> str:
-    return f"{_home_messages(agent, address)}/{message_id}"
-
-
-def _home_link(agent: str, address: Address, link: str) -> str:
-    return f"{_home(agent, address)}/links/{link}"
-
-
-def _mail_host(agent: str, address: Address) -> str:
-    return f"https://{agent}/mail/{address.host_part}"
-
-
-def _mail(agent: str, address: Address) -> str:
-    return f"{_mail_host(agent, address)}/{address.local_part}"
-
-
-def _profile(agent: str, address: Address) -> str:
-    return f"{_mail(agent, address)}/profile"
-
-
-def _image(agent: str, address: Address) -> str:
-    return f"{_mail(agent, address)}/image"
-
-
-def _mail_messages(agent: str, address: Address) -> str:
-    return f"{_mail(agent, address)}/messages"
-
-
-def _mail_link(agent: str, address: Address, link: str) -> str:
-    return f"{_mail(agent, address)}/link/{link}"
-
-
-def _link_messages(agent: str, address: Address, link: str) -> str:
-    return f"{_mail_link(agent, address, link)}/messages"
-
-
-def _notifications(agent: str, address: Address, link: str) -> str:
-    return f"{_mail_link(agent, address, link)}/notifications"
+class _Link:
+    def __init__(self, agent: str, address: Address, link: str) -> None:
+        self.home = f"{_Home(agent, address).home}/links/{link}"
+        self.mail = f"{_Mail(agent, address).mail}/link/{link}"
+        self.messages = f"{self.mail}/messages"
+        self.notifications = f"{self.home}/notifications"

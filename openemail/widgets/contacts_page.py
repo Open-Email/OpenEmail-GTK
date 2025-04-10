@@ -21,16 +21,23 @@
 from locale import strcoll
 from typing import Any
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gio, Gtk
 
 from openemail.core.network import new_contact
 from openemail.core.user import Address
 from openemail.shared import PREFIX, run_task, user
-from openemail.store import MailProfile, address_book, broadcasts, inbox
+from openemail.store import (
+    MailProfile,
+    address_book,
+    broadcasts,
+    contact_requests,
+    inbox,
+)
 from openemail.widgets.form import MailForm
 
 from .content_page import MailContentPage
 from .profile_view import MailProfileView
+from .request_buttons import MailRequestButtons  # noqa: F401
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/contacts-page.ui")
@@ -49,12 +56,16 @@ class MailContactsPage(Adw.NavigationPage):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
+        models = Gio.ListStore.new(Gio.ListModel)
+        models.append(contact_requests)
+        models.append(address_book)
+
         self.content.model = (
             selection := Gtk.SingleSelection(
                 autoselect=False,
                 model=Gtk.SortListModel.new(
                     Gtk.FilterListModel.new(
-                        address_book,
+                        Gtk.FlattenListModel.new(models),
                         (
                             filter := Gtk.CustomFilter.new(
                                 lambda item: (
@@ -67,7 +78,10 @@ class MailContactsPage(Adw.NavigationPage):
                             )
                         ),
                     ),
-                    Gtk.CustomSorter.new(lambda a, b, _: strcoll(a.name, b.name)),
+                    Gtk.CustomSorter.new(
+                        lambda a, b, _: (b.contact_request - a.contact_request)
+                        or strcoll(a.name, b.name)
+                    ),
                 ),
             )
         )

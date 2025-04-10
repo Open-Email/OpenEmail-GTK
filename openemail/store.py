@@ -23,6 +23,7 @@ import asyncio
 from abc import abstractmethod
 from collections import defaultdict
 from functools import wraps
+from itertools import chain
 from typing import (
     Any,
     AsyncGenerator,
@@ -40,13 +41,14 @@ from openemail.core.network import (
     fetch_broadcasts,
     fetch_contacts,
     fetch_link_messages,
+    fetch_notifications,
     fetch_profile,
     fetch_profile_image,
 )
 
 from .core.message import Message
 from .core.user import Address, Profile
-from .shared import settings, user
+from .shared import run_task, settings, user
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -102,10 +104,10 @@ class DictStore(GObject.Object, Gio.ListModel, Generic[T, U]):  # type: ignore
     @abstractmethod
     @_loads
     async def update(self) -> None:
-        """Update `self` asynchronously using `self.fetch()`."""
+        """Update `self` asynchronously."""
 
     def clear(self) -> None:
-        """Remove all messages from `self`."""
+        """Remove all items from `self`."""
         n = len(self._items)
         self._items.clear()
         self.items_changed(0, n, 0)
@@ -228,9 +230,32 @@ async def __fetch_broadcasts() -> AsyncGenerator[Message, None]:
 
 
 async def __fetch_inbox() -> AsyncGenerator[Message, None]:
+    known_notifiers = set()
+    other_contacts = {Address(contact.address) for contact in address_book}  # type: ignore
+
+    async for notification in fetch_notifications(user):
+        if notification.is_expired:
+            continue
+
+        if notification.notifier in other_contacts:
+            other_contacts.discard(notification.notifier)
+            known_notifiers.add(notification.notifier)
+        else:
+            settings.set_strv(
+                "contact-requests",
+                tuple(
+                    set(
+                        settings.get_strv("contact-requests")
+                        + [str(notification.notifier)]
+                    )
+                ),
+            )
+
     async for messages in asyncio.as_completed(
-        fetch_link_messages(user, Address(contact.address))  # type: ignore
-        for contact in address_book
+        (
+            *(fetch_link_messages(user, notifier) for notifier in known_notifiers),
+            *(fetch_link_messages(user, contact) for contact in other_contacts),
+        )
     ):
         for message in await messages:
             yield message
@@ -257,6 +282,7 @@ class MailProfile(GObject.Object):
 
     __gtype_name__ = "MailProfile"
 
+    contact_request = GObject.Property(type=bool, default=False)
     has_name = GObject.Property(type=bool, default=False)
     image = GObject.Property(type=Gdk.Paintable)
 
@@ -303,47 +329,64 @@ class MailProfile(GObject.Object):
         self.has_name = name != self.address
 
 
-class MailContactsStore(DictStore[Address, MailProfile]):
+class MailContactStore(DictStore[Address, MailProfile]):
     """An implementation of `Gio.ListModel` for storing contacts."""
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.item_type = MailProfile
 
+    def add(self, contact: Address) -> None:
+        """Manually add `contact` to `self`.
+
+        Note that this item will be removed after `update()` is called.
+        """
+        if contact in self._items:
+            return
+
+        profiles[contact] = self._items[contact] = MailProfile(address=str(contact))
+        self.items_changed(len(self._items) - 1, 0, 1)
+
+    def remove(self, contact: Address) -> None:
+        """Remove `contact` from `self`.
+
+        Note that this item may be automatically added back after `update()` is called.
+        """
+        index = list(self._items.keys()).index(contact)
+        self._items.pop(contact)
+        self.items_changed(index, 1, 0)
+
     @_loads
     async def update(self) -> None:
-        """Update `self` asynchronously."""
+        """Update `self` from remote data asynchronously."""
         contacts: set[Address] = set()
 
         for contact in await fetch_contacts(user):
             contacts.add(contact)
+            self.add(contact)
 
-            if contact in self._items:
-                continue
-
-            profiles[contact] = self._items[contact] = MailProfile(address=str(contact))
-            self.items_changed(len(self._items) - 1, 0, 1)
-
-        removed = 0
         for index, address in enumerate(self._items.copy()):
-            if address in contacts:
-                continue
-
-            self._items.pop(address)
-            self.items_changed(index - removed, 1, 0)
-            removed += 1
+            if address not in contacts:
+                self.remove(address)
 
     @_loads
-    async def update_profiles(self) -> None:
-        """Update the profiles of contacts in the user's address book."""
+    async def update_profiles(self, trust_images: bool = True) -> None:
+        """Update the profiles of contacts in the user's address book.
+
+        If `trust_images` is set to `False`, profile images will not be loaded.
+        """
         await asyncio.gather(
-            *(
-                self.__update_profile(Address(contact.address))  # type: ignore
-                for contact in self
-            ),
-            *(
-                self.__update_profile_image(Address(contact.address))  # type: ignore
-                for contact in self
+            *chain(
+                (
+                    self.__update_profile(Address(contact.address))  # type: ignore
+                    for contact in self
+                ),
+                (
+                    self.__update_profile_image(Address(contact.address))  # type: ignore
+                    for contact in self
+                )
+                if trust_images
+                else (),
             ),
         )
 
@@ -364,7 +407,29 @@ class MailContactsStore(DictStore[Address, MailProfile]):
 
 
 profiles: defaultdict[Address, MailProfile] = defaultdict(MailProfile)
-address_book = MailContactsStore()
+address_book = MailContactStore()
+
+
+def __update_contact_requests(*_args: Any) -> None:
+    for request in (requests := settings.get_strv("contact-requests")):
+        try:
+            contact_requests.add(Address(request))
+        except ValueError:
+            continue
+
+    for request in contact_requests:
+        if request.address not in requests:  # type: ignore
+            contact_requests.remove(request.address)  # type: ignore
+            continue
+
+        request.contact_request = True  # type: ignore
+
+    run_task(contact_requests.update_profiles(trust_images=False))
+
+
+contact_requests = MailContactStore()
+settings.connect("changed::contact-requests", __update_contact_requests)
+__update_contact_requests()
 
 
 @_loads

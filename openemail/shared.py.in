@@ -38,6 +38,7 @@ state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
 log_file = Path(GLib.get_user_state_dir()) / "openemail.log"
 network.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
+network.data_dir = Path(GLib.get_user_data_dir()) / "openemail"
 
 asyncio.set_event_loop_policy(policy := GLibEventLoopPolicy())
 loop: asyncio.AbstractEventLoop = policy.get_event_loop()

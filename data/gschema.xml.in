@@ -10,6 +10,9 @@
 		<key name="trashed-message-ids" type="as">
 			<default>[]</default>
 		</key>
+		<key name="contact-requests" type="as">
+			<default>[]</default>
+		</key>
 	</schema>
 	<schema id="@APP_ID@.State" path="@PREFIX@/State/">
 		<key name="width" type="i">

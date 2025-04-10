@@ -108,14 +108,11 @@ class MailMessagesPage(Adw.NavigationPage):
             ),
         )
 
-        def on_settings_changed(_obj: Any, key: str) -> None:
-            if key != "trashed-message-ids":
-                return
-
+        def on_trash_changed(_obj: Any, key: str) -> None:
             filter.changed(Gtk.FilterChange.DIFFERENT)
             selection.set_selected(0)
 
-        settings.connect("changed", on_settings_changed)
+        settings.connect("changed::trashed-message-ids", on_trash_changed)
         self.content.connect(
             "notify::search-text",
             lambda *_: filter.changed(

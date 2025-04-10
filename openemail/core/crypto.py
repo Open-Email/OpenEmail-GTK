@@ -19,6 +19,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from base64 import b64decode, b64encode
+from hashlib import sha256
 from random import choice
 from secrets import token_bytes
 from typing import NamedTuple
@@ -154,3 +155,8 @@ def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
         )
     except CryptoError as error:
         raise ValueError("Unable to encrypt data") from error
+
+
+def fingerprint(public_key: Key) -> str:
+    """Get a fingerprint for `public_key`."""
+    return sha256(bytes(public_key)).hexdigest()

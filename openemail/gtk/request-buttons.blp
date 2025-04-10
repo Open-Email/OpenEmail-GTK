@@ -1,0 +1,24 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailRequestButtons: Box {
+  Button {
+    icon-name: "accept-symbolic";
+    tooltip-text: _("Accept");
+    clicked => $_accept();
+
+    styles [
+      "flat",
+    ]
+  }
+
+  Button {
+    icon-name: "decline-symbolic";
+    tooltip-text: _("Decline");
+    clicked => $_decline();
+
+    styles [
+      "flat",
+    ]
+  }
+}

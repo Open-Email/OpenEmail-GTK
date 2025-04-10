@@ -35,5 +35,12 @@ template ListItem {
         ]
       }
     }
+
+    $MailRequestButtons {
+      visible: bind template.item as <$MailProfile>.contact-request;
+      hexpand: true;
+      halign: end;
+      address: bind template.item as <$MailProfile>.address;
+    }
   };
 }
