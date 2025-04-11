@@ -22,7 +22,7 @@ from typing import Any
 
 from gi.repository import Adw, Gtk
 
-from openemail.core.client import save_message, send_message
+from openemail.core.client import delete_saved_message, save_message, send_message
 from openemail.core.model import Address
 from openemail.shared import PREFIX, notifier, run_task
 from openemail.store import drafts, outbox
@@ -46,6 +46,8 @@ class MailComposeDialog(Adw.Dialog):
     subject_id: str | None = None
     draft_id: int | None = None
 
+    _save: bool = True
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
@@ -66,6 +68,13 @@ class MailComposeDialog(Adw.Dialog):
 
         notifier.send(_("Sending message…"))
 
+        if self.draft_id:
+            delete_saved_message(self.draft_id)
+            self.draft_id = None
+            self._save = False
+
+            run_task(drafts.update())
+
         run_task(
             send_message(
                 readers,
@@ -82,6 +91,7 @@ class MailComposeDialog(Adw.Dialog):
         )
 
         self.subject_id = None
+
         self.force_close()
 
     @Gtk.Template.Callback()
@@ -112,6 +122,10 @@ class MailComposeDialog(Adw.Dialog):
 
     @Gtk.Template.Callback()
     def _closed(self, *_args: Any) -> None:
+        if not self._save:
+            self._save = True
+            return
+
         subject = self.subject.get_text()
         body = self.body.get_text(
             self.body.get_start_iter(),

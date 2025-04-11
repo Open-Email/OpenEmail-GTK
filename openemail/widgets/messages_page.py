@@ -148,6 +148,7 @@ class MailMessagesPage(Adw.NavigationPage):
     @Gtk.Template.Callback()
     def _new_message(self, *_args: Any) -> None:
         self.compose_dialog.subject_id = None
+        self.compose_dialog.draft_id = None
         self.compose_dialog.broadcast_switch.set_active(False)
         self.compose_dialog.compose_form.reset()
 
@@ -189,6 +190,7 @@ class MailMessagesPage(Adw.NavigationPage):
 
         self.compose_dialog.subject.set_text(envelope.subject)
         self.compose_dialog.subject_id = envelope.subject_id
+        self.compose_dialog.draft_id = None
 
         self.compose_dialog.present(self)
         self.compose_dialog.body_view.grab_focus()

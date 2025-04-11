@@ -104,7 +104,7 @@ Adw.AlertDialog confirm_remove_dialog {
   heading: _("Log Out?");
   body: _("All local data will be deleted. Log in again to restore data.");
   close-response: "cancel";
-  default-response: "cancel";
+  default-response: "remove";
   response => $_confirm_remove();
 
   responses [

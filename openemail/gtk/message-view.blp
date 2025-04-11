@@ -210,7 +210,7 @@ Adw.AlertDialog confirm_discard_dialog {
   heading: _("Discard Message?");
   body: _("It will be permanently deleted from the outbox and it will no longer be accessible to readers.");
   close-response: "cancel";
-  default-response: "cancel";
+  default-response: "discard";
   response => $_confirm_discard();
 
   responses [

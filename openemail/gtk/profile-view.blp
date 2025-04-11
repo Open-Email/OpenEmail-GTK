@@ -94,7 +94,7 @@ Adw.AlertDialog confirm_remove_dialog {
   heading: _("Remove Contact?");
   body: _("You will not see messages from this person unless you add them to your address book again.");
   close-response: "cancel";
-  default-response: "cancel";
+  default-response: "remove";
   response => $_confirm_remove();
 
   responses [
