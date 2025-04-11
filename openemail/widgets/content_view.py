@@ -27,6 +27,7 @@ from openemail.shared import PREFIX, notifier, run_task, settings
 from openemail.store import (
     address_book,
     broadcasts,
+    drafts,
     inbox,
     is_loading,
     outbox,
@@ -34,7 +35,9 @@ from openemail.store import (
     update_user_profile,
 )
 
+from .compose_dialog import MailComposeDialog
 from .contacts_page import MailContactsPage
+from .drafts_page import MailDraftsPage
 from .messages_page import MailMessagesPage
 from .navigation_row import MailNavigationRow
 from .profile_settings import MailProfileSettings
@@ -53,11 +56,11 @@ class MailContentView(Adw.BreakpointBin):
     contacts_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_settings: MailProfileSettings = Gtk.Template.Child()
 
-    empty_status_page: Adw.StatusPage = Gtk.Template.Child()
-
     broadcasts_page: MailMessagesPage = Gtk.Template.Child()
     inbox_page: MailMessagesPage = Gtk.Template.Child()
     outbox_page: MailMessagesPage = Gtk.Template.Child()
+    drafts_page: MailDraftsPage = Gtk.Template.Child()
+    trash_page: MailMessagesPage = Gtk.Template.Child()
     contacts_page: MailContactsPage = Gtk.Template.Child()
 
     syncing_toast: Adw.Toast | None = None
@@ -65,6 +68,8 @@ class MailContentView(Adw.BreakpointBin):
     content_child_name = GObject.Property(type=str, default="inbox")
     profile_stack_child_name = GObject.Property(type=str, default="loading")
     profile_image = GObject.Property(type=Gdk.Paintable)
+
+    compose_dialog: MailComposeDialog = Gtk.Template.Child()
 
     _image_binding: GObject.Binding | None = None
 
@@ -139,6 +144,7 @@ class MailContentView(Adw.BreakpointBin):
         self.inbox_page.content.loading = True
         self.outbox_page.content.loading = True
         run_task(address_book.update(), update_address_book_cb)
+        run_task(drafts.update())
 
         def update_user_profile_cb() -> None:
             profile = profiles[user.address]
@@ -167,19 +173,13 @@ class MailContentView(Adw.BreakpointBin):
         self.contacts_sidebar.unselect_all()
         self.sidebar.select_row(row)
 
-        match row.get_index():
-            case 0:
-                self.content_child_name = "broadcasts"
-            case 1:
-                self.content_child_name = "inbox"
-            case 2:
-                self.content_child_name = "outbox"
-            case 4:
-                self.content_child_name = "trash"
-            case _:
-                self.empty_status_page.set_title(row.label)
-                self.empty_status_page.set_icon_name(row.icon_name)
-                self.content_child_name = "placeholder"
+        self.content_child_name = (
+            "broadcasts",
+            "inbox",
+            "outbox",
+            "drafts",
+            "trash",
+        )[row.get_index()]
 
         if self.split_view.get_collapsed():
             self.split_view.set_show_sidebar(False)
@@ -200,10 +200,6 @@ class MailContentView(Adw.BreakpointBin):
     @Gtk.Template.Callback()
     def _on_profile_button_clciked(self, *_args: Any) -> None:
         self.profile_settings.present(self)
-
-    @Gtk.Template.Callback()
-    def _show_sidebar(self, *_args: Any) -> None:
-        self.split_view.set_show_sidebar(not self.split_view.get_show_sidebar())
 
     def __display_notification(self, _obj: Any, title: str) -> None:
         self.toast_overlay.add_toast(

@@ -22,10 +22,10 @@ from typing import Any
 
 from gi.repository import Adw, Gtk
 
-from openemail.core.client import send_message
+from openemail.core.client import save_message, send_message
 from openemail.core.model import Address
 from openemail.shared import PREFIX, notifier, run_task
-from openemail.store import outbox
+from openemail.store import drafts, outbox
 from openemail.widgets.form import MailForm
 from openemail.widgets.message_body import MailMessageBody
 
@@ -44,6 +44,7 @@ class MailComposeDialog(Adw.Dialog):
 
     body: Gtk.TextBuffer
     subject_id: str | None = None
+    draft_id: int | None = None
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -108,6 +109,28 @@ class MailComposeDialog(Adw.Dialog):
     @Gtk.Template.Callback()
     def _format_quote(self, *_args: Any) -> None:
         self.__format_line(">", toggle=True)
+
+    @Gtk.Template.Callback()
+    def _closed(self, *_args: Any) -> None:
+        subject = self.subject.get_text()
+        body = self.body.get_text(
+            self.body.get_start_iter(),
+            self.body.get_end_iter(),
+            False,
+        )
+
+        if not (subject or body):
+            return
+
+        save_message(
+            self.readers.get_text(),
+            subject,
+            body,
+            self.subject_id,
+            self.broadcast_switch.get_active(),
+            self.draft_id,
+        )
+        run_task(drafts.update())
 
     def __format_line(self, syntax: str, toggle: bool = False) -> None:
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)

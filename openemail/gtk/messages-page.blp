@@ -7,7 +7,7 @@ template $MailMessagesPage: Adw.NavigationPage {
 
     details: $MailMessageView message_view {};
 
-    add-button: Button {
+    toolbar-button: Button {
       icon-name: "mail-message-new-symbolic";
       tooltip-text: _("New Message");
       clicked => $_new_message();
@@ -30,5 +30,3 @@ template $MailMessagesPage: Adw.NavigationPage {
     };
   }
 }
-
-$MailComposeDialog compose_dialog {}

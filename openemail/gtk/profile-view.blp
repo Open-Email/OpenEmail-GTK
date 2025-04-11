@@ -26,13 +26,10 @@ template $MailProfileView: Adw.Bin {
       StackPage {
         name: "empty";
 
-        child: Label {
-          label: _("No Contact Selected");
-          wrap: true;
-          wrap-mode: word_char;
+        child: Adw.StatusPage {
+          title: _("Select a Contact");
 
           styles [
-            "title-2",
             "dim-label",
           ]
         };

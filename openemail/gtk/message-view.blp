@@ -61,13 +61,10 @@ template $MailMessageView: Adw.Bin {
         StackPage {
           name: "empty";
 
-          child: Label {
-            label: _("No Message Selected");
-            wrap: true;
-            wrap-mode: word_char;
+          child: Adw.StatusPage {
+            title: _("Select a Message");
 
             styles [
-              "title-2",
               "dim-label",
             ]
           };

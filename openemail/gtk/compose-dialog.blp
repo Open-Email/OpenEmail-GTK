@@ -5,6 +5,7 @@ template $MailComposeDialog: Adw.Dialog {
   title: _("New Message");
   content-width: 650;
   content-height: 500;
+  closed => $_closed();
 
   Adw.ToolbarView {
     [top]

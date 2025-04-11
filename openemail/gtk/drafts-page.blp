@@ -1,0 +1,37 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MailDraftsPage: Adw.NavigationPage {
+  title: _("Drafts");
+
+  $MailContentPage content {
+    title: bind template.title;
+
+    details: Adw.ToolbarView {
+      [top]
+      Adw.HeaderBar {
+        show-title: false;
+      }
+      
+      content: Adw.StatusPage {
+        title: bind template.title;
+
+        styles [
+          "dim-label",
+        ]
+      };
+    };
+
+    toolbar-button: Button {
+      icon-name: "trash-symbolic";
+      tooltip-text: _("Delete All");
+      clicked => $_delete_all();
+    };
+
+    empty-page: Adw.StatusPage {
+      icon-name: "drafts-symbolic";
+      title: _("No Drafts");
+      description: _("Newly composed messages that weren’t sent will appear here");
+    };
+  }
+}

@@ -7,6 +7,7 @@
     <file preprocess="xml-stripblanks">gtk/contacts-page.ui</file>
     <file preprocess="xml-stripblanks">gtk/content-page.ui</file>
     <file preprocess="xml-stripblanks">gtk/content-view.ui</file>
+    <file preprocess="xml-stripblanks">gtk/drafts-page.ui</file>
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
     <file preprocess="xml-stripblanks">gtk/navigation-row.ui</file>
     <file preprocess="xml-stripblanks">gtk/message-row.ui</file>

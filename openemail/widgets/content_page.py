@@ -18,7 +18,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from typing import Any
+from typing import Any, Callable
 
 from gi.repository import Adw, GObject, Gtk
 
@@ -41,13 +41,11 @@ class MailContentPage(Adw.BreakpointBin):
 
     title = GObject.Property(type=str, default=_("Content"))
     details = GObject.Property(type=Gtk.Widget)
-    add_button = GObject.Property(type=Gtk.Widget)
+    toolbar_button = GObject.Property(type=Gtk.Widget)
     empty_page = GObject.Property(type=Gtk.Widget)
 
     _model: Gtk.SelectionModel | None = None
     _loading: bool = False
-
-    show_sidebar = GObject.Signal()
 
     @GObject.Property(type=bool, default=False)
     def loading(self) -> bool:

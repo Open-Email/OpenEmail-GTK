@@ -30,7 +30,7 @@ from json import JSONDecodeError
 from os import getenv
 from pathlib import Path
 from socket import setdefaulttimeout
-from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable
+from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, Iterable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -411,11 +411,11 @@ async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope
         logging.error("Fetching envelope %s failed: Invalid URL", message_id[:8])
         return None
 
-    envelope_path = cache_dir / "envelopes" / agent / message_id
+    envelope_path = cache_dir / "envelopes" / agent / f"{message_id}.json"
 
     try:
-        headers = json.load(envelope_path.open("r"))
-    except (FileNotFoundError, JSONDecodeError):
+        headers = dict(json.load(envelope_path.open("r")))
+    except (FileNotFoundError, JSONDecodeError, ValueError):
         if not (response := await request(url, user, method="HEAD")):
             logging.error("Fetching envelope %s failed", message_id[:8])
             return None
@@ -784,7 +784,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
 
         try:
             notifications = set(json.load(notifications_path.open("r")))
-        except (FileNotFoundError, JSONDecodeError):
+        except (FileNotFoundError, JSONDecodeError, ValueError):
             notifications = set()
 
         for notification in contents.split("\n"):
@@ -854,6 +854,86 @@ async def delete_message(message_id: str) -> None:
 
     logging.error("Deleting message %s failed", message_id[:8])
     raise WriteError
+
+
+def save_message(
+    readers: str | None = None,
+    subject: str | None = None,
+    body: str | None = None,
+    reply: str | None = None,
+    broadcast: bool = False,
+    ident: int | None = None,
+) -> None:
+    """Serialize and save a message to disk for later use.
+
+    `ident` can be used to update a specific message loaded using `load_messages()`,
+    by default, a new ID is generated.
+
+    See `send_message()` for other parameters, `load_messages()` for how to retrieve it.
+    """
+    logging.debug("Saving message…")
+    messages_path = data_dir / "messages"
+    n = (
+        ident
+        if ident is not None
+        else 0
+        if not messages_path.is_dir()
+        else (
+            max(
+                (0,)
+                + tuple(
+                    int(path.stem)
+                    for path in messages_path.iterdir()
+                    if path.stem.isdigit()
+                ),
+            )
+            + 1
+        )
+    )
+
+    (message_path := messages_path / f"{n}.json").parent.mkdir(
+        parents=True, exist_ok=True
+    )
+    json.dump((readers, subject, body, reply, broadcast), (message_path).open("w"))
+    logging.debug("Message saved as %i.json", n)
+
+
+def load_messages() -> Generator[
+    tuple[int, Iterable[Address] | None, str | None, str | None, str | None, bool]
+]:
+    """Load all messages saved to disk.
+
+    See `save_message()`.
+    """
+    logging.debug("Loading saved messages…")
+    if not (messages_path := data_dir / "messages").is_dir():
+        logging.debug("No saved messages")
+        return
+
+    for path in messages_path.iterdir():
+        try:
+            message = tuple(json.load(path.open("r")))
+            yield (int(path.stem),) + message
+        except (JSONDecodeError, ValueError):
+            continue
+
+    logging.debug("Loaded all saved messages")
+
+
+def delete_saved_message(ident: int) -> None:
+    """Delete the message saved using `ident`.
+
+    See `save_message()`, `load_messages()`.
+    """
+    logging.debug("Deleting message %i…", ident)
+
+    try:
+        (data_dir / "messages" / f"{ident}.json").unlink()
+    except FileNotFoundError as error:
+        logging.debug("Failed to delete message %i: %s", ident, error)
+        return
+
+    logging.debug("Deleted message %i", ident)
 
 
 class _Home:

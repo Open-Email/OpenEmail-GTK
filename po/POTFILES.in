@@ -11,6 +11,7 @@ openemail/gtk/contact-row.blp
 openemail/gtk/contacts-page.blp
 openemail/gtk/content-page.blp
 openemail/gtk/content-view.blp
+openemail/gtk/drafts-page.blp
 openemail/gtk/help-overlay.blp
 openemail/gtk/message-row.blp
 openemail/gtk/message-view.blp
@@ -28,6 +29,7 @@ openemail/widgets/compose_dialog.py
 openemail/widgets/contacts_page.py
 openemail/widgets/content_page.py
 openemail/widgets/content_view.py
+openemail/widgets/drafts_page.py
 openemail/widgets/form.py
 openemail/widgets/message_body.py
 openemail/widgets/message_view.py

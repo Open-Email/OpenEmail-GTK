@@ -9,7 +9,7 @@ template $MailContactsPage: Adw.NavigationPage {
 
     details: $MailProfileView profile_view {};
 
-    add-button: Button {
+    toolbar-button: Button {
       icon-name: "contact-new-symbolic";
       tooltip-text: _("New Contact");
       clicked => $_new_contact();

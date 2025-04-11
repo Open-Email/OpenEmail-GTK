@@ -113,6 +113,7 @@ template $MailContentView: Adw.BreakpointBin {
 
             child: $MailMessagesPage broadcasts_page {
               folder: "broadcasts";
+              compose-dialog: compose_dialog;
             };
           }
 
@@ -121,6 +122,7 @@ template $MailContentView: Adw.BreakpointBin {
 
             child: $MailMessagesPage inbox_page {
               folder: "inbox";
+              compose-dialog: compose_dialog;
             };
           }
 
@@ -129,6 +131,24 @@ template $MailContentView: Adw.BreakpointBin {
 
             child: $MailMessagesPage outbox_page {
               folder: "outbox";
+              compose-dialog: compose_dialog;
+            };
+          }
+
+          StackPage {
+            name: "drafts";
+
+            child: $MailDraftsPage drafts_page {
+              compose-dialog: compose_dialog;
+            };
+          }
+
+          StackPage {
+            name: "trash";
+
+            child: $MailMessagesPage trash_page {
+              folder: "trash";
+              compose-dialog: compose_dialog;
             };
           }
 
@@ -136,34 +156,6 @@ template $MailContentView: Adw.BreakpointBin {
             name: "contacts";
 
             child: $MailContactsPage contacts_page {};
-          }
-
-          StackPage {
-            name: "trash";
-
-            child: $MailMessagesPage {
-              folder: "trash";
-            };
-          }
-
-          StackPage {
-            name: "placeholder";
-
-            child: Adw.ToolbarView {
-              [top]
-              Adw.HeaderBar {
-                show-title: false;
-
-                [start]
-                Button {
-                  icon-name: _("sidebar-show-symbolic");
-                  tooltip-text: _("Toggle Sidebar");
-                  clicked => $_show_sidebar();
-                }
-              }
-
-              content: Adw.StatusPage empty_status_page {};
-            };
           }
         }
       };
@@ -183,3 +175,5 @@ menu primary_menu {
     item (_("_About OpenEmail"), "app.about")
   }
 }
+
+$MailComposeDialog compose_dialog {}

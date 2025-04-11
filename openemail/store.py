@@ -44,6 +44,7 @@ from openemail.core.client import (
     fetch_notifications,
     fetch_profile,
     fetch_profile_image,
+    load_messages,
     user,
 )
 
@@ -125,6 +126,10 @@ class MailMessage(GObject.Object):
     subject = GObject.Property(type=str)
     body = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
+
+    subject_id = GObject.Property(type=str)
+    draft_id = GObject.Property(type=int)
+    broadcast = GObject.Property(type=bool, default=False)
 
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
@@ -273,6 +278,45 @@ async def __fetch_outbox() -> AsyncGenerator[Message, None]:
 broadcasts = MailMessageStore(__fetch_broadcasts)
 inbox = MailMessageStore(__fetch_inbox)
 outbox = MailMessageStore(__fetch_outbox)
+
+
+class MailDraftsStore(DictStore[int, MailMessage]):
+    """An implementation of `Gio.ListModel` for storing drafts."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.item_type = MailMessage
+
+    @_loads
+    async def update(self) -> None:
+        """Update `self` by loading the latest drafts."""
+        idents: set[int] = set()
+
+        previous = len(self._items)
+        self._items.clear()
+
+        for draft in (drafts := tuple(load_messages())):
+            message = MailMessage()
+            (
+                message.draft_id,
+                message.name,
+                message.subject,
+                message.body,
+                message.subject_id,
+                message.broadcast,
+            ) = draft
+
+            profiles[user.address].bind_property(
+                "image", message, "profile-image", GObject.BindingFlags.SYNC_CREATE
+            )
+
+            idents.add(message.draft_id)
+            self._items[message.draft_id] = message
+
+        self.items_changed(0, previous, len(drafts))
+
+
+drafts = MailDraftsStore()
 
 
 class MailProfile(GObject.Object):

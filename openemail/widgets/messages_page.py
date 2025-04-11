@@ -41,9 +41,9 @@ class MailMessagesPage(Adw.NavigationPage):
 
     content: MailContentPage = Gtk.Template.Child()
     message_view: MailMessageView = Gtk.Template.Child()
-    compose_dialog: MailComposeDialog = Gtk.Template.Child()
 
     title = GObject.Property(type=str, default=_("Messages"))
+    compose_dialog = GObject.Property(type=MailComposeDialog)
 
     _folder: str | None = None
 
@@ -53,7 +53,7 @@ class MailMessagesPage(Adw.NavigationPage):
         return self._folder
 
     @folder.setter
-    def folder(self, folder: Literal["inbox", "broadcasts", "outbox"]) -> None:
+    def folder(self, folder: Literal["broadcasts", "inbox", "outbox", "trash"]) -> None:
         match folder:
             case "broadcasts":
                 self.title = _("Broadcasts")
@@ -71,7 +71,7 @@ class MailMessagesPage(Adw.NavigationPage):
                 inboxes.append(inbox)
                 model = Gtk.FlattenListModel.new(inboxes)
 
-        self.content.model = selection = Gtk.SingleSelection(
+        self.content.model = Gtk.SingleSelection(
             autoselect=False,
             model=Gtk.SortListModel.new(
                 Gtk.FilterListModel.new(
@@ -111,7 +111,7 @@ class MailMessagesPage(Adw.NavigationPage):
 
         def on_trash_changed(_obj: Any, key: str) -> None:
             filter.changed(Gtk.FilterChange.DIFFERENT)
-            selection.set_selected(0)
+            self.content.model.set_selected(0)
 
         settings.connect("changed::trashed-messages", on_trash_changed)
         self.content.connect(
@@ -121,7 +121,7 @@ class MailMessagesPage(Adw.NavigationPage):
             ),
         )
 
-        selection.connect("notify::selected", self.__on_selected)
+        self.content.model.connect("notify::selected", self.__on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{PREFIX}/gtk/message-row.ui"
         )
@@ -147,7 +147,7 @@ class MailMessagesPage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _new_message(self, *_args: Any) -> None:
-        self._subject_id = None
+        self.compose_dialog.subject_id = None
         self.compose_dialog.broadcast_switch.set_active(False)
         self.compose_dialog.compose_form.reset()
 
@@ -188,7 +188,7 @@ class MailMessagesPage(Adw.NavigationPage):
             )
 
         self.compose_dialog.subject.set_text(envelope.subject)
-        self._subject_id = envelope.subject_id
+        self.compose_dialog.subject_id = envelope.subject_id
 
         self.compose_dialog.present(self)
         self.compose_dialog.body_view.grab_focus()
