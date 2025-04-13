@@ -44,7 +44,7 @@ from openemail.core.client import (
     fetch_notifications,
     fetch_profile,
     fetch_profile_image,
-    load_messages,
+    load_saved_messages,
     user,
 )
 
@@ -295,7 +295,7 @@ class MailDraftsStore(DictStore[int, MailMessage]):
         previous = len(self._items)
         self._items.clear()
 
-        for draft in (drafts := tuple(load_messages())):
+        for draft in (drafts := tuple(load_saved_messages())):
             message = MailMessage()
             (
                 message.draft_id,

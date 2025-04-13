@@ -866,10 +866,10 @@ def save_message(
 ) -> None:
     """Serialize and save a message to disk for later use.
 
-    `ident` can be used to update a specific message loaded using `load_messages()`,
+    `ident` can be used to update a specific message loaded using `load_saved_messages()`,
     by default, a new ID is generated.
 
-    See `send_message()` for other parameters, `load_messages()` for how to retrieve it.
+    See `send_message()` for other parameters, `load_saved_messages()` for how to retrieve it.
     """
     logging.debug("Saving message…")
     messages_path = data_dir / "messages"
@@ -898,8 +898,10 @@ def save_message(
     logging.debug("Message saved as %i.json", n)
 
 
-def load_messages() -> Generator[
-    tuple[int, Iterable[Address] | None, str | None, str | None, str | None, bool]
+def load_saved_messages() -> Generator[
+    tuple[int, Iterable[Address] | None, str | None, str | None, str | None, bool],
+    None,
+    None,
 ]:
     """Load all messages saved to disk.
 
@@ -923,7 +925,7 @@ def load_messages() -> Generator[
 def delete_saved_message(ident: int) -> None:
     """Delete the message saved using `ident`.
 
-    See `save_message()`, `load_messages()`.
+    See `save_message()`, `load_saved_messages()`.
     """
     logging.debug("Deleting message %i…", ident)
 
