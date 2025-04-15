@@ -143,7 +143,7 @@ class MailContentView(Adw.BreakpointBin):
                 "image",
                 self,
                 "profile-image",
-                GObject.BindingFlags.DEFAULT | GObject.BindingFlags.SYNC_CREATE,
+                GObject.BindingFlags.SYNC_CREATE,
             )
 
             self.profile_settings.profile = profile.profile
