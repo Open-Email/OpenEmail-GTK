@@ -61,6 +61,7 @@ from .model import (
 )
 
 setdefaulttimeout(5)
+
 user: User = User()
 cache_dir = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
 data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
@@ -70,7 +71,7 @@ _writing = 0
 
 
 def is_writing() -> bool:
-    """Check whether or not a write update is currently ongoing."""
+    """Check whether or not a write operation is currently ongoing."""
     return bool(_writing)
 
 
@@ -81,7 +82,13 @@ def _writes(
     async def wrapper(*args: Any, **kwargs: Any) -> Coroutine[Any, Any, Any]:
         global _writing
         _writing += 1
-        result = await func(*args, **kwargs)
+
+        try:
+            result = await func(*args, **kwargs)
+        except Exception as error:
+            _writing -= 1
+            raise error
+
         _writing -= 1
         return result
 
@@ -94,15 +101,13 @@ class WriteError(Exception):
 
 async def request(
     url: str,
-    user: User | None = None,
+    *,
+    auth: bool = False,
     method: str | None = None,
     headers: dict[str, str] = {},
     data: bytes | None = None,
 ) -> HTTPResponse | None:
-    """Make an HTTP request using `urllib.urlopen`, handling errors and authentication.
-
-    If `user` is set, use it and `url`'s host to obtain an authentication nonce.
-    """
+    """Make an HTTP request using `urllib.urlopen`, handling errors and authentication."""
     headers["User-Agent"] = "Mozilla/5.0"
 
     try:
@@ -130,7 +135,7 @@ async def request(
             error,
             url,
             method or ("GET" if data else "POST"),
-            bool(user),
+            auth,
         )
 
     return None
@@ -174,10 +179,10 @@ async def get_agents(address: Address) -> tuple[str, ...]:
 
 
 async def try_auth() -> bool:
-    """Get whether authentication was successful for the given `user`."""
+    """Try authenticating with `client.user` and get whether the attempt was successful."""
     logging.debug("Attempting authentication…")
     for agent in await get_agents(user.address):
-        if await request(_Home(agent, user.address).home, user, method="HEAD"):
+        if await request(_Home(agent, user.address).home, auth=True, method="HEAD"):
             logging.info("Authentication successful")
             return True
 
@@ -207,7 +212,7 @@ async def fetch_profile(address: Address) -> Profile | None:
 
 @_writes
 async def update_profile(values: dict[str, str]) -> None:
-    """Update `user`'s public profile with `values`."""
+    """Update `client.user`'s public profile with `values`."""
     logging.debug("Updating user profile…")
 
     values.update(
@@ -238,7 +243,7 @@ async def update_profile(values: dict[str, str]) -> None:
     for agent in await get_agents(user.address):
         if await request(
             _Home(agent, user.address).profile,
-            user,
+            auth=True,
             method="PUT",
             data=data,
         ):
@@ -267,12 +272,12 @@ async def fetch_profile_image(address: Address) -> bytes | None:
 
 @_writes
 async def update_profile_image(image: bytes) -> None:
-    """Upload `image` to be used as the user's profile image."""
+    """Upload `image` to be used as `client.user`'s profile image."""
     logging.debug("Updating profile image…")
     for agent in await get_agents(user.address):
         if await request(
             _Home(agent, user.address).image,
-            user,
+            auth=True,
             method="PUT",
             data=image,
         ):
@@ -285,10 +290,10 @@ async def update_profile_image(image: bytes) -> None:
 
 @_writes
 async def delete_profile_image() -> None:
-    """Delete `user`'s profile image."""
+    """Delete `client.user`'s profile image."""
     logging.debug("Deleting profile image…")
     for agent in await get_agents(user.address):
-        if await request(_Home(agent, user.address).image, user, method="DELETE"):
+        if await request(_Home(agent, user.address).image, auth=True, method="DELETE"):
             logging.info("Deleted profile image.")
             return
 
@@ -297,12 +302,12 @@ async def delete_profile_image() -> None:
 
 
 async def fetch_contacts() -> tuple[Address, ...]:
-    """Fetch the `user`'s contact list."""
+    """Fetch `client.user`'s contact list."""
     logging.debug("Fetching contact list…")
     addresses = []
 
     for agent in await get_agents(user.address):
-        if not (response := await request(_Home(agent, user.address).links, user)):
+        if not (response := await request(_Home(agent, user.address).links, auth=True)):
             continue
 
         with response:
@@ -345,7 +350,7 @@ async def fetch_contacts() -> tuple[Address, ...]:
 
 @_writes
 async def new_contact(address: Address) -> None:
-    """Add `address` to the user's address book."""
+    """Add `address` to `client.user`'s address book."""
     logging.debug("Adding %s to address book…", address)
 
     try:
@@ -367,7 +372,7 @@ async def new_contact(address: Address) -> None:
     for agent in await get_agents(address):
         if await request(
             _Link(agent, user.address, link).home,
-            user,
+            auth=True,
             method="PUT",
             data=data,
         ):
@@ -380,13 +385,13 @@ async def new_contact(address: Address) -> None:
 
 @_writes
 async def delete_contact(address: Address) -> None:
-    """Delete `address` from the user's address book."""
+    """Delete `address` from `client.user`'s address book."""
     logging.debug("Deleting contact %s…", address)
     link = generate_link(address, user.address)
     for agent in await get_agents(address):
         if await request(
             _Link(agent, user.address, link).home,
-            user,
+            auth=True,
             method="DELETE",
         ):
             logging.info("Deleted contact %s", address)
@@ -416,7 +421,7 @@ async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope
     try:
         headers = dict(json.load(envelope_path.open("r")))
     except (FileNotFoundError, JSONDecodeError, ValueError):
-        if not (response := await request(url, user, method="HEAD")):
+        if not (response := await request(url, auth=True, method="HEAD")):
             logging.error("Fetching envelope %s failed", message_id[:8])
             return None
 
@@ -454,7 +459,7 @@ async def fetch_message_from_agent(
     try:
         contents = message_path.read_bytes()
     except FileNotFoundError:
-        if not (response := await request(url, user)):
+        if not (response := await request(url, auth=True)):
             logging.error(
                 "Fetching message %s failed: Failed fetching body",
                 message_id[:8],
@@ -491,13 +496,13 @@ async def fetch_message_from_agent(
 
 
 async def fetch_message_ids(url: str, author: Address) -> tuple[str, ...]:
-    """Fetch message IDs by `author`, addressed to `user` from `url`.
+    """Fetch message IDs by `author`, addressed to `client.user` from `url`.
 
     `{}` in `url` will be substituted by the mail agent.
     """
     logging.debug("Fetching message IDs from %s…", author)
     for agent in await get_agents(user.address):
-        if not (response := await request(url.format(agent), user)):
+        if not (response := await request(url.format(agent), auth=True)):
             continue
 
         with response:
@@ -554,7 +559,7 @@ async def fetch_broadcasts(author: Address) -> tuple[Message, ...]:
 
 
 async def fetch_link_messages(author: Address) -> tuple[Message, ...]:
-    """Fetch messages by `author`, addressed to `user`."""
+    """Fetch messages by `author`, addressed to `client.user`."""
     logging.debug("Fetching link messages messages from %s…", author)
     link = generate_link(user.address, author)
 
@@ -703,7 +708,7 @@ async def send_message(
     for agent in await get_agents(user.address):
         if await request(
             _Home(agent, user.address).messages,
-            user,
+            auth=True,
             headers=headers,
             data=body_bytes,
         ):
@@ -749,7 +754,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
         for agent in await get_agents(reader):
             if await request(
                 _Link(agent, reader, link).notifications,
-                user,
+                auth=True,
                 method="PUT",
                 data=address,
             ):
@@ -760,7 +765,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
 
 
 async def fetch_notifications() -> AsyncGenerator[Notification, None]:
-    """Fetch all of `user`'s new notifications.
+    """Fetch all of `client.user`'s new notifications.
 
     Note that this generator is assumes that you process all notifications yielded by it
     and a subsequent iteration will not yield "old" notifications that were already processed.
@@ -771,7 +776,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
         if not (
             response := await request(
                 _Home(agent, user.address).notifications,
-                user,
+                auth=True,
             )
         ):
             continue
@@ -846,7 +851,7 @@ async def delete_message(message_id: str) -> None:
     for agent in await get_agents(user.address):
         if await request(
             _Message(agent, user.address, message_id).message,
-            user,
+            auth=True,
             method="DELETE",
         ):
             logging.info("Deleted message %s", message_id[:8])
@@ -864,7 +869,7 @@ def save_message(
     broadcast: bool = False,
     ident: int | None = None,
 ) -> None:
-    """Serialize and save a message to disk for later use.
+    """Serialize and save a message to disk for future use.
 
     `ident` can be used to update a specific message loaded using `load_saved_messages()`,
     by default, a new ID is generated.

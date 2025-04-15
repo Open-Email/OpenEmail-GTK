@@ -47,13 +47,13 @@ configure_file(
 )
 
 install_data([
-    'main.py',
-    'store.py',
     configure_file(
-      input:  'shared.py.in',
-      output: 'shared.py',
+      input:  '__init__.py.in',
+      output: '__init__.py',
       configuration: conf
     ),
+    'mail.py',
+    'main.py',
   ],
   install_dir: moduledir
 )

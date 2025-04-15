@@ -13,153 +13,151 @@ template $MailContentView: Adw.BreakpointBin {
     }
   }
 
-  Adw.ToastOverlay toast_overlay {
-    Adw.OverlaySplitView split_view {
-      min-sidebar-width: 260;
-      sidebar-width-fraction: 0.2;
+  Adw.OverlaySplitView split_view {
+    min-sidebar-width: 260;
+    sidebar-width-fraction: 0.2;
 
-      sidebar: Adw.NavigationPage {
-        title: _("OpenEmail");
+    sidebar: Adw.NavigationPage {
+      title: _("OpenEmail");
 
-        Adw.ToolbarView {
-          [top]
-          Adw.HeaderBar {
-            [start]
-            Button {
-              tooltip-text: _("Profile");
-              clicked => $_on_profile_button_clciked();
+      Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          [start]
+          Button {
+            tooltip-text: _("Profile");
+            clicked => $_on_profile_button_clciked();
 
-              Adw.Avatar {
-                size: 24;
-                custom-image: bind template.profile-image;
-              }
-
-              styles [
-                "image-button",
-              ]
+            Adw.Avatar {
+              size: 24;
+              custom-image: bind template.profile-image;
             }
 
-            [end]
-            MenuButton {
-              primary: true;
-              icon-name: "open-menu-symbolic";
-              tooltip-text: _("Main Menu");
-              menu-model: primary_menu;
-            }
+            styles [
+              "image-button",
+            ]
           }
 
-          content: Box {
-            orientation: vertical;
+          [end]
+          MenuButton {
+            primary: true;
+            icon-name: "open-menu-symbolic";
+            tooltip-text: _("Main Menu");
+            menu-model: primary_menu;
+          }
+        }
 
-            ListBox sidebar {
-              vexpand: true;
-              row-selected => $_on_row_selected();
+        content: Box {
+          orientation: vertical;
 
-              $MailNavigationRow {
-                label: _("Broadcasts");
-                icon-name: _("broadcasts-symbolic");
-              }
+          ListBox sidebar {
+            vexpand: true;
+            row-selected => $_on_row_selected();
 
-              $MailNavigationRow {
-                label: _("Inbox");
-                icon-name: _("inbox-symbolic");
-              }
-
-              $MailNavigationRow {
-                label: _("Outbox");
-                icon-name: _("outbox-symbolic");
-              }
-
-              $MailNavigationRow {
-                label: _("Drafts");
-                icon-name: _("drafts-symbolic");
-              }
-
-              $MailNavigationRow {
-                label: _("Trash");
-                icon-name: _("trash-symbolic");
-              }
-
-              styles [
-                "navigation-sidebar",
-              ]
+            $MailNavigationRow {
+              label: _("Broadcasts");
+              icon-name: _("broadcasts-symbolic");
             }
 
-            ListBox contacts_sidebar {
-              row-selected => $_on_contacts_selected();
-
-              $MailNavigationRow {
-                label: _("Contacts");
-                icon-name: _("contacts-symbolic");
-              }
-
-              styles [
-                "navigation-sidebar",
-              ]
+            $MailNavigationRow {
+              label: _("Inbox");
+              icon-name: _("inbox-symbolic");
             }
+
+            $MailNavigationRow {
+              label: _("Outbox");
+              icon-name: _("outbox-symbolic");
+            }
+
+            $MailNavigationRow {
+              label: _("Drafts");
+              icon-name: _("drafts-symbolic");
+            }
+
+            $MailNavigationRow {
+              label: _("Trash");
+              icon-name: _("trash-symbolic");
+            }
+
+            styles [
+              "navigation-sidebar",
+            ]
+          }
+
+          ListBox contacts_sidebar {
+            row-selected => $_on_contacts_selected();
+
+            $MailNavigationRow {
+              label: _("Contacts");
+              icon-name: _("contacts-symbolic");
+            }
+
+            styles [
+              "navigation-sidebar",
+            ]
+          }
+        };
+      }
+    };
+
+    content: Adw.NavigationPage {
+      title: _("Content");
+
+      Stack content {
+        transition-type: crossfade;
+        visible-child-name: bind template.content-child-name;
+
+        StackPage {
+          name: "broadcasts";
+
+          child: $MailMessagesPage broadcasts_page {
+            folder: "broadcasts";
+            compose-dialog: compose_dialog;
           };
         }
-      };
 
-      content: Adw.NavigationPage {
-        title: _("Content");
+        StackPage {
+          name: "inbox";
 
-        Stack content {
-          transition-type: crossfade;
-          visible-child-name: bind template.content-child-name;
-
-          StackPage {
-            name: "broadcasts";
-
-            child: $MailMessagesPage broadcasts_page {
-              folder: "broadcasts";
-              compose-dialog: compose_dialog;
-            };
-          }
-
-          StackPage {
-            name: "inbox";
-
-            child: $MailMessagesPage inbox_page {
-              folder: "inbox";
-              compose-dialog: compose_dialog;
-            };
-          }
-
-          StackPage {
-            name: "outbox";
-
-            child: $MailMessagesPage outbox_page {
-              folder: "outbox";
-              compose-dialog: compose_dialog;
-            };
-          }
-
-          StackPage {
-            name: "drafts";
-
-            child: $MailDraftsPage drafts_page {
-              compose-dialog: compose_dialog;
-            };
-          }
-
-          StackPage {
-            name: "trash";
-
-            child: $MailMessagesPage trash_page {
-              folder: "trash";
-              compose-dialog: compose_dialog;
-            };
-          }
-
-          StackPage {
-            name: "contacts";
-
-            child: $MailContactsPage contacts_page {};
-          }
+          child: $MailMessagesPage inbox_page {
+            folder: "inbox";
+            compose-dialog: compose_dialog;
+          };
         }
-      };
-    }
+
+        StackPage {
+          name: "outbox";
+
+          child: $MailMessagesPage outbox_page {
+            folder: "outbox";
+            compose-dialog: compose_dialog;
+          };
+        }
+
+        StackPage {
+          name: "drafts";
+
+          child: $MailDraftsPage drafts_page {
+            compose-dialog: compose_dialog;
+          };
+        }
+
+        StackPage {
+          name: "trash";
+
+          child: $MailMessagesPage trash_page {
+            folder: "trash";
+            compose-dialog: compose_dialog;
+          };
+        }
+
+        StackPage {
+          name: "contacts";
+
+          child: $MailContactsPage contacts_page {};
+        }
+      }
+    };
   }
 }
 

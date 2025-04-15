@@ -18,13 +18,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from dataclasses import fields
 
 import gi
 
 from openemail.core.crypto import get_keys
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
 
 import json
@@ -36,9 +36,10 @@ from typing import Any, Callable, Sequence
 import keyring
 from gi.repository import Adw, Gio
 
-from .core.client import user
-from .core.model import Address, User
-from .shared import APP_ID, PREFIX, log_file, secret_service, settings
+from openemail import APP_ID, PREFIX, log_file, secret_service, settings
+
+from .core.model import Address
+from .mail import user
 from .widgets.preferences import MailPreferences
 from .widgets.window import MailWindow
 

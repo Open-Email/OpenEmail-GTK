@@ -18,11 +18,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from typing import Any, Callable
+from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail.shared import PREFIX
+from openemail import PREFIX
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/content-page.ui")

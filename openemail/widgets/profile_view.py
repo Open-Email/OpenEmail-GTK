@@ -22,10 +22,9 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail.core.client import delete_contact
+from openemail import PREFIX, run_task
 from openemail.core.model import Profile
-from openemail.shared import PREFIX, notifier, run_task
-from openemail.store import address_book, broadcasts, inbox, profile_categories
+from openemail.mail import address_book, profile_categories
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-view.ui")
@@ -135,22 +134,7 @@ class MailProfileView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _confirm_remove(self, _obj: Any, response: str) -> None:
-        if response != "remove":
+        if (response != "remove") or (not self.profile):
             return
 
-        if not self.profile:
-            return
-
-        address = self.profile.address
-
-        def removal_failed() -> None:
-            notifier.send(_("Failed to remove contact"))
-            address_book.add(address)
-            run_task(broadcasts.update())
-            run_task(inbox.update())
-
-        run_task(delete_contact(address), on_failure=removal_failed)
-
-        address_book.remove(self.profile.address)
-        run_task(broadcasts.update())
-        run_task(inbox.update())
+        run_task(address_book.delete(self.profile.address))

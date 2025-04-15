@@ -23,16 +23,17 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
-from openemail.core.client import (
+from openemail import PREFIX, run_task
+from openemail.core.model import Profile
+from openemail.mail import (
     WriteError,
     delete_profile_image,
+    profile_categories,
     update_profile,
     update_profile_image,
 )
-from openemail.core.model import Profile
-from openemail.shared import PREFIX, notifier, run_task
-from openemail.store import profile_categories, update_user_profile
-from openemail.widgets.form import MailForm
+
+from .form import MailForm
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-settings.ui")
@@ -133,19 +134,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
     @Gtk.Template.Callback()
     def _delete_image(self, *_args: Any) -> None:
         self.pending = True
-
-        run_task(
-            delete_profile_image(),
-            lambda: run_task(
-                update_user_profile(),
-                self.set_property("pending", False),
-            ),
-            lambda: self.add_toast(
-                Adw.Toast.new(
-                    _("Failed to delete profile image"),
-                )
-            ),
-        )
+        run_task(delete_profile_image(), lambda _: self.set_property("pending", False))
 
     @Gtk.Template.Callback()
     def _replace_image(self, *_args: Any) -> None:
@@ -164,12 +153,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
             self.away_warning.set_text("")
 
         self._changed = False
-
-        run_task(
-            update_profile({key: f() for key, f in self._fields.items()}),
-            lambda: run_task(update_user_profile()),
-            lambda: notifier.send(_("Failed to update profile")),
-        )
+        run_task(update_profile({key: f() for key, f in self._fields.items()}))
 
     async def __replace_image(self) -> None:
         (filters := Gio.ListStore.new(Gtk.FileFilter)).append(
@@ -204,67 +188,11 @@ class MailProfileSettings(Adw.PreferencesDialog):
         except GLib.Error:
             return
 
-        if (width := pixbuf.get_width()) > (height := pixbuf.get_height()):
-            if width > 800:
-                pixbuf = (
-                    pixbuf.scale_simple(
-                        dest_width=int(width * (800 / height)),
-                        dest_height=800,
-                        interp_type=GdkPixbuf.InterpType.BILINEAR,
-                    )
-                    or pixbuf
-                )
-
-                width = pixbuf.get_width()
-                height = pixbuf.get_height()
-
-            pixbuf = pixbuf.new_subpixbuf(
-                src_x=int((width - height) / 2),
-                src_y=0,
-                width=height,
-                height=height,
-            )
-        else:
-            if height > 800:
-                pixbuf = (
-                    pixbuf.scale_simple(
-                        dest_width=800,
-                        dest_height=int(height * (800 / width)),
-                        interp_type=GdkPixbuf.InterpType.BILINEAR,
-                    )
-                    or pixbuf
-                )
-
-                width = pixbuf.get_width()
-                height = pixbuf.get_height()
-
-            if height > width:
-                pixbuf = pixbuf.new_subpixbuf(
-                    src_x=0,
-                    src_y=int((height - width) / 2),
-                    height=width,
-                    width=width,
-                )
-
-        try:
-            success, data = pixbuf.save_to_bufferv(
-                type="jpeg",
-                option_keys=("quality",),
-                option_values=("80",),
-            )
-
-            if not success:
-                return
-
-        except GLib.Error:
-            return
-
         self.pending = True
 
         try:
-            await update_profile_image(data)
+            await update_profile_image(pixbuf)
         except WriteError:
-            self.add_toast(Adw.Toast.new(_("Failed to update profile image")))
+            pass
 
-        await update_user_profile()
         self.pending = False

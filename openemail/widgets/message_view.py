@@ -22,11 +22,17 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
-from openemail.core.client import delete_message, request, user
+from openemail import PREFIX, run_task, settings
+from openemail.core.client import request
 from openemail.core.crypto import decrypt_xchacha20poly1305
 from openemail.core.model import Message
-from openemail.shared import PREFIX, notifier, run_task, settings
-from openemail.store import outbox, profiles, restore_message, trash_message
+from openemail.mail import (
+    discard_message,
+    profiles,
+    restore_message,
+    trash_message,
+    user,
+)
 
 from .message_body import MailMessageBody
 from .profile_view import MailProfileView
@@ -210,7 +216,7 @@ class MailMessageView(Adw.Bin):
             for part in parts:
                 if not (
                     (url := part.attachment_url)
-                    and (response := await request(url, user))
+                    and (response := await request(url, auth=True))
                 ):
                     return
 
@@ -273,28 +279,22 @@ class MailMessageView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _confirm_discard(self, _obj: Any, response: str) -> None:
-        if response != "discard":
+        if (response != "discard") or (not self.message):
             return
 
-        if not self.message:
-            return
-
-        run_task(
-            delete_message(self.message.envelope.message_id),
-            lambda: run_task(outbox.update()),
-            lambda: notifier.send(_("Failed to discard message")),
-        )
+        run_task(discard_message(self.message.envelope.message_id))
 
     def __add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
-        self.undo[
+        (
             toast := Adw.Toast(
                 title=title,
                 priority=Adw.ToastPriority.HIGH,
                 button_label=_("Undo"),
             )
-        ] = undo
-        toast.connect(
+        ).connect(
             "button-clicked",
             lambda *_: self.undo.pop(toast, lambda: None)(),
         )
+
+        self.undo[toast] = undo
         self.toast_overlay.add_toast(toast)

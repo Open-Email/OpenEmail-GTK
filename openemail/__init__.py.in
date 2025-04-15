@@ -1,4 +1,4 @@
-# shared.py.in
+# __init__.py.in
 #
 # Authors: kramo
 # Copyright 2025 Mercata Sagl
@@ -17,6 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
+
+"""A Mail/HTTPS client."""
 
 import asyncio
 from asyncio import Task
@@ -40,35 +42,6 @@ log_file = Path(GLib.get_user_state_dir()) / "openemail.log"
 client.cache_dir = Path(GLib.get_user_cache_dir()) / "openemail"
 client.data_dir = Path(GLib.get_user_data_dir()) / "openemail"
 
-asyncio.set_event_loop_policy(_policy := GLibEventLoopPolicy())
-_loop: asyncio.AbstractEventLoop = _policy.get_event_loop()
-_tasks: set[Task] = set()
-
-
-def run_task(
-    coro: Coroutine[Any, Any, Any],
-    on_success: Callable[[], Any] | None = None,
-    on_failure: Callable[[], Any] | None = None,
-) -> None:
-    """Run a coroutine in a task.
-
-    Calls the `on_success` callback if no exceptions were raised and `on_failure` otherwise.
-    """
-    _tasks.add(task := _loop.create_task(coro))
-
-    def done_callback(task: Task[Any]) -> None:
-        if task.exception():
-            if on_failure:
-                on_failure()
-                return
-
-        if on_success:
-            on_success()
-
-        _tasks.discard(task)
-
-    task.add_done_callback(done_callback)
-
 
 class Notifier(GObject.Object):
     """Used for sending user-facing notifications throughout the application."""
@@ -81,3 +54,26 @@ class Notifier(GObject.Object):
 
 
 notifier = Notifier()
+
+asyncio.set_event_loop_policy(_policy := GLibEventLoopPolicy())
+_loop: asyncio.AbstractEventLoop = _policy.get_event_loop()
+_tasks: set[Task] = set()
+
+
+def run_task(
+    coro: Coroutine[Any, Any, Any],
+    callback: Callable[[bool], Any] | None = None,
+) -> None:
+    """Run a coroutine in a task.
+
+    Calls `callback on finish with `True` if no exceptions were raised and `False` otherwise.
+    """
+    _tasks.add(task := _loop.create_task(coro))
+
+    def done_callback(task: Task[Any]) -> None:
+        if callback:
+            callback(not task.exception())
+
+        _tasks.discard(task)
+
+    task.add_done_callback(done_callback)

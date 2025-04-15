@@ -20,7 +20,7 @@
 
 from gi.repository import GObject, Gtk
 
-from openemail.shared import PREFIX
+from openemail import PREFIX
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/navigation-row.ui")

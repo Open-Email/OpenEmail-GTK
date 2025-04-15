@@ -22,12 +22,12 @@ from typing import Any
 
 from gi.repository import Adw, Gtk
 
-from openemail.core.client import delete_saved_message, save_message, send_message
+from openemail import PREFIX, run_task
 from openemail.core.model import Address
-from openemail.shared import PREFIX, notifier, run_task
-from openemail.store import drafts, outbox
-from openemail.widgets.form import MailForm
-from openemail.widgets.message_body import MailMessageBody
+from openemail.mail import drafts, send_message
+
+from .form import MailForm
+from .message_body import MailMessageBody
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/compose-dialog.ui")
@@ -66,14 +66,9 @@ class MailComposeDialog(Adw.Dialog):
                 except ValueError:
                     return
 
-        notifier.send(_("Sending message…"))
-
         if self.draft_id:
-            delete_saved_message(self.draft_id)
+            drafts.delete(self.draft_id)
             self.draft_id = None
-            self._save = False
-
-            run_task(drafts.update())
 
         run_task(
             send_message(
@@ -85,13 +80,11 @@ class MailComposeDialog(Adw.Dialog):
                     False,
                 ),
                 self.subject_id,
-            ),
-            lambda: run_task(outbox.update()),
-            lambda: notifier.send(_("Failed to send message")),
+            )
         )
 
         self.subject_id = None
-
+        self._save = False
         self.force_close()
 
     @Gtk.Template.Callback()
@@ -136,7 +129,7 @@ class MailComposeDialog(Adw.Dialog):
         if not (subject or body):
             return
 
-        save_message(
+        drafts.save(
             self.readers.get_text(),
             subject,
             body,
@@ -144,7 +137,6 @@ class MailComposeDialog(Adw.Dialog):
             self.broadcast_switch.get_active(),
             self.draft_id,
         )
-        run_task(drafts.update())
 
     def __format_line(self, syntax: str, toggle: bool = False) -> None:
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)

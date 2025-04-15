@@ -22,11 +22,12 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail.core.client import try_auth, user
+from openemail import APP_ID, PREFIX, notifier
 from openemail.core.crypto import get_keys
 from openemail.core.model import Address
-from openemail.shared import APP_ID, PREFIX, run_task
-from openemail.widgets.form import MailForm
+from openemail.mail import try_auth, user
+
+from .form import MailForm
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/auth-view.ui")
@@ -35,7 +36,6 @@ class MailAuthView(Adw.Bin):
 
     __gtype_name__ = "MailAuthView"
 
-    toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
     navigation_view: Adw.NavigationView = Gtk.Template.Child()
 
     email_status_page: Adw.StatusPage = Gtk.Template.Child()
@@ -77,29 +77,19 @@ class MailAuthView(Adw.Bin):
             )
 
         except ValueError:
-            self.__warn(_("Incorrect key format"))
+            notifier.send(_("Incorrect key format"))
             return
 
-        async def authenticate() -> None:
-            self.set_property("button-child-name", "loading")
-            if not await try_auth():
-                self.__warn(_("Authentication failed"))
-                self.button_child_name = "label"
-                return
-
-            self.emit("authenticated")
+        def success() -> None:
             self.button_child_name = "label"
+            self.emit("authenticated")
 
-            GLib.timeout_add_seconds(1, self.email_form.reset)
-            GLib.timeout_add_seconds(1, self.navigation_view.pop)
-            GLib.timeout_add_seconds(1, self.auth_form.reset)
+            def reset() -> None:
+                self.email_form.reset()
+                self.navigation_view.pop()
+                self.auth_form.reset()
 
-        run_task(authenticate())
+            GLib.timeout_add_seconds(1, reset)
 
-    def __warn(self, warning: str) -> None:
-        self.toast_overlay.add_toast(
-            Adw.Toast(
-                title=warning,
-                priority=Adw.ToastPriority.HIGH,
-            )
-        )
+        self.button_child_name = "loading"
+        try_auth(success, lambda: self.set_property("button-child-name", "label"))

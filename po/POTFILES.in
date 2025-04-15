@@ -40,6 +40,6 @@ openemail/widgets/profile_view.py
 openemail/widgets/request_buttons.py
 openemail/widgets/window.py
 
+openemail/__init__.py.in
+openemail/mail.py
 openemail/main.py
-openemail/shared.py.in
-openemail/store.py

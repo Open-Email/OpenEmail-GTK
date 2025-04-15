@@ -6,22 +6,24 @@ template $MailWindow: Adw.ApplicationWindow {
   default-width: 1080;
   default-height: 600;
 
-  content: Stack {
-    transition-type: crossfade;
-    visible-child-name: bind template.visible-child-name;
+  content: Adw.ToastOverlay toast_overlay {
+    Stack {
+      transition-type: crossfade;
+      visible-child-name: bind template.visible-child-name;
 
-    StackPage {
-      name: "auth";
+      StackPage {
+        name: "auth";
 
-      child: $MailAuthView auth_view {
-        authenticated => $_on_auth();
-      };
-    }
+        child: $MailAuthView auth_view {
+          authenticated => $_on_auth();
+        };
+      }
 
-    StackPage {
-      name: "content";
+      StackPage {
+        name: "content";
 
-      child: $MailContentView content_view {};
+        child: $MailContentView content_view {};
+      }
     }
   };
 }

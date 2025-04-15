@@ -22,11 +22,10 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail.core.client import delete_saved_message
-from openemail.shared import PREFIX, run_task
-from openemail.store import MailMessage, drafts
-from openemail.widgets.compose_dialog import MailComposeDialog
+from openemail import PREFIX
+from openemail.mail import MailMessage, drafts
 
+from .compose_dialog import MailComposeDialog
 from .content_page import MailContentPage
 
 
@@ -75,9 +74,10 @@ class MailDraftsPage(Adw.NavigationPage):
     @Gtk.Template.Callback()
     def _delete_all(self, *_args: Any) -> None:
         for message in drafts:
-            delete_saved_message(message.draft_id)  # type: ignore
+            if not message:
+                continue
 
-        run_task(drafts.update())
+            drafts.delete(message.draft_id)  # type: ignore
 
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not (isinstance(message := selection.get_selected_item(), MailMessage)):

@@ -26,16 +26,17 @@ from typing import Any
 import keyring
 from gi.repository import Adw, GObject, Gtk
 
-from openemail.core.client import data_dir, user
+from openemail import PREFIX, secret_service, settings
 from openemail.core.model import User
-from openemail.shared import PREFIX, secret_service, settings
-from openemail.store import (
+from openemail.mail import (
     address_book,
     broadcasts,
     contact_requests,
+    data_dir,
     inbox,
     outbox,
     profiles,
+    user,
 )
 
 from .window import MailWindow

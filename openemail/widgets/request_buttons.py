@@ -22,10 +22,9 @@ from typing import Any
 
 from gi.repository import GObject, Gtk
 
-from openemail.core.client import new_contact
+from openemail import PREFIX, run_task, settings
 from openemail.core.model import Address
-from openemail.shared import PREFIX, notifier, run_task, settings
-from openemail.store import address_book, broadcasts, inbox
+from openemail.mail import address_book
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/request-buttons.ui")
@@ -41,22 +40,9 @@ class MailRequestButtons(Gtk.Box):
         self.__remove_address()
 
         try:
-            address = Address(self.address)
+            run_task(address_book.new(Address(self.address.get_text())))
         except ValueError:
             return
-
-        def addition_failed() -> None:
-            notifier.send(_("Failed to add contact"))
-            address_book.remove(address)
-            run_task(broadcasts.update())
-            run_task(inbox.update())
-
-        run_task(new_contact(address), on_failure=addition_failed)
-
-        address_book.add(address)
-        run_task(address_book.update_profiles())
-        run_task(broadcasts.update())
-        run_task(inbox.update())
 
     @Gtk.Template.Callback()
     def _decline(self, *_args: Any) -> None:

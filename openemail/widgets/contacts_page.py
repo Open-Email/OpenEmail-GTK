@@ -23,19 +23,12 @@ from typing import Any
 
 from gi.repository import Adw, Gio, Gtk
 
-from openemail.core.client import new_contact
+from openemail import PREFIX, run_task
 from openemail.core.model import Address
-from openemail.shared import PREFIX, notifier, run_task
-from openemail.store import (
-    MailProfile,
-    address_book,
-    broadcasts,
-    contact_requests,
-    inbox,
-)
-from openemail.widgets.form import MailForm
+from openemail.mail import MailProfile, address_book, contact_requests
 
 from .content_page import MailContentPage
+from .form import MailForm
 from .profile_view import MailProfileView
 from .request_buttons import MailRequestButtons  # noqa: F401
 
@@ -121,22 +114,9 @@ class MailContactsPage(Adw.NavigationPage):
             return
 
         try:
-            address = Address(self.address.get_text())
+            run_task(address_book.new(Address(self.address.get_text())))
         except ValueError:
             return
-
-        def addition_failed() -> None:
-            notifier.send(_("Failed to add contact"))
-            address_book.remove(address)
-            run_task(broadcasts.update())
-            run_task(inbox.update())
-
-        run_task(new_contact(address), on_failure=addition_failed)
-
-        address_book.add(address)
-        run_task(address_book.update_profiles())
-        run_task(broadcasts.update())
-        run_task(inbox.update())
 
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not isinstance(selected := selection.get_selected_item(), MailProfile):

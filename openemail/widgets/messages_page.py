@@ -23,10 +23,9 @@ from typing import Any, Literal
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail.core.client import user
+from openemail import PREFIX, settings
 from openemail.core.model import Envelope
-from openemail.shared import PREFIX, settings
-from openemail.store import MailMessage, broadcasts, inbox, outbox, profiles
+from openemail.mail import MailMessage, broadcasts, inbox, outbox, profiles, user
 
 from .compose_dialog import MailComposeDialog
 from .content_page import MailContentPage

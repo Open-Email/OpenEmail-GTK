@@ -22,17 +22,17 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
-from openemail.core.client import user
-from openemail.shared import PREFIX, notifier, run_task, settings
-from openemail.store import (
+from openemail import PREFIX, notifier, run_task, settings
+from openemail.mail import (
     address_book,
     broadcasts,
     drafts,
     inbox,
-    is_loading,
+    is_syncing,
     outbox,
     profiles,
     update_user_profile,
+    user,
 )
 
 from .compose_dialog import MailComposeDialog
@@ -49,7 +49,6 @@ class MailContentView(Adw.BreakpointBin):
 
     __gtype_name__ = "MailContentView"
 
-    toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
     split_view: Adw.OverlaySplitView = Gtk.Template.Child()
 
     sidebar: Gtk.ListBox = Gtk.Template.Child()
@@ -63,8 +62,6 @@ class MailContentView(Adw.BreakpointBin):
     trash_page: MailMessagesPage = Gtk.Template.Child()
     contacts_page: MailContactsPage = Gtk.Template.Child()
 
-    syncing_toast: Adw.Toast | None = None
-
     content_child_name = GObject.Property(type=str, default="inbox")
     profile_stack_child_name = GObject.Property(type=str, default="loading")
     profile_image = GObject.Property(type=Gdk.Paintable)
@@ -76,8 +73,6 @@ class MailContentView(Adw.BreakpointBin):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.sidebar.select_row(self.sidebar.get_row_at_index(1))
-
-        notifier.connect("send", self.__display_notification)
 
     def load_content(self, first_sync: bool = True, periodic: bool = False) -> None:
         """Populate the content view by fetching the local user's data.
@@ -102,41 +97,30 @@ class MailContentView(Adw.BreakpointBin):
                 return
 
         if not first_sync:
-            if is_loading():
-                if self.syncing_toast:
-                    self.syncing_toast.dismiss()
-
-                self.syncing_toast = Adw.Toast(
-                    title=_("Sync already running"),
-                    priority=Adw.ToastPriority.HIGH,
-                )
-                self.toast_overlay.add_toast(self.syncing_toast)
+            if is_syncing():
+                notifier.send(_("Sync already running"))
                 return
 
-            if self.syncing_toast:
-                self.syncing_toast.dismiss()
+            notifier.send(_("Syncing…"))
 
-            self.syncing_toast = Adw.Toast(
-                title=_("Syncing…"),
-                priority=Adw.ToastPriority.HIGH,
-            )
-            self.toast_overlay.add_toast(self.syncing_toast)
-
-        def update_address_book_cb() -> None:
+        def update_address_book_cb(success: bool) -> None:
             self.contacts_page.content.loading = False
+
+            if not success:
+                return
 
             run_task(address_book.update_profiles())
             run_task(
                 broadcasts.update(),
-                lambda: self.broadcasts_page.content.set_property("loading", False),
+                lambda _: self.broadcasts_page.content.set_property("loading", False),
             )
             run_task(
                 inbox.update(),
-                lambda: self.inbox_page.content.set_property("loading", False),
+                lambda _: self.inbox_page.content.set_property("loading", False),
             )
             run_task(
                 outbox.update(),
-                lambda: self.outbox_page.content.set_property("loading", False),
+                lambda _: self.outbox_page.content.set_property("loading", False),
             )
 
         self.contacts_page.content.loading = True
@@ -146,7 +130,10 @@ class MailContentView(Adw.BreakpointBin):
         run_task(address_book.update(), update_address_book_cb)
         run_task(drafts.update())
 
-        def update_user_profile_cb() -> None:
+        def update_user_profile_cb(success: bool) -> None:
+            if not success:
+                return
+
             profile = profiles[user.address]
 
             if self._image_binding:
@@ -200,11 +187,3 @@ class MailContentView(Adw.BreakpointBin):
     @Gtk.Template.Callback()
     def _on_profile_button_clciked(self, *_args: Any) -> None:
         self.profile_settings.present(self)
-
-    def __display_notification(self, _obj: Any, title: str) -> None:
-        self.toast_overlay.add_toast(
-            Adw.Toast(
-                title=title,
-                priority=Adw.ToastPriority.HIGH,
-            )
-        )

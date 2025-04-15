@@ -25,8 +25,8 @@ from typing import Any
 import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail.core.client import is_writing, user
-from openemail.shared import APP_ID, PREFIX, settings, state_settings
+from openemail import APP_ID, PREFIX, notifier, settings, state_settings
+from openemail.mail import is_writing, user
 
 from .auth_view import MailAuthView
 from .content_view import MailContentView
@@ -37,6 +37,8 @@ class MailWindow(Adw.ApplicationWindow):
     """The main application window."""
 
     __gtype_name__ = "MailWindow"
+
+    toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
 
     auth_view: MailAuthView = Gtk.Template.Child()
     content_view: MailContentView = Gtk.Template.Child()
@@ -68,6 +70,7 @@ class MailWindow(Adw.ApplicationWindow):
         )
 
         self.connect("close-request", self.__close)
+        notifier.connect("send", self.__on_send_notification)
 
         self.content_view.load_content(periodic=True)
 
@@ -119,3 +122,13 @@ class MailWindow(Adw.ApplicationWindow):
 
         alert.present(self)
         return True
+
+    def __on_send_notification(self, _obj: Any, title: str) -> None:
+        toast = Adw.Toast(title=title, priority=Adw.ToastPriority.HIGH)
+
+        if isinstance(dialog := self.get_visible_dialog(), Adw.PreferencesDialog):
+            dialog.add_toast(toast)
+            return
+
+        self.toast_overlay.dismiss_all()  # type: ignore
+        self.toast_overlay.add_toast(toast)
