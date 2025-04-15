@@ -570,6 +570,35 @@ async def fetch_link_messages(author: Address) -> tuple[Message, ...]:
     )
 
 
+async def download_attachment(parts: Iterable[Message]) -> bytes | None:
+    """Download and reconstruct an attachment from `parts`."""
+    data = b""
+    for part in parts:
+        if not (
+            part.attachment_url
+            and (
+                response := await request(
+                    part.attachment_url,
+                    auth=True,
+                )
+            )
+        ):
+            return None
+
+        with response:
+            contents = response.read()
+
+        if part and (not part.envelope.is_broadcast) and part.envelope.access_key:
+            try:
+                contents = decrypt_xchacha20poly1305(contents, part.envelope.access_key)
+            except ValueError:
+                return None
+
+        data += contents
+
+    return data
+
+
 @_writes
 async def send_message(
     readers: Iterable[Address],

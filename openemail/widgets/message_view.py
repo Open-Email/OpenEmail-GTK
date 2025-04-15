@@ -23,8 +23,7 @@ from typing import Any, Callable
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, run_task, settings
-from openemail.core.client import request
-from openemail.core.crypto import decrypt_xchacha20poly1305
+from openemail.core.client import download_attachment
 from openemail.core.model import Message
 from openemail.mail import (
     discard_message,
@@ -212,36 +211,11 @@ class MailMessageView(Adw.Bin):
             except GLib.Error:
                 return
 
-            data = b""
-            for part in parts:
-                if not (
-                    (url := part.attachment_url)
-                    and (response := await request(url, auth=True))
-                ):
-                    return
-
-                with response:
-                    contents = response.read()
-
-                if (
-                    part
-                    and (not part.envelope.is_broadcast)
-                    and part.envelope.access_key
-                ):
-                    try:
-                        contents = decrypt_xchacha20poly1305(
-                            contents, part.envelope.access_key
-                        )
-                    except ValueError:
-                        return
-
-                data += contents
+            data = await download_attachment(parts)
 
             try:
                 stream = gfile.replace(
-                    None,
-                    True,
-                    Gio.FileCreateFlags.REPLACE_DESTINATION,
+                    None, True, Gio.FileCreateFlags.REPLACE_DESTINATION
                 )
             except GLib.Error:
                 return
