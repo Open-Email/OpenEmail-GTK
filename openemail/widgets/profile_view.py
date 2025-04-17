@@ -97,6 +97,7 @@ class MailProfileView(Adw.Bin):
                     title=name,
                     subtitle=str(profile_field),
                     subtitle_selectable=True,
+                    use_markup=False,
                 )
                 row.add_css_class("property")
                 row.add_prefix(

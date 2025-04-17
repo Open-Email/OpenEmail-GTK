@@ -210,17 +210,35 @@ async def send_message(
     subject: str,
     body: str,
     reply: str | None = None,
+    attachments: dict[Gio.File, str] = {},
 ) -> None:
     """Send `message` to `readers`.
 
     If `readers` is empty, send a broadcast.
 
     `reply` is an optional `Subject-ID` of a thread that the message should be part of.
+
+    `attachments` is a dictionary of `Gio.File`s and filenames.
     """
     notifier.send(_("Sending message…"))
 
+    files = {}
+    for gfile, name in attachments.items():
+        try:
+            _success, bytes, _etag = await gfile.load_contents_async()  # type: ignore
+        except GLib.Error as error:
+            raise WriteError from error
+
+        files[name] = bytes
+
     try:
-        await client.send_message(readers, subject, body, reply)
+        await client.send_message(
+            readers,
+            subject,
+            body,
+            reply,
+            attachments=files,
+        )
     except WriteError as error:
         notifier.send(_("Failed to send message"))
         raise error

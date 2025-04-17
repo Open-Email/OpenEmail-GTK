@@ -149,6 +149,8 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_dialog.subject_id = None
         self.compose_dialog.draft_id = None
         self.compose_dialog.broadcast_switch.set_active(False)
+        self.compose_dialog.attached_files.clear()
+        self.compose_dialog.attachments.remove_all()
         self.compose_dialog.compose_form.reset()
 
         self.compose_dialog.present(self)
@@ -160,6 +162,8 @@ class MailMessagesPage(Adw.NavigationPage):
 
         envelope: Envelope = self.message_view.message.envelope
 
+        self.compose_dialog.attached_files.clear()
+        self.compose_dialog.attachments.remove_all()
         self.compose_dialog.compose_form.reset()
         self.compose_dialog.broadcast_switch.set_active(
             bool(envelope.is_broadcast and (envelope.author == user.address))

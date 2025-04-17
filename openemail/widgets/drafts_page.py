@@ -85,6 +85,8 @@ class MailDraftsPage(Adw.NavigationPage):
 
         selection.unselect_all()
 
+        self.compose_dialog.attached_files.clear()
+        self.compose_dialog.attachments.remove_all()
         self.compose_dialog.broadcast_switch.set_active(message.broadcast)
         self.compose_dialog.subject_id = message.subject_id
         self.compose_dialog.draft_id = message.draft_id

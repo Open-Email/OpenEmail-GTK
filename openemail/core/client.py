@@ -30,7 +30,15 @@ from json import JSONDecodeError
 from os import getenv
 from pathlib import Path
 from socket import setdefaulttimeout
-from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, Iterable
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Coroutine,
+    Generator,
+    Iterable,
+    Sequence,
+)
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -59,6 +67,8 @@ from .model import (
     generate_link,
     parse_headers,
 )
+
+MAX_MESSAGE_SIZE = 64_000_000
 
 setdefaulttimeout(5)
 
@@ -134,7 +144,7 @@ async def request(
             "%s, URL: %s, Method: %s, Authorization: %s",
             error,
             url,
-            method or ("GET" if data else "POST"),
+            method or ("POST" if data else "GET"),
             auth,
         )
 
@@ -599,26 +609,9 @@ async def download_attachment(parts: Iterable[Message]) -> bytes | None:
     return data
 
 
-@_writes
-async def send_message(
-    readers: Iterable[Address],
-    subject: str,
-    body: str,
-    reply: str | None = None,
-) -> None:
-    """Send `message` to `readers`.
-
-    If `readers` is empty, send a broadcast.
-
-    `reply` is an optional `Subject-ID` of a thread that the message should be part of.
-    """
-    logging.debug("Sending message…")
-    if not body:
-        logging.warning("Failed sending message: Empty body")
-        raise WriteError
-
-    body_bytes = body.encode("utf-8")
-    message_id = sha256(
+def generate_message_id() -> str:
+    """Generate a unique ID for a new message."""
+    return sha256(
         "".join(
             (
                 random_string(length=24),
@@ -628,122 +621,73 @@ async def send_message(
         ).encode("utf-8")
     ).hexdigest()
 
-    checksum_fields = ["Message-Id", "Message-Headers"]
-    headers: dict[str, str] = {
-        "Message-Id": message_id,
-        "Content-Type": "application/octet-stream",
-    }
-    content_headers: dict[str, str] = {
-        "Id": message_id,
-        "Author": str(user.address),
-        "Date": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "Size": str(len(body)),
-        "Checksum": ";".join(
-            (
-                f"algorithm={CHECKSUM_ALGORITHM}",
-                f"value={sha256(body_bytes).hexdigest()}",
-            )
-        ),
-        "Subject": subject,
-        "Subject-Id": reply or message_id,
-        "Category": "personal",
-    }
 
-    if readers:
-        content_headers["Readers"] = ",".join((str(reader) for reader in readers))
+@_writes
+async def send_message(
+    readers: Iterable[Address],
+    subject: str,
+    body: str,
+    subject_id: str | None = None,
+    attachments: dict[str, bytes] = {},
+) -> None:
+    """Send a message to `readers`.
 
-    headers_bytes = "\n".join(
-        (":".join((key, value)) for key, value in content_headers.items())
-    ).encode("utf-8")
+    If `readers` is empty, send a broadcast.
 
-    if readers:
-        checksum_fields += ("Message-Encryption", "Message-Access")
-        access_key = random_bytes(32)
-
-        groups: list[str] = []
-        for reader in (*readers, user.address):
-            if not (
-                (profile := await fetch_profile(reader))
-                and (key_field := profile.optional.get("encryption-key"))
-                and (key_id := key_field.value.key_id)
-            ):
-                logging.error("Failed sending message: Could not fetch reader profiles")
-                raise WriteError
-
-            try:
-                groups.append(
-                    ";".join(
-                        (
-                            f"link={generate_link(user.address, reader)}",
-                            f"fingerprint={fingerprint(profile.required['signing-key'].value)}",
-                            f"value={b64encode(encrypt_anonymous(access_key, key_field.value)).decode('utf-8')}",
-                            f"id={key_id}",
-                        )
-                    )
-                )
-            except ValueError as error:
-                logging.error("Error sending message: %s", error)
-                raise WriteError
-
-        try:
-            body_bytes = encrypt_xchacha20poly1305(body_bytes, access_key)
-            headers_bytes = encrypt_xchacha20poly1305(headers_bytes, access_key)
-        except ValueError as error:
-            logging.error("Error sending message: %s", error)
-            raise WriteError
-
-        headers.update(
-            {
-                "Message-Access": ",".join(groups),
-                "Message-Encryption": ENCRYPTION_ALGORITHM,
-                "Message-Headers": f"algorithm={ENCRYPTION_ALGORITHM};",
-            }
-        )
-
-    headers["Message-Headers"] = (
-        headers.get("Message-Headers", "")
-        + f"value={b64encode(headers_bytes).decode('utf-8')}"
-    )
-
-    checksum_fields.sort()
-    checksum = sha256(("".join(headers[f] for f in checksum_fields)).encode("utf-8"))
-
-    try:
-        signature = sign_data(user.private_signing_key, checksum.digest())
-    except ValueError as error:
-        logging.error("Error sending message: %s", error)
+    `subject_id` is an optional ID of a thread that the message should be part of.
+    """
+    logging.debug("Sending message…")
+    if not body:
+        logging.warning("Failed sending message: Empty body")
         raise WriteError
 
-    headers.update(
-        {
-            "Content-Length": str(len(body_bytes)),
-            "Message-Checksum": ";".join(
-                (
-                    f"algorithm={CHECKSUM_ALGORITHM}",
-                    f"order={':'.join(checksum_fields)}",
-                    f"value={checksum.hexdigest()}",
-                )
-            ),
-            "Message-Signature": ";".join(
-                (
-                    f"id={user.public_encryption_key.key_id or 0}",
-                    f"algorithm={SIGNING_ALGORITHM}",
-                    f"value={signature}",
-                )
-            ),
-        }
-    )
+    messages: list[tuple[dict[str, str], bytes]] = []
+    date = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    for agent in await get_agents(user.address):
-        if await request(
-            _Home(agent, user.address).messages,
-            auth=True,
-            headers=headers,
-            data=body_bytes,
-        ):
-            await notify_readers(readers)
-            logging.info("Message sent successfully")
-            return
+    try:
+        message_id, headers, content, parts = await __build_message(
+            readers,
+            subject,
+            body.encode("utf-8"),
+            subject_id,
+            date=date,
+            attachments=attachments,
+        )
+        messages.append((headers, content))
+
+        for part in parts.values():
+            fields, data = part
+            _id, h, c, _p = await __build_message(
+                readers,
+                subject,
+                data,
+                subject_id,
+                attachment=fields,
+                parent_id=message_id,
+                date=date,
+            )
+            messages.append((h, c))
+
+    except WriteError as error:
+        logging.error("Error sending message: %s", error)
+        raise error
+
+    sent = 0
+    for message in messages:
+        for agent in await get_agents(user.address):
+            if await request(
+                _Home(agent, user.address).messages,
+                auth=True,
+                headers=message[0],
+                data=message[1],
+            ):
+                await notify_readers(readers)
+                sent += 1
+                break
+
+    if sent >= len(messages):
+        logging.info("Message sent successfully")
+        return
 
     logging.error("Failed sending message")
     raise WriteError
@@ -1003,3 +947,188 @@ class _Link:
         self.mail = f"{_Mail(agent, address).mail}/link/{link}"
         self.messages = f"{self.mail}/messages"
         self.notifications = f"{self.home}/notifications"
+
+
+def __sign_headers(fields: Sequence[str]) -> ...:
+    checksum = sha256(("".join(fields)).encode("utf-8"))
+
+    try:
+        signature = sign_data(user.private_signing_key, checksum.digest())
+    except ValueError as error:
+        raise ValueError(f"Can't sign message: {error}")
+
+    return checksum, signature
+
+
+async def __build_message_access(
+    readers: Iterable[Address],
+    access_key: bytes,
+) -> tuple[str, ...]:
+    access: list[str] = []
+    for reader in (*readers, user.address):
+        if not (
+            (profile := await fetch_profile(reader))
+            and (key_field := profile.optional.get("encryption-key"))
+            and (key_id := key_field.value.key_id)
+        ):
+            raise ValueError("Failed fetching reader profiles")
+
+        try:
+            encrypted = encrypt_anonymous(access_key, key_field.value)
+        except ValueError as error:
+            raise ValueError("Failed to encrypt access key") from error
+
+        access.append(
+            ";".join(
+                (
+                    f"link={generate_link(user.address, reader)}",
+                    f"fingerprint={fingerprint(profile.required['signing-key'].value)}",
+                    f"value={b64encode(encrypted).decode('utf-8')}",
+                    f"id={key_id}",
+                )
+            )
+        )
+
+    return tuple(access)
+
+
+async def __build_message(
+    readers: Iterable[Address],
+    subject: str,
+    content: bytes,
+    subject_id: str | None = None,
+    *,
+    attachment: dict[str, str] = {},
+    parent_id: str | None = None,
+    date: str | None = None,
+    attachments: dict[str, bytes] = {},
+) -> tuple[str, dict[str, str], bytes, dict[str, tuple[dict[str, str], bytes]]]:
+    date = date or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    headers: dict[str, str] = {
+        "Message-Id": generate_message_id(),
+        "Content-Type": "application/octet-stream",
+    }
+
+    files = {}
+    modified = date  # TODO
+    for name, data in attachments.items():
+        for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
+            part = data[start : start + MAX_MESSAGE_SIZE]
+            files[name] = (
+                {
+                    "name": name,
+                    "id": generate_message_id(),
+                    "type": "application/octet-stream",  # TODO
+                    "size": str(len(data)),
+                    "part": f"{index + 1}/{len(attachments)}",
+                    "modified": modified,
+                },
+                part,
+            )
+
+    headers_bytes = "\n".join(
+        (
+            ":".join((key, value))
+            for key, value in (
+                {
+                    "Id": headers["Message-Id"],
+                    "Author": str(user.address),
+                    "Date": date,
+                    "Size": str(len(content)),
+                    "Checksum": ";".join(
+                        (
+                            f"algorithm={CHECKSUM_ALGORITHM}",
+                            f"value={sha256(content).hexdigest()}",
+                        )
+                    ),
+                    "Subject": subject,
+                    "Subject-Id": subject_id or headers["Message-Id"],
+                    "Category": "personal",
+                }
+                | (
+                    {"Readers": ",".join((str(reader) for reader in readers))}
+                    if readers
+                    else {}
+                )
+                | (
+                    {
+                        "File": ";".join(
+                            f"{key}={value}" for key, value in attachment.items()
+                        )
+                    }
+                    if attachment
+                    else {}
+                )
+                | ({"Parent-Id": parent_id} if parent_id else {})
+                | (
+                    {
+                        "Files": ",".join(
+                            (";".join(f"{key}={value}" for key, value in a[0].items()))
+                            for a in files.values()
+                        )
+                    }
+                    if files
+                    else {}
+                )
+            ).items()
+        )
+    ).encode("utf-8")
+
+    if readers:
+        access_key = random_bytes(32)
+
+        try:
+            message_access = await __build_message_access(readers, access_key)
+        except ValueError as error:
+            raise WriteError from error
+
+        try:
+            content = encrypt_xchacha20poly1305(content, access_key)
+            headers_bytes = encrypt_xchacha20poly1305(headers_bytes, access_key)
+        except ValueError as error:
+            raise WriteError from error
+
+        headers.update(
+            {
+                "Message-Access": ",".join(message_access),
+                "Message-Encryption": ENCRYPTION_ALGORITHM,
+                "Message-Headers": f"algorithm={ENCRYPTION_ALGORITHM};",
+            }
+        )
+
+    headers["Message-Headers"] = (
+        headers.get("Message-Headers", "")
+        + f"value={b64encode(headers_bytes).decode('utf-8')}"
+    )
+
+    checksum_fields = sorted(
+        ("Message-Id", "Message-Headers")
+        + (("Message-Encryption", "Message-Access") if readers else ())
+    )
+
+    try:
+        checksum, signature = __sign_headers(tuple(headers[f] for f in checksum_fields))
+    except ValueError as error:
+        raise WriteError from error
+
+    headers.update(
+        {
+            "Content-Length": str(len(content)),
+            "Message-Checksum": ";".join(
+                (
+                    f"algorithm={CHECKSUM_ALGORITHM}",
+                    f"order={':'.join(checksum_fields)}",
+                    f"value={checksum.hexdigest()}",
+                )
+            ),
+            "Message-Signature": ";".join(
+                (
+                    f"id={user.public_encryption_key.key_id or 0}",
+                    f"algorithm={SIGNING_ALGORITHM}",
+                    f"value={signature}",
+                )
+            ),
+        }
+    )
+
+    return headers["Message-Id"], headers, content, files

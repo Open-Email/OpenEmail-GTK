@@ -150,7 +150,7 @@ template $MailComposeDialog: Adw.Dialog {
           top-margin: 6;
           left-margin: 12;
           right-margin: 12;
-          bottom-margin: 120;
+          bottom-margin: 220;
           wrap-mode: GTK_WRAP_WORD_CHAR;
 
           accessibility {
@@ -161,6 +161,17 @@ template $MailComposeDialog: Adw.Dialog {
             "inline",
           ]
         }
+
+        ListBox attachments {
+          selection-mode: none;
+          margin-bottom: 12;
+          margin-start: 12;
+          margin-end: 12;
+        
+          styles [
+            "boxed-list-separate",
+          ]
+        }
       }
     };
 
@@ -168,37 +179,47 @@ template $MailComposeDialog: Adw.Dialog {
     ActionBar {
       [start]
       Button {
-        icon-name: "text-bold-symbolic";
-        tooltip-text: _("Bold");
-        clicked => $_format_bold();
+        clicked => $_attach_files();
+        
+        Adw.ButtonContent {
+          icon-name: "mail-attachment-symbolic";
+          label: _("Attach Files");
+        }
       }
 
-      [start]
+      [end]
       Button {
-        icon-name: "text-italic-symbolic";
-        tooltip-text: _("Italic");
-        clicked => $_format_italic();
+        icon-name: "quotation-symbolic";
+        tooltip-text: _("Quote");
+        clicked => $_format_quote();
       }
-
-      [start]
-      Button {
-        icon-name: "text-strikethrough-symbolic";
-        tooltip-text: _("Strikethrough");
-        clicked => $_format_strikethrough();
-      }
-
-      [start]
+      
+      [end]
       Button {
         icon-name: "text-heading-symbolic";
         tooltip-text: _("Increase Heading Level");
         clicked => $_format_heading();
       }
-
-      [start]
+      
+      [end]
       Button {
-        icon-name: "quotation-symbolic";
-        tooltip-text: _("Quote");
-        clicked => $_format_quote();
+        icon-name: "text-strikethrough-symbolic";
+        tooltip-text: _("Strikethrough");
+        clicked => $_format_strikethrough();
+      }
+      
+      [end]
+      Button {
+        icon-name: "text-italic-symbolic";
+        tooltip-text: _("Italic");
+        clicked => $_format_italic();
+      }
+      
+      [end]
+      Button {
+        icon-name: "text-bold-symbolic";
+        tooltip-text: _("Bold");
+        clicked => $_format_bold();
       }
     }
   }

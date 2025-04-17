@@ -20,7 +20,7 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from openemail import PREFIX, run_task
 from openemail.core.model import Address
@@ -42,15 +42,19 @@ class MailComposeDialog(Adw.Dialog):
     body_view: MailMessageBody = Gtk.Template.Child()
     compose_form: MailForm = Gtk.Template.Child()
 
+    attachments: Gtk.ListBox = Gtk.Template.Child()
+
     body: Gtk.TextBuffer
     subject_id: str | None = None
     draft_id: int | None = None
 
+    attached_files: dict[Gio.File, str]
     _save: bool = True
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
+        self.attached_files = {}
         self.body = self.body_view.get_buffer()
 
     @Gtk.Template.Callback()
@@ -80,12 +84,17 @@ class MailComposeDialog(Adw.Dialog):
                     False,
                 ),
                 self.subject_id,
+                attachments=self.attached_files,
             )
         )
 
         self.subject_id = None
         self._save = False
         self.force_close()
+
+    @Gtk.Template.Callback()
+    def _attach_files(self, *_args: Any) -> None:
+        run_task(self.__attach_files())
 
     @Gtk.Template.Callback()
     def _reveal_readers(self, revealer: Gtk.Revealer, *_args: Any) -> None:
@@ -137,6 +146,31 @@ class MailComposeDialog(Adw.Dialog):
             self.broadcast_switch.get_active(),
             self.draft_id,
         )
+
+    async def __attach_files(self) -> None:
+        try:
+            gfiles = await Gtk.FileDialog().open_multiple(  # type: ignore
+                win if isinstance(win := self.get_root(), Gtk.Window) else None
+            )
+        except GLib.Error:
+            return
+
+        for gfile in gfiles:
+            try:
+                display_name = (
+                    await gfile.query_info_async(
+                        Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
+                        Gio.FileQueryInfoFlags.NONE,
+                        GLib.PRIORITY_DEFAULT,
+                    )
+                ).get_display_name()
+            except GLib.Error:
+                continue
+
+            self.attached_files[gfile] = display_name
+            row = Adw.ActionRow(title=display_name, use_markup=False)
+            row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
+            self.attachments.append(row)
 
     def __format_line(self, syntax: str, toggle: bool = False) -> None:
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)

@@ -158,7 +158,7 @@ class MailMessageView(Adw.Bin):
         self.attachments.remove_all()
         self.attachment_messages = {}
         for name, parts in message.attachments.items():
-            row = Adw.ActionRow(title=name, activatable=True)
+            row = Adw.ActionRow(title=name, activatable=True, use_markup=False)
             row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
             self.attachment_messages[row] = parts
             self.attachments.append(row)
@@ -217,11 +217,12 @@ class MailMessageView(Adw.Bin):
                 stream = gfile.replace(
                     None, True, Gio.FileCreateFlags.REPLACE_DESTINATION
                 )
+                await stream.write_bytes_async(
+                    GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT
+                )
+                await stream.close_async(GLib.PRIORITY_DEFAULT)
             except GLib.Error:
                 return
-
-            await stream.write_bytes_async(GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT)
-            await stream.close_async(GLib.PRIORITY_DEFAULT)
 
         run_task(save())
 
