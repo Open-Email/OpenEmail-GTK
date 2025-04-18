@@ -246,13 +246,19 @@ async def send_message(
     await outbox.update()
 
 
-async def discard_message(message_id: str) -> None:
-    """Discard `message_id`."""
-    try:
-        await client.delete_message(message_id)
-    except WriteError as error:
-        notifier.send(_("Failed to discard message"))
-        raise error
+async def discard_message(message: Message) -> None:
+    """Discard `message` and its children."""
+    failed = False
+
+    for msg in [message] + message.children:
+        try:
+            await client.delete_message(msg.envelope.message_id)
+        except WriteError:
+            if not failed:
+                notifier.send(_("Failed to discard message"))
+
+            failed = True
+            continue
 
     await outbox.update()
 

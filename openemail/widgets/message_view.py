@@ -257,8 +257,7 @@ class MailMessageView(Adw.Bin):
         if (response != "discard") or (not self.message):
             return
 
-        for message in [self.message] + self.message.children:
-            run_task(discard_message(message.envelope.message_id))
+        run_task(discard_message(self.message))
 
     def __add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
         (
