@@ -22,9 +22,8 @@ from typing import Any
 
 from gi.repository import GObject, Gtk
 
-from openemail import PREFIX, run_task, settings
+from openemail import PREFIX, mail, run_task, settings
 from openemail.core.model import Address
-from openemail.mail import address_book
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/request-buttons.ui")
@@ -40,7 +39,7 @@ class MailRequestButtons(Gtk.Box):
         self.__remove_address()
 
         try:
-            run_task(address_book.new(Address(self.address.get_text())))
+            run_task(mail.address_book.new(Address(self.address.get_text())))
         except ValueError:
             return
 

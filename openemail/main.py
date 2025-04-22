@@ -36,10 +36,9 @@ from typing import Any, Callable, Sequence
 import keyring
 from gi.repository import Adw, Gio
 
-from openemail import APP_ID, PREFIX, log_file, secret_service, settings
+from openemail import APP_ID, PREFIX, log_file, mail, secret_service, settings
 
 from .core.model import Address
-from .mail import user
 from .widgets.preferences import MailPreferences
 from .widgets.window import MailWindow
 
@@ -71,12 +70,12 @@ class MailApplication(Adw.Application):
             return
 
         try:
-            user.address = Address(address)
-            user.public_encryption_key, user.private_encryption_key = get_keys(
-                encryption_key,
+            mail.user.address = Address(address)
+            mail.user.public_encryption_key, mail.user.private_encryption_key = (
+                get_keys(encryption_key)
             )
-            user.public_signing_key, user.private_signing_key = get_keys(
-                signing_key,
+            mail.user.public_signing_key, mail.user.private_signing_key = get_keys(
+                signing_key
             )
         except ValueError:
             return
@@ -158,10 +157,7 @@ def main() -> int:
         handlers=(
             (
                 logging.StreamHandler(),
-                RotatingFileHandler(
-                    log_file,
-                    maxBytes=1000000,
-                ),
+                RotatingFileHandler(log_file, maxBytes=1000000),
             )
         ),
     )

@@ -21,7 +21,7 @@
 from abc import ABC, abstractmethod
 from base64 import b64decode
 from dataclasses import dataclass, field, fields
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from hashlib import sha256
 from re import match
 from typing import Generic, NamedTuple, Self, TypeVar
@@ -361,7 +361,7 @@ class Notification:
     @property
     def is_expired(self) -> bool:
         """Whether or not the notification has already expired."""
-        return (self.received_on - datetime.now()).days >= 7
+        return (self.received_on - datetime.now(timezone.utc)).days >= 7
 
 
 def parse_headers(data: str) -> dict[str, str]:

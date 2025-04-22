@@ -23,9 +23,9 @@ from typing import Any, Literal
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import PREFIX, settings
+from openemail import PREFIX, mail, settings
 from openemail.core.model import Envelope
-from openemail.mail import MailMessage, broadcasts, inbox, outbox, profiles, user
+from openemail.mail import MailMessage
 
 from .compose_dialog import MailComposeDialog
 from .content_page import MailContentPage
@@ -56,18 +56,18 @@ class MailMessagesPage(Adw.NavigationPage):
         match folder:
             case "broadcasts":
                 self.title = _("Broadcasts")
-                model = broadcasts
+                model = mail.broadcasts
             case "inbox":
                 self.title = _("Inbox")
-                model = inbox
+                model = mail.inbox
             case "outbox":
                 self.title = _("Outbox")
-                model = outbox
+                model = mail.outbox
             case "trash":
                 self.title = _("Trash")
                 inboxes = Gio.ListStore.new(Gio.ListModel)
-                inboxes.append(broadcasts)
-                inboxes.append(inbox)
+                inboxes.append(mail.broadcasts)
+                inboxes.append(mail.inbox)
                 model = Gtk.FlattenListModel.new(inboxes)
 
         self.content.model = Gtk.SingleSelection(
@@ -166,13 +166,13 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_dialog.attachments.remove_all()
         self.compose_dialog.compose_form.reset()
         self.compose_dialog.broadcast_switch.set_active(
-            bool(envelope.is_broadcast and (envelope.author == user.address))
+            bool(envelope.is_broadcast and (envelope.author == mail.user.address))
         )
         self.compose_dialog.readers.set_text(
             ", ".join(
                 str(reader)
                 for reader in list(dict.fromkeys(envelope.readers + [envelope.author]))
-                if (reader != user.address)
+                if (reader != mail.user.address)
             )
         )
 
@@ -183,7 +183,7 @@ class MailMessagesPage(Adw.NavigationPage):
                     envelope.date.strftime("%x"),
                     envelope.date.strftime("%H:%M"),
                     profile.name
-                    if (profile := profiles.get(envelope.author))
+                    if (profile := mail.profiles.get(envelope.author))
                     else envelope.author,
                 )
                 + "\n"

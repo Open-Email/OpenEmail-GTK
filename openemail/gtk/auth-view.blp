@@ -16,23 +16,33 @@ template $MailAuthView: Adw.Bin {
 
           Adw.Clamp {
             Adw.PreferencesGroup {
-              separate-rows: true;
-
               Adw.EntryRow email_entry {
                 title: _("Email");
-                entry-activated => $_log_in();
               }
 
-              Button log_in_button {
+              Box {
                 margin-top: 24;
                 halign: center;
-                label: _("Log In");
-                clicked => $_log_in();
+                spacing: 12;
 
-                styles [
-                  "pill",
-                  "suggested-action",
-                ]
+                Button log_in_button {
+                  label: _("Log In");
+                  clicked => $_log_in();
+
+                  styles [
+                    "pill",
+                    "suggested-action",
+                  ]
+                }
+
+                Button sign_up_button {
+                  label: _("Create Account");
+                  clicked => $_sign_up();
+
+                  styles [
+                    "pill",
+                  ]
+                }
               }
             }
           }
@@ -100,6 +110,69 @@ template $MailAuthView: Adw.Bin {
         };
       }
     }
+
+    Adw.NavigationPage sign_up_page {
+      title: _("Create Account");
+
+      Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {}
+
+        content: Adw.StatusPage {
+          title: _("Up & Running in Seconds");
+          description: _("Get a free email address on the network");
+
+          Adw.Clamp {
+            Adw.PreferencesGroup {
+              Adw.EntryRow user_name_entry {
+                title: _("User Name");
+                text: bind email_entry.text bidirectional;
+                entry-activated => $_register();
+
+                [suffix]
+                Label {
+                  label: "@open.email";
+
+                  styles [
+                    "dim-label",
+                  ]
+                }
+              }
+
+              Button register_button {
+                margin-top: 24;
+                halign: center;
+                clicked => $_register();
+
+                Stack {
+                  transition-type: crossfade;
+                  visible-child-name: bind template.register-button-child-name;
+
+                  StackPage {
+                    name: "label";
+
+                    child: Label {
+                      label: _("Register");
+                    };
+                  }
+
+                  StackPage {
+                    name: "loading";
+
+                    child: Adw.Spinner {};
+                  }
+                }
+
+                styles [
+                  "pill",
+                  "suggested-action",
+                ]
+              }
+            }
+          }
+        };
+      }
+    }
   }
 }
 
@@ -110,6 +183,17 @@ $MailForm email_form {
   addresses: StringList {
     strings [
       "email_entry",
+    ]
+  };
+}
+
+$MailForm register_form {
+  form: template;
+  submit: register_button;
+
+  plain: StringList {
+    strings [
+      "user_name_entry",
     ]
   };
 }

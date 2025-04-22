@@ -23,9 +23,9 @@ from typing import Any
 
 from gi.repository import Adw, Gio, Gtk
 
-from openemail import PREFIX, run_task
+from openemail import PREFIX, mail, run_task
 from openemail.core.model import Address
-from openemail.mail import MailProfile, address_book, contact_requests
+from openemail.mail import MailProfile
 
 from .content_page import MailContentPage
 from .form import MailForm
@@ -50,8 +50,8 @@ class MailContactsPage(Adw.NavigationPage):
         super().__init__(**kwargs)
 
         models = Gio.ListStore.new(Gio.ListModel)
-        models.append(contact_requests)
-        models.append(address_book)
+        models.append(mail.contact_requests)
+        models.append(mail.address_book)
 
         self.content.model = (
             selection := Gtk.SingleSelection(
@@ -114,7 +114,7 @@ class MailContactsPage(Adw.NavigationPage):
             return
 
         try:
-            run_task(address_book.new(Address(self.address.get_text())))
+            run_task(mail.address_book.new(Address(self.address.get_text())))
         except ValueError:
             return
 

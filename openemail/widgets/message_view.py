@@ -22,16 +22,9 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, run_task, settings
+from openemail import PREFIX, mail, run_task, settings
 from openemail.core.client import download_attachment
 from openemail.core.model import Message
-from openemail.mail import (
-    discard_message,
-    profiles,
-    restore_message,
-    trash_message,
-    user,
-)
 
 from .message_body import MailMessageBody
 from .profile_view import MailProfileView
@@ -136,7 +129,7 @@ class MailMessageView(Adw.Bin):
 
         self.can_reply = True
 
-        self.author_is_self = message.envelope.author == user.address
+        self.author_is_self = message.envelope.author == mail.user.address
 
         self.can_trash = (not self.author_is_self) and (
             message.envelope.message_id not in settings.get_strv("trashed-messages")
@@ -145,13 +138,13 @@ class MailMessageView(Adw.Bin):
 
         if self._name_binding:
             self._name_binding.unbind()
-        self._name_binding = profiles[message.envelope.author].bind_property(
+        self._name_binding = mail.profiles[message.envelope.author].bind_property(
             "name", self, "name", GObject.BindingFlags.SYNC_CREATE
         )
 
         if self._image_binding:
             self._image_binding.unbind()
-        self._image_binding = profiles[message.envelope.author].bind_property(
+        self._image_binding = mail.profiles[message.envelope.author].bind_property(
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
@@ -174,20 +167,20 @@ class MailMessageView(Adw.Bin):
             self.readers = _("Broadcast")
             return
 
-        self.readers = f"{_('Readers:')} {str(profiles[user.address].name)}"
+        self.readers = f"{_('Readers:')} {str(mail.profiles[mail.user.address].name)}"
 
         for reader in message.envelope.readers:
-            if reader == user.address:
+            if reader == mail.user.address:
                 continue
 
-            self.readers += (
-                f", {profile.name if (profile := profiles.get(reader)) else reader}"
-            )
+            self.readers += f", {profile.name if (profile := mail.profiles.get(reader)) else reader}"
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:
         self.profile_view.profile = (
-            profiles[self.message.envelope.author].profile if self.message else None
+            mail.profiles[self.message.envelope.author].profile
+            if self.message
+            else None
         )
         self.profile_dialog.present(self)
 
@@ -231,10 +224,10 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        trash_message(message_id := self.message.envelope.message_id)
+        mail.trash_message(message_id := self.message.envelope.message_id)
         self.__add_to_undo(
             _("Message moved to trash"),
-            lambda: restore_message(message_id),
+            lambda: mail.restore_message(message_id),
         )
 
     @Gtk.Template.Callback()
@@ -242,10 +235,10 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        restore_message(message_id := self.message.envelope.message_id)
+        mail.restore_message(message_id := self.message.envelope.message_id)
         self.__add_to_undo(
             _("Message restored"),
-            lambda: trash_message(message_id),
+            lambda: mail.trash_message(message_id),
         )
 
     @Gtk.Template.Callback()
@@ -257,7 +250,7 @@ class MailMessageView(Adw.Bin):
         if (response != "discard") or (not self.message):
             return
 
-        run_task(discard_message(self.message))
+        run_task(mail.discard_message(self.message))
 
     def __add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
         (

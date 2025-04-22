@@ -22,9 +22,8 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
-from openemail import PREFIX, run_task
+from openemail import PREFIX, mail, run_task
 from openemail.core.model import Address
-from openemail.mail import drafts, send_message
 
 from .form import MailForm
 from .message_body import MailMessageBody
@@ -71,11 +70,11 @@ class MailComposeDialog(Adw.Dialog):
                     return
 
         if self.draft_id:
-            drafts.delete(self.draft_id)
+            mail.drafts.delete(self.draft_id)
             self.draft_id = None
 
         run_task(
-            send_message(
+            mail.send_message(
                 readers,
                 self.subject.get_text(),
                 self.body.get_text(
@@ -138,7 +137,7 @@ class MailComposeDialog(Adw.Dialog):
         if not (subject or body):
             return
 
-        drafts.save(
+        mail.drafts.save(
             self.readers.get_text(),
             subject,
             body,

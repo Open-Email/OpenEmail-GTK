@@ -23,22 +23,16 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, run_task
+from openemail import PREFIX, mail, run_task
 from openemail.core.model import Profile
-from openemail.mail import (
-    WriteError,
-    delete_profile_image,
-    profile_categories,
-    update_profile,
-    update_profile_image,
-)
+from openemail.mail import WriteError
 
 from .form import MailForm
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-settings.ui")
 class MailProfileSettings(Adw.PreferencesDialog):
-    """A page presenting the local user's editable public profile."""
+    """A page presenting the user's editable public profile."""
 
     __gtype_name__ = "MailProfileSettings"
 
@@ -87,7 +81,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
         self.status.set_text(str(profile.optional.get("status") or ""))
         self.about.set_text(str(profile.optional.get("about") or ""))
 
-        for category, fields in profile_categories.items():
+        for category, fields in mail.profile_categories.items():
             if category.ident == "general":  # Already added manually
                 continue
 
@@ -134,7 +128,10 @@ class MailProfileSettings(Adw.PreferencesDialog):
     @Gtk.Template.Callback()
     def _delete_image(self, *_args: Any) -> None:
         self.pending = True
-        run_task(delete_profile_image(), lambda _: self.set_property("pending", False))
+        run_task(
+            mail.delete_profile_image(),
+            lambda _: self.set_property("pending", False),
+        )
 
     @Gtk.Template.Callback()
     def _replace_image(self, *_args: Any) -> None:
@@ -153,7 +150,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
             self.away_warning.set_text("")
 
         self._changed = False
-        run_task(update_profile({key: f() for key, f in self._fields.items()}))
+        run_task(mail.update_profile({key: f() for key, f in self._fields.items()}))
 
     async def __replace_image(self) -> None:
         (filters := Gio.ListStore.new(Gtk.FileFilter)).append(
@@ -191,7 +188,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
         self.pending = True
 
         try:
-            await update_profile_image(pixbuf)
+            await mail.update_profile_image(pixbuf)
         except WriteError:
             pass
 

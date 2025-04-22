@@ -18,12 +18,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-
 import asyncio
 from abc import abstractmethod
 from collections import defaultdict
+from dataclasses import fields
 from functools import wraps
 from itertools import chain
+from shutil import rmtree
 from typing import (
     Any,
     AsyncGenerator,
@@ -35,9 +36,10 @@ from typing import (
     TypeVar,
 )
 
+import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
 
-from openemail import notifier, run_task, settings
+from openemail import notifier, run_task, secret_service, settings
 
 from .core import client
 from .core.client import WriteError as WriteError
@@ -45,7 +47,7 @@ from .core.client import cache_dir as cache_dir
 from .core.client import data_dir as data_dir
 from .core.client import is_writing as is_writing
 from .core.client import user as user
-from .core.model import Address, Message, Profile
+from .core.model import Address, Message, Profile, User
 
 _syncing = 0
 
@@ -82,16 +84,45 @@ def try_auth(
     """Try authenticating and call `on_success` or `on_failure` based on the result."""
 
     async def auth() -> None:
-        if not client.try_auth():
+        if not await client.try_auth():
             raise ValueError
 
-    def failure() -> None:
+    def done(success: bool) -> None:
+        if success:
+            if on_success:
+                on_success()
+            return
+
         notifier.send(_("Authentication failed"))
 
         if on_failure:
             on_failure()
 
-    run_task(auth(), lambda success: on_success if success else failure)
+    run_task(auth(), done)
+
+
+def register(
+    on_success: Callable[[], Any] | None = None,
+    on_failure: Callable[[], Any] | None = None,
+) -> None:
+    """Try authenticating and call `on_success` or `on_failure` based on the result."""
+
+    async def auth() -> None:
+        if not await client.register():
+            raise ValueError
+
+    def done(success: bool) -> None:
+        if success:
+            if on_success:
+                on_success()
+            return
+
+        notifier.send(_("Registration failed, try another address"))
+
+        if on_failure:
+            on_failure()
+
+    run_task(auth(), done)
 
 
 async def update_profile(values: dict[str, str]) -> None:
@@ -279,6 +310,42 @@ def restore_message(message_id: str) -> None:
         return
 
     settings.set_strv("trashed-messages", trashed)
+
+
+def log_out() -> None:
+    """Remove the user's local account."""
+    for profile in profiles.values():
+        profile.profile = None
+
+    profiles.clear()
+    address_book.clear()
+    contact_requests.clear()
+    broadcasts.clear()
+    inbox.clear()
+    outbox.clear()
+
+    settings.reset("address")
+    settings.reset("sync-interval")
+    settings.reset("contact-requests")
+    settings.reset("trashed-messages")
+
+    keyring.delete_password(secret_service, str(user.address))
+
+    rmtree(data_dir, ignore_errors=True)
+
+    for field in fields(User):
+        delattr(user, field.name)
+
+
+async def delete_account() -> None:
+    """Permanently delete the user's account."""
+    try:
+        await client.delete_account()
+    except WriteError:
+        notifier.send(_("Failed to delete account"))
+        return
+
+    log_out()
 
 
 T = TypeVar("T")

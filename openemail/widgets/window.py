@@ -25,8 +25,7 @@ from typing import Any
 import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, notifier, settings, state_settings
-from openemail.mail import is_writing, user
+from openemail import APP_ID, PREFIX, mail, notifier, settings, state_settings
 
 from .auth_view import MailAuthView
 from .content_view import MailContentView
@@ -74,7 +73,7 @@ class MailWindow(Adw.ApplicationWindow):
 
         self.content_view.load_content(periodic=True)
 
-        if not user.logged_in:
+        if not mail.user.logged_in:
             return
 
         self.visible_child_name = "content"
@@ -83,24 +82,25 @@ class MailWindow(Adw.ApplicationWindow):
     def _on_auth(self, *_args: Any) -> None:
         keyring.set_password(
             f"{APP_ID}.Keys",
-            str(user.address),
+            str(mail.user.address),
             json.dumps(
                 {
-                    "privateEncryptionKey": str(user.private_encryption_key),
+                    "privateEncryptionKey": str(mail.user.private_encryption_key),
                     "privateSigningKey": b64encode(
-                        bytes(user.private_signing_key) + bytes(user.public_signing_key)
+                        bytes(mail.user.private_signing_key)
+                        + bytes(mail.user.public_signing_key)
                     ).decode("utf-8"),
                 }
             ),
         )
 
-        settings.set_string("address", str(user.address))
+        settings.set_string("address", str(mail.user.address))
 
         self.content_view.load_content()
         self.visible_child_name = "content"
 
     def __close(self, *_args: Any) -> bool:
-        if self._quit or (not is_writing()):
+        if self._quit or (not mail.is_writing()):
             return False
 
         def on_response(_obj: Any, response: str) -> None:

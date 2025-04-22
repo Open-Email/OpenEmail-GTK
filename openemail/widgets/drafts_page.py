@@ -22,8 +22,8 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import PREFIX
-from openemail.mail import MailMessage, drafts
+from openemail import PREFIX, mail
+from openemail.mail import MailMessage
 
 from .compose_dialog import MailComposeDialog
 from .content_page import MailContentPage
@@ -45,7 +45,7 @@ class MailDraftsPage(Adw.NavigationPage):
         self.content.model = Gtk.SingleSelection(
             autoselect=False,
             model=Gtk.FilterListModel.new(
-                drafts,
+                mail.drafts,
                 filter := Gtk.CustomFilter.new(
                     lambda item: (
                         (lowered := self.content.search_text.lower())
@@ -73,11 +73,11 @@ class MailDraftsPage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _delete_all(self, *_args: Any) -> None:
-        for message in drafts:
+        for message in mail.drafts:
             if not message:
                 continue
 
-            drafts.delete(message.draft_id)  # type: ignore
+            mail.drafts.delete(message.draft_id)  # type: ignore
 
     def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not (isinstance(message := selection.get_selected_item(), MailMessage)):

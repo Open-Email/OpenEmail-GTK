@@ -44,9 +44,10 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from .crypto import (
+    ANONYMOUS_ENCRYPTION_CIPHER,
     CHECKSUM_ALGORITHM,
-    ENCRYPTION_ALGORITHM,
     SIGNING_ALGORITHM,
+    SYMMETRIC_CIPHER,
     decrypt_anonymous,
     decrypt_xchacha20poly1305,
     encrypt_anonymous,
@@ -189,14 +190,36 @@ async def get_agents(address: Address) -> tuple[str, ...]:
 
 
 async def try_auth() -> bool:
-    """Try authenticating with `client.user` and get whether the attempt was successful."""
-    logging.debug("Attempting authentication…")
+    """Try authenticating with `client.user` and return whether the attempt was successful."""
+    logging.info("Authenticating…")
     for agent in await get_agents(user.address):
         if await request(_Home(agent, user.address).home, auth=True, method="HEAD"):
             logging.info("Authentication successful")
             return True
 
     logging.error("Authentication failed")
+    return False
+
+
+async def register() -> bool:
+    """Try registering `client.user` and return whether the attempt was successful."""
+    logging.info("Registering…")
+
+    data = f"""Name: {user.address.local_part}
+Encryption-Key: id={user.public_encryption_key.key_id}; algorithm={ANONYMOUS_ENCRYPTION_CIPHER}; value={str(user.public_encryption_key)}
+Signing-Key: algorithm={SIGNING_ALGORITHM}; value={str(user.public_signing_key)}
+Updated: {datetime.now(timezone.utc).isoformat(timespec="seconds")}
+"""
+
+    data = data.encode("utf-8")
+
+    for agent in await get_agents(user.address):
+        if await request(_Account(agent, user.address).account, auth=True, data=data):
+            logging.info("Authentication successful")
+            return True
+
+    # TODO: More descriptive errors
+    logging.error("Registration failed")
     return False
 
 
@@ -227,7 +250,7 @@ async def update_profile(values: dict[str, str]) -> None:
 
     values.update(
         {
-            "Updated": datetime.now().isoformat(timespec="seconds"),
+            "Updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "Encryption-Key": "; ".join(
                 (
                     f"id={user.public_encryption_key.key_id or 0}",
@@ -809,7 +832,13 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
                 continue
 
             notifications.add(ident)
-            yield Notification(ident, datetime.now(), link, notifier, signing_key_fp)
+            yield Notification(
+                ident,
+                datetime.now(timezone.utc),
+                link,
+                notifier,
+                signing_key_fp,
+            )
 
         notifications_path.parent.mkdir(parents=True, exist_ok=True)
         json.dump(tuple(notifications), notifications_path.open("w"))
@@ -916,6 +945,22 @@ def delete_saved_message(ident: int) -> None:
     logging.debug("Deleted message %i", ident)
 
 
+async def delete_account() -> None:
+    """Permanently deletes `client.user`'s account."""
+    logging.debug("Deleting account…")
+    for agent in await get_agents(user.address):
+        if await request(
+            _Account(agent, user.address).account,
+            auth=True,
+            method="DELETE",
+        ):
+            logging.info("Account deleted")
+            return
+
+    raise WriteError
+    logging.error("Failed to delete account")
+
+
 class _Home:
     def __init__(self, agent: str, address: Address) -> None:
         self.home = f"https://{agent}/home/{address.host_part}/{address.local_part}"
@@ -939,6 +984,13 @@ class _Mail:
         self.profile = f"{self.mail}/profile"
         self.image = f"{self.mail}/image"
         self.messages = f"{self.mail}/messages"
+
+
+class _Account:
+    def __init__(self, agent: str, address: Address) -> None:
+        self.account = (
+            f"https://{agent}/account/{address.host_part}/{address.local_part}"
+        )
 
 
 class _Link:
@@ -1091,8 +1143,8 @@ async def __build_message(
         headers.update(
             {
                 "Message-Access": ",".join(message_access),
-                "Message-Encryption": ENCRYPTION_ALGORITHM,
-                "Message-Headers": f"algorithm={ENCRYPTION_ALGORITHM};",
+                "Message-Encryption": SYMMETRIC_CIPHER,
+                "Message-Headers": f"algorithm={SYMMETRIC_CIPHER};",
             }
         )
 

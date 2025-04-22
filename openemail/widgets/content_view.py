@@ -22,18 +22,7 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
-from openemail import PREFIX, notifier, run_task, settings
-from openemail.mail import (
-    address_book,
-    broadcasts,
-    drafts,
-    inbox,
-    is_syncing,
-    outbox,
-    profiles,
-    update_user_profile,
-    user,
-)
+from openemail import PREFIX, mail, notifier, run_task, settings
 
 from .compose_dialog import MailComposeDialog
 from .contacts_page import MailContactsPage
@@ -75,7 +64,7 @@ class MailContentView(Adw.BreakpointBin):
         self.sidebar.select_row(self.sidebar.get_row_at_index(1))
 
     def load_content(self, first_sync: bool = True, periodic: bool = False) -> None:
-        """Populate the content view by fetching the local user's data.
+        """Populate the content view by fetching the user's data.
 
         Shows a placeholder page while loading if `first_sync` is set to True.
         Otherwise, a toast is presented at the start and end.
@@ -97,7 +86,7 @@ class MailContentView(Adw.BreakpointBin):
                 return
 
         if not first_sync:
-            if is_syncing():
+            if mail.is_syncing():
                 notifier.send(_("Sync already running"))
                 return
 
@@ -109,17 +98,17 @@ class MailContentView(Adw.BreakpointBin):
             if not success:
                 return
 
-            run_task(address_book.update_profiles())
+            run_task(mail.address_book.update_profiles())
             run_task(
-                broadcasts.update(),
+                mail.broadcasts.update(),
                 lambda _: self.broadcasts_page.content.set_property("loading", False),
             )
             run_task(
-                inbox.update(),
+                mail.inbox.update(),
                 lambda _: self.inbox_page.content.set_property("loading", False),
             )
             run_task(
-                outbox.update(),
+                mail.outbox.update(),
                 lambda _: self.outbox_page.content.set_property("loading", False),
             )
 
@@ -127,14 +116,14 @@ class MailContentView(Adw.BreakpointBin):
         self.broadcasts_page.content.loading = True
         self.inbox_page.content.loading = True
         self.outbox_page.content.loading = True
-        run_task(address_book.update(), update_address_book_cb)
-        run_task(drafts.update())
+        run_task(mail.address_book.update(), update_address_book_cb)
+        run_task(mail.drafts.update())
 
         def update_user_profile_cb(success: bool) -> None:
             if not success:
                 return
 
-            profile = profiles[user.address]
+            profile = mail.profiles[mail.user.address]
 
             if self._image_binding:
                 self._image_binding.unbind()
@@ -150,7 +139,7 @@ class MailContentView(Adw.BreakpointBin):
             self.profile_stack_child_name = "profile"
 
         self.profile_stack_child_name = "spinner"
-        run_task(update_user_profile(), update_user_profile_cb)
+        run_task(mail.update_user_profile(), update_user_profile_cb)
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:

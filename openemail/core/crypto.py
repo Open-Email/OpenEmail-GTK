@@ -35,9 +35,10 @@ from nacl.public import PrivateKey, PublicKey, SealedBox
 from nacl.signing import SigningKey
 from nacl.utils import random
 
-ENCRYPTION_ALGORITHM = "xchacha20poly1305"
-SIGNING_ALGORITHM = "ed25519"
+ANONYMOUS_ENCRYPTION_CIPHER = "curve25519xsalsa20poly1305"
 CHECKSUM_ALGORITHM = "sha256"
+SIGNING_ALGORITHM = "ed25519"
+SYMMETRIC_CIPHER = "xchacha20poly1305"
 
 
 class Key(NamedTuple):
@@ -48,10 +49,7 @@ class Key(NamedTuple):
     key_id: str | None = None
 
     def __str__(self) -> str:
-        try:
-            return b64encode(self.data).decode("utf-8")
-        except UnicodeDecodeError:
-            return str(self.data)
+        return b64encode(self.data).decode("utf-8")
 
     def __bytes__(self) -> bytes:
         return self.data
@@ -75,7 +73,7 @@ def sign_data(private_key: Key, data: bytes) -> str:
         return b64encode(
             SigningKey(bytes(private_key)).sign(data).signature,
         ).decode("utf-8")
-    except (CryptoError, UnicodeDecodeError) as error:
+    except CryptoError as error:
         raise ValueError("Unable to sign data") from error
 
 
@@ -90,6 +88,19 @@ def random_string(length: int) -> str:
         choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
         for _ in range(length)
     )
+
+
+def generate_encryption_keys() -> tuple[Key, Key]:
+    """Generate a new keypair used for encryption."""
+    return (
+        Key(bytes(key := PrivateKey.generate())),
+        Key(bytes(key.public_key), key_id=random_string(4)),
+    )
+
+
+def generate_signing_keys() -> tuple[Key, Key]:
+    """Generate a new keypair used for signing."""
+    return (Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key)))
 
 
 def get_nonce(host: str, public_key: Key, private_key: Key) -> str:

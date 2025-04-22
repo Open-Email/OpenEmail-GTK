@@ -167,7 +167,7 @@ template $MailComposeDialog: Adw.Dialog {
           margin-bottom: 12;
           margin-start: 12;
           margin-end: 12;
-        
+
           styles [
             "boxed-list-separate",
           ]
@@ -180,7 +180,7 @@ template $MailComposeDialog: Adw.Dialog {
       [start]
       Button {
         clicked => $_attach_files();
-        
+
         Adw.ButtonContent {
           icon-name: "mail-attachment-symbolic";
           label: _("Attach Files");
@@ -193,28 +193,28 @@ template $MailComposeDialog: Adw.Dialog {
         tooltip-text: _("Quote");
         clicked => $_format_quote();
       }
-      
+
       [end]
       Button {
         icon-name: "text-heading-symbolic";
         tooltip-text: _("Increase Heading Level");
         clicked => $_format_heading();
       }
-      
+
       [end]
       Button {
         icon-name: "text-strikethrough-symbolic";
         tooltip-text: _("Strikethrough");
         clicked => $_format_strikethrough();
       }
-      
+
       [end]
       Button {
         icon-name: "text-italic-symbolic";
         tooltip-text: _("Italic");
         clicked => $_format_italic();
       }
-      
+
       [end]
       Button {
         icon-name: "text-bold-symbolic";

@@ -22,9 +22,8 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail import PREFIX, run_task
+from openemail import PREFIX, mail, run_task
 from openemail.core.model import Profile
-from openemail.mail import address_book, profile_categories
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-view.ui")
@@ -64,7 +63,7 @@ class MailProfileView(Adw.Bin):
             return
 
         string = str(profile.address)
-        if any(contact.address == string for contact in address_book):  # type: ignore
+        if any(contact.address == string for contact in mail.address_book):  # type: ignore
             self.can_remove = True
         else:
             self.can_remove = False
@@ -78,7 +77,7 @@ class MailProfileView(Adw.Bin):
 
         self._groups = []
 
-        for category, fields in profile_categories.items():
+        for category, fields in mail.profile_categories.items():
             group = None
             for ident, name in fields.items():
                 if not (profile_field := profile.optional.get(ident)):
@@ -138,4 +137,4 @@ class MailProfileView(Adw.Bin):
         if (response != "remove") or (not self.profile):
             return
 
-        run_task(address_book.delete(self.profile.address))
+        run_task(mail.address_book.delete(self.profile.address))

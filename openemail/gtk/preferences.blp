@@ -30,10 +30,20 @@ template $MailPreferences: Adw.PreferencesDialog {
 
     Adw.PreferencesGroup {
       title: _("Account");
+      separate-rows: true;
 
       Adw.ButtonRow {
         title: _("Log Out");
         activated => $_remove_account();
+
+        styles [
+          "destructive-action",
+        ]
+      }
+
+      Adw.ButtonRow {
+        title: _("Delete Account");
+        activated => $_delete_account();
 
         styles [
           "destructive-action",
@@ -103,12 +113,25 @@ template $MailPreferences: Adw.PreferencesDialog {
 Adw.AlertDialog confirm_remove_dialog {
   heading: _("Log Out?");
   body: _("All local data will be deleted. Log in again to restore data.");
-  close-response: "cancel";
+  close-response: "close";
   default-response: "remove";
   response => $_confirm_remove();
 
   responses [
-    cancel: _("Cancel"),
+    close: _("Cancel"),
     remove: _("Log Out") destructive,
+  ]
+}
+
+Adw.AlertDialog confirm_delete_dialog {
+  heading: _("Delete Account?");
+  body: _("All remote data on the server will be permanently deleted");
+  close-response: "cancel";
+  default-response: "cancel";
+  response => $_confirm_delete();
+
+  responses [
+    cancel: _("Cancel"),
+    delete: _("Delete") destructive,
   ]
 }

@@ -22,10 +22,13 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, notifier
-from openemail.core.crypto import get_keys
+from openemail import APP_ID, PREFIX, mail, notifier
+from openemail.core.crypto import (
+    generate_encryption_keys,
+    generate_signing_keys,
+    get_keys,
+)
 from openemail.core.model import Address
-from openemail.mail import try_auth, user
 
 from .form import MailForm
 
@@ -42,6 +45,10 @@ class MailAuthView(Adw.Bin):
     email_entry: Adw.EntryRow = Gtk.Template.Child()
     email_form: MailForm = Gtk.Template.Child()
 
+    sign_up_page: Adw.NavigationPage = Gtk.Template.Child()
+    user_name_entry: Adw.EntryRow = Gtk.Template.Child()
+    register_form: MailForm = Gtk.Template.Child()
+
     keys_status_page: Adw.StatusPage = Gtk.Template.Child()
     keys_page: Adw.NavigationPage = Gtk.Template.Child()
     signing_key_entry: Adw.EntryRow = Gtk.Template.Child()
@@ -49,6 +56,7 @@ class MailAuthView(Adw.Bin):
     auth_form: MailForm = Gtk.Template.Child()
 
     button_child_name = GObject.Property(type=str, default="label")
+    register_button_child_name = GObject.Property(type=str, default="label")
 
     authenticated = GObject.Signal()
 
@@ -62,17 +70,57 @@ class MailAuthView(Adw.Bin):
         self.signing_key_entry.grab_focus()
 
     @Gtk.Template.Callback()
+    def _sign_up(self, *args: Any) -> None:
+        self.navigation_view.push(self.sign_up_page)
+
+    @Gtk.Template.Callback()
+    def _register(self, *args: Any) -> None:
+        try:
+            mail.user.address = Address(self.user_name_entry.get_text() + "@open.email")
+        except ValueError:
+            notifier.send(_("Invalid name, try another one"))
+            return
+
+        mail.user.private_encryption_key, mail.user.public_encryption_key = (
+            generate_encryption_keys()
+        )
+        mail.user.private_signing_key, mail.user.public_signing_key = (
+            generate_signing_keys()
+        )
+
+        def success() -> None:
+            self.register_button_child_name = "label"
+            self.emit("authenticated")
+
+            def reset() -> None:
+                self.email_form.reset()
+                self.register_form.reset()
+                self.navigation_view.pop()
+                self.auth_form.reset()
+
+            GLib.timeout_add_seconds(1, reset)
+
+        self.register_button_child_name = "loading"
+        mail.register(
+            success,
+            lambda: self.set_property(
+                "register-button-child-name",
+                "label",
+            ),
+        )
+
+    @Gtk.Template.Callback()
     def _focus_encryption_key_entry(self, *_args: Any) -> None:
         self.encryption_key_entry.grab_focus()
 
     @Gtk.Template.Callback()
     def _authenticate(self, *_args: Any) -> None:
         try:
-            user.address = Address(self.email_entry.get_text())
-            user.public_encryption_key, user.private_encryption_key = get_keys(
-                self.encryption_key_entry.get_text()
+            mail.user.address = Address(self.email_entry.get_text())
+            mail.user.public_encryption_key, mail.user.private_encryption_key = (
+                get_keys(self.encryption_key_entry.get_text())
             )
-            user.public_signing_key, user.private_signing_key = get_keys(
+            mail.user.public_signing_key, mail.user.private_signing_key = get_keys(
                 self.signing_key_entry.get_text()
             )
 
@@ -86,10 +134,17 @@ class MailAuthView(Adw.Bin):
 
             def reset() -> None:
                 self.email_form.reset()
+                self.register_form.reset()
                 self.navigation_view.pop()
                 self.auth_form.reset()
 
             GLib.timeout_add_seconds(1, reset)
 
         self.button_child_name = "loading"
-        try_auth(success, lambda: self.set_property("button-child-name", "label"))
+        mail.try_auth(
+            success,
+            lambda: self.set_property(
+                "button-child-name",
+                "label",
+            ),
+        )
