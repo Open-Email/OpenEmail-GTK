@@ -18,6 +18,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from datetime import datetime
 from typing import Any, Callable
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
@@ -122,7 +123,7 @@ class MailMessageView(Adw.Bin):
         # Date, time
         self.date = _("{} at {}").format(
             message.envelope.date.strftime("%x"),
-            message.envelope.date.strftime("%H:%M"),
+            message.envelope.date.astimezone(datetime.now().tzinfo).strftime("%H:%M"),
         )
         self.subject = message.envelope.subject
         self.body = message.body

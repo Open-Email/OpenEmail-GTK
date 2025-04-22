@@ -18,6 +18,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from datetime import datetime
 from re import M, sub
 from typing import Any, Literal
 
@@ -181,7 +182,7 @@ class MailMessagesPage(Adw.NavigationPage):
                 # Date, time, author
                 _("On {}, {}, {} wrote:").format(
                     envelope.date.strftime("%x"),
-                    envelope.date.strftime("%H:%M"),
+                    envelope.date.astimezone(datetime.now().tzinfo).strftime("%H:%M"),
                     profile.name
                     if (profile := mail.profiles.get(envelope.author))
                     else envelope.author,

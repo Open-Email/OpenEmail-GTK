@@ -19,7 +19,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import json
-from base64 import b64encode
 from typing import Any
 
 import keyring
@@ -85,11 +84,8 @@ class MailWindow(Adw.ApplicationWindow):
             str(mail.user.address),
             json.dumps(
                 {
-                    "privateEncryptionKey": str(mail.user.private_encryption_key),
-                    "privateSigningKey": b64encode(
-                        bytes(mail.user.private_signing_key)
-                        + bytes(mail.user.public_signing_key)
-                    ).decode("utf-8"),
+                    "privateEncryptionKey": str(mail.user.encryption_keys.private),
+                    "privateSigningKey": str(mail.user.signing_keys),
                 }
             ),
         )

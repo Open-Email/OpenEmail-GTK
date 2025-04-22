@@ -126,15 +126,7 @@ async def request(
             if not (agent := urlparse(url).hostname):
                 return None
 
-            headers.update(
-                {
-                    "Authorization": get_nonce(
-                        agent,
-                        user.public_signing_key,
-                        user.private_signing_key,
-                    )
-                }
-            )
+            headers.update({"Authorization": get_nonce(agent, user.signing_keys)})
 
         return await asyncio.to_thread(
             urlopen, Request(url, method=method, headers=headers, data=data)
@@ -205,13 +197,14 @@ async def register() -> bool:
     """Try registering `client.user` and return whether the attempt was successful."""
     logging.info("Registering…")
 
-    data = f"""Name: {user.address.local_part}
-Encryption-Key: id={user.public_encryption_key.key_id}; algorithm={ANONYMOUS_ENCRYPTION_CIPHER}; value={str(user.public_encryption_key)}
-Signing-Key: algorithm={SIGNING_ALGORITHM}; value={str(user.public_signing_key)}
-Updated: {datetime.now(timezone.utc).isoformat(timespec="seconds")}
-"""
-
-    data = data.encode("utf-8")
+    data = "\n".join(
+        (
+            f"Name: {user.address.local_part}",
+            f"Encryption-Key: id={user.encryption_keys.public.key_id}; algorithm={ANONYMOUS_ENCRYPTION_CIPHER}; value={str(user.encryption_keys.public)}",
+            f"Signing-Key: algorithm={SIGNING_ALGORITHM}; value={str(user.signing_keys.public)}",
+            f"Updated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
+        )
+    ).encode("utf-8")
 
     for agent in await get_agents(user.address):
         if await request(_Account(agent, user.address).account, auth=True, data=data):
@@ -253,15 +246,15 @@ async def update_profile(values: dict[str, str]) -> None:
             "Updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "Encryption-Key": "; ".join(
                 (
-                    f"id={user.public_encryption_key.key_id or 0}",
-                    f"algorithm={user.public_encryption_key.algorithm}",
-                    f"value={user.public_encryption_key}",
+                    f"id={user.encryption_keys.public.key_id or 0}",
+                    f"algorithm={user.encryption_keys.public.algorithm}",
+                    f"value={user.encryption_keys.public}",
                 )
             ),
             "Signing-Key": "; ".join(
                 (
-                    f"algorithm={user.public_signing_key.algorithm}",
-                    f"value={user.public_signing_key}",
+                    f"algorithm={user.signing_keys.public.algorithm}",
+                    f"value={user.signing_keys.public}",
                 )
             ),
         }
@@ -356,8 +349,7 @@ async def fetch_contacts() -> tuple[Address, ...]:
             try:
                 contact = decrypt_anonymous(
                     parts[1].strip(),
-                    user.private_encryption_key,
-                    user.public_encryption_key,
+                    user.encryption_keys.private,
                 ).decode("utf-8")
             except ValueError:
                 continue
@@ -390,7 +382,7 @@ async def new_contact(address: Address) -> None:
         data = b64encode(
             encrypt_anonymous(
                 f"address={address};broadcasts=yes".encode("utf-8"),
-                user.public_encryption_key,
+                user.encryption_keys.public,
             )
         )
     except ValueError as error:
@@ -807,8 +799,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
                 notifier = Address(
                     decrypt_anonymous(
                         encrypted_notifier,
-                        user.private_encryption_key,
-                        user.public_encryption_key,
+                        user.encryption_keys.private,
                     ).decode("utf-8")
                 )
             except ValueError:
@@ -1005,7 +996,7 @@ def __sign_headers(fields: Sequence[str]) -> ...:
     checksum = sha256(("".join(fields)).encode("utf-8"))
 
     try:
-        signature = sign_data(user.private_signing_key, checksum.digest())
+        signature = sign_data(user.signing_keys.private, checksum.digest())
     except ValueError as error:
         raise ValueError(f"Can't sign message: {error}")
 
@@ -1175,7 +1166,7 @@ async def __build_message(
             ),
             "Message-Signature": ";".join(
                 (
-                    f"id={user.public_encryption_key.key_id or 0}",
+                    f"id={user.encryption_keys.public.key_id or 0}",
                     f"algorithm={SIGNING_ALGORITHM}",
                     f"value={signature}",
                 )

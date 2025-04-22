@@ -18,7 +18,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from __future__ import annotations
+
 from base64 import b64decode, b64encode
+from dataclasses import dataclass
 from hashlib import sha256
 from random import choice
 from secrets import token_bytes
@@ -48,23 +51,37 @@ class Key(NamedTuple):
     algorithm: str = SIGNING_ALGORITHM
     key_id: str | None = None
 
-    def __str__(self) -> str:
-        return b64encode(self.data).decode("utf-8")
-
     def __bytes__(self) -> bytes:
         return self.data
 
+    def __str__(self) -> str:
+        return b64encode(bytes(self)).decode("utf-8")
 
-def get_keys(b64: str) -> tuple[Key, Key]:
-    """Get the public-private key pair for a given Base64-encoded string."""
-    bytes = b64decode(b64.encode("utf-8"))
-    match len(bytes):
-        case 32:
-            return Key(crypto_scalarmult_base(bytes)), Key(bytes)
-        case 64:
-            return Key(bytes[32:]), Key(bytes[:32])
-        case length:
-            raise ValueError(f"Invalid key length of {length}")
+
+@dataclass(slots=True)
+class KeyPair:
+    """A public-private keypair."""
+
+    private: Key
+    public: Key
+
+    def __bytes__(self) -> bytes:
+        return bytes(self.private) + bytes(self.public)
+
+    def __str__(self) -> str:
+        return b64encode(bytes(self)).decode("utf-8")
+
+    @staticmethod
+    def from_b64(b64: str) -> KeyPair:
+        """Get the keypair for a given Base64-encoded string."""
+        bytes = b64decode(b64.encode("utf-8"))
+        match len(bytes):
+            case 32:
+                return KeyPair(Key(bytes), Key(crypto_scalarmult_base(bytes)))
+            case 64:
+                return KeyPair(Key(bytes[:32]), Key(bytes[32:]))
+            case length:
+                raise ValueError(f"Invalid key length of {length}")
 
 
 def sign_data(private_key: Key, data: bytes) -> str:
@@ -90,37 +107,37 @@ def random_string(length: int) -> str:
     )
 
 
-def generate_encryption_keys() -> tuple[Key, Key]:
+def generate_encryption_keys() -> KeyPair:
     """Generate a new keypair used for encryption."""
-    return (
+    return KeyPair(
         Key(bytes(key := PrivateKey.generate())),
         Key(bytes(key.public_key), key_id=random_string(4)),
     )
 
 
-def generate_signing_keys() -> tuple[Key, Key]:
+def generate_signing_keys() -> KeyPair:
     """Generate a new keypair used for signing."""
-    return (Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key)))
+    return KeyPair(Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key)))
 
 
-def get_nonce(host: str, public_key: Key, private_key: Key) -> str:
-    """Get a nonce used for authentication for the given agent `host` and `private_key`."""
+def get_nonce(agent: str, keys: KeyPair) -> str:
+    """Get an authentication nonce for the given `agent` and `keys`."""
     try:
         return "SOTN " + "; ".join(
             (
                 f"value={(value := random_string(30))}",
-                f"host={host}",
+                f"host={agent}",
                 f"algorithm={SIGNING_ALGORITHM}",
-                f"signature={sign_data(private_key, f'{host}{value}'.encode('utf-8'))}",
-                f"key={public_key}",
+                f"signature={sign_data(keys.private, f'{agent}{value}'.encode('utf-8'))}",
+                f"key={keys.public}",
             )
         )
     except ValueError as error:
         raise ValueError("Unable to get authentication nonce") from error
 
 
-def decrypt_anonymous(cipher_text: str, private_key: Key, public_key: Key) -> bytes:
-    """Decrypt `cipher_text` using the provided keys."""
+def decrypt_anonymous(cipher_text: str, private_key: Key) -> bytes:
+    """Decrypt `cipher_text` using the provided `private_key`."""
     try:
         data = b64decode(cipher_text)
     except ValueError as error:

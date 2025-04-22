@@ -207,9 +207,9 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
 async def update_user_profile() -> None:
     """Update the profile of the user by fetching new data remotely."""
     if profile := await client.fetch_profile(user.address):
-        user.public_signing_key = profile.required["signing-key"].value
+        user.signing_keys.public = profile.required["signing-key"].value
         if key := profile.optional.get("encryption-key"):
-            user.public_encryption_key = key.value
+            user.encryption_keys.public = key.value
 
     profiles[user.address].profile = profile
 

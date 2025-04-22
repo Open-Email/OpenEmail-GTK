@@ -31,6 +31,7 @@ from gi.repository.GLib import base64_decode
 from .crypto import (
     CHECKSUM_ALGORITHM,
     Key,
+    KeyPair,
     decrypt_anonymous,
     decrypt_xchacha20poly1305,
 )
@@ -99,11 +100,8 @@ class User:
 
     address: Address
 
-    public_encryption_key: Key
-    private_encryption_key: Key
-
-    public_signing_key: Key
-    private_signing_key: Key
+    encryption_keys: KeyPair
+    signing_keys: KeyPair
 
     @property
     def logged_in(self) -> bool:
@@ -183,8 +181,7 @@ class Envelope:
                             reader = parse_headers(link)
                             self.access_key = decrypt_anonymous(
                                 reader["value"],
-                                self.user.private_encryption_key,
-                                self.user.public_encryption_key,
+                                self.user.encryption_keys.private,
                             )
                             break
 
@@ -438,7 +435,7 @@ class DateTimeField(ProfileField[datetime]):
     """A profile field representing a date and time."""
 
     def __str__(self) -> str:
-        return self.value.strftime("%c")
+        return self.value.astimezone(datetime.now().tzinfo).strftime("%c")
 
     def update_value(self, data: str | None) -> None:
         """Update `self.value` from `data`."""

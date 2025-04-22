@@ -24,9 +24,9 @@ from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, mail, notifier
 from openemail.core.crypto import (
+    KeyPair,
     generate_encryption_keys,
     generate_signing_keys,
-    get_keys,
 )
 from openemail.core.model import Address
 
@@ -81,12 +81,8 @@ class MailAuthView(Adw.Bin):
             notifier.send(_("Invalid name, try another one"))
             return
 
-        mail.user.private_encryption_key, mail.user.public_encryption_key = (
-            generate_encryption_keys()
-        )
-        mail.user.private_signing_key, mail.user.public_signing_key = (
-            generate_signing_keys()
-        )
+        mail.user.encryption_keys = generate_encryption_keys()
+        mail.user.signing_keys = generate_signing_keys()
 
         def success() -> None:
             self.register_button_child_name = "label"
@@ -117,11 +113,11 @@ class MailAuthView(Adw.Bin):
     def _authenticate(self, *_args: Any) -> None:
         try:
             mail.user.address = Address(self.email_entry.get_text())
-            mail.user.public_encryption_key, mail.user.private_encryption_key = (
-                get_keys(self.encryption_key_entry.get_text())
+            mail.user.encryption_keys = KeyPair.from_b64(
+                self.encryption_key_entry.get_text(),
             )
-            mail.user.public_signing_key, mail.user.private_signing_key = get_keys(
-                self.signing_key_entry.get_text()
+            mail.user.signing_keys = KeyPair.from_b64(
+                self.signing_key_entry.get_text(),
             )
 
         except ValueError:

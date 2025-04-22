@@ -21,7 +21,7 @@
 
 import gi
 
-from openemail.core.crypto import get_keys
+from openemail.core.crypto import KeyPair
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
@@ -71,12 +71,8 @@ class MailApplication(Adw.Application):
 
         try:
             mail.user.address = Address(address)
-            mail.user.public_encryption_key, mail.user.private_encryption_key = (
-                get_keys(encryption_key)
-            )
-            mail.user.public_signing_key, mail.user.private_signing_key = get_keys(
-                signing_key
-            )
+            mail.user.encryption_keys = KeyPair.from_b64(encryption_key)
+            mail.user.signing_keys = KeyPair.from_b64(signing_key)
         except ValueError:
             return
 

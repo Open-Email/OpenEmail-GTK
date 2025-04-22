@@ -18,7 +18,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from base64 import b64encode
 from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
@@ -48,12 +47,10 @@ class MailPreferences(Adw.PreferencesDialog):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.private_signing_key = b64encode(
-            bytes(mail.user.private_signing_key) + bytes(mail.user.public_signing_key)
-        ).decode("utf-8")
-        self.private_encryption_key = str(mail.user.private_encryption_key)
-        self.public_signing_key = str(mail.user.public_signing_key)
-        self.public_encryption_key = str(mail.user.public_encryption_key)
+        self.private_signing_key = str(mail.user.signing_keys)
+        self.private_encryption_key = str(mail.user.encryption_keys.private)
+        self.public_signing_key = str(mail.user.signing_keys.public)
+        self.public_encryption_key = str(mail.user.encryption_keys.public)
 
         try:
             self.sync_interval_combo_row.set_selected(
