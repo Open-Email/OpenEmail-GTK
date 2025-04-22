@@ -207,9 +207,10 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
 async def update_user_profile() -> None:
     """Update the profile of the user by fetching new data remotely."""
     if profile := await client.fetch_profile(user.address):
-        user.signing_keys.public = profile.required["signing-key"].value
-        if key := profile.optional.get("encryption-key"):
-            user.encryption_keys.public = key.value
+        user.signing_keys.public = profile.signing_key
+
+        if profile.encryption_key:
+            user.encryption_keys.public = profile.encryption_key
 
     profiles[user.address].profile = profile
 
@@ -579,7 +580,7 @@ class MailProfile(GObject.Object):
             return
 
         self.address = str(profile.address)
-        self.name = str(profile.required["name"])
+        self.name = profile.name
 
     @GObject.Property(type=str)
     def address(self) -> str | None:

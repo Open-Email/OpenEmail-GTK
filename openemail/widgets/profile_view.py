@@ -68,9 +68,9 @@ class MailProfileView(Adw.Bin):
         else:
             self.can_remove = False
 
-        self.name = str(profile.required["name"])
+        self.name = profile.name
         self.address = profile.address
-        self.away = away.value if (away := profile.optional.get("away")) else False
+        self.away = profile.away
 
         while self._groups:
             self.page.remove(self._groups.pop())
@@ -80,7 +80,7 @@ class MailProfileView(Adw.Bin):
         for category, fields in mail.profile_categories.items():
             group = None
             for ident, name in fields.items():
-                if not (profile_field := profile.optional.get(ident)):
+                if not (profile_field := getattr(profile, ident.replace("-", "_"))):
                     continue
 
                 if not group:

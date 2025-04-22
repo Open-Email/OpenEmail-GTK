@@ -714,8 +714,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
     logging.debug("Notifying readers…")
     for reader in readers:
         if not (
-            (profile := await fetch_profile(reader))
-            and (key_field := profile.optional.get("encryption-key"))
+            (profile := await fetch_profile(reader)) and (key := profile.encryption_key)
         ):
             logging.warning(
                 "Failed notifying notify %s: Could not fetch profile",
@@ -725,10 +724,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
 
         try:
             address = b64encode(
-                encrypt_anonymous(
-                    str(user.address).encode("utf-8"),
-                    key_field.value,
-                )
+                encrypt_anonymous(str(user.address).encode("utf-8"), key)
             )
         except ValueError as error:
             logging.warning(
@@ -813,11 +809,9 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
                 )
                 continue
 
-            if not (
-                signing_key_fp == fingerprint(profile.required["signing-key"].value)
-            ) or (
-                (last_signing_key := profile.optional.get("last-signing-key"))
-                and (signing_key_fp == fingerprint(last_signing_key.value))
+            if not (signing_key_fp == fingerprint(profile.signing_key)) or (
+                profile.last_signing_key
+                and (signing_key_fp == fingerprint(profile.last_signing_key))
             ):
                 logging.debug("Fingerprint mismatch for notification: %s", notification)
                 continue
@@ -1011,13 +1005,13 @@ async def __build_message_access(
     for reader in (*readers, user.address):
         if not (
             (profile := await fetch_profile(reader))
-            and (key_field := profile.optional.get("encryption-key"))
-            and (key_id := key_field.value.key_id)
+            and (key := profile.encryption_key)
+            and (key_id := key.key_id)
         ):
             raise ValueError("Failed fetching reader profiles")
 
         try:
-            encrypted = encrypt_anonymous(access_key, key_field.value)
+            encrypted = encrypt_anonymous(access_key, key)
         except ValueError as error:
             raise ValueError("Failed to encrypt access key") from error
 
@@ -1025,7 +1019,7 @@ async def __build_message_access(
             ";".join(
                 (
                     f"link={generate_link(user.address, reader)}",
-                    f"fingerprint={fingerprint(profile.required['signing-key'].value)}",
+                    f"fingerprint={fingerprint(profile.signing_key)}",
                     f"value={b64encode(encrypted).decode('utf-8')}",
                     f"id={key_id}",
                 )

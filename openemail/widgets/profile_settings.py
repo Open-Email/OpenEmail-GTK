@@ -73,13 +73,11 @@ class MailProfileSettings(Adw.PreferencesDialog):
             return
 
         self.address = profile.address
-        self.name.set_text(str(profile.required["name"]))
-        self.away.props.enable_expansion = self.away.props.expanded = (
-            away.value if (away := profile.optional.get("away")) else False
-        )
-        self.away_warning.set_text(str(profile.optional.get("away-warning") or ""))
-        self.status.set_text(str(profile.optional.get("status") or ""))
-        self.about.set_text(str(profile.optional.get("about") or ""))
+        self.name.set_text(profile.name)
+        self.away.props.enable_expansion = self.away.props.expanded = profile.away
+        self.away_warning.set_text(profile.away_warning or "")
+        self.status.set_text(profile.status or "")
+        self.about.set_text(profile.about or "")
 
         for category, fields in mail.profile_categories.items():
             if category.ident == "general":  # Already added manually
@@ -95,7 +93,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
             page.add(group := Adw.PreferencesGroup())
 
             for ident, name in fields.items():
-                profile_field = profile.optional.get(ident)
+                profile_field = getattr(profile, ident.replace("-", "_"))
 
                 row = Adw.EntryRow(
                     title=name,

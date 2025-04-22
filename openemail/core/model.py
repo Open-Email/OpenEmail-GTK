@@ -18,15 +18,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from abc import ABC, abstractmethod
 from base64 import b64decode
 from dataclasses import dataclass, field, fields
 from datetime import date, datetime, timezone
 from hashlib import sha256
 from re import match
-from typing import Generic, NamedTuple, Self, TypeVar
-
-from gi.repository.GLib import base64_decode
+from types import NoneType, UnionType
+from typing import NamedTuple, Self, TypeVar, get_args, get_origin
 
 from .crypto import (
     CHECKSUM_ALGORITHM,
@@ -373,169 +371,103 @@ def parse_headers(data: str) -> dict[str, str]:
 
 
 @dataclass(slots=True)
-class ProfileField(ABC, Generic[T]):
-    """A generic profile field."""
-
-    default_value: T | None = None
-
-    @property
-    def value(self) -> T:
-        """The value of the field."""
-        if self.default_value is None:
-            raise ValueError("Profile incorrectly initialized")
-
-        return self.default_value
-
-    @abstractmethod
-    def update_value(self, data: str | None) -> None:
-        """Update `self.value` from `data`."""
-
-
-class StringField(ProfileField[str]):
-    """A profile field representing a string."""
-
-    def __str__(self) -> str:
-        return self.value
-
-    def update_value(self, data: str | None) -> None:
-        """Update `self.value` to `data`."""
-        self.default_value = data
-
-
-class BoolField(ProfileField[bool]):
-    """A profile field representing a boolean."""
-
-    def __str__(self) -> str:
-        return "Yes" if self.value else "No"
-
-    def update_value(self, data: str | None) -> None:
-        """Update `self.value` from `data`."""
-        if data is not None:
-            self.default_value = data == "Yes"
-
-
-class DateField(ProfileField[date]):
-    """A profile field representing a date."""
-
-    def __str__(self) -> str:
-        return self.value.strftime("%x")
-
-    def update_value(self, data: str | None) -> None:
-        """Update `self.value` from `data`."""
-        if not data:
-            return
-
-        try:
-            self.default_value = date.fromisoformat(data)
-        except ValueError:
-            pass
-
-
-class DateTimeField(ProfileField[datetime]):
-    """A profile field representing a date and time."""
-
-    def __str__(self) -> str:
-        return self.value.astimezone(datetime.now().tzinfo).strftime("%c")
-
-    def update_value(self, data: str | None) -> None:
-        """Update `self.value` from `data`."""
-        if not data:
-            return
-
-        try:
-            self.default_value = datetime.fromisoformat(data)
-        except ValueError:
-            pass
-
-
-class KeyField(ProfileField[Key]):
-    """A profile field representing a key."""
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-    def update_value(self, data: str | None) -> None:
-        """Update `self.value` from `data`."""
-        if not data:
-            return
-
-        attrs = parse_headers(data)
-
-        try:
-            self.default_value = Key(
-                base64_decode(attrs["value"]),
-                attrs["algorithm"],
-                attrs.get("id"),
-            )
-        except (KeyError, ValueError):
-            pass
-
-
 class Profile:
     """A user's profile."""
 
     address: Address
 
-    required: dict[str, ProfileField]
-    optional: dict[str, ProfileField | None]
+    name: str
+    signing_key: Key
+    updated: datetime
+
+    about: str | None
+    away_warning: str | None
+    birthday: date | None
+    books: str | None
+    department: str | None
+    education: str | None
+    encryption_key: Key | None
+    gender: str | None
+    interests: str | None
+    job_title: str | None
+    languages: str | None
+    last_signing_key: Key | None
+    location: str | None
+    mailing_address: str | None
+    movies: str | None
+    music: str | None
+    notes: str | None
+    organization: str | None
+    phone: str | None
+    places_lived: str | None
+    relationship_status: str | None
+    sports: str | None
+    status: str | None
+    website: str | None
+    work: str | None
+
+    away: bool = False
+    last_seen_public: bool = True
+    public_access: bool = True
 
     def __init__(self, address: Address, data: str) -> None:
-        self.address = address
-
-        self.required = {
-            "name": StringField(),
-            "signing-key": KeyField(),
-            "updated": DateTimeField(),
-        }
-
-        self.optional = {
-            "about": StringField(),
-            "away": BoolField(False),
-            "away-warning": StringField(),
-            "birthday": DateField(),
-            "books": StringField(),
-            "department": StringField(),
-            "education": StringField(),
-            "encryption-key": KeyField(),
-            "gender": StringField(),
-            "interests": StringField(),
-            "job-title": StringField(),
-            "languages": StringField(),
-            "last-seen-public": BoolField(True),
-            "last-signing-key": KeyField(),
-            "location": StringField(),
-            "mailing-address": StringField(),
-            "movies": StringField(),
-            "music": StringField(),
-            "notes": StringField(),
-            "organization": StringField(),
-            "phone": StringField(),
-            "place-slived": StringField(),
-            "public-access": BoolField(True),
-            "relationship-status": StringField(),
-            "sports": StringField(),
-            "status": StringField(),
-            "website": StringField(),
-            "work": StringField(),
-        }
-
         parsed_fields = {
             (split := field.split(":", 1))[0].strip().lower(): split[1].strip()
             for field in (line.strip() for line in data.split("\n") if ":" in line)
             if not field.startswith("#")
         }
 
-        for f in self.required, self.optional:
-            for key, value in f.items():
-                if not value:
+        for f in fields(Profile):
+            if f.name == "address":
+                continue
+
+            value = parsed_fields.get(f.name.replace("_", "-"))
+            required = get_origin(t := f.type) is not UnionType
+
+            if value is None:
+                if isinstance(t, type) and isinstance(f.default, t):
+                    setattr(self, f.name, f.default)
                     continue
 
-                value.update_value(parsed_fields.get(key))
-                if value.default_value is not None:
-                    continue
+                if required:
+                    raise ValueError(f'Required field "{f.name}" does not exist')
 
-                match f:
-                    case self.required:
-                        raise ValueError(f'Required field "{key}" does not exist')
-                    case self.optional:
-                        f[key] = None
+                setattr(self, f.name, None)
+                continue
+
+            if not required:
+                t = next(iter(set(get_args(f.type)) - {NoneType}))
+
+            if t is bool:
+                setattr(self, f.name, value == "Yes")
+
+            elif t is date:
+                try:
+                    value = date.fromisoformat(value)
+                except ValueError:
+                    value = None
+
+            elif t is datetime:
+                try:
+                    value = datetime.fromisoformat(value)
+                except ValueError:
+                    value = None
+
+            elif t is Key:
+                attrs = parse_headers(value)
+
+                try:
+                    value = Key(
+                        b64decode(attrs["value"]),
+                        attrs["algorithm"],
+                        attrs.get("id"),
+                    )
+                except (KeyError, ValueError):
+                    value = None
+
+            if required and (value is None):
+                raise ValueError(f'Required field "{f.name}" contains invalid data')
+
+            setattr(self, f.name, value)
+
+        self.address = address
