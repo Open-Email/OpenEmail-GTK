@@ -7,6 +7,9 @@
 		<key name="sync-interval" type="u">
 			<default>900</default>
 		</key>
+		<key name="trusted-domains" type="as">
+			<default>[]</default>
+		</key>
 		<key name="contact-requests" type="as">
 			<default>[]</default>
 		</key>

@@ -765,19 +765,19 @@ class _InboxStore(MailMessageStore):
             if notification.is_expired:
                 continue
 
-            if notification.notifier in other_contacts:
-                other_contacts.discard(notification.notifier)
-                known_notifiers.add(notification.notifier)
+            if (notifier := notification.notifier) in other_contacts:
+                other_contacts.discard(notifier)
+                known_notifiers.add(notifier)
             else:
-                settings.set_strv(
-                    "contact-requests",
-                    tuple(
-                        set(
-                            settings.get_strv("contact-requests")
-                            + [str(notification.notifier)]
-                        )
-                    ),
-                )
+                if notifier.host_part in settings.get_strv("trusted-domains"):
+                    await address_book.new(notifier)
+                    known_notifiers.add(notifier)
+                    continue
+
+                if str(notifier) in (current := settings.get_strv("contact-requests")):
+                    continue
+
+                settings.set_strv("contact-requests", current + [str(notifier)])
 
         async for messages in asyncio.as_completed(
             (

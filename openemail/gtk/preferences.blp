@@ -51,6 +51,27 @@ template $MailPreferences: Adw.PreferencesDialog {
       }
     }
   }
+  
+  Adw.PreferencesPage {
+    title: _("Domains");
+    icon-name: "website-symbolic";
+  
+    Adw.PreferencesGroup domains {
+      title: _("Trusted Domains");
+      description: _("Contact requests from these domains will be automatically accepted");
+
+      header-suffix: Button {
+        valign: end;
+        icon-name: "list-add-symbolic";
+        tooltip-text: _("Add Domain");
+        clicked => $_new_domain();
+        
+        styles [
+          "flat",
+        ]
+      };
+    }      
+  }
 
   Adw.PreferencesPage {
     title: _("Keys");
@@ -134,4 +155,35 @@ Adw.AlertDialog confirm_delete_dialog {
     cancel: _("Cancel"),
     delete: _("Delete") destructive,
   ]
+}
+
+Adw.AlertDialog add_domain_dialog {
+  heading: _("New Domain");
+  close-response: "back";
+  default-response: "add";
+  focus-widget: domain_entry;
+  response => $_add_domain();
+
+  Adw.PreferencesGroup {
+    Adw.EntryRow domain_entry {
+      title: _("Domain");
+      activates-default: true;
+    }
+  }
+
+  responses [
+    back: _("Cancel"),
+    add: _("Add") suggested,
+  ]
+}
+
+$MailForm domain_form {
+  form: template;
+  submit: add_domain_dialog;
+
+  plain: StringList {
+    strings [
+      "domain_entry",
+    ]
+  };
 }

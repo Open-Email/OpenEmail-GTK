@@ -24,6 +24,7 @@ from gi.repository import Adw, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task, settings
 
+from .form import MailForm
 from .window import MailWindow
 
 
@@ -37,15 +38,25 @@ class MailPreferences(Adw.PreferencesDialog):
     confirm_delete_dialog: Adw.AlertDialog = Gtk.Template.Child()
     sync_interval_combo_row: Adw.ComboRow = Gtk.Template.Child()
 
+    domains: Adw.PreferencesGroup = Gtk.Template.Child()
+    add_domain_dialog: Adw.AlertDialog = Gtk.Template.Child()
+    domain_entry: Adw.EntryRow = Gtk.Template.Child()
+    domain_form: MailForm = Gtk.Template.Child()
+
     private_signing_key = GObject.Property(type=str)
     private_encryption_key = GObject.Property(type=str)
     public_signing_key = GObject.Property(type=str)
     public_encryption_key = GObject.Property(type=str)
 
     _intervals = (0, 60, 300, 900, 1800, 3600)
+    _domain_rows: list[Adw.PreferencesRow]
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
+        self._domain_rows = []
+        settings.connect("changed::trusted-domains", self.__build_domains)
+        self.__build_domains()
 
         self.private_signing_key = str(mail.user.signing_keys)
         self.private_encryption_key = str(mail.user.encryption_keys.private)
@@ -93,3 +104,51 @@ class MailPreferences(Adw.PreferencesDialog):
             return
 
         win.visible_child_name = "auth"
+
+    @Gtk.Template.Callback()
+    def _new_domain(self, *_args: Any) -> None:
+        self.domain_form.reset()
+        self.add_domain_dialog.present(self)
+
+    @Gtk.Template.Callback()
+    def _add_domain(self, _obj: Any, response: str) -> None:
+        if response != "add":
+            return
+
+        if (domain := self.domain_entry.get_text()) in (
+            current := settings.get_strv("trusted-domains")
+        ):
+            return
+
+        settings.set_strv("trusted-domains", [domain] + current)
+        self.__build_domains()
+
+    def __remove_domain(self, domain: str) -> None:
+        try:
+            (current := settings.get_strv("trusted-domains")).remove(domain)
+        except ValueError:
+            return
+
+        settings.set_strv("trusted-domains", current)
+
+    def __build_domains(self, *_args: Any) -> None:
+        while self._domain_rows:
+            self.domains.remove(self._domain_rows.pop())
+
+        for domain in settings.get_strv("trusted-domains"):
+            (
+                remove_button := Gtk.Button(
+                    icon_name="trash-symbolic",
+                    tooltip_text=_("Remove"),
+                    valign=Gtk.Align.CENTER,
+                    has_frame=False,
+                )
+            ).connect(
+                "clicked",
+                lambda _obj, domain: self.__remove_domain(domain),
+                domain,
+            )
+
+            self.domains.add((row := Adw.ActionRow(title=domain)))
+            row.add_suffix(remove_button)
+            self._domain_rows.append(row)
