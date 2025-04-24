@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from random import choice
 from secrets import token_bytes
-from typing import NamedTuple
+from typing import NamedTuple, Type, TypeVar
 
 from nacl.bindings import (
     crypto_aead_xchacha20poly1305_ietf_decrypt,
@@ -58,6 +58,9 @@ class Key(NamedTuple):
         return b64encode(bytes(self)).decode("utf-8")
 
 
+T = TypeVar("T", bound="KeyPair")
+
+
 @dataclass(slots=True)
 class KeyPair:
     """A public-private keypair."""
@@ -71,32 +74,30 @@ class KeyPair:
     def __str__(self) -> str:
         return b64encode(bytes(self)).decode("utf-8")
 
-    @staticmethod
-    def from_b64(b64: str) -> KeyPair:
+    @classmethod
+    def from_b64(cls: Type[T], b64: str) -> T:
         """Get the keypair for a given Base64-encoded string."""
         bytes = b64decode(b64.encode("utf-8"))
         match len(bytes):
             case 32:
-                return KeyPair(Key(bytes), Key(crypto_scalarmult_base(bytes)))
+                return cls(Key(bytes), Key(crypto_scalarmult_base(bytes)))
             case 64:
-                return KeyPair(Key(bytes[:32]), Key(bytes[32:]))
+                return cls(Key(bytes[:32]), Key(bytes[32:]))
             case length:
                 raise ValueError(f"Invalid key length of {length}")
 
-    @staticmethod
-    def for_encryption() -> KeyPair:
+    @classmethod
+    def for_encryption(cls: Type[T]) -> T:
         """Generate a new keypair used for encryption."""
-        return KeyPair(
+        return cls(
             Key(bytes(key := PrivateKey.generate())),
             Key(bytes(key.public_key), key_id=random_string(4)),
         )
 
-    @staticmethod
-    def for_signing() -> KeyPair:
+    @classmethod
+    def for_signing(cls: Type[T]) -> T:
         """Generate a new keypair used for signing."""
-        return KeyPair(
-            Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key))
-        )
+        return cls(Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key)))
 
 
 def sign_data(private_key: Key, data: bytes) -> str:
