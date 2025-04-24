@@ -67,8 +67,8 @@ class MailWindow(Adw.ApplicationWindow):
             Gio.SettingsBindFlags.DEFAULT,
         )
 
-        self.connect("close-request", self.__close)
-        notifier.connect("send", self.__on_send_notification)
+        self.connect("close-request", self._close)
+        notifier.connect("send", self._on_send_notification)
 
         self.content_view.load_content(periodic=True)
 
@@ -95,7 +95,7 @@ class MailWindow(Adw.ApplicationWindow):
         self.content_view.load_content()
         self.visible_child_name = "content"
 
-    def __close(self, *_args: Any) -> bool:
+    def _close(self, *_args: Any) -> bool:
         if self._quit or (not mail.is_writing()):
             return False
 
@@ -119,7 +119,7 @@ class MailWindow(Adw.ApplicationWindow):
         alert.present(self)
         return True
 
-    def __on_send_notification(self, _obj: Any, title: str) -> None:
+    def _on_send_notification(self, _obj: Any, title: str) -> None:
         toast = Adw.Toast(title=title, priority=Adw.ToastPriority.HIGH)
 
         if isinstance(dialog := self.get_visible_dialog(), Adw.PreferencesDialog):

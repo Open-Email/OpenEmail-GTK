@@ -54,7 +54,7 @@ class MailForm(GObject.Object):
 
     @plain.setter
     def plain(self, fields: Gtk.StringList) -> None:
-        self.__assign_fields(MailFormField.PLAIN, fields)
+        self._assign_fields(MailFormField.PLAIN, fields)
 
     @GObject.Property(type=Gtk.StringList)
     def addresses(self) -> Gtk.StringList | None:
@@ -63,7 +63,7 @@ class MailForm(GObject.Object):
 
     @addresses.setter
     def addresses(self, fields: Gtk.StringList) -> None:
-        self.__assign_fields(MailFormField.ADDRESS, fields)
+        self._assign_fields(MailFormField.ADDRESS, fields)
 
     @GObject.Property(type=Gtk.StringList)
     def address_lists(self) -> Gtk.StringList | None:
@@ -72,7 +72,7 @@ class MailForm(GObject.Object):
 
     @address_lists.setter
     def address_lists(self, fields: Gtk.StringList) -> None:
-        self.__assign_fields(MailFormField.ADDRESS_LIST, fields)
+        self._assign_fields(MailFormField.ADDRESS_LIST, fields)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -90,18 +90,18 @@ class MailForm(GObject.Object):
                 except AttributeError:
                     continue
 
-    def __assign_fields(self, type: MailFormField, fields: Gtk.StringList) -> None:
+    def _assign_fields(self, type: MailFormField, fields: Gtk.StringList) -> None:
         self._fields[type] = fields
 
         if self.form.get_realized():
-            self.__setup()
+            self._setup()
             return
 
-        self.form.connect("realize", self.__setup)
+        self.form.connect("realize", self._setup)
 
-    def __setup(self, *_args: Any) -> None:
+    def _setup(self, *_args: Any) -> None:
         try:
-            self.form.disconnect_by_func(self.__setup)
+            self.form.disconnect_by_func(self._setup)
         except TypeError:
             pass
 
@@ -114,12 +114,12 @@ class MailForm(GObject.Object):
                 except AttributeError:
                     continue
 
-                field.connect("changed", self.__validate, type)
-                self.__validate(field, type)
+                field.connect("changed", self._validate, type)
+                self._validate(field, type)
 
-        self.__verify()
+        self._verify()
 
-    def __validate(
+    def _validate(
         self,
         field: Gtk.Editable | Gtk.TextBuffer,
         type: MailFormField,
@@ -136,16 +136,16 @@ class MailForm(GObject.Object):
 
         match type:
             case MailFormField.PLAIN:
-                (self.__valid if text else self.__invalid)(field)
+                (self._valid if text else self._invalid)(field)
 
             case MailFormField.ADDRESS:
                 try:
                     Address(text)
                 except ValueError:
-                    self.__invalid(field)
+                    self._invalid(field)
                     return
 
-                self.__valid(field)
+                self._valid(field)
 
             case MailFormField.ADDRESS_LIST:
                 if not (
@@ -155,19 +155,19 @@ class MailForm(GObject.Object):
                         if (stripped := address.strip())
                     )
                 ):
-                    self.__invalid(field)
+                    self._invalid(field)
                     return
 
                 for address in addresses:
                     try:
                         Address(address)
                     except ValueError:
-                        self.__invalid(field)
+                        self._invalid(field)
                         return
 
-                self.__valid(field)
+                self._valid(field)
 
-    def __verify(self) -> None:
+    def _verify(self) -> None:
         if isinstance(self.submit, Adw.AlertDialog):
             if not (default := self.submit.get_default_response()):
                 return
@@ -186,10 +186,10 @@ class MailForm(GObject.Object):
         if isinstance(self.submit, Gtk.Widget):
             self.submit.set_sensitive(not self.invalid)
 
-    def __valid(self, editable: Gtk.Editable | Gtk.TextBuffer) -> None:
+    def _valid(self, editable: Gtk.Editable | Gtk.TextBuffer) -> None:
         self.invalid.discard(editable)
-        self.__verify()
+        self._verify()
 
-    def __invalid(self, editable: Gtk.Editable | Gtk.TextBuffer) -> None:
+    def _invalid(self, editable: Gtk.Editable | Gtk.TextBuffer) -> None:
         self.invalid.add(editable)
-        self.__verify()
+        self._verify()

@@ -86,7 +86,7 @@ class MailContactsPage(Adw.NavigationPage):
             ),
         )
 
-        selection.connect("notify::selected", self.__on_selected)
+        selection.connect("notify::selected", self._on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{PREFIX}/gtk/contact-row.ui"
         )
@@ -118,7 +118,7 @@ class MailContactsPage(Adw.NavigationPage):
         except ValueError:
             return
 
-    def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+    def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not isinstance(selected := selection.get_selected_item(), MailProfile):
             return
 

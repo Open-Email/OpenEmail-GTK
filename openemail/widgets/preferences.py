@@ -55,8 +55,8 @@ class MailPreferences(Adw.PreferencesDialog):
         super().__init__(**kwargs)
 
         self._domain_rows = []
-        settings.connect("changed::trusted-domains", self.__build_domains)
-        self.__build_domains()
+        settings.connect("changed::trusted-domains", self._build_domains)
+        self._build_domains()
 
         self.private_signing_key = str(mail.user.signing_keys)
         self.private_encryption_key = str(mail.user.encryption_keys.private)
@@ -121,9 +121,9 @@ class MailPreferences(Adw.PreferencesDialog):
             return
 
         settings.set_strv("trusted-domains", [domain] + current)
-        self.__build_domains()
+        self._build_domains()
 
-    def __remove_domain(self, domain: str) -> None:
+    def _remove_domain(self, domain: str) -> None:
         try:
             (current := settings.get_strv("trusted-domains")).remove(domain)
         except ValueError:
@@ -131,7 +131,7 @@ class MailPreferences(Adw.PreferencesDialog):
 
         settings.set_strv("trusted-domains", current)
 
-    def __build_domains(self, *_args: Any) -> None:
+    def _build_domains(self, *_args: Any) -> None:
         while self._domain_rows:
             self.domains.remove(self._domain_rows.pop())
 
@@ -145,7 +145,7 @@ class MailPreferences(Adw.PreferencesDialog):
                 )
             ).connect(
                 "clicked",
-                lambda _obj, domain: self.__remove_domain(domain),
+                lambda _obj, domain: self._remove_domain(domain),
                 domain,
             )
 

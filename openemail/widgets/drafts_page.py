@@ -66,7 +66,7 @@ class MailDraftsPage(Adw.NavigationPage):
             ),
         )
 
-        self.content.model.connect("notify::selected", self.__on_selected)
+        self.content.model.connect("notify::selected", self._on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{PREFIX}/gtk/message-row.ui"
         )
@@ -79,7 +79,7 @@ class MailDraftsPage(Adw.NavigationPage):
 
             mail.drafts.delete(message.draft_id)  # type: ignore
 
-    def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+    def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not (isinstance(message := selection.get_selected_item(), MailMessage)):
             return
 

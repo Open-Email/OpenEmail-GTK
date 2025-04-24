@@ -633,11 +633,11 @@ class MailProfileStore(DictStore[Address, MailProfile]):
         await asyncio.gather(
             *chain(
                 (
-                    self.__update_profile(Address(contact.address))  # type: ignore
+                    self._update_profile(Address(contact.address))  # type: ignore
                     for contact in self
                 ),
                 (
-                    self.__update_profile_image(Address(contact.address))  # type: ignore
+                    self._update_profile_image(Address(contact.address))  # type: ignore
                     for contact in self
                 )
                 if trust_images
@@ -646,11 +646,11 @@ class MailProfileStore(DictStore[Address, MailProfile]):
         )
 
     @staticmethod
-    async def __update_profile(address: Address) -> None:
+    async def _update_profile(address: Address) -> None:
         profiles[address].profile = await client.fetch_profile(address)
 
     @staticmethod
-    async def __update_profile_image(address: Address) -> None:
+    async def _update_profile_image(address: Address) -> None:
         try:
             profiles[address].image = (
                 Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))

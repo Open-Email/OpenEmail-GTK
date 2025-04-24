@@ -133,7 +133,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def _replace_image(self, *_args: Any) -> None:
-        run_task(self.__replace_image())
+        run_task(self._replace_image())
 
     @Gtk.Template.Callback()
     def _on_change(self, *_args: Any) -> None:
@@ -150,7 +150,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
         self._changed = False
         run_task(mail.update_profile({key: f() for key, f in self._fields.items()}))
 
-    async def __replace_image(self) -> None:
+    async def _replace_image(self) -> None:
         (filters := Gio.ListStore.new(Gtk.FileFilter)).append(
             Gtk.FileFilter(
                 name=_("Images"),

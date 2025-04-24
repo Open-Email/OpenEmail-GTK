@@ -93,7 +93,7 @@ class MailComposeDialog(Adw.Dialog):
 
     @Gtk.Template.Callback()
     def _attach_files(self, *_args: Any) -> None:
-        run_task(self.__attach_files())
+        run_task(self._attach_files())
 
     @Gtk.Template.Callback()
     def _reveal_readers(self, revealer: Gtk.Revealer, *_args: Any) -> None:
@@ -103,23 +103,23 @@ class MailComposeDialog(Adw.Dialog):
 
     @Gtk.Template.Callback()
     def _format_bold(self, *_args: Any) -> None:
-        self.__format_inline("**")
+        self._format_inline("**")
 
     @Gtk.Template.Callback()
     def _format_italic(self, *_args: Any) -> None:
-        self.__format_inline("*")
+        self._format_inline("*")
 
     @Gtk.Template.Callback()
     def _format_strikethrough(self, *_args: Any) -> None:
-        self.__format_inline("~~")
+        self._format_inline("~~")
 
     @Gtk.Template.Callback()
     def _format_heading(self, *_args: Any) -> None:
-        self.__format_line("#")
+        self._format_line("#")
 
     @Gtk.Template.Callback()
     def _format_quote(self, *_args: Any) -> None:
-        self.__format_line(">", toggle=True)
+        self._format_line(">", toggle=True)
 
     @Gtk.Template.Callback()
     def _closed(self, *_args: Any) -> None:
@@ -146,7 +146,7 @@ class MailComposeDialog(Adw.Dialog):
             self.draft_id,
         )
 
-    async def __attach_files(self) -> None:
+    async def _attach_files(self) -> None:
         try:
             gfiles = await Gtk.FileDialog().open_multiple(  # type: ignore
                 win if isinstance(win := self.get_root(), Gtk.Window) else None
@@ -171,7 +171,7 @@ class MailComposeDialog(Adw.Dialog):
             row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
             self.attachments.append(row)
 
-    def __format_line(self, syntax: str, toggle: bool = False) -> None:
+    def _format_line(self, syntax: str, toggle: bool = False) -> None:
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)
         start.set_line_offset(0)
 
@@ -197,7 +197,7 @@ class MailComposeDialog(Adw.Dialog):
 
         self.body_view.grab_focus()
 
-    def __format_inline(self, syntax: str) -> None:
+    def _format_inline(self, syntax: str) -> None:
         self.body.begin_user_action()
         empty = False
 

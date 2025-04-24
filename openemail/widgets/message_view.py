@@ -226,7 +226,7 @@ class MailMessageView(Adw.Bin):
             return
 
         mail.trash_message(message_id := self.message.envelope.message_id)
-        self.__add_to_undo(
+        self._add_to_undo(
             _("Message moved to trash"),
             lambda: mail.restore_message(message_id),
         )
@@ -237,7 +237,7 @@ class MailMessageView(Adw.Bin):
             return
 
         mail.restore_message(message_id := self.message.envelope.message_id)
-        self.__add_to_undo(
+        self._add_to_undo(
             _("Message restored"),
             lambda: mail.trash_message(message_id),
         )
@@ -253,7 +253,7 @@ class MailMessageView(Adw.Bin):
 
         run_task(mail.discard_message(self.message))
 
-    def __add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
+    def _add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
         (
             toast := Adw.Toast(
                 title=title,

@@ -121,7 +121,7 @@ class MailMessagesPage(Adw.NavigationPage):
             ),
         )
 
-        self.content.model.connect("notify::selected", self.__on_selected)
+        self.content.model.connect("notify::selected", self._on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{PREFIX}/gtk/message-row.ui"
         )
@@ -131,7 +131,7 @@ class MailMessagesPage(Adw.NavigationPage):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.message_view.reply_button.connect("clicked", self.__reply)
+        self.message_view.reply_button.connect("clicked", self._reply)
 
         self.add_controller(
             controller := Gtk.ShortcutController(
@@ -157,7 +157,7 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_dialog.present(self)
         self.compose_dialog.readers.grab_focus()
 
-    def __reply(self, *_args: Any) -> None:
+    def _reply(self, *_args: Any) -> None:
         if not self.message_view.message:
             return self._new_message()
 
@@ -199,7 +199,7 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_dialog.present(self)
         self.compose_dialog.body_view.grab_focus()
 
-    def __on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+    def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not (
             isinstance(
                 selected := selection.get_selected_item(),

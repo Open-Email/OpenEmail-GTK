@@ -36,7 +36,7 @@ class MailRequestButtons(Gtk.Box):
 
     @Gtk.Template.Callback()
     def _accept(self, *_args: Any) -> None:
-        self.__remove_address()
+        self._remove_address()
 
         try:
             run_task(mail.address_book.new(Address(self.address.get_text())))
@@ -45,9 +45,9 @@ class MailRequestButtons(Gtk.Box):
 
     @Gtk.Template.Callback()
     def _decline(self, *_args: Any) -> None:
-        self.__remove_address()
+        self._remove_address()
 
-    def __remove_address(self) -> None:
+    def _remove_address(self) -> None:
         try:
             (requests := settings.get_strv("contact-requests")).remove(self.address)
         except ValueError:

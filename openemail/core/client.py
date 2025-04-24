@@ -660,7 +660,7 @@ async def send_message(
     date = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     try:
-        message_id, headers, content, parts = await __build_message(
+        message_id, headers, content, parts = await _build_message(
             readers,
             subject,
             body.encode("utf-8"),
@@ -672,7 +672,7 @@ async def send_message(
 
         for part in parts.values():
             fields, data = part
-            _id, h, c, _p = await __build_message(
+            _id, h, c, _p = await _build_message(
                 readers,
                 subject,
                 data,
@@ -986,7 +986,7 @@ class _Link:
         self.notifications = f"{self.home}/notifications"
 
 
-def __sign_headers(fields: Sequence[str]) -> ...:
+def _sign_headers(fields: Sequence[str]) -> ...:
     checksum = sha256(("".join(fields)).encode("utf-8"))
 
     try:
@@ -997,7 +997,7 @@ def __sign_headers(fields: Sequence[str]) -> ...:
     return checksum, signature
 
 
-async def __build_message_access(
+async def _build_message_access(
     readers: Iterable[Address],
     access_key: bytes,
 ) -> tuple[str, ...]:
@@ -1029,7 +1029,7 @@ async def __build_message_access(
     return tuple(access)
 
 
-async def __build_message(
+async def _build_message(
     readers: Iterable[Address],
     subject: str,
     content: bytes,
@@ -1115,7 +1115,7 @@ async def __build_message(
         access_key = random_bytes(32)
 
         try:
-            message_access = await __build_message_access(readers, access_key)
+            message_access = await _build_message_access(readers, access_key)
         except ValueError as error:
             raise WriteError from error
 
@@ -1144,7 +1144,7 @@ async def __build_message(
     )
 
     try:
-        checksum, signature = __sign_headers(tuple(headers[f] for f in checksum_fields))
+        checksum, signature = _sign_headers(tuple(headers[f] for f in checksum_fields))
     except ValueError as error:
         raise WriteError from error
 
