@@ -25,8 +25,7 @@ from typing import Any, Literal
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import PREFIX, mail, settings
-from openemail.core.model import Envelope
-from openemail.mail import MailMessage
+from openemail.mail import Envelope, MailMessage
 
 from .compose_dialog import MailComposeDialog
 from .content_page import MailContentPage

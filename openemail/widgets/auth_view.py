@@ -23,8 +23,7 @@ from typing import Any
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, mail, notifier
-from openemail.core.crypto import KeyPair
-from openemail.core.model import Address
+from openemail.mail import Address, KeyPair
 
 from .form import MailForm
 

@@ -24,8 +24,7 @@ from typing import Any, Callable
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.core.model import Profile
-from openemail.mail import WriteError
+from openemail.mail import Profile, WriteError
 
 from .form import MailForm
 
@@ -133,7 +132,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def _replace_image(self, *_args: Any) -> None:
-        run_task(self._replace_image())
+        run_task(self._replace_image_task())
 
     @Gtk.Template.Callback()
     def _on_change(self, *_args: Any) -> None:
@@ -150,7 +149,7 @@ class MailProfileSettings(Adw.PreferencesDialog):
         self._changed = False
         run_task(mail.update_profile({key: f() for key, f in self._fields.items()}))
 
-    async def _replace_image(self) -> None:
+    async def _replace_image_task(self) -> None:
         (filters := Gio.ListStore.new(Gtk.FileFilter)).append(
             Gtk.FileFilter(
                 name=_("Images"),

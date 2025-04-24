@@ -23,7 +23,7 @@ from typing import Any
 from gi.repository import Adw, Gio, GLib, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.core.model import Address
+from openemail.mail import Address
 
 from .form import MailForm
 from .message_body import MailMessageBody
@@ -93,7 +93,7 @@ class MailComposeDialog(Adw.Dialog):
 
     @Gtk.Template.Callback()
     def _attach_files(self, *_args: Any) -> None:
-        run_task(self._attach_files())
+        run_task(self._attach_files_task())
 
     @Gtk.Template.Callback()
     def _reveal_readers(self, revealer: Gtk.Revealer, *_args: Any) -> None:
@@ -146,7 +146,7 @@ class MailComposeDialog(Adw.Dialog):
             self.draft_id,
         )
 
-    async def _attach_files(self) -> None:
+    async def _attach_files_task(self) -> None:
         try:
             gfiles = await Gtk.FileDialog().open_multiple(  # type: ignore
                 win if isinstance(win := self.get_root(), Gtk.Window) else None

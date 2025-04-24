@@ -23,7 +23,7 @@ from typing import Any
 from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.core.model import Profile
+from openemail.mail import Profile
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-view.ui")

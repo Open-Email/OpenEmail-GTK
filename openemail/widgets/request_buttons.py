@@ -23,7 +23,7 @@ from typing import Any
 from gi.repository import GObject, Gtk
 
 from openemail import PREFIX, mail, run_task, settings
-from openemail.core.model import Address
+from openemail.mail import Address
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/request-buttons.ui")

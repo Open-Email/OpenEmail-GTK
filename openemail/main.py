@@ -21,8 +21,6 @@
 
 import gi
 
-from openemail.core.crypto import KeyPair
-
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
@@ -37,8 +35,8 @@ import keyring
 from gi.repository import Adw, Gio
 
 from openemail import APP_ID, PREFIX, log_file, mail, secret_service, settings
+from openemail.mail import Address, KeyPair
 
-from .core.model import Address
 from .widgets.preferences import MailPreferences
 from .widgets.window import MailWindow
 

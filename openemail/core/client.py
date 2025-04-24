@@ -107,7 +107,7 @@ def _writes(
 
 
 class WriteError(Exception):
-    """An exception raised if writing to the server fails."""
+    """Raised if writing to the server fails."""
 
 
 async def request(

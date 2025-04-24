@@ -51,11 +51,11 @@ template $MailPreferences: Adw.PreferencesDialog {
       }
     }
   }
-  
+
   Adw.PreferencesPage {
     title: _("Domains");
     icon-name: "website-symbolic";
-  
+
     Adw.PreferencesGroup domains {
       title: _("Trusted Domains");
       description: _("Contact requests from these domains will be automatically accepted");
@@ -65,12 +65,12 @@ template $MailPreferences: Adw.PreferencesDialog {
         icon-name: "list-add-symbolic";
         tooltip-text: _("Add Domain");
         clicked => $_new_domain();
-        
+
         styles [
           "flat",
         ]
       };
-    }      
+    }
   }
 
   Adw.PreferencesPage {

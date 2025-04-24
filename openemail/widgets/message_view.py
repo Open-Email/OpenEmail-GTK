@@ -24,8 +24,7 @@ from typing import Any, Callable
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task, settings
-from openemail.core.client import download_attachment
-from openemail.core.model import Message
+from openemail.mail import Message
 
 from .message_body import MailMessageBody
 from .profile_view import MailProfileView
@@ -205,7 +204,8 @@ class MailMessageView(Adw.Bin):
             except GLib.Error:
                 return
 
-            data = await download_attachment(parts)
+            if not (data := await mail.download_attachment(parts)):
+                return
 
             try:
                 stream = gfile.replace(

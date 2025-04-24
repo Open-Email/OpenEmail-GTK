@@ -47,7 +47,12 @@ from .core.client import cache_dir as cache_dir
 from .core.client import data_dir as data_dir
 from .core.client import is_writing as is_writing
 from .core.client import user as user
-from .core.model import Address, Message, Profile, User
+from .core.crypto import KeyPair as KeyPair
+from .core.model import Address as Address
+from .core.model import Envelope as Envelope
+from .core.model import Message as Message
+from .core.model import Profile as Profile
+from .core.model import User as User
 
 _syncing = 0
 
@@ -235,6 +240,15 @@ async def delete_profile_image() -> None:
         raise error
 
     await update_user_profile()
+
+
+async def download_attachment(parts: Iterable[Message]) -> bytes | None:
+    """Download and reconstruct an attachment from `parts`."""
+    if not (attachment := await client.download_attachment(parts)):
+        notifier.send(_("Failed to download attachment"))
+        return None
+
+    return attachment
 
 
 async def send_message(

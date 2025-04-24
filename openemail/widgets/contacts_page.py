@@ -24,8 +24,7 @@ from typing import Any
 from gi.repository import Adw, Gio, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.core.model import Address
-from openemail.mail import MailProfile
+from openemail.mail import Address, MailProfile
 
 from .content_page import MailContentPage
 from .form import MailForm
