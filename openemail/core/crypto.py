@@ -83,6 +83,21 @@ class KeyPair:
             case length:
                 raise ValueError(f"Invalid key length of {length}")
 
+    @staticmethod
+    def for_encryption() -> KeyPair:
+        """Generate a new keypair used for encryption."""
+        return KeyPair(
+            Key(bytes(key := PrivateKey.generate())),
+            Key(bytes(key.public_key), key_id=random_string(4)),
+        )
+
+    @staticmethod
+    def for_signing() -> KeyPair:
+        """Generate a new keypair used for signing."""
+        return KeyPair(
+            Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key))
+        )
+
 
 def sign_data(private_key: Key, data: bytes) -> str:
     """Get a Base64-encoded version of given `data` signed using the provided `private_key`."""
@@ -105,19 +120,6 @@ def random_string(length: int) -> str:
         choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
         for _ in range(length)
     )
-
-
-def generate_encryption_keys() -> KeyPair:
-    """Generate a new keypair used for encryption."""
-    return KeyPair(
-        Key(bytes(key := PrivateKey.generate())),
-        Key(bytes(key.public_key), key_id=random_string(4)),
-    )
-
-
-def generate_signing_keys() -> KeyPair:
-    """Generate a new keypair used for signing."""
-    return KeyPair(Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key)))
 
 
 def get_nonce(agent: str, keys: KeyPair) -> str:

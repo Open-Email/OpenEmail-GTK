@@ -23,11 +23,7 @@ from typing import Any
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, mail, notifier
-from openemail.core.crypto import (
-    KeyPair,
-    generate_encryption_keys,
-    generate_signing_keys,
-)
+from openemail.core.crypto import KeyPair
 from openemail.core.model import Address
 
 from .form import MailForm
@@ -81,8 +77,8 @@ class MailAuthView(Adw.Bin):
             notifier.send(_("Invalid name, try another one"))
             return
 
-        mail.user.encryption_keys = generate_encryption_keys()
-        mail.user.signing_keys = generate_signing_keys()
+        mail.user.encryption_keys = KeyPair.for_encryption()
+        mail.user.signing_keys = KeyPair.for_signing()
 
         def success() -> None:
             self.register_button_child_name = "label"
