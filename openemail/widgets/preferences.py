@@ -138,7 +138,7 @@ class MailPreferences(Adw.PreferencesDialog):
         for domain in settings.get_strv("trusted-domains"):
             (
                 remove_button := Gtk.Button(
-                    icon_name="trash-symbolic",
+                    icon_name="edit-delete-symbolic",
                     tooltip_text=_("Remove"),
                     valign=Gtk.Align.CENTER,
                     has_frame=False,
