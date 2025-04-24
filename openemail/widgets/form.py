@@ -86,7 +86,7 @@ class MailForm(GObject.Object):
         for fields in self._fields.values():
             for field in fields:
                 try:
-                    getattr(self.form, field.get_string()).set_text("")  # type: ignore
+                    getattr(self.form, field.props.string).props.text = ""
                 except AttributeError:
                     continue
 
@@ -110,7 +110,7 @@ class MailForm(GObject.Object):
         for type, fields in self._fields.items():
             for field in fields:
                 try:
-                    field = getattr(self.form, field.get_string())  # type: ignore
+                    field = getattr(self.form, field.props.string)
                 except AttributeError:
                     continue
 
@@ -124,15 +124,7 @@ class MailForm(GObject.Object):
         field: Gtk.Editable | Gtk.TextBuffer,
         type: MailFormField,
     ) -> None:
-        text = (
-            field.get_text()
-            if isinstance(field, Gtk.Editable)
-            else field.get_text(
-                field.get_start_iter(),
-                field.get_end_iter(),
-                False,
-            )
-        )
+        text = field.props.text
 
         match type:
             case MailFormField.PLAIN:
@@ -169,7 +161,7 @@ class MailForm(GObject.Object):
 
     def _verify(self) -> None:
         if isinstance(self.submit, Adw.AlertDialog):
-            if not (default := self.submit.get_default_response()):
+            if not (default := self.submit.props.default_response):
                 return
 
             self.submit.set_response_enabled(default, not self.invalid)
@@ -184,7 +176,7 @@ class MailForm(GObject.Object):
             return
 
         if isinstance(self.submit, Gtk.Widget):
-            self.submit.set_sensitive(not self.invalid)
+            self.submit.props.sensitive = not self.invalid
 
     def _valid(self, editable: Gtk.Editable | Gtk.TextBuffer) -> None:
         self.invalid.discard(editable)

@@ -157,8 +157,8 @@ class MailContentView(Adw.BreakpointBin):
             "trash",
         )[row.get_index()]
 
-        if self.split_view.get_collapsed():
-            self.split_view.set_show_sidebar(False)
+        if self.split_view.props.collapsed:
+            self.split_view.props.show_sidebar = False
 
     @Gtk.Template.Callback()
     def _on_contacts_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:
@@ -170,8 +170,8 @@ class MailContentView(Adw.BreakpointBin):
 
         self.content_child_name = "contacts"
 
-        if self.split_view.get_collapsed():
-            self.split_view.set_show_sidebar(False)
+        if self.split_view.props.collapsed:
+            self.split_view.props.show_sidebar = False
 
     @Gtk.Template.Callback()
     def _on_profile_button_clciked(self, *_args: Any) -> None:

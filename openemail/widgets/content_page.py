@@ -85,7 +85,7 @@ class MailContentPage(Adw.BreakpointBin):
                 Gtk.CallbackAction.new(
                     lambda *_: not (
                         self.search_bar.set_search_mode(
-                            not self.search_bar.get_search_mode(),
+                            not self.search_bar.props.search_mode_enabled,
                         )
                     )
                 ),
@@ -95,7 +95,7 @@ class MailContentPage(Adw.BreakpointBin):
         self.connect(
             "realize",
             lambda *_: self.search_bar.set_key_capture_widget(root)
-            if isinstance(root := self.get_root(), Gtk.Widget)
+            if isinstance(root := self.props.root, Gtk.Widget)
             else None,
         )
 
@@ -103,7 +103,7 @@ class MailContentPage(Adw.BreakpointBin):
     def _show_sidebar(self, *_args: Any) -> None:
         if not isinstance(
             split_view := getattr(
-                getattr(self.get_root(), "content_view", None),
+                getattr(self.props.root, "content_view", None),
                 "split_view",
                 None,
             ),
@@ -111,7 +111,7 @@ class MailContentPage(Adw.BreakpointBin):
         ):
             return
 
-        split_view.set_show_sidebar(not split_view.get_show_sidebar())
+        split_view.props.show_sidebar = not split_view.props.show_sidebar
 
     def _update_stack(self, *_args: Any) -> None:
         self.sidebar_child_name = (

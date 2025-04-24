@@ -192,7 +192,7 @@ class MailMessageView(Adw.Bin):
         async def save() -> None:
             try:
                 gfile = await Gtk.FileDialog(  # type: ignore
-                    initial_name=row.get_title(),
+                    initial_name=row.props.title,
                     initial_folder=Gio.File.new_for_path(downloads)
                     if (
                         downloads := GLib.get_user_special_dir(
@@ -200,7 +200,7 @@ class MailMessageView(Adw.Bin):
                         )
                     )
                     else None,
-                ).save(win if isinstance(win := self.get_root(), Gtk.Window) else None)
+                ).save(win if isinstance(win := self.props.root, Gtk.Window) else None)
             except GLib.Error:
                 return
 

@@ -56,11 +56,11 @@ class MailAuthView(Adw.Bin):
     authenticated = GObject.Signal()
 
     def __init__(self, **kwargs: Any) -> None:
-        self.email_status_page.set_icon_name(APP_ID)
+        self.email_status_page.props.icon_name = APP_ID
 
     @Gtk.Template.Callback()
     def _log_in(self, *args: Any) -> None:
-        self.keys_status_page.set_title(self.email_entry.get_text())
+        self.keys_status_page.props.title = self.email_entry.props.text
         self.navigation_view.push(self.keys_page)
         self.signing_key_entry.grab_focus()
 
@@ -71,7 +71,7 @@ class MailAuthView(Adw.Bin):
     @Gtk.Template.Callback()
     def _register(self, *args: Any) -> None:
         try:
-            mail.user.address = Address(self.user_name_entry.get_text() + "@open.email")
+            mail.user.address = Address(self.user_name_entry.props.text + "@open.email")
         except ValueError:
             notifier.send(_("Invalid name, try another one"))
             return
@@ -107,12 +107,12 @@ class MailAuthView(Adw.Bin):
     @Gtk.Template.Callback()
     def _authenticate(self, *_args: Any) -> None:
         try:
-            mail.user.address = Address(self.email_entry.get_text())
+            mail.user.address = Address(self.email_entry.props.text)
             mail.user.encryption_keys = KeyPair.from_b64(
-                self.encryption_key_entry.get_text(),
+                self.encryption_key_entry.props.text,
             )
             mail.user.signing_keys = KeyPair.from_b64(
-                self.signing_key_entry.get_text(),
+                self.signing_key_entry.props.text,
             )
 
         except ValueError:

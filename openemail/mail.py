@@ -25,16 +25,7 @@ from dataclasses import fields
 from functools import wraps
 from itertools import chain
 from shutil import rmtree
-from typing import (
-    Any,
-    AsyncGenerator,
-    Callable,
-    Coroutine,
-    Generic,
-    Iterable,
-    NamedTuple,
-    TypeVar,
-)
+from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable, NamedTuple
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
@@ -143,7 +134,7 @@ async def update_profile(values: dict[str, str]) -> None:
 
 async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
     """Upload `pixbuf` to be used as the user's profile image."""
-    if (width := pixbuf.get_width()) > (height := pixbuf.get_height()):
+    if (width := pixbuf.props.width) > (height := pixbuf.props.height):
         if width > 800:
             pixbuf = (
                 pixbuf.scale_simple(
@@ -154,8 +145,8 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
                 or pixbuf
             )
 
-            width = pixbuf.get_width()
-            height = pixbuf.get_height()
+            width = pixbuf.props.width
+            height = pixbuf.props.height
 
         pixbuf = pixbuf.new_subpixbuf(
             src_x=int((width - height) / 2),
@@ -174,8 +165,8 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
                 or pixbuf
             )
 
-            width = pixbuf.get_width()
-            height = pixbuf.get_height()
+            width = pixbuf.props.width
+            height = pixbuf.props.height
 
         if height > width:
             pixbuf = pixbuf.new_subpixbuf(
@@ -363,11 +354,7 @@ async def delete_account() -> None:
     log_out()
 
 
-T = TypeVar("T")
-U = TypeVar("U")
-
-
-class DictStore(GObject.Object, Gio.ListModel, Generic[T, U]):  # type: ignore
+class DictStore[T, U](GObject.Object, Gio.ListModel):  # type: ignore
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
 
     _items: dict[T, U]

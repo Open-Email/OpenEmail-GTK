@@ -64,17 +64,15 @@ class MailPreferences(Adw.PreferencesDialog):
         self.public_encryption_key = str(mail.user.encryption_keys.public)
 
         try:
-            self.sync_interval_combo_row.set_selected(
-                self._intervals.index(
-                    settings.get_uint("sync-interval"),
-                )
+            self.sync_interval_combo_row.props.selected = self._intervals.index(
+                settings.get_uint("sync-interval")
             )
         except ValueError:
             pass
 
     @Gtk.Template.Callback()
     def _sync_interval_selected(self, row: Adw.ComboRow, *_args: Any) -> None:
-        settings.set_uint("sync-interval", self._intervals[row.get_selected()])
+        settings.set_uint("sync-interval", self._intervals[row.props.selected])
 
     @Gtk.Template.Callback()
     def _remove_account(self, *_args: Any) -> None:
@@ -100,7 +98,7 @@ class MailPreferences(Adw.PreferencesDialog):
         self.force_close()
         mail.log_out()
 
-        if not isinstance(win := self.get_root(), MailWindow):
+        if not isinstance(win := self.props.root, MailWindow):
             return
 
         win.visible_child_name = "auth"
@@ -115,7 +113,7 @@ class MailPreferences(Adw.PreferencesDialog):
         if response != "add":
             return
 
-        if (domain := self.domain_entry.get_text()) in (
+        if (domain := self.domain_entry.props.text) in (
             current := settings.get_strv("trusted-domains")
         ):
             return

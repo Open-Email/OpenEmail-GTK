@@ -24,7 +24,7 @@ from datetime import date, datetime, timezone
 from hashlib import sha256
 from re import match
 from types import NoneType, UnionType
-from typing import NamedTuple, Self, TypeVar, get_args, get_origin
+from typing import NamedTuple, Self, get_args, get_origin
 
 from .crypto import (
     CHECKSUM_ALGORITHM,
@@ -33,8 +33,6 @@ from .crypto import (
     decrypt_anonymous,
     decrypt_xchacha20poly1305,
 )
-
-T = TypeVar("T")
 
 
 class Address:

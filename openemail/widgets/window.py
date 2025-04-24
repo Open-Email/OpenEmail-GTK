@@ -122,7 +122,7 @@ class MailWindow(Adw.ApplicationWindow):
     def _on_send_notification(self, _obj: Any, title: str) -> None:
         toast = Adw.Toast(title=title, priority=Adw.ToastPriority.HIGH)
 
-        if isinstance(dialog := self.get_visible_dialog(), Adw.PreferencesDialog):
+        if isinstance(dialog := self.props.visible_dialog, Adw.PreferencesDialog):
             dialog.add_toast(toast)
             return
 

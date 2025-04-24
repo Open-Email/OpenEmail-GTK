@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from random import choice
 from secrets import token_bytes
-from typing import NamedTuple, Type, TypeVar
+from typing import NamedTuple, Type
 
 from nacl.bindings import (
     crypto_aead_xchacha20poly1305_ietf_decrypt,
@@ -58,11 +58,8 @@ class Key(NamedTuple):
         return b64encode(bytes(self)).decode("utf-8")
 
 
-T = TypeVar("T", bound="KeyPair")
-
-
 @dataclass(slots=True)
-class KeyPair:
+class KeyPair[T: KeyPair]:
     """A public-private keypair."""
 
     private: Key

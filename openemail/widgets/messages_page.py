@@ -110,7 +110,7 @@ class MailMessagesPage(Adw.NavigationPage):
 
         def on_trash_changed(_obj: Any, key: str) -> None:
             filter.changed(Gtk.FilterChange.DIFFERENT)
-            self.content.model.set_selected(0)
+            self.content.model.props.selected = 0
 
         settings.connect("changed::trashed-messages", on_trash_changed)
         self.content.connect(
@@ -148,7 +148,7 @@ class MailMessagesPage(Adw.NavigationPage):
     def _new_message(self, *_args: Any) -> None:
         self.compose_dialog.subject_id = None
         self.compose_dialog.draft_id = None
-        self.compose_dialog.broadcast_switch.set_active(False)
+        self.compose_dialog.broadcast_switch.props.active = False
         self.compose_dialog.attached_files.clear()
         self.compose_dialog.attachments.remove_all()
         self.compose_dialog.compose_form.reset()
@@ -165,19 +165,17 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_dialog.attached_files.clear()
         self.compose_dialog.attachments.remove_all()
         self.compose_dialog.compose_form.reset()
-        self.compose_dialog.broadcast_switch.set_active(
-            bool(envelope.is_broadcast and (envelope.author == mail.user.address))
+        self.compose_dialog.broadcast_switch.props.active = bool(
+            envelope.is_broadcast and (envelope.author == mail.user.address)
         )
-        self.compose_dialog.readers.set_text(
-            ", ".join(
-                str(reader)
-                for reader in list(dict.fromkeys(envelope.readers + [envelope.author]))
-                if (reader != mail.user.address)
-            )
+        self.compose_dialog.readers.props.text = ", ".join(
+            str(reader)
+            for reader in list(dict.fromkeys(envelope.readers + [envelope.author]))
+            if (reader != mail.user.address)
         )
 
         if body := self.message_view.message.body:
-            self.compose_dialog.body.set_text(
+            self.compose_dialog.body.props.text = (
                 # Date, time, author
                 _("On {}, {}, {} wrote:").format(
                     envelope.date.strftime("%x"),
@@ -191,7 +189,7 @@ class MailMessagesPage(Adw.NavigationPage):
                 + "\n\n"
             )
 
-        self.compose_dialog.subject.set_text(envelope.subject)
+        self.compose_dialog.subject.props.text = envelope.subject
         self.compose_dialog.subject_id = envelope.subject_id
         self.compose_dialog.draft_id = None
 
@@ -200,10 +198,7 @@ class MailMessagesPage(Adw.NavigationPage):
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not (
-            isinstance(
-                selected := selection.get_selected_item(),
-                MailMessage,
-            )
+            isinstance(selected := selection.props.selected_item, MailMessage)
             and selected.message
         ):
             self.message_view.visible_child_name = "empty"
@@ -214,4 +209,4 @@ class MailMessagesPage(Adw.NavigationPage):
             return
 
         self.message_view.set_from_message(selected.message)
-        self.content.split_view.set_show_content(True)
+        self.content.split_view.props.show_content = True

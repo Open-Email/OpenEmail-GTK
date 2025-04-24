@@ -54,13 +54,13 @@ class MailComposeDialog(Adw.Dialog):
         super().__init__(**kwargs)
 
         self.attached_files = {}
-        self.body = self.body_view.get_buffer()
+        self.body = self.body_view.props.buffer
 
     @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:
         readers: list[Address] = []
-        if not self.broadcast_switch.get_active():
-            for reader in self.readers.get_text().split(","):
+        if not self.broadcast_switch.props.active:
+            for reader in self.readers.props.text.split(","):
                 if not (reader := reader.strip()):
                     continue
 
@@ -76,12 +76,8 @@ class MailComposeDialog(Adw.Dialog):
         run_task(
             mail.send_message(
                 readers,
-                self.subject.get_text(),
-                self.body.get_text(
-                    self.body.get_start_iter(),
-                    self.body.get_end_iter(),
-                    False,
-                ),
+                self.subject.props.text,
+                self.body.props.text,
                 self.subject_id,
                 attachments=self.attached_files,
             )
@@ -98,7 +94,7 @@ class MailComposeDialog(Adw.Dialog):
     @Gtk.Template.Callback()
     def _reveal_readers(self, revealer: Gtk.Revealer, *_args: Any) -> None:
         self.compose_form.address_lists = Gtk.StringList.new(
-            ("readers",) if revealer.get_reveal_child() else ()
+            ("readers",) if revealer.props.reveal_child else ()
         )
 
     @Gtk.Template.Callback()
@@ -127,29 +123,25 @@ class MailComposeDialog(Adw.Dialog):
             self._save = True
             return
 
-        subject = self.subject.get_text()
-        body = self.body.get_text(
-            self.body.get_start_iter(),
-            self.body.get_end_iter(),
-            False,
-        )
+        subject = self.subject.props.text
+        body = self.body.props.text
 
         if not (subject or body):
             return
 
         mail.drafts.save(
-            self.readers.get_text(),
+            self.readers.props.text,
             subject,
             body,
             self.subject_id,
-            self.broadcast_switch.get_active(),
+            self.broadcast_switch.props.active,
             self.draft_id,
         )
 
     async def _attach_files_task(self) -> None:
         try:
             gfiles = await Gtk.FileDialog().open_multiple(  # type: ignore
-                win if isinstance(win := self.get_root(), Gtk.Window) else None
+                win if isinstance(win := self.props.root, Gtk.Window) else None
             )
         except GLib.Error:
             return
@@ -162,7 +154,7 @@ class MailComposeDialog(Adw.Dialog):
                         Gio.FileQueryInfoFlags.NONE,
                         GLib.PRIORITY_DEFAULT,
                     )
-                ).get_display_name()
+                ).props.display_name
             except GLib.Error:
                 continue
 

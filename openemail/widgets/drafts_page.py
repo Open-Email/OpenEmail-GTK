@@ -80,18 +80,18 @@ class MailDraftsPage(Adw.NavigationPage):
             mail.drafts.delete(message.draft_id)  # type: ignore
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not (isinstance(message := selection.get_selected_item(), MailMessage)):
+        if not (isinstance(message := selection.props.selected_item, MailMessage)):
             return
 
         selection.unselect_all()
 
         self.compose_dialog.attached_files.clear()
         self.compose_dialog.attachments.remove_all()
-        self.compose_dialog.broadcast_switch.set_active(message.broadcast)
+        self.compose_dialog.broadcast_switch.props.active = message.broadcast
         self.compose_dialog.subject_id = message.subject_id
         self.compose_dialog.draft_id = message.draft_id
-        self.compose_dialog.readers.set_text(message.name)
-        self.compose_dialog.subject.set_text(message.subject)
-        self.compose_dialog.body.set_text(message.body)
+        self.compose_dialog.readers.props.text = message.name
+        self.compose_dialog.subject.props.text = message.subject
+        self.compose_dialog.body.props.text = message.body
 
         self.compose_dialog.present(self)

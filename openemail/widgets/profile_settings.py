@@ -72,11 +72,11 @@ class MailProfileSettings(Adw.PreferencesDialog):
             return
 
         self.address = profile.address
-        self.name.set_text(profile.name)
+        self.name.props.text = profile.name
         self.away.props.enable_expansion = self.away.props.expanded = profile.away
-        self.away_warning.set_text(profile.away_warning or "")
-        self.status.set_text(profile.status or "")
-        self.about.set_text(profile.about or "")
+        self.away_warning.props.text = profile.away_warning or ""
+        self.status.props.text = profile.status or ""
+        self.about.props.text = profile.about or ""
 
         for category, fields in mail.profile_categories.items():
             if category.ident == "general":  # Already added manually
@@ -143,8 +143,8 @@ class MailProfileSettings(Adw.PreferencesDialog):
         if (not self._changed) or self.name_form.invalid:
             return
 
-        if not self.away.get_enable_expansion():
-            self.away_warning.set_text("")
+        if not self.away.props.enable_expansion:
+            self.away_warning.props.text = ""
 
         self._changed = False
         run_task(mail.update_profile({key: f() for key, f in self._fields.items()}))
@@ -167,10 +167,10 @@ class MailProfileSettings(Adw.PreferencesDialog):
                     gfile := await Gtk.FileDialog(  # type: ignore
                         initial_name=_("Select an Image"), filters=filters
                     ).open(
-                        win if isinstance(win := self.get_root(), Gtk.Window) else None
+                        win if isinstance(win := self.props.root, Gtk.Window) else None
                     )
                 )
-                and (path := gfile.get_path())
+                and (path := gfile.props.path)
             ):
                 return
         except GLib.Error:

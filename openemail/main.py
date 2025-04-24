@@ -54,7 +54,7 @@ class MailApplication(Adw.Application):
         self.create_action("about", self.on_about_action)
         self.create_action(
             "quit",
-            lambda *_: win.close() if (win := self.get_active_window()) else None,
+            lambda *_: win.close() if (win := self.props.active_window) else None,
             ("<primary>q",),
         )
 
@@ -79,37 +79,35 @@ class MailApplication(Adw.Application):
 
         Called when the application is activated.
         """
-        (self.get_active_window() or MailWindow(application=self)).present()
+        (self.props.active_window or MailWindow(application=self)).present()
 
     def on_about_action(self, *_args: Any) -> None:
         """Present the about dialog."""
         about = Adw.AboutDialog.new_from_appdata(f"{PREFIX}/{APP_ID}.metainfo.xml")
-        about.set_developers(("kramo https://kramo.page",))
-        about.set_designers(
-            (
-                "kramo https://kramo.page",
-                "Varti Studio https://varti-studio.com",
-            )
-        )
-        about.set_copyright("© 2025 Mercata Sagl")
+        about.props.developers = ["kramo https://kramo.page"]
+        about.props.designers = [
+            "kramo https://kramo.page",
+            "Varti Studio https://varti-studio.com",
+        ]
+        about.props.copyright = "© 2025 Mercata Sagl"
         # Translators: Replace "translator-credits" with your name/username,
         # and optionally an email or URL.
-        about.set_translator_credits(_("translator-credits"))
+        about.props.translator_credits = _("translator-credits")
 
         try:
-            about.set_debug_info(log_file.read_text())
+            about.props.debug_info = log_file.read_text()
         except FileNotFoundError:
             pass
         else:
-            about.set_debug_info_filename(log_file.name)
+            about.props.debug_info_filename = log_file.name
 
-        about.present(self.get_active_window())
+        about.present(self.props.active_window)
 
     def on_preferences_action(self, *_args: Any) -> None:
         """Present the preferences dialog."""
         if (
-            isinstance(win := self.get_active_window(), Adw.ApplicationWindow)
-            and win.get_visible_dialog()
+            isinstance(win := self.props.active_window, Adw.ApplicationWindow)
+            and win.props.visible_dialog
         ):
             return
 
@@ -117,7 +115,7 @@ class MailApplication(Adw.Application):
 
     def on_sync_action(self, *_args: Any) -> None:
         """Sync remote content."""
-        if not isinstance(win := self.get_active_window(), MailWindow):
+        if not isinstance(win := self.props.active_window, MailWindow):
             return
 
         win.content_view.load_content(first_sync=False)

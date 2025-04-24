@@ -34,11 +34,7 @@ class MailMessageBody(Gtk.TextView):
     @GObject.Property(type=str)
     def text(self) -> str | None:
         """Get the message's formatted body."""
-        (buffer := self.get_buffer()).get_text(
-            buffer.get_start_iter(),
-            buffer.get_end_iter(),
-            include_hidden_chars=True,
-        )
+        return self.props.buffer.props.text
 
     @text.setter
     def text(self, text: str) -> None:
@@ -54,8 +50,8 @@ class MailMessageBody(Gtk.TextView):
             buffer.get_end_iter(),
         )
 
-        if not self.get_editable():
-            buffer.set_text(
+        if not self.props.editable:
+            buffer.props.text = (
                 text
                 if not self.summary
                 else summary
@@ -73,7 +69,7 @@ class MailMessageBody(Gtk.TextView):
             "escape": r"(?<!\\)(\\)[>#~*]",
         }.items():
             for match in compile(pattern).finditer(text):
-                if (not self.get_editable()) and (
+                if (not self.props.editable) and (
                     match.start(1) - match.start() == len(match.group())
                 ):
                     buffer.apply_tag_by_name(
@@ -85,7 +81,7 @@ class MailMessageBody(Gtk.TextView):
 
                 buffer.apply_tag_by_name(
                     "none"
-                    if ((name == "escape") and self.get_editable())
+                    if ((name == "escape") and self.props.editable)
                     else name
                     if name != "heading"
                     else "bold"
@@ -119,7 +115,7 @@ class MailMessageBody(Gtk.TextView):
 
         self.add_css_class("inline")
 
-        buffer = self.get_buffer()
+        buffer = self.props.buffer
         buffer.create_tag("none")
         buffer.create_tag("invisible", invisible=True)
         buffer.create_tag("blockquote", foreground="#3584e4", weight=500)
@@ -136,11 +132,7 @@ class MailMessageBody(Gtk.TextView):
         buffer.create_tag("escape", invisible=True)
 
         def edited(*_args: Any) -> None:
-            self.text = buffer.get_text(
-                buffer.get_start_iter(),
-                buffer.get_end_iter(),
-                include_hidden_chars=True,
-            )
+            self.text = buffer.props.text
 
         def editable_changed(*_args: Any) -> None:
             if self.get_editable():

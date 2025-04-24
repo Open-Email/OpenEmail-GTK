@@ -113,15 +113,15 @@ class MailContactsPage(Adw.NavigationPage):
             return
 
         try:
-            run_task(mail.address_book.new(Address(self.address.get_text())))
+            run_task(mail.address_book.new(Address(self.address.props.text)))
         except ValueError:
             return
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not isinstance(selected := selection.get_selected_item(), MailProfile):
+        if not isinstance(selected := selection.props.selected_item, MailProfile):
             return
 
         self.profile_view.profile = selected.profile
         self.profile_view.profile_image = selected.image
 
-        self.content.split_view.set_show_content(True)
+        self.content.split_view.props.show_content = True
