@@ -468,7 +468,7 @@ async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope
 async def fetch_message_from_agent(
     url: str, author: Address, message_id: str
 ) -> Message | None:
-    """Fetch a message from the provided agent `url`."""
+    """Fetch a message from the provided `url`."""
     logging.debug("Fetching message %s…", message_id[:8])
     if not (envelope := await fetch_envelope(url, message_id, author)):
         return None
@@ -520,14 +520,22 @@ async def fetch_message_from_agent(
         return None
 
 
-async def fetch_message_ids(url: str, author: Address) -> tuple[str, ...]:
-    """Fetch message IDs by `author`, addressed to `client.user` from `url`.
-
-    `{}` in `url` will be substituted by the mail agent.
-    """
+async def fetch_message_ids(
+    author: Address, broadcasts: bool = False
+) -> tuple[str, ...]:
+    """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
     logging.debug("Fetching message IDs from %s…", author)
     for agent in await get_agents(user.address):
-        if not (response := await request(url.format(agent), auth=True)):
+        if not (
+            response := await request(
+                (
+                    _Mail(agent, author)
+                    if broadcasts
+                    else _Link(agent, author, generate_link(user.address, author))
+                ).messages,
+                auth=True,
+            )
+        ):
             continue
 
         with response:
@@ -545,18 +553,22 @@ async def fetch_message_ids(url: str, author: Address) -> tuple[str, ...]:
     return ()
 
 
-async def fetch_messages(id_url: str, url: str, author: Address) -> tuple[Message, ...]:
-    """Fetch messages by `author` from `url` with IDs at `id_url`.
-
-    `{}` in `id_url` will be substituted by the mail agent.
-
-    The first two `{}`s in `url` will be substituted by the mail agent and the message ID.
-    """
+async def fetch_messages(
+    author: Address, *, broadcasts: bool = False
+) -> tuple[Message, ...]:
+    """Fetch either link messages or broadcasts by `author`."""
     messages: dict[str, Message] = {}
-    for message_id in await fetch_message_ids(id_url, author):
+    for message_id in await fetch_message_ids(author, broadcasts=broadcasts):
         for agent in await get_agents(user.address):
             if message := await fetch_message_from_agent(
-                url.format(agent, message_id), author, message_id
+                (
+                    _Mail(agent, author)
+                    if broadcasts
+                    else _Link(agent, author, generate_link(user.address, author))
+                ).messages
+                + f"/{message_id}",
+                author,
+                message_id,
             ):
                 messages[message.envelope.message_id] = message
                 break
@@ -576,23 +588,13 @@ async def fetch_messages(id_url: str, url: str, author: Address) -> tuple[Messag
 async def fetch_broadcasts(author: Address) -> tuple[Message, ...]:
     """Fetch broadcasts by `author`."""
     logging.debug("Fetching broadcasts from %s…", author)
-    return await fetch_messages(
-        _Mail("{}", author).messages,
-        _Mail("{}", author).messages + "/{}",
-        author,
-    )
+    return await fetch_messages(author, broadcasts=True)
 
 
 async def fetch_link_messages(author: Address) -> tuple[Message, ...]:
     """Fetch messages by `author`, addressed to `client.user`."""
     logging.debug("Fetching link messages messages from %s…", author)
-    link = generate_link(user.address, author)
-
-    return await fetch_messages(
-        _Link("{}", author, link).messages,
-        _Link("{}", author, link).messages + "/{}",
-        author,
-    )
+    return await fetch_messages(author)
 
 
 async def download_attachment(parts: Iterable[Message]) -> bytes | None:
