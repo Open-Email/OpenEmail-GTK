@@ -426,7 +426,9 @@ async def delete_contact(address: Address) -> None:
     raise WriteError
 
 
-async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope | None:
+async def fetch_envelope(
+    url: str, message_id: str, author: Address, *, broadcast: bool = False
+) -> Envelope | None:
     """Perform a HEAD request to the specified URL and retrieve response headers.
 
     Args:
@@ -434,16 +436,16 @@ async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope
         message_id: The message ID
         user: Local user
         author: The remote user whose message is being fetched
+        broadcast: Whether the message is a broadcast
 
     """
     logging.debug("Fetching envelope %s…", message_id[:8])
-    envelope_path = (
-        data_dir
-        / "envelopes"
-        / author.host_part
-        / author.local_part
-        / f"{message_id}.json"
-    )
+
+    envelopes_dir = data_dir / "envelopes" / author.host_part / author.local_part
+    if broadcast:
+        envelopes_dir /= "broadcasts"
+
+    envelope_path = envelopes_dir / f"{message_id}.json"
 
     try:
         headers = dict(json.load(envelope_path.open("r")))
@@ -466,20 +468,29 @@ async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope
 
 
 async def fetch_message_from_agent(
-    url: str, author: Address, message_id: str
+    url: str, author: Address, message_id: str, broadcast: bool
 ) -> Message | None:
     """Fetch a message from the provided `url`."""
     logging.debug("Fetching message %s…", message_id[:8])
-    if not (envelope := await fetch_envelope(url, message_id, author)):
+    if not (
+        envelope := await fetch_envelope(
+            url,
+            message_id,
+            author,
+            broadcast=broadcast,
+        )
+    ):
         return None
 
     if envelope.is_child:
         logging.debug("Fetched message %s", message_id[:8])
         return Message(envelope, attachment_url=url)
 
-    message_path = (
-        data_dir / "messages" / author.host_part / author.local_part / message_id
-    )
+    messages_dir = data_dir / "messages" / author.host_part / author.local_part
+    if broadcast:
+        messages_dir /= "broadcasts"
+
+    message_path = messages_dir / message_id
 
     try:
         contents = message_path.read_bytes()
@@ -569,6 +580,7 @@ async def fetch_messages(
                 + f"/{message_id}",
                 author,
                 message_id,
+                broadcast=broadcasts,
             ):
                 messages[message.envelope.message_id] = message
                 break
