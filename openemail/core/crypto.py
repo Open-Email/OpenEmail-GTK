@@ -18,8 +18,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import annotations
-
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
 from hashlib import sha256
