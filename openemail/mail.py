@@ -25,16 +25,7 @@ from dataclasses import fields
 from functools import wraps
 from itertools import chain
 from shutil import rmtree
-from typing import (
-    Any,
-    AsyncGenerator,
-    Callable,
-    Coroutine,
-    Iterable,
-    NamedTuple,
-    Self,
-    Type,
-)
+from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable, NamedTuple
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
