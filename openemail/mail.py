@@ -446,7 +446,7 @@ class MailMessage(GObject.Object):
 
     @property
     def message(self) -> Message | None:
-        """Get the `model.Message` `self` represents."""
+        """Get the `model.Message` that `self` represents."""
         return self._message
 
     @message.setter
