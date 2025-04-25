@@ -437,11 +437,13 @@ async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope
 
     """
     logging.debug("Fetching envelope %s…", message_id[:8])
-    if not (agent := urlparse(url).hostname):
-        logging.error("Fetching envelope %s failed: Invalid URL", message_id[:8])
-        return None
-
-    envelope_path = data_dir / "envelopes" / agent / f"{message_id}.json"
+    envelope_path = (
+        data_dir
+        / "envelopes"
+        / author.host_part
+        / author.local_part
+        / f"{message_id}.json"
+    )
 
     try:
         headers = dict(json.load(envelope_path.open("r")))
@@ -468,10 +470,6 @@ async def fetch_message_from_agent(
 ) -> Message | None:
     """Fetch a message from the provided agent `url`."""
     logging.debug("Fetching message %s…", message_id[:8])
-    if not (agent := urlparse(url).hostname):
-        logging.error("Fetching message %s failed: Invalid URL", message_id[:8])
-        return None
-
     if not (envelope := await fetch_envelope(url, message_id, author)):
         return None
 
@@ -479,7 +477,9 @@ async def fetch_message_from_agent(
         logging.debug("Fetched message %s", message_id[:8])
         return Message(envelope, attachment_url=url)
 
-    message_path = data_dir / "messages" / agent / message_id
+    message_path = (
+        data_dir / "messages" / author.host_part / author.local_part / message_id
+    )
 
     try:
         contents = message_path.read_bytes()
