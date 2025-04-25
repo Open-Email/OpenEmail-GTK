@@ -353,10 +353,10 @@ async def delete_account() -> None:
     log_out()
 
 
-class DictStore[T, U](GObject.Object, Gio.ListModel):  # type: ignore
+class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
 
-    _items: dict[T, U]
+    _items: dict[K, V]
     item_type: type
 
     def __init__(self, **kwargs: Any) -> None:
@@ -364,7 +364,7 @@ class DictStore[T, U](GObject.Object, Gio.ListModel):  # type: ignore
 
         self._items = {}
 
-    def do_get_item(self, position: int) -> U | None:
+    def do_get_item(self, position: int) -> V | None:
         """Get the item at `position`.
 
         If `position` is greater than the number of items in `self`, `None` is returned.
@@ -387,7 +387,7 @@ class DictStore[T, U](GObject.Object, Gio.ListModel):  # type: ignore
     async def update(self) -> None:
         """Update `self` asynchronously."""
 
-    def remove(self, item: T) -> None:
+    def remove(self, item: K) -> None:
         """Remove `item` from `self`.
 
         Note that this will not remove it from the underlying data store,
