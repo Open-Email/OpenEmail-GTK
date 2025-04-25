@@ -90,18 +90,6 @@ class MailContactsPage(Adw.NavigationPage):
             None, f"{PREFIX}/gtk/contact-row.ui"
         )
 
-        self.add_controller(
-            controller := Gtk.ShortcutController(
-                scope=Gtk.ShortcutScope.GLOBAL,
-            )
-        )
-        controller.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("<primary>n"),
-                Gtk.CallbackAction.new(lambda *_: not (self._new_contact())),
-            )
-        )
-
     @Gtk.Template.Callback()
     def _new_contact(self, *_args: Any) -> None:
         self.address_form.reset()

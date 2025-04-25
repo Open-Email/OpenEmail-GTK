@@ -76,7 +76,7 @@ class MailContentPage(Adw.BreakpointBin):
 
         self.add_controller(
             controller := Gtk.ShortcutController(
-                scope=Gtk.ShortcutScope.GLOBAL,
+                scope=Gtk.ShortcutScope.MANAGED,
             )
         )
         controller.add_shortcut(

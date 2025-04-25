@@ -13,6 +13,15 @@ template $MailContactsPage: Adw.NavigationPage {
       icon-name: "contact-new-symbolic";
       tooltip-text: _("New Contact");
       clicked => $_new_contact();
+
+      ShortcutController {
+        scope: managed;
+
+        Shortcut {
+          trigger: "<primary>n";
+          action: "activate";
+        }
+      }
     };
 
     empty-page: Adw.StatusPage {

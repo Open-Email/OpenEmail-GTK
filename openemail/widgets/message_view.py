@@ -154,21 +154,7 @@ class MailMessageView(Adw.Bin):
 
         self.add_controller(
             controller := Gtk.ShortcutController(
-                scope=Gtk.ShortcutScope.GLOBAL,
-            )
-        )
-        controller.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("Delete|KP_Delete"),
-                Gtk.CallbackAction.new(
-                    lambda *_: not (
-                        self._discard
-                        if self.author_is_self
-                        else self._trash
-                        if self.can_trash
-                        else self._restore
-                    )()
-                ),
+                scope=Gtk.ShortcutScope.MANAGED,
             )
         )
         controller.add_shortcut(

@@ -132,18 +132,6 @@ class MailMessagesPage(Adw.NavigationPage):
 
         self.message_view.reply_button.connect("clicked", self._reply)
 
-        self.add_controller(
-            controller := Gtk.ShortcutController(
-                scope=Gtk.ShortcutScope.GLOBAL,
-            )
-        )
-        controller.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("<primary>n"),
-                Gtk.CallbackAction.new(lambda *_: not (self._new_message())),
-            )
-        )
-
     @Gtk.Template.Callback()
     def _new_message(self, *_args: Any) -> None:
         self.compose_dialog.subject_id = None

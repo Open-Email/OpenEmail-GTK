@@ -14,6 +14,15 @@ template $MailMessageView: Adw.Bin {
           icon-name: "trash-symbolic";
           tooltip-text: _("Trash Message");
           clicked => $_trash();
+          
+          ShortcutController {
+            scope: managed;
+          
+            Shortcut {
+              trigger: "Delete|KP_Delete";
+              action: "activate";
+            }
+          }
 
           styles [
             "flat",
@@ -25,6 +34,15 @@ template $MailMessageView: Adw.Bin {
           visible: bind template.can-restore;
           label: _("Restore");
           clicked => $_restore();
+          
+          ShortcutController {
+            scope: managed;
+          
+            Shortcut {
+              trigger: "Delete|KP_Delete";
+              action: "activate";
+            }
+          }
 
           styles [
             "flat",
@@ -37,6 +55,15 @@ template $MailMessageView: Adw.Bin {
           icon-name: "trash-symbolic";
           tooltip-text: _("Discard Message");
           clicked => $_discard();
+          
+          ShortcutController {
+            scope: managed;
+          
+            Shortcut {
+              trigger: "Delete|KP_Delete";
+              action: "activate";
+            }
+          }
 
           styles [
             "flat",

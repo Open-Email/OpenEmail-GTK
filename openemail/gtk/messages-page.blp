@@ -11,6 +11,15 @@ template $MailMessagesPage: Adw.NavigationPage {
       icon-name: "mail-message-new-symbolic";
       tooltip-text: _("New Message");
       clicked => $_new_message();
+      
+      ShortcutController {
+        scope: managed;
+
+        Shortcut {
+          trigger: "<primary>n";
+          action: "activate";
+        }
+      }
     };
 
     empty-page: Adw.StatusPage {
