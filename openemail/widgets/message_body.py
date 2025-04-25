@@ -113,6 +113,7 @@ class MailMessageBody(Gtk.TextView):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
+        self.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
         self.add_css_class("inline")
 
         buffer = self.props.buffer

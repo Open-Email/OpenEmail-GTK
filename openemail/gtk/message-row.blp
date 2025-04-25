@@ -59,7 +59,6 @@ template ListItem {
       $MailMessageBody {
         sensitive: false;
         editable: false;
-        wrap-mode: GTK_WRAP_WORD_CHAR;
         text: bind template.item as <$MailMessage>.body;
         summary: true;
 
