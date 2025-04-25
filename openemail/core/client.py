@@ -23,7 +23,6 @@ import json
 import logging
 from base64 import b64encode
 from datetime import datetime, timezone
-from functools import wraps
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
 from json import JSONDecodeError
@@ -31,15 +30,7 @@ from os import getenv
 from pathlib import Path
 from shutil import rmtree
 from socket import setdefaulttimeout
-from typing import (
-    Any,
-    AsyncGenerator,
-    Callable,
-    Coroutine,
-    Generator,
-    Iterable,
-    Sequence,
-)
+from typing import AsyncGenerator, Generator, Iterable, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -78,32 +69,6 @@ user: User = User()
 data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
 
 _agents: dict[str, tuple[str, ...]] = {}
-_writing = 0
-
-
-def is_writing() -> bool:
-    """Check whether or not a write operation is currently ongoing."""
-    return bool(_writing)
-
-
-def _writes(
-    func: Callable[..., Coroutine[Any, Any, Any]],
-) -> Callable[..., Coroutine[Any, Any, Any]]:
-    @wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> Coroutine[Any, Any, Any]:
-        global _writing
-        _writing += 1
-
-        try:
-            result = await func(*args, **kwargs)
-        except Exception as error:
-            _writing -= 1
-            raise error
-
-        _writing -= 1
-        return result
-
-    return wrapper
 
 
 class WriteError(Exception):
@@ -236,7 +201,6 @@ async def fetch_profile(address: Address) -> Profile | None:
     return None
 
 
-@_writes
 async def update_profile(values: dict[str, str]) -> None:
     """Update `client.user`'s public profile with `values`."""
     logging.debug("Updating user profile…")
@@ -296,7 +260,6 @@ async def fetch_profile_image(address: Address) -> bytes | None:
     return None
 
 
-@_writes
 async def update_profile_image(image: bytes) -> None:
     """Upload `image` to be used as `client.user`'s profile image."""
     logging.debug("Updating profile image…")
@@ -314,7 +277,6 @@ async def update_profile_image(image: bytes) -> None:
     raise WriteError
 
 
-@_writes
 async def delete_profile_image() -> None:
     """Delete `client.user`'s profile image."""
     logging.debug("Deleting profile image…")
@@ -373,7 +335,6 @@ async def fetch_contacts() -> set[Address]:
     return set(addresses)
 
 
-@_writes
 async def new_contact(address: Address) -> None:
     """Add `address` to `client.user`'s address book."""
     logging.debug("Adding %s to address book…", address)
@@ -408,7 +369,6 @@ async def new_contact(address: Address) -> None:
     raise WriteError
 
 
-@_writes
 async def delete_contact(address: Address) -> None:
     """Delete `address` from `client.user`'s address book."""
     logging.debug("Deleting contact %s…", address)
@@ -661,7 +621,6 @@ def generate_message_id() -> str:
     ).hexdigest()
 
 
-@_writes
 async def send_message(
     readers: Iterable[Address],
     subject: str,
@@ -732,7 +691,6 @@ async def send_message(
     raise WriteError
 
 
-@_writes
 async def notify_readers(readers: Iterable[Address]) -> None:
     """Notify `readers` of a new message."""
     logging.debug("Notifying readers…")
@@ -855,7 +813,6 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
     logging.debug("Notifications fetched")
 
 
-@_writes
 async def delete_message(message_id: str) -> None:
     """Delete `message_id`."""
     logging.debug("Deleting message %s…", message_id[:8])

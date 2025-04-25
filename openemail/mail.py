@@ -35,7 +35,6 @@ from openemail import notifier, run_task, secret_service, settings
 from .core import client
 from .core.client import WriteError as WriteError
 from .core.client import data_dir as data_dir
-from .core.client import is_writing as is_writing
 from .core.client import user as user
 from .core.crypto import KeyPair as KeyPair
 from .core.model import Address as Address
@@ -45,11 +44,17 @@ from .core.model import Profile as Profile
 from .core.model import User as User
 
 _syncing = 0
+_writing = 0
 
 
 def is_syncing() -> bool:
     """Check whether or not a sync operation is currently ongoing."""
     return bool(_syncing)
+
+
+def is_writing() -> bool:
+    """Check whether or not a write operation is currently ongoing."""
+    return bool(_writing)
 
 
 def _syncs(
@@ -67,6 +72,26 @@ def _syncs(
             raise error
 
         _syncing -= 1
+        return result
+
+    return wrapper
+
+
+def _writes(
+    func: Callable[..., Coroutine[Any, Any, Any]],
+) -> Callable[..., Coroutine[Any, Any, Any]]:
+    @wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Coroutine[Any, Any, Any]:
+        global _writing
+        _writing += 1
+
+        try:
+            result = await func(*args, **kwargs)
+        except Exception as error:
+            _writing -= 1
+            raise error
+
+        _writing -= 1
         return result
 
     return wrapper
@@ -120,6 +145,7 @@ def register(
     run_task(auth(), done)
 
 
+@_writes
 async def update_profile(values: dict[str, str]) -> None:
     """Update the user's public profile with `values`."""
     try:
@@ -131,6 +157,7 @@ async def update_profile(values: dict[str, str]) -> None:
     await update_user_profile()
 
 
+@_writes
 async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
     """Upload `pixbuf` to be used as the user's profile image."""
     if (width := pixbuf.props.width) > (height := pixbuf.props.height):
@@ -221,6 +248,7 @@ async def update_user_profile() -> None:
         profiles[user.address].image = None
 
 
+@_writes
 async def delete_profile_image() -> None:
     """Delete the user's profile image."""
     try:
@@ -241,6 +269,7 @@ async def download_attachment(parts: Iterable[Message]) -> bytes | None:
     return attachment
 
 
+@_writes
 async def send_message(
     readers: Iterable[Address],
     subject: str,
@@ -282,6 +311,7 @@ async def send_message(
     await outbox.update()
 
 
+@_writes
 async def discard_message(message: Message) -> None:
     """Discard `message` and its children."""
     failed = False
@@ -673,6 +703,7 @@ class MailProfileStore(DictStore[Address, MailProfile]):
 class MailAddressBook(MailProfileStore):
     """An implementation of `Gio.ListModel` for storing contacts."""
 
+    @_writes
     async def new(self, address: Address) -> None:
         """Add `address` to the user's address book."""
         self.add(address)
@@ -690,6 +721,7 @@ class MailAddressBook(MailProfileStore):
             notifier.send(_("Failed to add contact"))
             raise error
 
+    @_writes
     async def delete(self, address: Address) -> None:
         """Delete `address` from the user's address book."""
         self.remove(address)
