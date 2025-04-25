@@ -327,7 +327,7 @@ async def delete_profile_image() -> None:
     raise WriteError
 
 
-async def fetch_contacts() -> tuple[Address, ...]:
+async def fetch_contacts() -> set[Address]:
     """Fetch `client.user`'s contact list."""
     logging.debug("Fetching contact list…")
     addresses = []
@@ -370,7 +370,7 @@ async def fetch_contacts() -> tuple[Address, ...]:
         break
 
     logging.debug("Contact list fetched")
-    return tuple(addresses)
+    return set(addresses)
 
 
 @_writes
@@ -531,11 +531,21 @@ async def fetch_message_from_agent(
         return None
 
 
-async def fetch_message_ids(
-    author: Address, broadcasts: bool = False
-) -> tuple[str, ...]:
+async def fetch_message_ids(author: Address, broadcasts: bool = False) -> set[str]:
     """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
     logging.debug("Fetching message IDs from %s…", author)
+
+    envelopes_dir = data_dir / "envelopes" / author.host_part / author.local_part
+    if broadcasts:
+        envelopes_dir /= "broadcasts"
+
+    try:
+        children = envelopes_dir.iterdir()
+    except FileNotFoundError:
+        children = ()
+
+    local_ids = {path.stem for path in children if path.suffix == ".json"}
+
     for agent in await get_agents(user.address):
         if not (
             response := await request(
@@ -556,12 +566,12 @@ async def fetch_message_ids(
                 continue
 
         logging.debug("Fetched message IDs from %s", author)
-        return tuple(
+        return local_ids | {
             stripped for line in contents.split("\n") if (stripped := line.strip())
-        )
+        }
 
     logging.warning("Could not fetch message IDs from %s", author)
-    return ()
+    return local_ids
 
 
 async def fetch_messages(
