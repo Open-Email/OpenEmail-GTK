@@ -18,6 +18,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+
 from base64 import b64decode
 from dataclasses import dataclass, field, fields
 from datetime import date, datetime, timezone
@@ -119,13 +120,13 @@ class AttachmentProperties(NamedTuple):
 
 
 @dataclass(slots=True)
-class Envelope:
-    """Metadata about a message."""
+class Message:
+    """A Mail/HTTPS message."""
 
     message_id: str
     headers: dict[str, str]
     author: Address
-    user: User | None = None
+    private_key: Key
 
     date: datetime = field(init=False)
     subject: str = field(init=False)
@@ -143,6 +144,12 @@ class Envelope:
     files: dict[str, AttachmentProperties] = field(init=False, default_factory=dict)
 
     subject_id: str | None = field(init=False, default=None)
+
+    body: str | None = None
+    attachment_url: str | None = None
+
+    children: list[Self] = field(init=False, default_factory=list)
+    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
 
     @property
     def is_broadcast(self) -> bool:
@@ -169,15 +176,11 @@ class Envelope:
                         link.strip() for link in self.access_links.split(",")
                     )
 
-                    if not self.user:
-                        break
-
                     for link in reader_links:
                         try:
                             reader = parse_headers(link)
                             self.access_key = decrypt_anonymous(
-                                reader["value"],
-                                self.user.encryption_keys.private,
+                                reader["value"], self.private_key
                             )
                             break
 
@@ -278,67 +281,52 @@ class Envelope:
                 except ValueError:
                     continue
 
-
-@dataclass(slots=True)
-class Message:
-    """An envelope and its contents."""
-
-    envelope: Envelope
-    body: str | None = None
-    attachment_url: str | None = None
-
-    children: list[Self] = field(init=False, default_factory=list)
-    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
-
     def add_child(self, child: Self) -> None:
         """Add `child` to `self.children`, updating its properties accordingly."""
         self.children.append(child)
 
         if not (
-            self.envelope.files
-            and (child.envelope.parent_id == self.envelope.message_id)
-            and (props := self.envelope.files.get(child.envelope.message_id))
+            self.files
+            and (child.parent_id == self.message_id)
+            and (props := self.files.get(child.message_id))
         ):
             return
 
-        child.envelope.file_name = props.name
+        child.file_name = props.name
         if props.part:
             try:
-                child.envelope.part = int(props.part.split("/")[0].strip())
+                child.part = int(props.part.split("/")[0].strip())
             except ValueError:
                 pass
 
     def reconstruct_from_children(self) -> None:
-        """Reconstruct the entire content of this message from all of its children.
+        """Reconstruct the entire contents of this message from all of its children.
 
         Should only be called after all children have been fetched and added.
         """
         parts: list[Self] = []
 
         for child in self.children:
-            if not (
-                child.envelope.parent_id
-                and (child.envelope.parent_id == self.envelope.message_id)
-            ):
+            if not (child.parent_id and (child.parent_id == self.message_id)):
                 continue
 
-            if child.envelope.message_id not in self.envelope.files:
+            if child.message_id not in self.files:
                 parts.append(child)
 
-            if not child.envelope.file_name:
+            if not child.file_name:
                 continue
 
-            if not (attachment := self.attachments.get(child.envelope.file_name)):
-                attachment = self.attachments[child.envelope.file_name] = []
+            if not (attachment := self.attachments.get(child.file_name)):
+                attachment = self.attachments[child.file_name] = []
 
             attachment.append(child)
 
-        parts.sort(key=lambda part: part.envelope.part)
+        parts.sort(key=lambda part: part.part)
         for part in parts:
             self.body = f"{self.body or ''}{part.body or ''}"
 
         for name, attachment in self.attachments.items():
-            attachment.sort(key=lambda part: part.envelope.part)
+            attachment.sort(key=lambda part: part.part)
 
 
 @dataclass(slots=True)

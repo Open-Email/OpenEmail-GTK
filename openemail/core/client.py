@@ -52,7 +52,6 @@ from .crypto import (
 )
 from .model import (
     Address,
-    Envelope,
     Message,
     Notification,
     Profile,
@@ -388,7 +387,7 @@ async def delete_contact(address: Address) -> None:
 
 async def fetch_envelope(
     url: str, message_id: str, author: Address, *, broadcast: bool = False
-) -> Envelope | None:
+) -> dict[str, str] | None:
     """Perform a HEAD request to the specified URL and retrieve response headers.
 
     Args:
@@ -419,12 +418,8 @@ async def fetch_envelope(
         envelope_path.parent.mkdir(parents=True, exist_ok=True)
         json.dump(headers, envelope_path.open("w"))
 
-    try:
-        logging.debug("Fetched envelope %s", message_id[:8])
-        return Envelope(message_id, headers, author, user)
-    except ValueError as error:
-        logging.error("Fetching envelope %s failed: %s", message_id[:8], error)
-        return None
+    logging.debug("Fetched envelope %s", message_id[:8])
+    return headers
 
 
 async def fetch_message_from_agent(
@@ -442,9 +437,17 @@ async def fetch_message_from_agent(
     ):
         return None
 
-    if envelope.is_child:
+    try:
+        message = Message(message_id, envelope, author, user.encryption_keys.private)
+    except ValueError as error:
+        logging.error("Constructing message %s failed: %s", message_id[:8], error)
+        return None
+
+    if message.is_child:
+        message.attachment_url = url
+
         logging.debug("Fetched message %s", message_id[:8])
-        return Message(envelope, attachment_url=url)
+        return message
 
     messages_dir = data_dir / "messages" / author.host_part / author.local_part
     if broadcast:
@@ -468,9 +471,9 @@ async def fetch_message_from_agent(
         message_path.parent.mkdir(parents=True, exist_ok=True)
         message_path.write_bytes(contents)
 
-    if (not envelope.is_broadcast) and envelope.access_key:
+    if (not message.is_broadcast) and message.access_key:
         try:
-            contents = decrypt_xchacha20poly1305(contents, envelope.access_key)
+            contents = decrypt_xchacha20poly1305(contents, message.access_key)
         except ValueError as error:
             logging.error(
                 "Fetching message %s failed: Failed to decrypt body: %s",
@@ -480,8 +483,11 @@ async def fetch_message_from_agent(
             return None
 
     try:
+        message.body = contents.decode("utf-8")
+
         logging.debug("Fetched message %s", message_id[:8])
-        return Message(envelope, contents.decode("utf-8"))
+        return message
+
     except UnicodeError as error:
         logging.error(
             "Fetching message %s failed: Failed to decode body: %s",
@@ -555,12 +561,12 @@ async def fetch_messages(
                 message_id,
                 broadcast=broadcasts,
             ):
-                messages[message.envelope.message_id] = message
+                messages[message.message_id] = message
                 break
 
     for message_id, message in messages.copy().items():
-        if message.envelope.parent_id:
-            if parent := messages.get(message.envelope.parent_id):
+        if message.parent_id:
+            if parent := messages.get(message.parent_id):
                 parent.add_child(messages.pop(message_id))
 
     for message in messages.values():
@@ -600,9 +606,9 @@ async def download_attachment(parts: Iterable[Message]) -> bytes | None:
         with response:
             contents = response.read()
 
-        if part and (not part.envelope.is_broadcast) and part.envelope.access_key:
+        if part and (not part.is_broadcast) and part.access_key:
             try:
-                contents = decrypt_xchacha20poly1305(contents, part.envelope.access_key)
+                contents = decrypt_xchacha20poly1305(contents, part.access_key)
             except ValueError:
                 return None
 

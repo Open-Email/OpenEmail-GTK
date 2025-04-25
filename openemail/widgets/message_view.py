@@ -82,30 +82,30 @@ class MailMessageView(Adw.Bin):
         self._message = message
         # Date, time
         self.date = _("{} at {}").format(
-            message.envelope.date.strftime("%x"),
-            message.envelope.date.astimezone(datetime.now().tzinfo).strftime("%H:%M"),
+            message.date.strftime("%x"),
+            message.date.astimezone(datetime.now().tzinfo).strftime("%H:%M"),
         )
-        self.subject = message.envelope.subject
+        self.subject = message.subject
         self.body = message.body
 
         self.can_reply = True
 
-        self.author_is_self = message.envelope.author == mail.user.address
+        self.author_is_self = message.author == mail.user.address
 
         self.can_trash = (not self.author_is_self) and (
-            message.envelope.message_id not in settings.get_strv("trashed-messages")
+            message.message_id not in settings.get_strv("trashed-messages")
         )
         self.can_restore = not (self.can_trash or self.author_is_self)
 
         if self._name_binding:
             self._name_binding.unbind()
-        self._name_binding = mail.profiles[message.envelope.author].bind_property(
+        self._name_binding = mail.profiles[message.author].bind_property(
             "name", self, "name", GObject.BindingFlags.SYNC_CREATE
         )
 
         if self._image_binding:
             self._image_binding.unbind()
-        self._image_binding = mail.profiles[message.envelope.author].bind_property(
+        self._image_binding = mail.profiles[message.author].bind_property(
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
@@ -117,20 +117,16 @@ class MailMessageView(Adw.Bin):
             self.attachment_messages[row] = parts
             self.attachments.append(row)
 
-        self.original_author = (
-            f"{_('Original Author:')} {str(message.envelope.original_author)}"
-        )
-        self.different_author = (
-            message.envelope.author != message.envelope.original_author
-        )
+        self.original_author = f"{_('Original Author:')} {str(message.original_author)}"
+        self.different_author = message.author != message.original_author
 
-        if message.envelope.is_broadcast:
+        if message.is_broadcast:
             self.readers = _("Broadcast")
             return
 
         self.readers = f"{_('Readers:')} {str(mail.profiles[mail.user.address].name)}"
 
-        for reader in message.envelope.readers:
+        for reader in message.readers:
             if reader == mail.user.address:
                 continue
 
@@ -170,9 +166,7 @@ class MailMessageView(Adw.Bin):
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:
         self.profile_view.profile = (
-            mail.profiles[self.message.envelope.author].profile
-            if self.message
-            else None
+            mail.profiles[self.message.author].profile if self.message else None
         )
         self.profile_dialog.present(self)
 
@@ -217,7 +211,7 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        mail.trash_message(message_id := self.message.envelope.message_id)
+        mail.trash_message(message_id := self.message.message_id)
         self._add_to_undo(
             _("Message moved to trash"),
             lambda: mail.restore_message(message_id),
@@ -228,7 +222,7 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        mail.restore_message(message_id := self.message.envelope.message_id)
+        mail.restore_message(message_id := self.message.message_id)
         self._add_to_undo(
             _("Message restored"),
             lambda: mail.trash_message(message_id),

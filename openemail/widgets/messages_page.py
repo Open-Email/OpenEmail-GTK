@@ -25,7 +25,7 @@ from typing import Any, Literal
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import PREFIX, mail, settings
-from openemail.mail import Envelope, MailMessage
+from openemail.mail import MailMessage
 
 from .compose_dialog import MailComposeDialog
 from .content_page import MailContentPage
@@ -97,13 +97,9 @@ class MailMessagesPage(Adw.NavigationPage):
                 ),
                 Gtk.CustomSorter.new(
                     lambda a, b, _: int(
-                        b.message.envelope.date.timestamp()
-                        > a.message.envelope.date.timestamp()
+                        b.message.date.timestamp() > a.message.date.timestamp()
                     )
-                    - int(
-                        b.message.envelope.date.timestamp()
-                        < a.message.envelope.date.timestamp()
-                    )
+                    - int(b.message.date.timestamp() < a.message.date.timestamp())
                 ),
             ),
         )
@@ -148,17 +144,17 @@ class MailMessagesPage(Adw.NavigationPage):
         if not self.message_view.message:
             return self._new_message()
 
-        envelope: Envelope = self.message_view.message.envelope
+        message = self.message_view.message
 
         self.compose_dialog.attached_files.clear()
         self.compose_dialog.attachments.remove_all()
         self.compose_dialog.compose_form.reset()
         self.compose_dialog.broadcast_switch.props.active = bool(
-            envelope.is_broadcast and (envelope.author == mail.user.address)
+            message.is_broadcast and (message.author == mail.user.address)
         )
         self.compose_dialog.readers.props.text = ", ".join(
             str(reader)
-            for reader in list(dict.fromkeys(envelope.readers + [envelope.author]))
+            for reader in list(dict.fromkeys(message.readers + [message.author]))
             if (reader != mail.user.address)
         )
 
@@ -166,19 +162,19 @@ class MailMessagesPage(Adw.NavigationPage):
             self.compose_dialog.body.props.text = (
                 # Date, time, author
                 _("On {}, {}, {} wrote:").format(
-                    envelope.date.strftime("%x"),
-                    envelope.date.astimezone(datetime.now().tzinfo).strftime("%H:%M"),
+                    message.date.strftime("%x"),
+                    message.date.astimezone(datetime.now().tzinfo).strftime("%H:%M"),
                     profile.name
-                    if (profile := mail.profiles.get(envelope.author))
-                    else envelope.author,
+                    if (profile := mail.profiles.get(message.author))
+                    else message.author,
                 )
                 + "\n"
                 + sub(r"^(?!>)", r"> ", body, flags=M)
                 + "\n\n"
             )
 
-        self.compose_dialog.subject.props.text = envelope.subject
-        self.compose_dialog.subject_id = envelope.subject_id
+        self.compose_dialog.subject.props.text = message.subject
+        self.compose_dialog.subject_id = message.subject_id
         self.compose_dialog.draft_id = None
 
         self.compose_dialog.present(self)

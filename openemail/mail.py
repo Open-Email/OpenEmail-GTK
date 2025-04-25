@@ -38,7 +38,6 @@ from .core.client import data_dir as data_dir
 from .core.client import user as user
 from .core.crypto import KeyPair as KeyPair
 from .core.model import Address as Address
-from .core.model import Envelope as Envelope
 from .core.model import Message as Message
 from .core.model import Profile as Profile
 from .core.model import User as User
@@ -318,7 +317,7 @@ async def discard_message(message: Message) -> None:
 
     for msg in [message] + message.children:
         try:
-            await client.delete_message(msg.envelope.message_id)
+            await client.delete_message(msg.message_id)
         except WriteError:
             if not failed:
                 notifier.send(_("Failed to discard message"))
@@ -463,7 +462,7 @@ class MailMessage(GObject.Object):
         if not self.message:
             return False
 
-        return self.message.envelope.message_id in settings.get_strv("trashed-messages")
+        return self.message.message_id in settings.get_strv("trashed-messages")
 
     @property
     def message(self) -> Message | None:
@@ -474,19 +473,19 @@ class MailMessage(GObject.Object):
     def message(self, message: Message) -> None:
         self._message = message
 
-        self.date = message.envelope.date.strftime("%x")
-        self.subject = message.envelope.subject
+        self.date = message.date.strftime("%x")
+        self.subject = message.subject
         self.body = message.body
 
         if self._name_binding:
             self._name_binding.unbind()
-        self._name_binding = profiles[message.envelope.author].bind_property(
+        self._name_binding = profiles[message.author].bind_property(
             "name", self, "name", GObject.BindingFlags.SYNC_CREATE
         )
 
         if self._image_binding:
             self._image_binding.unbind()
-        self._image_binding = profiles[message.envelope.author].bind_property(
+        self._image_binding = profiles[message.author].bind_property(
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
@@ -513,7 +512,7 @@ class MailMessageStore(DictStore[str, MailMessage]):
         message_ids: set[str] = set()
 
         async for message in self._fetch():  # type: ignore
-            message_ids.add(message_id := message.envelope.message_id)
+            message_ids.add(message_id := message.message_id)
             if message_id in self._items:
                 continue
 
