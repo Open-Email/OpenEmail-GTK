@@ -499,12 +499,15 @@ async def fetch_message_ids(author: Address, broadcasts: bool = False) -> set[st
     if broadcasts:
         envelopes_dir /= "broadcasts"
 
-    try:
-        children = envelopes_dir.iterdir()
-    except FileNotFoundError:
-        children = ()
+    if author == user.address:
+        local_ids = set()
+    else:
+        try:
+            children = envelopes_dir.iterdir()
+        except FileNotFoundError:
+            children = ()
 
-    local_ids = {path.stem for path in children if path.suffix == ".json"}
+        local_ids = {path.stem for path in children if path.suffix == ".json"}
 
     for agent in await get_agents(user.address):
         if not (
