@@ -25,7 +25,16 @@ from dataclasses import fields
 from functools import wraps
 from itertools import chain
 from shutil import rmtree
-from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable, NamedTuple
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Coroutine,
+    Iterable,
+    NamedTuple,
+    Self,
+    Type,
+)
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
@@ -413,8 +422,6 @@ class MailMessage(GObject.Object):
 
     __gtype_name__ = "MailMessage"
 
-    message: Message | None = None
-
     name = GObject.Property(type=str)
     date = GObject.Property(type=str)
     subject = GObject.Property(type=str)
@@ -425,6 +432,7 @@ class MailMessage(GObject.Object):
     draft_id = GObject.Property(type=int)
     broadcast = GObject.Property(type=bool, default=False)
 
+    _message: Message | None = None
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
 
@@ -436,15 +444,14 @@ class MailMessage(GObject.Object):
 
         return self.message.envelope.message_id in settings.get_strv("trashed-messages")
 
-    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    @property
+    def message(self) -> Message | None:
+        """Get the `model.Message` `self` represents."""
+        return self._message
 
-        if message:
-            self.set_from_message(message)
-
-    def set_from_message(self, message: Message) -> None:
-        """Update properties of the row from `message`."""
-        self.message = message
+    @message.setter
+    def message(self, message: Message) -> None:
+        self._message = message
 
         self.date = message.envelope.date.strftime("%x")
         self.subject = message.envelope.subject
@@ -461,6 +468,12 @@ class MailMessage(GObject.Object):
         self._image_binding = profiles[message.envelope.author].bind_property(
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
+
+    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        if message:
+            self.message = message
 
 
 class MailMessageStore(DictStore[str, MailMessage]):

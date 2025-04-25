@@ -208,5 +208,5 @@ class MailMessagesPage(Adw.NavigationPage):
             self.message_view.can_reply = False
             return
 
-        self.message_view.set_from_message(selected.message)
+        self.message_view.message = selected.message
         self.content.split_view.props.show_content = True

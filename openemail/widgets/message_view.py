@@ -48,7 +48,6 @@ class MailMessageView(Adw.Bin):
 
     visible_child_name = GObject.Property(type=str, default="empty")
 
-    message: Message | None = None
     attachment_messages: dict[Adw.ActionRow, list[Message]]
 
     name = GObject.Property(type=str)
@@ -65,60 +64,22 @@ class MailMessageView(Adw.Bin):
     can_restore = GObject.Property(type=bool, default=False)
     can_reply = GObject.Property(type=bool, default=False)
 
+    _message: Message | None = None
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
 
     undo: dict[Adw.Toast, Callable[[], Any]]
 
-    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.attachment_messages = {}
-        self.undo = {}
+    @property
+    def message(self) -> Message | None:
+        """Get the `model.Message` `self` represents."""
+        return self._message
 
-        def undo(*_args: Any) -> bool:
-            if not self.undo:
-                return False
-
-            toast, callback = self.undo.popitem()
-            toast.dismiss()
-            callback()
-
-            return True
-
-        self.add_controller(
-            controller := Gtk.ShortcutController(
-                scope=Gtk.ShortcutScope.GLOBAL,
-            )
-        )
-        controller.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("Delete|KP_Delete"),
-                Gtk.CallbackAction.new(
-                    lambda *_: not (
-                        self._discard
-                        if self.author_is_self
-                        else self._trash
-                        if self.can_trash
-                        else self._restore
-                    )()
-                ),
-            )
-        )
-        controller.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("<primary>z"),
-                Gtk.CallbackAction.new(undo),
-            )
-        )
-
-        if message:
-            self.set_from_message(message)
-
-    def set_from_message(self, message: Message) -> None:
-        """Update properties of the view from `message`."""
+    @message.setter
+    def message(self, message: Message) -> None:
         self.visible_child_name = "message"
 
-        self.message = message
+        self._message = message
         # Date, time
         self.date = _("{} at {}").format(
             message.envelope.date.strftime("%x"),
@@ -174,6 +135,51 @@ class MailMessageView(Adw.Bin):
                 continue
 
             self.readers += f", {profile.name if (profile := mail.profiles.get(reader)) else reader}"
+
+    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        self.attachment_messages = {}
+        self.undo = {}
+
+        def undo(*_args: Any) -> bool:
+            if not self.undo:
+                return False
+
+            toast, callback = self.undo.popitem()
+            toast.dismiss()
+            callback()
+
+            return True
+
+        self.add_controller(
+            controller := Gtk.ShortcutController(
+                scope=Gtk.ShortcutScope.GLOBAL,
+            )
+        )
+        controller.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("Delete|KP_Delete"),
+                Gtk.CallbackAction.new(
+                    lambda *_: not (
+                        self._discard
+                        if self.author_is_self
+                        else self._trash
+                        if self.can_trash
+                        else self._restore
+                    )()
+                ),
+            )
+        )
+        controller.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("<primary>z"),
+                Gtk.CallbackAction.new(undo),
+            )
+        )
+
+        if message:
+            self.message = message
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:
