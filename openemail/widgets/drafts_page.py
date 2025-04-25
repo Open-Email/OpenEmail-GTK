@@ -73,11 +73,7 @@ class MailDraftsPage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _delete_all(self, *_args: Any) -> None:
-        for message in mail.drafts:
-            if not message:
-                continue
-
-            mail.drafts.delete(message.draft_id)  # type: ignore
+        mail.drafts.delete_all()
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not (isinstance(message := selection.props.selected_item, MailMessage)):

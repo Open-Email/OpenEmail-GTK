@@ -29,6 +29,7 @@ from http.client import HTTPResponse, InvalidURL
 from json import JSONDecodeError
 from os import getenv
 from pathlib import Path
+from shutil import rmtree
 from socket import setdefaulttimeout
 from typing import (
     Any,
@@ -928,6 +929,13 @@ def delete_saved_message(ident: int) -> None:
         return
 
     logging.debug("Deleted message %i", ident)
+
+
+def delete_all_saved_messages() -> None:
+    """Delete all messages saved using `save_message()`."""
+    logging.debug("Deleting all saved messages…")
+    rmtree(data_dir / "messages", ignore_errors=True)
+    logging.debug("Deleted all saved messages")
 
 
 async def delete_account() -> None:

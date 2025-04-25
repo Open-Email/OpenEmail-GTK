@@ -521,9 +521,14 @@ class MailDraftStore(DictStore[int, MailMessage]):
         run_task(self.update())
 
     def delete(self, draft_id: int) -> None:
-        """Delete a draft saved by `save_draft()`."""
+        """Delete a draft saved using `save()`."""
         client.delete_saved_message(draft_id)
         self.remove(draft_id)
+
+    def delete_all(self) -> None:
+        """Delete all drafts saved using `save()`."""
+        client.delete_all_saved_messages()
+        self.clear()
 
     @_syncs
     async def update(self) -> None:
