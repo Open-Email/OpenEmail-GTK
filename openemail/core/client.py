@@ -75,7 +75,6 @@ MAX_MESSAGE_SIZE = 64_000_000
 setdefaulttimeout(5)
 
 user: User = User()
-cache_dir = Path(getenv("XDG_CACHE_DIR", Path.home() / ".cache")) / "openemail"
 data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
 
 _agents: dict[str, tuple[str, ...]] = {}
@@ -442,7 +441,7 @@ async def fetch_envelope(url: str, message_id: str, author: Address) -> Envelope
         logging.error("Fetching envelope %s failed: Invalid URL", message_id[:8])
         return None
 
-    envelope_path = cache_dir / "envelopes" / agent / f"{message_id}.json"
+    envelope_path = data_dir / "envelopes" / agent / f"{message_id}.json"
 
     try:
         headers = dict(json.load(envelope_path.open("r")))
@@ -480,7 +479,7 @@ async def fetch_message_from_agent(
         logging.debug("Fetched message %s", message_id[:8])
         return Message(envelope, attachment_url=url)
 
-    message_path = cache_dir / "messages" / agent / message_id
+    message_path = data_dir / "messages" / agent / message_id
 
     try:
         contents = message_path.read_bytes()
@@ -849,7 +848,7 @@ async def delete_message(message_id: str) -> None:
     raise WriteError
 
 
-def save_message(
+def save_draft(
     readers: str | None = None,
     subject: str | None = None,
     body: str | None = None,
@@ -859,13 +858,13 @@ def save_message(
 ) -> None:
     """Serialize and save a message to disk for future use.
 
-    `ident` can be used to update a specific message loaded using `load_saved_messages()`,
+    `ident` can be used to update a specific message loaded using `load_drafts()`,
     by default, a new ID is generated.
 
-    See `send_message()` for other parameters, `load_saved_messages()` for how to retrieve it.
+    See `send_message()` for other parameters, `load_drafts()` on how to retrieve it.
     """
-    logging.debug("Saving message…")
-    messages_path = data_dir / "messages"
+    logging.debug("Saving draft…")
+    messages_path = data_dir / "drafts"
     n = (
         ident
         if ident is not None
@@ -878,7 +877,7 @@ def save_message(
                     int(path.stem)
                     for path in messages_path.iterdir()
                     if path.stem.isdigit()
-                ),
+                )
             )
             + 1
         )
@@ -888,21 +887,21 @@ def save_message(
         parents=True, exist_ok=True
     )
     json.dump((readers, subject, body, reply, broadcast), (message_path).open("w"))
-    logging.debug("Message saved as %i.json", n)
+    logging.debug("Draft saved as %i.json", n)
 
 
-def load_saved_messages() -> Generator[
+def load_drafts() -> Generator[
     tuple[int, Iterable[Address] | None, str | None, str | None, str | None, bool],
     None,
     None,
 ]:
-    """Load all messages saved to disk.
+    """Load all drafts saved to disk.
 
-    See `save_message()`.
+    See `save_draft()`.
     """
-    logging.debug("Loading saved messages…")
-    if not (messages_path := data_dir / "messages").is_dir():
-        logging.debug("No saved messages")
+    logging.debug("Loading drafts…")
+    if not (messages_path := data_dir / "drafts").is_dir():
+        logging.debug("No drafts")
         return
 
     for path in messages_path.iterdir():
@@ -912,30 +911,30 @@ def load_saved_messages() -> Generator[
         except (JSONDecodeError, ValueError):
             continue
 
-    logging.debug("Loaded all saved messages")
+    logging.debug("Loaded all drafts")
 
 
-def delete_saved_message(ident: int) -> None:
-    """Delete the message saved using `ident`.
+def delete_draft(ident: int) -> None:
+    """Delete the draft saved using `ident`.
 
-    See `save_message()`, `load_saved_messages()`.
+    See `save_draft()`, `load_drafts()`.
     """
-    logging.debug("Deleting message %i…", ident)
+    logging.debug("Deleting draft %i…", ident)
 
     try:
-        (data_dir / "messages" / f"{ident}.json").unlink()
+        (data_dir / "drafts" / f"{ident}.json").unlink()
     except FileNotFoundError as error:
-        logging.debug("Failed to delete message %i: %s", ident, error)
+        logging.debug("Failed to delete draft %i: %s", ident, error)
         return
 
-    logging.debug("Deleted message %i", ident)
+    logging.debug("Deleted draft %i", ident)
 
 
 def delete_all_saved_messages() -> None:
-    """Delete all messages saved using `save_message()`."""
-    logging.debug("Deleting all saved messages…")
-    rmtree(data_dir / "messages", ignore_errors=True)
-    logging.debug("Deleted all saved messages")
+    """Delete all drafts saved using `save_draft()`."""
+    logging.debug("Deleting all drafts…")
+    rmtree(data_dir / "drafts", ignore_errors=True)
+    logging.debug("Deleted all drafts")
 
 
 async def delete_account() -> None:

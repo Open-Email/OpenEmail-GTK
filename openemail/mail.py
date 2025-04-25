@@ -34,7 +34,6 @@ from openemail import notifier, run_task, secret_service, settings
 
 from .core import client
 from .core.client import WriteError as WriteError
-from .core.client import cache_dir as cache_dir
 from .core.client import data_dir as data_dir
 from .core.client import is_writing as is_writing
 from .core.client import user as user
@@ -517,12 +516,12 @@ class MailDraftStore(DictStore[int, MailMessage]):
 
         `draft_id` can be used to update a specific draft, by default, a new ID is generated.
         """
-        client.save_message(readers, subject, body, reply, broadcast, draft_id)
+        client.save_draft(readers, subject, body, reply, broadcast, draft_id)
         run_task(self.update())
 
     def delete(self, draft_id: int) -> None:
         """Delete a draft saved using `save()`."""
-        client.delete_saved_message(draft_id)
+        client.delete_draft(draft_id)
         self.remove(draft_id)
 
     def delete_all(self) -> None:
@@ -538,7 +537,7 @@ class MailDraftStore(DictStore[int, MailMessage]):
         previous = len(self._items)
         self._items.clear()
 
-        for draft in (drafts := tuple(client.load_saved_messages())):
+        for draft in (drafts := tuple(client.load_drafts())):
             message = MailMessage()
             (
                 message.draft_id,
