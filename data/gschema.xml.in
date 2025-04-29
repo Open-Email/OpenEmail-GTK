@@ -16,6 +16,9 @@
 		<key name="trashed-messages" type="as">
 			<default>[]</default>
 		</key>
+		<key name="deleted-messages" type="as">
+			<default>[]</default>
+		</key>
 	</schema>
 	<schema id="@APP_ID@.State" path="@PREFIX@/State/">
 		<key name="width" type="i">

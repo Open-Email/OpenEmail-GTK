@@ -39,3 +39,16 @@ template $MailMessagesPage: Adw.NavigationPage {
     };
   }
 }
+
+Adw.AlertDialog confirm_empty_dialog {
+  heading: _("Empty Trash?");
+  body: _("All items in the trash will be permanently deleted.");
+  close-response: "cancel";
+  default-response: "empty";
+  response => $_confirm_empty();
+
+  responses [
+    cancel: _("Cancel"),
+    empty: _("Empty Trash") destructive,
+  ]
+}

@@ -328,22 +328,30 @@ async def discard_message(message: Message) -> None:
     await outbox.update()
 
 
-def trash_message(message_id: str) -> None:
-    """Move the message associated with `message_id` to the trash."""
+def trash_message(ident: str) -> None:
+    """Move the message associated with `ident` to the trash."""
     settings.set_strv(
         "trashed-messages",
-        settings.get_strv("trashed-messages") + [message_id],
+        tuple(set(settings.get_strv("deleted-messages")) | {ident}),
     )
 
 
-def restore_message(message_id: str) -> None:
-    """Restore the message associated with `message_id` from the trash."""
+def restore_message(ident: str) -> None:
+    """Restore the message associated with `ident` from the trash."""
     try:
-        (trashed := settings.get_strv("trashed-messages")).remove(message_id)
+        (trashed := settings.get_strv("trashed-messages")).remove(ident)
     except ValueError:
         return
 
     settings.set_strv("trashed-messages", trashed)
+
+
+def empty_trash() -> None:
+    """Empty the user's trash."""
+    for store in inbox, broadcasts:
+        for message in store:
+            if message.trashed:  # type: ignore
+                store.delete(message.message.message_id)  # type: ignore
 
 
 def log_out() -> None:
@@ -360,8 +368,10 @@ def log_out() -> None:
 
     settings.reset("address")
     settings.reset("sync-interval")
+    settings.reset("trusted-domains")
     settings.reset("contact-requests")
     settings.reset("trashed-messages")
+    settings.reset("deleted-messages")
 
     keyring.delete_password(secret_service, str(user.address))
 
@@ -504,7 +514,19 @@ class MailMessageStore(DictStore[str, MailMessage]):
         self.item_type = MailMessage
 
     @abstractmethod
-    async def _fetch(self): ...  # noqa: ANN202
+    async def _fetch(self) -> ...: ...
+
+    def delete(self, message_id: str) -> None:
+        """Delete the message with `message_id`.
+
+        From the user's perspective, this means removing an item from the trash.
+        """
+        settings.set_strv(
+            "deleted-messages",
+            tuple(set(settings.get_strv("deleted-messages")) | {message_id}),
+        )
+        self.remove(message_id)
+        restore_message(message_id)
 
     @_syncs
     async def update(self) -> None:
@@ -788,8 +810,9 @@ class MailContactRequests(MailProfileStore):
 
 class _BroadcastStore(MailMessageStore):
     async def _fetch(self) -> AsyncGenerator[Message, None]:  # type: ignore
+        deleted = settings.get_strv("deleted-messages")
         async for messages in asyncio.as_completed(
-            client.fetch_broadcasts(Address(contact.address))  # type: ignore
+            client.fetch_broadcasts(Address(contact.address), exclude=deleted)  # type: ignore
             for contact in address_book
         ):
             for message in await messages:
@@ -819,10 +842,17 @@ class _InboxStore(MailMessageStore):
 
                 settings.set_strv("contact-requests", current + [str(notifier)])
 
+        deleted = settings.get_strv("deleted-messages")
         async for messages in asyncio.as_completed(
             (
-                *(client.fetch_link_messages(n) for n in known_notifiers),
-                *(client.fetch_link_messages(contact) for contact in other_contacts),
+                *(
+                    client.fetch_link_messages(n, exclude=deleted)
+                    for n in known_notifiers
+                ),
+                *(
+                    client.fetch_link_messages(contact, exclude=deleted)
+                    for contact in other_contacts
+                ),
             )
         ):
             for message in await messages:

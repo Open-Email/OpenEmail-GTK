@@ -562,11 +562,17 @@ async def fetch_message_ids(author: Address, broadcasts: bool = False) -> set[st
 
 
 async def fetch_messages(
-    author: Address, *, broadcasts: bool = False
+    author: Address,
+    *,
+    broadcasts: bool = False,
+    exclude: Iterable[str] = (),
 ) -> tuple[Message, ...]:
     """Fetch either link messages or broadcasts by `author`."""
     messages: dict[str, Message] = {}
     for message_id in await fetch_message_ids(author, broadcasts=broadcasts):
+        if message_id in exclude:
+            continue
+
         for agent in await get_agents(user.address):
             if message := await fetch_message_from_agent(
                 (
@@ -594,16 +600,20 @@ async def fetch_messages(
     return tuple(messages.values())
 
 
-async def fetch_broadcasts(author: Address) -> tuple[Message, ...]:
-    """Fetch broadcasts by `author`."""
+async def fetch_broadcasts(
+    author: Address, *, exclude: Iterable[str] = ()
+) -> tuple[Message, ...]:
+    """Fetch broadcasts by `author`, without messages with IDs in `exclude`."""
     logging.debug("Fetching broadcasts from %s…", author)
-    return await fetch_messages(author, broadcasts=True)
+    return await fetch_messages(author, broadcasts=True, exclude=exclude)
 
 
-async def fetch_link_messages(author: Address) -> tuple[Message, ...]:
-    """Fetch messages by `author`, addressed to `client.user`."""
+async def fetch_link_messages(
+    author: Address, *, exclude: Iterable[str] = ()
+) -> tuple[Message, ...]:
+    """Fetch messages by `author`, addressed to `client.user`, without messages with IDs in `exclude`."""
     logging.debug("Fetching link messages messages from %s…", author)
-    return await fetch_messages(author)
+    return await fetch_messages(author, exclude=exclude)
 
 
 async def download_attachment(parts: Iterable[Message]) -> bytes | None:
