@@ -61,6 +61,7 @@ from .model import (
 )
 
 MAX_MESSAGE_SIZE = 64_000_000
+MAX_PROFILE_SIZE = 64_000
 MAX_PROFILE_IMAGE_SIZE = 640_000
 
 setdefaulttimeout(5)
@@ -202,7 +203,7 @@ async def fetch_profile(address: Address) -> Profile | None:
         with response:
             try:
                 logging.debug("Profile fetched for %s", address)
-                return Profile(address, response.read().decode("utf-8"))
+                return Profile(address, response.read(MAX_PROFILE_SIZE).decode("utf-8"))
             except UnicodeError:
                 continue
 
