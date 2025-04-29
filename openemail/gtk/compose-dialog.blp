@@ -178,15 +178,33 @@ template $MailComposeDialog: Adw.Dialog {
     ActionBar {
       [start]
       Button {
-        clicked => $_attach_files();
-
-        Adw.ButtonContent {
-          icon-name: "mail-attachment-symbolic";
-          label: _("Attach Files");
-        }
+        icon-name: "text-bold-symbolic";
+        tooltip-text: _("Bold");
+        clicked => $_format_bold();
       }
 
-      [end]
+      [start]
+      Button {
+        icon-name: "text-italic-symbolic";
+        tooltip-text: _("Italic");
+        clicked => $_format_italic();
+      }
+
+      [start]
+      Button {
+        icon-name: "text-strikethrough-symbolic";
+        tooltip-text: _("Strikethrough");
+        clicked => $_format_strikethrough();
+      }
+
+      [start]
+      Button {
+        icon-name: "text-heading-symbolic";
+        tooltip-text: _("Increase Heading Level");
+        clicked => $_format_heading();
+      }
+
+      [start]
       Button {
         icon-name: "quotation-symbolic";
         tooltip-text: _("Quote");
@@ -195,30 +213,16 @@ template $MailComposeDialog: Adw.Dialog {
 
       [end]
       Button {
-        icon-name: "text-heading-symbolic";
-        tooltip-text: _("Increase Heading Level");
-        clicked => $_format_heading();
+        clicked => $_attach_files();
+        icon-name: "mail-attachment-symbolic";
+        tooltip-text: _("Attach Files");
       }
 
       [end]
       Button {
-        icon-name: "text-strikethrough-symbolic";
-        tooltip-text: _("Strikethrough");
-        clicked => $_format_strikethrough();
-      }
-
-      [end]
-      Button {
-        icon-name: "text-italic-symbolic";
-        tooltip-text: _("Italic");
-        clicked => $_format_italic();
-      }
-
-      [end]
-      Button {
-        icon-name: "text-bold-symbolic";
-        tooltip-text: _("Bold");
-        clicked => $_format_bold();
+        icon-name: "emoji-symbolic";
+        tooltip-text: _("Emoji Picker");
+        clicked => $_insert_emoji();
       }
     }
   }

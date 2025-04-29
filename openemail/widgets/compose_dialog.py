@@ -138,6 +138,10 @@ class MailComposeDialog(Adw.Dialog):
             self.draft_id,
         )
 
+    @Gtk.Template.Callback()
+    def _insert_emoji(self, *_args: Any) -> None:
+        Gtk.TextView.do_insert_emoji(self.body_view)
+
     async def _attach_files_task(self) -> None:
         try:
             gfiles = await Gtk.FileDialog().open_multiple(  # type: ignore
@@ -154,7 +158,7 @@ class MailComposeDialog(Adw.Dialog):
                         Gio.FileQueryInfoFlags.NONE,
                         GLib.PRIORITY_DEFAULT,
                     )
-                ).props.display_name
+                ).get_display_name()
             except GLib.Error:
                 continue
 

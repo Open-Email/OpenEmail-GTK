@@ -13,10 +13,10 @@ template $MailProfileView: Adw.Bin {
         icon-name: "trash-symbolic";
         tooltip-text: _("Remove Contact");
         clicked => $_remove_contact();
-        
+
         ShortcutController {
           scope: managed;
-        
+
           Shortcut {
             trigger: "Delete|KP_Delete";
             action: "activate";
