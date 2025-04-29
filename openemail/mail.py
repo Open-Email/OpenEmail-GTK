@@ -350,8 +350,11 @@ def empty_trash() -> None:
     """Empty the user's trash."""
     for store in inbox, broadcasts:
         for message in store:
-            if message.trashed:  # type: ignore
-                store.delete(message.message.message_id)  # type: ignore
+            if not isinstance(message, MailMessage):
+                continue
+
+            if message.message and message.trashed:
+                store.delete(message.message.message_id)
 
 
 def log_out() -> None:
@@ -525,6 +528,33 @@ class MailMessageStore(DictStore[str, MailMessage]):
             "deleted-messages",
             tuple(set(settings.get_strv("deleted-messages")) | {message_id}),
         )
+
+        if not (
+            (message := self._items.get(message_id)) and (parent := message.message)
+        ):
+            return
+
+        envelopes_dir = (
+            client.data_dir
+            / "envelopes"
+            / parent.author.host_part
+            / parent.author.local_part
+        )
+        messages_dir = (
+            client.data_dir
+            / "messages"
+            / parent.author.host_part
+            / parent.author.local_part
+        )
+
+        if parent.is_broadcast:
+            envelopes_dir /= "broadcasts"
+            messages_dir /= "broadcasts"
+
+        for child in [parent] + parent.children:
+            (envelopes_dir / f"{child.message_id}.json").unlink(missing_ok=True)
+            (messages_dir / child.message_id).unlink(missing_ok=True)
+
         self.remove(message_id)
         restore_message(message_id)
 
