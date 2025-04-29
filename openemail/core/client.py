@@ -61,11 +61,12 @@ from .model import (
 )
 
 MAX_MESSAGE_SIZE = 64_000_000
+MAX_PROFILE_IMAGE_SIZE = 640_000
 
 setdefaulttimeout(5)
 
-user: User = User()
 data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
+user = User()
 
 _agents: dict[str, tuple[str, ...]] = {}
 
@@ -81,21 +82,21 @@ async def request(
     method: str | None = None,
     headers: dict[str, str] = {},
     data: bytes | None = None,
+    max_length: int | None = None,
 ) -> HTTPResponse | None:
     """Make an HTTP request using `urllib.urlopen`, handling errors and authentication."""
     headers["User-Agent"] = "Mozilla/5.0"
 
     try:
-        if user:
+        if auth:
             if not (agent := urlparse(url).hostname):
                 return None
 
             headers.update({"Authorization": get_nonce(agent, user.signing_keys)})
 
-        return await asyncio.to_thread(
+        response = await asyncio.to_thread(
             urlopen, Request(url, method=method, headers=headers, data=data)
         )
-
     except (InvalidURL, URLError, HTTPError, TimeoutError, ValueError) as error:
         logging.debug(
             "%s, URL: %s, Method: %s, Authorization: %s",
@@ -104,8 +105,19 @@ async def request(
             method or ("POST" if data else "GET"),
             auth,
         )
+        return None
 
-    return None
+    if max_length:
+        try:
+            length = int(response.headers.get("Content-Length", 0))
+        except ValueError:
+            return response
+
+        if length > max_length:
+            logging.debug("Content-Length for %s exceeds max_length", url)
+            return None
+
+    return response
 
 
 async def get_agents(address: Address) -> tuple[str, ...]:
@@ -247,7 +259,12 @@ async def fetch_profile_image(address: Address) -> bytes | None:
     """Fetch the remote profile image associated with a given `address`."""
     logging.debug("Fetching profile image for %s…", address)
     for agent in await get_agents(address):
-        if not (response := await request(_Mail(agent, address).image)):
+        if not (
+            response := await request(
+                _Mail(agent, address).image,
+                max_length=MAX_PROFILE_IMAGE_SIZE,
+            )
+        ):
             continue
 
         with response:
