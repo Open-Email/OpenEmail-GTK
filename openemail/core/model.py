@@ -35,6 +35,8 @@ from .crypto import (
     decrypt_xchacha20poly1305,
 )
 
+MAX_HEADERS_SIZE = 512_000
+
 
 class Address:
     """A Mail/HTTPS address."""
@@ -199,21 +201,22 @@ class Message:
         if not self.checksum:
             raise ValueError("Missing checksum")
 
-        sum = parse_headers(self.checksum)
+        checksum = parse_headers(self.checksum)
 
         try:
-            if sum["algorithm"] != CHECKSUM_ALGORITHM:
+            if checksum["algorithm"] != CHECKSUM_ALGORITHM:
                 raise ValueError("Unsupported checksum algorithm")
 
             if (
-                sum["value"]
+                checksum["value"]
                 != sha256(
                     (
                         "".join(
-                            tuple(
+                            (
                                 self.headers.get(field.lower(), "")
                                 for field in (
-                                    header.strip() for header in sum["order"].split(":")
+                                    header.strip()
+                                    for header in checksum["order"].split(":")
                                 )
                             )
                         )
@@ -241,6 +244,9 @@ class Message:
 
         except (IndexError, KeyError, ValueError) as error:
             raise ValueError("Could not parse headers") from error
+
+        if sum(len(k) + len(v) for k, v in headers.items()) > MAX_HEADERS_SIZE:
+            raise ValueError("Envelope size exceeds MAX_HEADERS_SIZE")
 
         try:
             self.message_id = headers["id"]
