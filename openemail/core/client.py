@@ -404,31 +404,31 @@ async def delete_contact(address: Address) -> None:
 
 
 async def fetch_envelope(
-    url: str, message_id: str, author: Address, *, broadcast: bool = False
+    url: str, ident: str, author: Address, *, broadcast: bool = False
 ) -> dict[str, str] | None:
     """Perform a HEAD request to the specified URL and retrieve response headers.
 
     Args:
         url: The URL for the HEAD request
-        message_id: The message ID
+        ident: The message ID
         user: Local user
         author: The remote user whose message is being fetched
         broadcast: Whether the message is a broadcast
 
     """
-    logging.debug("Fetching envelope %s…", message_id[:8])
+    logging.debug("Fetching envelope %s…", ident[:8])
 
     envelopes_dir = data_dir / "envelopes" / author.host_part / author.local_part
     if broadcast:
         envelopes_dir /= "broadcasts"
 
-    envelope_path = envelopes_dir / f"{message_id}.json"
+    envelope_path = envelopes_dir / f"{ident}.json"
 
     try:
         headers = dict(json.load(envelope_path.open("r")))
     except (FileNotFoundError, JSONDecodeError, ValueError):
         if not (response := await request(url, auth=True, method="HEAD")):
-            logging.error("Fetching envelope %s failed", message_id[:8])
+            logging.error("Fetching envelope %s failed", ident[:8])
             return None
 
         headers = dict(response.getheaders())
@@ -436,42 +436,35 @@ async def fetch_envelope(
         envelope_path.parent.mkdir(parents=True, exist_ok=True)
         json.dump(headers, envelope_path.open("w"))
 
-    logging.debug("Fetched envelope %s", message_id[:8])
+    logging.debug("Fetched envelope %s", ident[:8])
     return headers
 
 
 async def fetch_message_from_agent(
-    url: str, author: Address, message_id: str, broadcast: bool
+    url: str, author: Address, ident: str, broadcast: bool
 ) -> Message | None:
-    """Fetch a message from the provided `url`."""
-    logging.debug("Fetching message %s…", message_id[:8])
-    if not (
-        envelope := await fetch_envelope(
-            url,
-            message_id,
-            author,
-            broadcast=broadcast,
-        )
-    ):
+    """Fetch the message with `ident` from the provided `url`."""
+    logging.debug("Fetching message %s…", ident[:8])
+    if not (envelope := await fetch_envelope(url, ident, author, broadcast=broadcast)):
         return None
 
     try:
-        message = Message(message_id, envelope, author, user.encryption_keys.private)
+        message = Message(ident, envelope, author, user.encryption_keys.private)
     except ValueError as error:
-        logging.error("Constructing message %s failed: %s", message_id[:8], error)
+        logging.error("Constructing message %s failed: %s", ident[:8], error)
         return None
 
     if message.is_child:
         message.attachment_url = url
 
-        logging.debug("Fetched message %s", message_id[:8])
+        logging.debug("Fetched message %s", ident[:8])
         return message
 
     messages_dir = data_dir / "messages" / author.host_part / author.local_part
     if broadcast:
         messages_dir /= "broadcasts"
 
-    message_path = messages_dir / message_id
+    message_path = messages_dir / ident
 
     try:
         contents = message_path.read_bytes()
@@ -479,7 +472,7 @@ async def fetch_message_from_agent(
         if not (response := await request(url, auth=True)):
             logging.error(
                 "Fetching message %s failed: Failed fetching body",
-                message_id[:8],
+                ident[:8],
             )
             return None
 
@@ -495,7 +488,7 @@ async def fetch_message_from_agent(
         except ValueError as error:
             logging.error(
                 "Fetching message %s failed: Failed to decrypt body: %s",
-                message_id[:8],
+                ident[:8],
                 error,
             )
             return None
@@ -503,13 +496,13 @@ async def fetch_message_from_agent(
     try:
         message.body = contents.decode("utf-8")
 
-        logging.debug("Fetched message %s", message_id[:8])
+        logging.debug("Fetched message %s", ident[:8])
         return message
 
     except UnicodeError as error:
         logging.error(
             "Fetching message %s failed: Failed to decode body: %s",
-            message_id[:8],
+            ident[:8],
             error,
         )
         return None
@@ -569,8 +562,8 @@ async def fetch_messages(
 ) -> tuple[Message, ...]:
     """Fetch either link messages or broadcasts by `author`."""
     messages: dict[str, Message] = {}
-    for message_id in await fetch_message_ids(author, broadcasts=broadcasts):
-        if message_id in exclude:
+    for ident in await fetch_message_ids(author, broadcasts=broadcasts):
+        if ident in exclude:
             continue
 
         for agent in await get_agents(user.address):
@@ -580,18 +573,18 @@ async def fetch_messages(
                     if broadcasts
                     else _Link(agent, author, generate_link(user.address, author))
                 ).messages
-                + f"/{message_id}",
+                + f"/{ident}",
                 author,
-                message_id,
+                ident,
                 broadcast=broadcasts,
             ):
-                messages[message.message_id] = message
+                messages[message.ident] = message
                 break
 
-    for message_id, message in messages.copy().items():
+    for ident, message in messages.copy().items():
         if message.parent_id:
             if parent := messages.get(message.parent_id):
-                parent.add_child(messages.pop(message_id))
+                parent.add_child(messages.pop(ident))
 
     for message in messages.values():
         message.reconstruct_from_children()
@@ -680,7 +673,7 @@ async def send_message(
     date = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     try:
-        message_id, headers, content, parts = await _build_message(
+        ident, headers, content, parts = await _build_message(
             readers,
             subject,
             body.encode("utf-8"),
@@ -698,7 +691,7 @@ async def send_message(
                 data,
                 subject_id,
                 attachment=fields,
-                parent_id=message_id,
+                parent_id=ident,
                 date=date,
             )
             messages.append((h, c))
@@ -850,19 +843,19 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
     logging.debug("Notifications fetched")
 
 
-async def delete_message(message_id: str) -> None:
-    """Delete `message_id`."""
-    logging.debug("Deleting message %s…", message_id[:8])
+async def delete_message(ident: str) -> None:
+    """Delete the message with `ident`."""
+    logging.debug("Deleting message %s…", ident[:8])
     for agent in await get_agents(user.address):
         if await request(
-            _Message(agent, user.address, message_id).message,
+            _Message(agent, user.address, ident).message,
             auth=True,
             method="DELETE",
         ):
-            logging.info("Deleted message %s", message_id[:8])
+            logging.info("Deleted message %s", ident[:8])
             return
 
-    logging.error("Deleting message %s failed", message_id[:8])
+    logging.error("Deleting message %s failed", ident[:8])
     raise WriteError
 
 
@@ -982,9 +975,9 @@ class _Home:
 
 
 class _Message(_Home):
-    def __init__(self, agent: str, address: Address, message_id: str) -> None:
+    def __init__(self, agent: str, address: Address, ident: str) -> None:
         super().__init__(agent, address)
-        self.message = f"{self.messages}/{message_id}"
+        self.message = f"{self.messages}/{ident}"
 
 
 class _Mail:

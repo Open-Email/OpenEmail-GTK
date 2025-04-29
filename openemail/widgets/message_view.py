@@ -93,7 +93,7 @@ class MailMessageView(Adw.Bin):
         self.author_is_self = message.author == mail.user.address
 
         self.can_trash = (not self.author_is_self) and (
-            message.message_id not in settings.get_strv("trashed-messages")
+            message.ident not in settings.get_strv("trashed-messages")
         )
         self.can_restore = not (self.can_trash or self.author_is_self)
 
@@ -211,10 +211,10 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        mail.trash_message(message_id := self.message.message_id)
+        mail.trash_message(ident := self.message.ident)
         self._add_to_undo(
             _("Message moved to trash"),
-            lambda: mail.restore_message(message_id),
+            lambda: mail.restore_message(ident),
         )
 
     @Gtk.Template.Callback()
@@ -222,10 +222,10 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        mail.restore_message(message_id := self.message.message_id)
+        mail.restore_message(ident := self.message.ident)
         self._add_to_undo(
             _("Message restored"),
-            lambda: mail.trash_message(message_id),
+            lambda: mail.trash_message(ident),
         )
 
     @Gtk.Template.Callback()

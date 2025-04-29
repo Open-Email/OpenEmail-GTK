@@ -125,7 +125,7 @@ class AttachmentProperties(NamedTuple):
 class Message:
     """A Mail/HTTPS message."""
 
-    message_id: str
+    ident: str
     headers: dict[str, str]
     author: Address
     private_key: Key
@@ -249,14 +249,14 @@ class Message:
             raise ValueError("Envelope size exceeds MAX_HEADERS_SIZE")
 
         try:
-            self.message_id = headers["id"]
+            self.ident = headers["id"]
             self.date = datetime.fromisoformat(headers["date"])
             self.subject = headers["subject"]
             self.original_author = Address(headers["author"])
         except KeyError as error:
             raise ValueError("Incomplete header contents") from error
 
-        self.subject_id = headers.get("subject.id", self.message_id)
+        self.subject_id = headers.get("subject.id", self.ident)
         self.parent_id = headers.get("parent-id")
 
         if files := headers.get("files"):
@@ -293,8 +293,8 @@ class Message:
 
         if not (
             self.files
-            and (child.parent_id == self.message_id)
-            and (props := self.files.get(child.message_id))
+            and (child.parent_id == self.ident)
+            and (props := self.files.get(child.ident))
         ):
             return
 
@@ -313,10 +313,10 @@ class Message:
         parts: list[Self] = []
 
         for child in self.children:
-            if not (child.parent_id and (child.parent_id == self.message_id)):
+            if not (child.parent_id and (child.parent_id == self.ident)):
                 continue
 
-            if child.message_id not in self.files:
+            if child.ident not in self.files:
                 parts.append(child)
 
             if not child.file_name:

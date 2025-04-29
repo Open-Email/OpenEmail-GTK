@@ -317,7 +317,7 @@ async def discard_message(message: Message) -> None:
 
     for msg in [message] + message.children:
         try:
-            await client.delete_message(msg.message_id)
+            await client.delete_message(msg.ident)
         except WriteError:
             if not failed:
                 notifier.send(_("Failed to discard message"))
@@ -354,7 +354,7 @@ def empty_trash() -> None:
                 continue
 
             if message.message and message.trashed:
-                store.delete(message.message.message_id)
+                store.delete(message.message.ident)
 
 
 def log_out() -> None:
@@ -475,7 +475,7 @@ class MailMessage(GObject.Object):
         if not self.message:
             return False
 
-        return self.message.message_id in settings.get_strv("trashed-messages")
+        return self.message.ident in settings.get_strv("trashed-messages")
 
     @property
     def message(self) -> Message | None:
@@ -519,19 +519,17 @@ class MailMessageStore(DictStore[str, MailMessage]):
     @abstractmethod
     async def _fetch(self) -> ...: ...
 
-    def delete(self, message_id: str) -> None:
-        """Delete the message with `message_id`.
+    def delete(self, ident: str) -> None:
+        """Delete the message with `ident`.
 
         From the user's perspective, this means removing an item from the trash.
         """
         settings.set_strv(
             "deleted-messages",
-            tuple(set(settings.get_strv("deleted-messages")) | {message_id}),
+            tuple(set(settings.get_strv("deleted-messages")) | {ident}),
         )
 
-        if not (
-            (message := self._items.get(message_id)) and (parent := message.message)
-        ):
+        if not ((message := self._items.get(ident)) and (parent := message.message)):
             return
 
         envelopes_dir = (
@@ -552,31 +550,31 @@ class MailMessageStore(DictStore[str, MailMessage]):
             messages_dir /= "broadcasts"
 
         for child in [parent] + parent.children:
-            (envelopes_dir / f"{child.message_id}.json").unlink(missing_ok=True)
-            (messages_dir / child.message_id).unlink(missing_ok=True)
+            (envelopes_dir / f"{child.ident}.json").unlink(missing_ok=True)
+            (messages_dir / child.ident).unlink(missing_ok=True)
 
-        self.remove(message_id)
-        restore_message(message_id)
+        self.remove(ident)
+        restore_message(ident)
 
     @_syncs
     async def update(self) -> None:
         """Update `self` asynchronously using `self._fetch()`."""
-        message_ids: set[str] = set()
+        idents: set[str] = set()
 
         async for message in self._fetch():  # type: ignore
-            message_ids.add(message_id := message.message_id)
-            if message_id in self._items:
+            idents.add(message.ident)
+            if message.ident in self._items:
                 continue
 
-            self._items[message_id] = MailMessage(message)
+            self._items[message.ident] = MailMessage(message)
             self.items_changed(len(self._items) - 1, 0, 1)
 
         removed = 0
-        for index, message_id in enumerate(self._items.copy()):
-            if message_id in message_ids:
+        for index, ident in enumerate(self._items.copy()):
+            if ident in idents:
                 continue
 
-            self._items.pop(message_id)
+            self._items.pop(ident)
             self.items_changed(index - removed, 1, 0)
             removed += 1
 
