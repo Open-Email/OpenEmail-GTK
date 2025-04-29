@@ -29,7 +29,6 @@ from json import JSONDecodeError
 from os import getenv
 from pathlib import Path
 from shutil import rmtree
-from socket import setdefaulttimeout
 from typing import AsyncGenerator, Generator, Iterable, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -63,8 +62,6 @@ from .model import (
 MAX_MESSAGE_SIZE = 64_000_000
 MAX_PROFILE_SIZE = 64_000
 MAX_PROFILE_IMAGE_SIZE = 640_000
-
-setdefaulttimeout(5)
 
 data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
 user = User()
