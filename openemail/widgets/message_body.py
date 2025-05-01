@@ -150,4 +150,4 @@ class MailMessageBody(Gtk.TextView):
         # if after removing this the layout of the sidebar doesn't break, it's safe to remove.
         #
         # PS: It probably won't be, "Nobody wants to work on TextView."
-        self.connect("map", lambda *_: GLib.timeout_add(20, self.queue_resize))
+        self.connect("map", lambda *_: GLib.timeout_add(25, self.queue_resize))

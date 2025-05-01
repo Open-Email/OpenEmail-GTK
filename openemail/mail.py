@@ -25,7 +25,15 @@ from dataclasses import fields
 from functools import wraps
 from itertools import chain
 from shutil import rmtree
-from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable, NamedTuple
+from typing import (
+    Any,
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Iterable,
+    NamedTuple,
+)
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
@@ -539,9 +547,6 @@ class MailMessageStore(DictStore[str, MailMessage]):
         super().__init__(**kwargs)
         self.item_type = MailMessage
 
-    @abstractmethod
-    async def _fetch(self) -> ...: ...
-
     def delete(self, ident: str) -> None:
         """Delete the message with `ident`.
 
@@ -600,6 +605,31 @@ class MailMessageStore(DictStore[str, MailMessage]):
             self._items.pop(ident)
             self.items_changed(index - removed, 1, 0)
             removed += 1
+
+    @abstractmethod
+    async def _fetch(self) -> ...: ...
+
+    async def _process_messages(
+        self, futures: Iterable[Awaitable[Iterable[Message]]]
+    ) -> AsyncGenerator[Message]:
+        unread = set()
+        async for messages in asyncio.as_completed(futures):
+            # This is async interation, we don't want a data race
+            current_unread = settings.get_strv("unread-messages")
+
+            for message in await messages:
+                if message.new:
+                    unread.add(message.ident)
+
+                elif message.ident in current_unread:
+                    message.new = True
+
+                yield message
+
+        settings.set_strv(
+            "unread-messages",
+            tuple(set(settings.get_strv("unread-messages")) | unread),
+        )
 
 
 class MailDraftStore(DictStore[int, MailMessage]):
@@ -860,34 +890,19 @@ class MailContactRequests(MailProfileStore):
 
 
 class _BroadcastStore(MailMessageStore):
-    async def _fetch(self) -> AsyncGenerator[Message, None]:  # type: ignore
-        unread = set()
-        deleted = settings.get_strv("deleted-messages")
-
-        async for messages in asyncio.as_completed(
-            client.fetch_broadcasts(Address(contact.address), exclude=deleted)  # type: ignore
+    async def _fetch(self) -> ...:
+        async for message in self._process_messages(
+            client.fetch_broadcasts(
+                Address(contact.address),  # type: ignore
+                exclude=settings.get_strv("deleted-messages"),
+            )
             for contact in address_book
         ):
-            # This is async interation, we don't want a data race
-            current_unread = settings.get_strv("unread-messages")
-
-            for message in await messages:
-                if message.new:
-                    unread.add(message.ident)
-
-                elif message.ident in current_unread:
-                    message.new = True
-
-                yield message
-
-        settings.set_strv(
-            "unread-messages",
-            tuple(set(settings.get_strv("unread-messages")) | unread),
-        )
+            yield message
 
 
 class _InboxStore(MailMessageStore):
-    async def _fetch(self) -> AsyncGenerator[Message, None]:  # type: ignore
+    async def _fetch(self) -> ...:
         known_notifiers = set()
         other_contacts = {Address(contact.address) for contact in address_book}  # type: ignore
 
@@ -896,54 +911,32 @@ class _InboxStore(MailMessageStore):
                 continue
 
             if (notifier := notification.notifier) in other_contacts:
-                other_contacts.discard(notifier)
+                other_contacts.remove(notifier)
                 known_notifiers.add(notifier)
-            else:
-                if notifier.host_part in settings.get_strv("trusted-domains"):
-                    await address_book.new(notifier)
-                    known_notifiers.add(notifier)
-                    continue
+                continue
 
-                if str(notifier) in (current := settings.get_strv("contact-requests")):
-                    continue
+            if notifier.host_part in settings.get_strv("trusted-domains"):
+                await address_book.new(notifier)
+                known_notifiers.add(notifier)
+                continue
 
-                settings.set_strv("contact-requests", current + [str(notifier)])
+            if str(notifier) in (current := settings.get_strv("contact-requests")):
+                continue
 
-        unread = set()
+            settings.set_strv("contact-requests", current + [str(notifier)])
+
         deleted = settings.get_strv("deleted-messages")
-
-        async for messages in asyncio.as_completed(
+        async for message in self._process_messages(
             (
-                *(
-                    client.fetch_link_messages(n, exclude=deleted)
-                    for n in known_notifiers
-                ),
-                *(
-                    client.fetch_link_messages(contact, exclude=deleted)
-                    for contact in other_contacts
-                ),
-            )
+                client.fetch_link_messages(contact, exclude=deleted)
+                for contact in chain(known_notifiers, other_contacts)
+            ),
         ):
-            # This is async interation, we don't want a data race
-            current_unread = settings.get_strv("unread-messages")
-
-            for message in await messages:
-                if message.new:
-                    unread.add(message.ident)
-
-                elif message.ident in current_unread:
-                    message.new = True
-
-                yield message
-
-        settings.set_strv(
-            "unread-messages",
-            tuple(set(settings.get_strv("unread-messages")) | unread),
-        )
+            yield message
 
 
 class _OutboxStore(MailMessageStore):
-    async def _fetch(self) -> AsyncGenerator[Message, None]:  # type: ignore
+    async def _fetch(self) -> ...:
         async for messages in asyncio.as_completed(
             (
                 client.fetch_link_messages(user.address),
