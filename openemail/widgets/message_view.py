@@ -76,10 +76,22 @@ class MailMessageView(Adw.Bin):
         return self._message
 
     @message.setter
-    def message(self, message: Message) -> None:
+    def message(self, message: Message | None) -> None:
+        self._message = message
+
+        if not message:
+            self.visible_child_name = "empty"
+
+            self.author_is_self = False
+            self.different_author = False
+            self.can_trash = False
+            self.can_restore = False
+            self.can_reply = False
+
+            return
+
         self.visible_child_name = "message"
 
-        self._message = message
         # Date, time
         self.date = _("{} at {}").format(
             message.date.strftime("%x"),

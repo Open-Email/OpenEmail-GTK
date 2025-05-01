@@ -208,11 +208,7 @@ class MailMessagesPage(Adw.NavigationPage):
             isinstance(selected := selection.props.selected_item, MailMessage)
             and selected.message
         ):
-            self.message_view.visible_child_name = "empty"
-            self.message_view.author_is_self = False
-            self.message_view.can_trash = False
-            self.message_view.can_restore = False
-            self.message_view.can_reply = False
+            self.message_view.message = None
             return
 
         self.message_view.message = selected.message
