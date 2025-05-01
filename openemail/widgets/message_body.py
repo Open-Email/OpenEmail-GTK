@@ -37,7 +37,9 @@ class MailMessageBody(Gtk.TextView):
         return self.props.buffer.props.text
 
     @text.setter
-    def text(self, text: str) -> None:
+    def text(self, text: str | None) -> None:
+        text = text or ""
+
         if self.summary:
             text = (
                 "\n".join(lines)

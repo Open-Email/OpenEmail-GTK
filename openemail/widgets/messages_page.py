@@ -211,5 +211,6 @@ class MailMessagesPage(Adw.NavigationPage):
             self.message_view.message = None
             return
 
+        selected.mark_read()
         self.message_view.message = selected.message
         self.content.split_view.props.show_content = True

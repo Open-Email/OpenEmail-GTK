@@ -130,6 +130,8 @@ class Message:
     author: Address
     private_key: Key
 
+    new: bool = False
+
     date: datetime = field(init=False)
     subject: str = field(init=False)
     original_author: Address = field(init=False)

@@ -13,6 +13,9 @@
 		<key name="contact-requests" type="as">
 			<default>[]</default>
 		</key>
+		<key name="unread-messages" type="as">
+			<default>[]</default>
+		</key>
 		<key name="trashed-messages" type="as">
 			<default>[]</default>
 		</key>

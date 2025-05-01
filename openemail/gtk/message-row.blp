@@ -3,68 +3,90 @@ using Adw 1;
 
 template ListItem {
   child: Box {
-    margin-top: 12;
-    margin-bottom: 12;
-    margin-end: 3;
-    spacing: 3;
+    Revealer {
+      transition-type: crossfade;
+      reveal-child: bind template.item as <$MailMessage>.unread;
 
-    Adw.Avatar {
-      size: 32;
-      text: bind template.item as <$MailMessage>.name;
-      custom-image: bind template.item as <$MailMessage>.profile-image;
-      show-initials: true;
+      Label {
+        valign: start;
+        margin-top: 6;
+        label: "•";
+
+        styles [
+          "accent",
+        ]
+
+        accessibility {
+          label: _("Unread");
+        }
+      }
     }
 
     Box {
-      margin-start: 6;
-      orientation: vertical;
-      spacing: 3;
+      margin-top: 12;
+      margin-bottom: 12;
+      margin-end: 6;
+      spacing: 9;
+
+      Adw.Avatar {
+        valign: start;
+        margin-top: 3;
+        size: 32;
+        text: bind template.item as <$MailMessage>.name;
+        custom-image: bind template.item as <$MailMessage>.profile-image;
+        show-initials: true;
+      }
 
       Box {
-        Label {
-          hexpand: true;
-          halign: start;
-          label: bind template.item as <$MailMessage>.name;
-          ellipsize: end;
+        orientation: vertical;
+        spacing: 3;
 
-          styles [
-            "heading",
-          ]
+        Box {
+          Label {
+            hexpand: true;
+            halign: start;
+            label: bind template.item as <$MailMessage>.name;
+            ellipsize: end;
+
+            styles [
+              "heading",
+            ]
+          }
+
+          Label {
+            halign: end;
+            label: bind template.item as <$MailMessage>.date;
+            ellipsize: end;
+
+            styles [
+              "caption",
+            ]
+          }
         }
 
         Label {
-          halign: end;
-          label: bind template.item as <$MailMessage>.date;
+          halign: start;
+          label: bind template.item as <$MailMessage>.subject;
           ellipsize: end;
+          wrap: true;
+          wrap-mode: word_char;
+          lines: 2;
+
+          styles [
+            "caption-heading",
+          ]
+        }
+
+        $MailMessageBody {
+          sensitive: false;
+          editable: false;
+          text: bind template.item as <$MailMessage>.body;
+          summary: true;
 
           styles [
             "caption",
           ]
         }
-      }
-
-      Label {
-        halign: start;
-        label: bind template.item as <$MailMessage>.subject;
-        ellipsize: end;
-        wrap: true;
-        wrap-mode: word_char;
-        lines: 2;
-
-        styles [
-          "caption-heading",
-        ]
-      }
-
-      $MailMessageBody {
-        sensitive: false;
-        editable: false;
-        text: bind template.item as <$MailMessage>.body;
-        summary: true;
-
-        styles [
-          "caption",
-        ]
       }
     }
   };

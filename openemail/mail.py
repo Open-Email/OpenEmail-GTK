@@ -373,6 +373,7 @@ def log_out() -> None:
     settings.reset("sync-interval")
     settings.reset("trusted-domains")
     settings.reset("contact-requests")
+    settings.reset("unread-messages")
     settings.reset("trashed-messages")
     settings.reset("deleted-messages")
 
@@ -461,6 +462,8 @@ class MailMessage(GObject.Object):
     body = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
 
+    unread = GObject.Property(type=bool, default=False)
+
     subject_id = GObject.Property(type=str)
     draft_id = GObject.Property(type=int)
     broadcast = GObject.Property(type=bool, default=False)
@@ -489,6 +492,7 @@ class MailMessage(GObject.Object):
         self.date = message.date.strftime("%x")
         self.subject = message.subject
         self.body = message.body
+        self.unread = message.new
 
         if self._name_binding:
             self._name_binding.unbind()
@@ -507,6 +511,25 @@ class MailMessage(GObject.Object):
 
         if message:
             self.message = message
+
+    def mark_read(self) -> None:
+        """Mark a message as read.
+
+        Does nothing if the message is not unread.
+        """
+        if not self.unread:
+            return
+
+        self.unread = False
+
+        if not self.message:
+            return
+
+        self.message.new = False
+        settings.set_strv(
+            "unread-messages",
+            tuple(set(settings.get_strv("unread-messages")) - {self.message.ident}),
+        )
 
 
 class MailMessageStore(DictStore[str, MailMessage]):
@@ -838,13 +861,29 @@ class MailContactRequests(MailProfileStore):
 
 class _BroadcastStore(MailMessageStore):
     async def _fetch(self) -> AsyncGenerator[Message, None]:  # type: ignore
+        unread = set()
         deleted = settings.get_strv("deleted-messages")
+
         async for messages in asyncio.as_completed(
             client.fetch_broadcasts(Address(contact.address), exclude=deleted)  # type: ignore
             for contact in address_book
         ):
+            # This is async interation, we don't want a data race
+            current_unread = settings.get_strv("unread-messages")
+
             for message in await messages:
+                if message.new:
+                    unread.add(message.ident)
+
+                elif message.ident in current_unread:
+                    message.new = True
+
                 yield message
+
+        settings.set_strv(
+            "unread-messages",
+            tuple(set(settings.get_strv("unread-messages")) | unread),
+        )
 
 
 class _InboxStore(MailMessageStore):
@@ -870,7 +909,9 @@ class _InboxStore(MailMessageStore):
 
                 settings.set_strv("contact-requests", current + [str(notifier)])
 
+        unread = set()
         deleted = settings.get_strv("deleted-messages")
+
         async for messages in asyncio.as_completed(
             (
                 *(
@@ -883,8 +924,22 @@ class _InboxStore(MailMessageStore):
                 ),
             )
         ):
+            # This is async interation, we don't want a data race
+            current_unread = settings.get_strv("unread-messages")
+
             for message in await messages:
+                if message.new:
+                    unread.add(message.ident)
+
+                elif message.ident in current_unread:
+                    message.new = True
+
                 yield message
+
+        settings.set_strv(
+            "unread-messages",
+            tuple(set(settings.get_strv("unread-messages")) | unread),
+        )
 
 
 class _OutboxStore(MailMessageStore):
@@ -896,6 +951,8 @@ class _OutboxStore(MailMessageStore):
             )
         ):
             for message in await messages:
+                message.new = False  # New outbox messages should be marked read
+
                 yield message
 
 

@@ -400,111 +400,6 @@ async def delete_contact(address: Address) -> None:
     raise WriteError
 
 
-async def fetch_envelope(
-    url: str, ident: str, author: Address, *, broadcast: bool = False
-) -> dict[str, str] | None:
-    """Perform a HEAD request to the specified URL and retrieve response headers.
-
-    Args:
-        url: The URL for the HEAD request
-        ident: The message ID
-        user: Local user
-        author: The remote user whose message is being fetched
-        broadcast: Whether the message is a broadcast
-
-    """
-    logging.debug("Fetching envelope %s…", ident[:8])
-
-    envelopes_dir = data_dir / "envelopes" / author.host_part / author.local_part
-    if broadcast:
-        envelopes_dir /= "broadcasts"
-
-    envelope_path = envelopes_dir / f"{ident}.json"
-
-    try:
-        headers = dict(json.load(envelope_path.open("r")))
-    except (FileNotFoundError, JSONDecodeError, ValueError):
-        if not (response := await request(url, auth=True, method="HEAD")):
-            logging.error("Fetching envelope %s failed", ident[:8])
-            return None
-
-        headers = dict(response.getheaders())
-
-        envelope_path.parent.mkdir(parents=True, exist_ok=True)
-        json.dump(headers, envelope_path.open("w"))
-
-    logging.debug("Fetched envelope %s", ident[:8])
-    return headers
-
-
-async def fetch_message_from_agent(
-    url: str, author: Address, ident: str, broadcast: bool
-) -> Message | None:
-    """Fetch the message with `ident` from the provided `url`."""
-    logging.debug("Fetching message %s…", ident[:8])
-    if not (envelope := await fetch_envelope(url, ident, author, broadcast=broadcast)):
-        return None
-
-    try:
-        message = Message(ident, envelope, author, user.encryption_keys.private)
-    except ValueError as error:
-        logging.error("Constructing message %s failed: %s", ident[:8], error)
-        return None
-
-    if message.is_child:
-        message.attachment_url = url
-
-        logging.debug("Fetched message %s", ident[:8])
-        return message
-
-    messages_dir = data_dir / "messages" / author.host_part / author.local_part
-    if broadcast:
-        messages_dir /= "broadcasts"
-
-    message_path = messages_dir / ident
-
-    try:
-        contents = message_path.read_bytes()
-    except FileNotFoundError:
-        if not (response := await request(url, auth=True)):
-            logging.error(
-                "Fetching message %s failed: Failed fetching body",
-                ident[:8],
-            )
-            return None
-
-        with response:
-            contents = response.read()
-
-        message_path.parent.mkdir(parents=True, exist_ok=True)
-        message_path.write_bytes(contents)
-
-    if (not message.is_broadcast) and message.access_key:
-        try:
-            contents = decrypt_xchacha20poly1305(contents, message.access_key)
-        except ValueError as error:
-            logging.error(
-                "Fetching message %s failed: Failed to decrypt body: %s",
-                ident[:8],
-                error,
-            )
-            return None
-
-    try:
-        message.body = contents.decode("utf-8")
-
-        logging.debug("Fetched message %s", ident[:8])
-        return message
-
-    except UnicodeError as error:
-        logging.error(
-            "Fetching message %s failed: Failed to decode body: %s",
-            ident[:8],
-            error,
-        )
-        return None
-
-
 async def fetch_message_ids(author: Address, broadcasts: bool = False) -> set[str]:
     """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
     logging.debug("Fetching message IDs from %s…", author)
@@ -551,51 +446,12 @@ async def fetch_message_ids(author: Address, broadcasts: bool = False) -> set[st
     return local_ids
 
 
-async def fetch_messages(
-    author: Address,
-    *,
-    broadcasts: bool = False,
-    exclude: Iterable[str] = (),
-) -> tuple[Message, ...]:
-    """Fetch either link messages or broadcasts by `author`."""
-    messages: dict[str, Message] = {}
-    for ident in await fetch_message_ids(author, broadcasts=broadcasts):
-        if ident in exclude:
-            continue
-
-        for agent in await get_agents(user.address):
-            if message := await fetch_message_from_agent(
-                (
-                    _Mail(agent, author)
-                    if broadcasts
-                    else _Link(agent, author, generate_link(user.address, author))
-                ).messages
-                + f"/{ident}",
-                author,
-                ident,
-                broadcast=broadcasts,
-            ):
-                messages[message.ident] = message
-                break
-
-    for ident, message in messages.copy().items():
-        if message.parent_id:
-            if parent := messages.get(message.parent_id):
-                parent.add_child(messages.pop(ident))
-
-    for message in messages.values():
-        message.reconstruct_from_children()
-
-    logging.debug("Fetched messages from %s", author)
-    return tuple(messages.values())
-
-
 async def fetch_broadcasts(
     author: Address, *, exclude: Iterable[str] = ()
 ) -> tuple[Message, ...]:
     """Fetch broadcasts by `author`, without messages with IDs in `exclude`."""
     logging.debug("Fetching broadcasts from %s…", author)
-    return await fetch_messages(author, broadcasts=True, exclude=exclude)
+    return await _fetch_messages(author, broadcasts=True, exclude=exclude)
 
 
 async def fetch_link_messages(
@@ -603,7 +459,7 @@ async def fetch_link_messages(
 ) -> tuple[Message, ...]:
     """Fetch messages by `author`, addressed to `client.user`, without messages with IDs in `exclude`."""
     logging.debug("Fetching link messages messages from %s…", author)
-    return await fetch_messages(author, exclude=exclude)
+    return await _fetch_messages(author, exclude=exclude)
 
 
 async def download_attachment(parts: Iterable[Message]) -> bytes | None:
@@ -1010,6 +866,152 @@ def _sign_headers(fields: Sequence[str]) -> ...:
         raise ValueError(f"Can't sign message: {error}")
 
     return checksum, signature
+
+
+async def _fetch_envelope(
+    url: str,
+    ident: str,
+    author: Address,
+    *,
+    broadcast: bool = False,
+) -> tuple[dict[str, str] | None, bool]:
+    logging.debug("Fetching envelope %s…", ident[:8])
+
+    envelopes_dir = data_dir / "envelopes" / author.host_part / author.local_part
+    if broadcast:
+        envelopes_dir /= "broadcasts"
+
+    envelope_path = envelopes_dir / f"{ident}.json"
+
+    try:
+        headers = dict(json.load(envelope_path.open("r")))
+
+    except (FileNotFoundError, JSONDecodeError, ValueError):
+        if not (response := await request(url, auth=True, method="HEAD")):
+            logging.error("Fetching envelope %s failed", ident[:8])
+            return None, False
+
+        new = True
+        headers = dict(response.getheaders())
+
+        envelope_path.parent.mkdir(parents=True, exist_ok=True)
+        json.dump(headers, envelope_path.open("w"))
+
+    else:
+        new = False
+
+    logging.debug("Fetched envelope %s", ident[:8])
+    return headers, new
+
+
+async def _fetch_message_from_agent(
+    url: str,
+    author: Address,
+    ident: str,
+    broadcast: bool = False,
+) -> Message | None:
+    logging.debug("Fetching message %s…", ident[:8])
+
+    envelope, new = await _fetch_envelope(url, ident, author, broadcast=broadcast)
+    if not envelope:
+        return None
+
+    try:
+        message = Message(ident, envelope, author, user.encryption_keys.private, new)
+    except ValueError as error:
+        logging.error("Constructing message %s failed: %s", ident[:8], error)
+        return None
+
+    if message.is_child:
+        message.attachment_url = url
+
+        logging.debug("Fetched message %s", ident[:8])
+        return message
+
+    messages_dir = data_dir / "messages" / author.host_part / author.local_part
+    if broadcast:
+        messages_dir /= "broadcasts"
+
+    message_path = messages_dir / ident
+
+    try:
+        contents = message_path.read_bytes()
+    except FileNotFoundError:
+        if not (response := await request(url, auth=True)):
+            logging.error(
+                "Fetching message %s failed: Failed fetching body",
+                ident[:8],
+            )
+            return None
+
+        with response:
+            contents = response.read()
+
+        message_path.parent.mkdir(parents=True, exist_ok=True)
+        message_path.write_bytes(contents)
+
+    if (not message.is_broadcast) and message.access_key:
+        try:
+            contents = decrypt_xchacha20poly1305(contents, message.access_key)
+        except ValueError as error:
+            logging.error(
+                "Fetching message %s failed: Failed to decrypt body: %s",
+                ident[:8],
+                error,
+            )
+            return None
+
+    try:
+        message.body = contents.decode("utf-8")
+
+        logging.debug("Fetched message %s", ident[:8])
+        return message
+
+    except UnicodeError as error:
+        logging.error(
+            "Fetching message %s failed: Failed to decode body: %s",
+            ident[:8],
+            error,
+        )
+        return None
+
+
+async def _fetch_messages(
+    author: Address,
+    *,
+    broadcasts: bool = False,
+    exclude: Iterable[str] = (),
+) -> tuple[Message, ...]:
+    messages: dict[str, Message] = {}
+    for ident in await fetch_message_ids(author, broadcasts=broadcasts):
+        if ident in exclude:
+            continue
+
+        for agent in await get_agents(user.address):
+            if message := await _fetch_message_from_agent(
+                (
+                    _Mail(agent, author)
+                    if broadcasts
+                    else _Link(agent, author, generate_link(user.address, author))
+                ).messages
+                + f"/{ident}",
+                author,
+                ident,
+                broadcast=broadcasts,
+            ):
+                messages[message.ident] = message
+                break
+
+    for ident, message in messages.copy().items():
+        if message.parent_id:
+            if parent := messages.get(message.parent_id):
+                parent.add_child(messages.pop(ident))
+
+    for message in messages.values():
+        message.reconstruct_from_children()
+
+    logging.debug("Fetched messages from %s", author)
+    return tuple(messages.values())
 
 
 async def _build_message_access(

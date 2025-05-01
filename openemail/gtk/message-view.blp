@@ -111,10 +111,11 @@ template $MailMessageView: Adw.Bin {
 
               Box {
                 valign: start;
-                spacing: 3;
+                spacing: 12;
 
                 Button {
                   valign: start;
+                  margin-top: 6;
                   tooltip-text: _("Profile");
                   clicked => $_show_profile_dialog();
 
@@ -132,7 +133,6 @@ template $MailMessageView: Adw.Bin {
                 }
 
                 Box {
-                  margin-start: 6;
                   orientation: vertical;
                   spacing: 3;
 
