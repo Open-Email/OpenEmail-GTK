@@ -332,7 +332,7 @@ def trash_message(ident: str) -> None:
     """Move the message associated with `ident` to the trash."""
     settings.set_strv(
         "trashed-messages",
-        tuple(set(settings.get_strv("deleted-messages")) | {ident}),
+        tuple(set(settings.get_strv("trashed-messages")) | {ident}),
     )
 
 
