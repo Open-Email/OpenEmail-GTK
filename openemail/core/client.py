@@ -33,6 +33,46 @@ class WriteError(Exception):
     """Raised if writing to the server fails."""
 
 
+class _Home:
+    def __init__(self, agent: str, address: Address) -> None:
+        self.home = f"https://{agent}/home/{address.host_part}/{address.local_part}"
+        self.links = f"{self.home}/links"
+        self.profile = f"{self.home}/profile"
+        self.image = f"{self.home}/image"
+        self.messages = f"{self.home}/messages"
+        self.notifications = f"{self.home}/notifications"
+
+
+class _Message(_Home):
+    def __init__(self, agent: str, address: Address, ident: str) -> None:
+        super().__init__(agent, address)
+        self.message = f"{self.messages}/{ident}"
+
+
+class _Mail:
+    def __init__(self, agent: str, address: Address) -> None:
+        self.host = f"https://{agent}/mail/{address.host_part}"
+        self.mail = f"{self.host}/{address.local_part}"
+        self.profile = f"{self.mail}/profile"
+        self.image = f"{self.mail}/image"
+        self.messages = f"{self.mail}/messages"
+
+
+class _Account:
+    def __init__(self, agent: str, address: Address) -> None:
+        self.account = (
+            f"https://{agent}/account/{address.host_part}/{address.local_part}"
+        )
+
+
+class _Link:
+    def __init__(self, agent: str, address: Address, link: str) -> None:
+        self.home = f"{_Home(agent, address).home}/links/{link}"
+        self.mail = f"{_Mail(agent, address).mail}/link/{link}"
+        self.messages = f"{self.mail}/messages"
+        self.notifications = f"{self.home}/notifications"
+
+
 async def request(
     url: str,
     *,
@@ -42,7 +82,7 @@ async def request(
     data: bytes | None = None,
     max_length: int | None = None,
 ) -> HTTPResponse | None:
-    """Make an HTTP request using `urllib.urlopen`, handling errors and authentication."""
+    """Make an HTTPS request, handling errors and authentication."""
     headers["User-Agent"] = "Mozilla/5.0"
 
     try:
@@ -734,46 +774,6 @@ async def delete_account() -> None:
 
     raise WriteError
     logging.error("Failed to delete account")
-
-
-class _Home:
-    def __init__(self, agent: str, address: Address) -> None:
-        self.home = f"https://{agent}/home/{address.host_part}/{address.local_part}"
-        self.links = f"{self.home}/links"
-        self.profile = f"{self.home}/profile"
-        self.image = f"{self.home}/image"
-        self.messages = f"{self.home}/messages"
-        self.notifications = f"{self.home}/notifications"
-
-
-class _Message(_Home):
-    def __init__(self, agent: str, address: Address, ident: str) -> None:
-        super().__init__(agent, address)
-        self.message = f"{self.messages}/{ident}"
-
-
-class _Mail:
-    def __init__(self, agent: str, address: Address) -> None:
-        self.host = f"https://{agent}/mail/{address.host_part}"
-        self.mail = f"{self.host}/{address.local_part}"
-        self.profile = f"{self.mail}/profile"
-        self.image = f"{self.mail}/image"
-        self.messages = f"{self.mail}/messages"
-
-
-class _Account:
-    def __init__(self, agent: str, address: Address) -> None:
-        self.account = (
-            f"https://{agent}/account/{address.host_part}/{address.local_part}"
-        )
-
-
-class _Link:
-    def __init__(self, agent: str, address: Address, link: str) -> None:
-        self.home = f"{_Home(agent, address).home}/links/{link}"
-        self.mail = f"{_Mail(agent, address).mail}/link/{link}"
-        self.messages = f"{self.mail}/messages"
-        self.notifications = f"{self.home}/notifications"
 
 
 def _sign_headers(fields: Sequence[str]) -> ...:
