@@ -51,7 +51,6 @@ class MailWindow(Adw.ApplicationWindow):
             Gio.SettingsBindFlags.DEFAULT,
         )
 
-        self.connect("close-request", self._close)
         notifier.connect("send", self._on_send_notification)
 
         self.content_view.load_content(periodic=True)
@@ -78,30 +77,6 @@ class MailWindow(Adw.ApplicationWindow):
 
         self.content_view.load_content()
         self.visible_child_name = "content"
-
-    def _close(self, *_args: Any) -> bool:
-        if self._quit or (not mail.is_writing()):
-            return False
-
-        def on_response(_obj: Any, response: str) -> None:
-            if response != "quit":
-                return
-
-            self._quit = True
-            self.close()
-
-        (
-            alert := Adw.AlertDialog.new(
-                _("Upload Ongoing"),
-                _("Quitting now will make you lose data such as sent messages"),
-            )
-        ).connect("response", on_response)
-        alert.add_response("cancel", _("Cancel"))
-        alert.add_response("quit", _("Quit"))
-        alert.set_response_appearance("quit", Adw.ResponseAppearance.DESTRUCTIVE)
-
-        alert.present(self)
-        return True
 
     def _on_send_notification(self, _obj: Any, title: str) -> None:
         toast = Adw.Toast(title=title, priority=Adw.ToastPriority.HIGH)
