@@ -4,20 +4,12 @@
 
 import asyncio
 from abc import abstractmethod
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from dataclasses import fields
 from functools import wraps
 from itertools import chain
 from shutil import rmtree
-from typing import (
-    Any,
-    AsyncGenerator,
-    Awaitable,
-    Callable,
-    Coroutine,
-    Iterable,
-    NamedTuple,
-)
+from typing import Any, AsyncGenerator, Awaitable, Callable, Coroutine, Iterable
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
@@ -942,14 +934,7 @@ profiles: defaultdict[Address, MailProfile] = defaultdict(MailProfile)
 address_book = MailAddressBook()
 contact_requests = MailContactRequests()
 
-
-class ProfileCategory(NamedTuple):
-    """A category of profile fields."""
-
-    ident: str
-    name: str
-
-
+ProfileCategory = namedtuple("ProfileCategory", ("ident", "name"))
 profile_categories: dict[ProfileCategory, dict[str, str]] = {
     ProfileCategory("general", _("General")): {
         "status": _("Status"),

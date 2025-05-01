@@ -10,13 +10,8 @@ from re import match
 from types import NoneType, UnionType
 from typing import NamedTuple, Self, get_args, get_origin
 
-from .crypto import (
-    CHECKSUM_ALGORITHM,
-    Key,
-    KeyPair,
-    decrypt_anonymous,
-    decrypt_xchacha20poly1305,
-)
+from . import crypto
+from .crypto import Key, KeyPair
 
 MAX_HEADERS_SIZE = 512_000
 
@@ -166,7 +161,7 @@ class Message:
                     for link in reader_links:
                         try:
                             reader = parse_headers(link)
-                            self.access_key = decrypt_anonymous(
+                            self.access_key = crypto.decrypt_anonymous(
                                 reader["value"], self.private_key
                             )
                             break
@@ -189,7 +184,7 @@ class Message:
         checksum = parse_headers(self.checksum)
 
         try:
-            if checksum["algorithm"] != CHECKSUM_ALGORITHM:
+            if checksum["algorithm"] != crypto.CHECKSUM_ALGORITHM:
                 raise ValueError("Unsupported checksum algorithm")
 
             if (
@@ -217,7 +212,9 @@ class Message:
             header_bytes = b64decode(parse_headers(message_headers)["value"])
 
             if (not self.is_broadcast) and self.access_key:
-                header_bytes = decrypt_xchacha20poly1305(header_bytes, self.access_key)
+                header_bytes = crypto.decrypt_xchacha20poly1305(
+                    header_bytes, self.access_key
+                )
 
             try:
                 headers = {

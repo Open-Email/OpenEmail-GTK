@@ -18,30 +18,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from .crypto import (
-    ANONYMOUS_ENCRYPTION_CIPHER,
-    CHECKSUM_ALGORITHM,
-    SIGNING_ALGORITHM,
-    SYMMETRIC_CIPHER,
-    decrypt_anonymous,
-    decrypt_xchacha20poly1305,
-    encrypt_anonymous,
-    encrypt_xchacha20poly1305,
-    fingerprint,
-    get_nonce,
-    random_bytes,
-    random_string,
-    sign_data,
-)
-from .model import (
-    Address,
-    Message,
-    Notification,
-    Profile,
-    User,
-    generate_link,
-    parse_headers,
-)
+from . import crypto, model
+from .model import Address, Message, Notification, Profile, User
 
 MAX_MESSAGE_SIZE = 64_000_000
 MAX_PROFILE_SIZE = 64_000
@@ -74,7 +52,9 @@ async def request(
             if not (agent := urlparse(url).hostname):
                 return None
 
-            headers.update({"Authorization": get_nonce(agent, user.signing_keys)})
+            headers.update(
+                {"Authorization": crypto.get_nonce(agent, user.signing_keys)}
+            )
 
         response = await asyncio.to_thread(
             urlopen, Request(url, method=method, headers=headers, data=data)
@@ -158,8 +138,8 @@ async def register() -> bool:
     data = "\n".join(
         (
             f"Name: {user.address.local_part}",
-            f"Encryption-Key: id={user.encryption_keys.public.key_id}; algorithm={ANONYMOUS_ENCRYPTION_CIPHER}; value={str(user.encryption_keys.public)}",
-            f"Signing-Key: algorithm={SIGNING_ALGORITHM}; value={str(user.signing_keys.public)}",
+            f"Encryption-Key: id={user.encryption_keys.public.key_id}; algorithm={crypto.ANONYMOUS_ENCRYPTION_CIPHER}; value={str(user.encryption_keys.public)}",
+            f"Signing-Key: algorithm={crypto.SIGNING_ALGORITHM}; value={str(user.signing_keys.public)}",
             f"Updated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
         )
     ).encode("utf-8")
@@ -307,7 +287,7 @@ async def fetch_contacts() -> set[Address]:
                 continue
 
             try:
-                contact = decrypt_anonymous(
+                contact = crypto.decrypt_anonymous(
                     parts[1].strip(),
                     user.encryption_keys.private,
                 ).decode("utf-8")
@@ -323,7 +303,7 @@ async def fetch_contacts() -> set[Address]:
                 continue
 
             try:
-                addresses.append(Address(parse_headers(contact)["address"]))
+                addresses.append(Address(model.parse_headers(contact)["address"]))
             except KeyError:
                 continue
 
@@ -339,7 +319,7 @@ async def new_contact(address: Address) -> None:
 
     try:
         data = b64encode(
-            encrypt_anonymous(
+            crypto.encrypt_anonymous(
                 f"address={address};broadcasts=yes".encode("utf-8"),
                 user.encryption_keys.public,
             )
@@ -352,7 +332,7 @@ async def new_contact(address: Address) -> None:
         )
         raise WriteError
 
-    link = generate_link(address, user.address)
+    link = model.generate_link(address, user.address)
     for agent in await get_agents(address):
         if await request(
             _Link(agent, user.address, link).home,
@@ -370,7 +350,7 @@ async def new_contact(address: Address) -> None:
 async def delete_contact(address: Address) -> None:
     """Delete `address` from `client.user`'s address book."""
     logging.debug("Deleting contact %s…", address)
-    link = generate_link(address, user.address)
+    link = model.generate_link(address, user.address)
     for agent in await get_agents(address):
         if await request(
             _Link(agent, user.address, link).home,
@@ -408,7 +388,7 @@ async def fetch_message_ids(author: Address, broadcasts: bool = False) -> set[st
                 (
                     _Mail(agent, author)
                     if broadcasts
-                    else _Link(agent, author, generate_link(user.address, author))
+                    else _Link(agent, author, model.generate_link(user.address, author))
                 ).messages,
                 auth=True,
             )
@@ -466,7 +446,7 @@ async def download_attachment(parts: Iterable[Message]) -> bytes | None:
 
         if part and (not part.is_broadcast) and part.access_key:
             try:
-                contents = decrypt_xchacha20poly1305(contents, part.access_key)
+                contents = crypto.decrypt_xchacha20poly1305(contents, part.access_key)
             except ValueError:
                 return None
 
@@ -480,7 +460,7 @@ def generate_message_id() -> str:
     return sha256(
         "".join(
             (
-                random_string(length=24),
+                crypto.random_string(length=24),
                 user.address.host_part,
                 user.address.local_part,
             )
@@ -573,7 +553,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
 
         try:
             address = b64encode(
-                encrypt_anonymous(str(user.address).encode("utf-8"), key)
+                crypto.encrypt_anonymous(str(user.address).encode("utf-8"), key)
             )
         except ValueError as error:
             logging.warning(
@@ -583,7 +563,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
             )
             continue
 
-        link = generate_link(reader, user.address)
+        link = model.generate_link(reader, user.address)
         for agent in await get_agents(reader):
             if await request(
                 _Link(agent, reader, link).notifications,
@@ -642,7 +622,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
 
             try:
                 notifier = Address(
-                    decrypt_anonymous(
+                    crypto.decrypt_anonymous(
                         encrypted_notifier,
                         user.encryption_keys.private,
                     ).decode("utf-8")
@@ -658,9 +638,9 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
                 )
                 continue
 
-            if not (signing_key_fp == fingerprint(profile.signing_key)) or (
+            if not (signing_key_fp == crypto.fingerprint(profile.signing_key)) or (
                 profile.last_signing_key
-                and (signing_key_fp == fingerprint(profile.last_signing_key))
+                and (signing_key_fp == crypto.fingerprint(profile.last_signing_key))
             ):
                 logging.debug("Fingerprint mismatch for notification: %s", notification)
                 continue
@@ -845,7 +825,7 @@ def _sign_headers(fields: Sequence[str]) -> ...:
     checksum = sha256(("".join(fields)).encode("utf-8"))
 
     try:
-        signature = sign_data(user.signing_keys.private, checksum.digest())
+        signature = crypto.sign_data(user.signing_keys.private, checksum.digest())
     except ValueError as error:
         raise ValueError(f"Can't sign message: {error}")
 
@@ -936,7 +916,7 @@ async def _fetch_message_from_agent(
 
     if (not message.is_broadcast) and message.access_key:
         try:
-            contents = decrypt_xchacha20poly1305(contents, message.access_key)
+            contents = crypto.decrypt_xchacha20poly1305(contents, message.access_key)
         except ValueError as error:
             logging.error(
                 "Fetching message %s failed: Failed to decrypt body: %s",
@@ -976,7 +956,7 @@ async def _fetch_messages(
                 (
                     _Mail(agent, author)
                     if broadcasts
-                    else _Link(agent, author, generate_link(user.address, author))
+                    else _Link(agent, author, model.generate_link(user.address, author))
                 ).messages
                 + f"/{ident}",
                 author,
@@ -1012,15 +992,15 @@ async def _build_message_access(
             raise ValueError("Failed fetching reader profiles")
 
         try:
-            encrypted = encrypt_anonymous(access_key, key)
+            encrypted = crypto.encrypt_anonymous(access_key, key)
         except ValueError as error:
             raise ValueError("Failed to encrypt access key") from error
 
         access.append(
             ";".join(
                 (
-                    f"link={generate_link(user.address, reader)}",
-                    f"fingerprint={fingerprint(profile.signing_key)}",
+                    f"link={model.generate_link(user.address, reader)}",
+                    f"fingerprint={crypto.fingerprint(profile.signing_key)}",
                     f"value={b64encode(encrypted).decode('utf-8')}",
                     f"id={key_id}",
                 )
@@ -1075,7 +1055,7 @@ async def _build_message(
                     "Size": str(len(content)),
                     "Checksum": ";".join(
                         (
-                            f"algorithm={CHECKSUM_ALGORITHM}",
+                            f"algorithm={crypto.CHECKSUM_ALGORITHM}",
                             f"value={sha256(content).hexdigest()}",
                         )
                     ),
@@ -1113,7 +1093,7 @@ async def _build_message(
     ).encode("utf-8")
 
     if readers:
-        access_key = random_bytes(32)
+        access_key = crypto.random_bytes(32)
 
         try:
             message_access = await _build_message_access(readers, access_key)
@@ -1121,16 +1101,16 @@ async def _build_message(
             raise WriteError from error
 
         try:
-            content = encrypt_xchacha20poly1305(content, access_key)
-            headers_bytes = encrypt_xchacha20poly1305(headers_bytes, access_key)
+            content = crypto.encrypt_xchacha20poly1305(content, access_key)
+            headers_bytes = crypto.encrypt_xchacha20poly1305(headers_bytes, access_key)
         except ValueError as error:
             raise WriteError from error
 
         headers.update(
             {
                 "Message-Access": ",".join(message_access),
-                "Message-Encryption": SYMMETRIC_CIPHER,
-                "Message-Headers": f"algorithm={SYMMETRIC_CIPHER};",
+                "Message-Encryption": crypto.SYMMETRIC_CIPHER,
+                "Message-Headers": f"algorithm={crypto.SYMMETRIC_CIPHER};",
             }
         )
 
@@ -1154,7 +1134,7 @@ async def _build_message(
             "Content-Length": str(len(content)),
             "Message-Checksum": ";".join(
                 (
-                    f"algorithm={CHECKSUM_ALGORITHM}",
+                    f"algorithm={crypto.CHECKSUM_ALGORITHM}",
                     f"order={':'.join(checksum_fields)}",
                     f"value={checksum.hexdigest()}",
                 )
@@ -1162,7 +1142,7 @@ async def _build_message(
             "Message-Signature": ";".join(
                 (
                     f"id={user.encryption_keys.public.key_id or 0}",
-                    f"algorithm={SIGNING_ALGORITHM}",
+                    f"algorithm={crypto.SIGNING_ALGORITHM}",
                     f"value={signature}",
                 )
             ),
