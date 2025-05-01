@@ -86,7 +86,7 @@ class MailMessageView(Adw.Bin):
             message.date.astimezone(datetime.now().tzinfo).strftime("%H:%M"),
         )
         self.subject = message.subject
-        self.body = message.body
+        self.body = message.body or ""
 
         self.can_reply = True
 
