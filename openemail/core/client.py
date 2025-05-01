@@ -688,27 +688,26 @@ def save_draft(
     """
     logging.debug("Saving draft…")
     messages_path = data_dir / "drafts"
+
     n = (
         ident
         if ident is not None
         else 0
         if not messages_path.is_dir()
-        else (
-            max(
-                (0,)
-                + tuple(
-                    int(path.stem)
-                    for path in messages_path.iterdir()
-                    if path.stem.isdigit()
-                )
-            )
-            + 1
+        else max(
+            *(
+                int(path.stem)
+                for path in messages_path.iterdir()
+                if path.stem.isdigit()
+            ),
+            0,
         )
+        + 1
     )
 
-    (message_path := messages_path / f"{n}.json").parent.mkdir(
-        parents=True, exist_ok=True
-    )
+    message_path = messages_path / f"{n}.json"
+    message_path.parent.mkdir(parents=True, exist_ok=True)
+
     json.dump((readers, subject, body, reply, broadcast), (message_path).open("w"))
     logging.debug("Draft saved as %i.json", n)
 
