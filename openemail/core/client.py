@@ -28,8 +28,6 @@ MAX_PROFILE_IMAGE_SIZE = 640_000
 data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
 user = User()
 
-_agents: dict[str, tuple[str, ...]] = {}
-
 
 class WriteError(Exception):
     """Raised if writing to the server fails."""
@@ -80,6 +78,9 @@ async def request(
             return None
 
     return response
+
+
+_agents: dict[str, tuple[str, ...]] = {}
 
 
 async def get_agents(address: Address) -> tuple[str, ...]:
