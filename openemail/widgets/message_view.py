@@ -158,13 +158,12 @@ class MailMessageView(Adw.Bin):
         run_task(self.message.discard())
 
     def _add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
-        (
-            toast := Adw.Toast(
-                title=title,
-                priority=Adw.ToastPriority.HIGH,
-                button_label=_("Undo"),
-            )
-        ).connect(
+        toast = Adw.Toast(
+            title=title,
+            priority=Adw.ToastPriority.HIGH,
+            button_label=_("Undo"),
+        )
+        toast.connect(
             "button-clicked",
             lambda *_: self.undo.pop(toast, lambda: None)(),
         )

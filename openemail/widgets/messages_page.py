@@ -61,13 +61,13 @@ class MailMessagesPage(Adw.NavigationPage):
                 inboxes.append(mail.inbox)
                 model = Gtk.FlattenListModel.new(inboxes)
 
-                (
-                    empty_button := Gtk.Button(
-                        icon_name="trash-symbolic",
-                        tooltip_text=_("Empty Trash"),
-                    )
-                ).connect("clicked", lambda *_: self.confirm_empty_dialog.present(self))
-                self.content.toolbar_button = empty_button
+                self.content.toolbar_button = Gtk.Button(
+                    icon_name="trash-symbolic",
+                    tooltip_text=_("Empty Trash"),
+                )
+                self.content.toolbar_button.connect(
+                    "clicked", lambda *_: self.confirm_empty_dialog.present(self)
+                )
 
         self.content.model = Gtk.SingleSelection(
             autoselect=False,

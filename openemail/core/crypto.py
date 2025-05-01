@@ -155,13 +155,9 @@ def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
 def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
     """Encrypt `data` using `access_key`."""
     try:
-        return (
-            nonce := random(crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)
-        ) + crypto_aead_xchacha20poly1305_ietf_encrypt(
-            data,
-            None,
-            nonce,
-            access_key,
+        nonce = random(crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)
+        return nonce + crypto_aead_xchacha20poly1305_ietf_encrypt(
+            data, None, nonce, access_key
         )
     except CryptoError as error:
         raise ValueError("Unable to encrypt data") from error

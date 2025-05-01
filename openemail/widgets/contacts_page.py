@@ -36,40 +36,36 @@ class MailContactsPage(Adw.NavigationPage):
         models.append(mail.contact_requests)
         models.append(mail.address_book)
 
-        self.content.model = (
-            selection := Gtk.SingleSelection(
-                autoselect=False,
-                model=Gtk.SortListModel.new(
-                    Gtk.FilterListModel.new(
-                        Gtk.FlattenListModel.new(models),
-                        (
-                            filter := Gtk.CustomFilter.new(
-                                lambda item: (
-                                    (lowered := self.content.search_text.lower())
-                                    in item.address.lower()
-                                    or lowered in item.name.lower()
-                                )
-                                if self.content.search_text
-                                else True
+        self.content.model = Gtk.SingleSelection(
+            autoselect=False,
+            model=Gtk.SortListModel.new(
+                Gtk.FilterListModel.new(
+                    Gtk.FlattenListModel.new(models),
+                    (
+                        filter := Gtk.CustomFilter.new(
+                            lambda item: (
+                                (lowered := self.content.search_text.lower())
+                                in item.address.lower()
+                                or lowered in item.name.lower()
                             )
-                        ),
-                    ),
-                    Gtk.CustomSorter.new(
-                        lambda a, b, _: (b.contact_request - a.contact_request)
-                        or strcoll(a.name, b.name)
+                            if self.content.search_text
+                            else True
+                        )
                     ),
                 ),
-            )
+                Gtk.CustomSorter.new(
+                    lambda a, b, _: (b.contact_request - a.contact_request)
+                    or strcoll(a.name, b.name)
+                ),
+            ),
         )
 
         self.content.connect(
             "notify::search-text",
-            lambda *_: filter.changed(
-                Gtk.FilterChange.DIFFERENT,
-            ),
+            lambda *_: filter.changed(Gtk.FilterChange.DIFFERENT),
         )
 
-        selection.connect("notify::selected", self._on_selected)
+        self.content.model.connect("notify::selected", self._on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{PREFIX}/gtk/contact-row.ui"
         )

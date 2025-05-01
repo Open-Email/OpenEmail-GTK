@@ -155,19 +155,10 @@ class MailComposeDialog(Adw.Dialog):
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)
         start.set_line_offset(0)
 
-        if (
-            self.body.get_text(
-                start,
-                (
-                    syntax_start := self.body.get_iter_at_offset(
-                        start.get_offset()
-                        + len((lookup := f"{syntax} " if toggle else syntax))
-                    )
-                ),
-                include_hidden_chars=True,
-            )
-            == lookup
-        ):
+        lookup = f"{syntax} " if toggle else syntax
+        syntax_start = self.body.get_iter_at_offset(start.get_offset() + len(lookup))
+
+        if lookup == self.body.get_text(start, syntax_start, include_hidden_chars=True):
             if toggle:
                 self.body.delete(start, syntax_start)
             else:
@@ -198,28 +189,13 @@ class MailComposeDialog(Adw.Dialog):
 
         text = self.body.get_text(start, end, include_hidden_chars=True)
 
+        syntax_start = self.body.get_iter_at_offset(start.get_offset() - len(syntax))
+        syntax_end = self.body.get_iter_at_offset(end.get_offset() + len(syntax))
+
         if (
-            self.body.get_text(
-                start,
-                (
-                    syntax_start := self.body.get_iter_at_offset(
-                        start.get_offset() - len(syntax)
-                    )
-                ),
-                include_hidden_chars=True,
-            )
-            == syntax
-        ) and (
-            self.body.get_text(
-                end,
-                (
-                    syntax_end := self.body.get_iter_at_offset(
-                        end.get_offset() + len(syntax)
-                    )
-                ),
-                include_hidden_chars=True,
-            )
-            == syntax
+            syntax
+            == self.body.get_text(start, syntax_start, include_hidden_chars=True)
+            == self.body.get_text(end, syntax_end, include_hidden_chars=True)
         ):
             self.body.delete(syntax_start, syntax_end)
             self.body.insert(syntax_start, text)

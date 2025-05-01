@@ -145,24 +145,21 @@ class MailProfileSettings(Adw.PreferencesDialog):
         )
 
         try:
-            if not (
-                (
-                    gfile := await Gtk.FileDialog(  # type: ignore
-                        initial_name=_("Select an Image"), filters=filters
-                    ).open(
-                        win if isinstance(win := self.props.root, Gtk.Window) else None
-                    )
-                )
-                and (path := gfile.props.path)
-            ):
-                return
+            gfile = await Gtk.FileDialog(  # type: ignore
+                initial_name=_("Select an Image"), filters=filters
+            ).open(win if isinstance(win := self.props.root, Gtk.Window) else None)
         except GLib.Error:
             return
 
+        if not (gfile and gfile.props.path):
+            return
+
         try:
-            if not (pixbuf := GdkPixbuf.Pixbuf.new_from_file(path)):
-                return
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(gfile.props.path)
         except GLib.Error:
+            return
+
+        if not pixbuf:
             return
 
         self.pending = True

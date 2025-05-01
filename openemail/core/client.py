@@ -427,12 +427,7 @@ async def download_attachment(parts: Iterable[Message]) -> bytes | None:
     for part in parts:
         if not (
             part.attachment_url
-            and (
-                response := await request(
-                    part.attachment_url,
-                    auth=True,
-                )
-            )
+            and (response := await request(part.attachment_url, auth=True))
         ):
             return None
 
