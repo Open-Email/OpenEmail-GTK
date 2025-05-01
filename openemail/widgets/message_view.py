@@ -2,13 +2,12 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from datetime import datetime
 from typing import Any, Callable
 
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, mail, run_task, settings
-from openemail.mail import Message
+from openemail import PREFIX, mail, run_task
+from openemail.mail import MailMessage, Message
 
 from .message_body import MailMessageBody
 from .profile_view import MailProfileView
@@ -33,77 +32,24 @@ class MailMessageView(Adw.Bin):
     visible_child_name = GObject.Property(type=str, default="empty")
 
     attachment_messages: dict[Adw.ActionRow, list[Message]]
-
-    name = GObject.Property(type=str)
-    date = GObject.Property(type=str)
-    subject = GObject.Property(type=str)
-    profile_image = GObject.Property(type=Gdk.Paintable)
-    original_author = GObject.Property(type=str)
-    readers = GObject.Property(type=str)
-    body = GObject.Property(type=str)
-
-    author_is_self = GObject.Property(type=bool, default=False)
-    different_author = GObject.Property(type=bool, default=False)
-    can_trash = GObject.Property(type=bool, default=False)
-    can_restore = GObject.Property(type=bool, default=False)
-    can_reply = GObject.Property(type=bool, default=False)
-
-    _message: Message | None = None
-    _name_binding: GObject.Binding | None = None
-    _image_binding: GObject.Binding | None = None
-
     undo: dict[Adw.Toast, Callable[[], Any]]
 
-    @property
-    def message(self) -> Message | None:
-        """Get the `model.Message` that `self` represents."""
-        return self._message
+    _message: MailMessage | None = None
+
+    @GObject.Property(type=MailMessage)
+    def message(self) -> MailMessage | None:
+        """Get the `MailMessage` that `self` represents."""
+        return self._message or MailMessage()
 
     @message.setter
-    def message(self, message: Message | None) -> None:
+    def message(self, message: MailMessage | None) -> None:
         self._message = message
 
         if not message:
             self.visible_child_name = "empty"
-
-            self.author_is_self = False
-            self.different_author = False
-            self.can_trash = False
-            self.can_restore = False
-            self.can_reply = False
-
             return
 
         self.visible_child_name = "message"
-
-        # Date, time
-        self.date = _("{} at {}").format(
-            message.date.strftime("%x"),
-            message.date.astimezone(datetime.now().tzinfo).strftime("%H:%M"),
-        )
-        self.subject = message.subject
-        self.body = message.body or ""
-
-        self.can_reply = True
-
-        self.author_is_self = message.author == mail.user.address
-
-        self.can_trash = (not self.author_is_self) and (
-            message.ident not in settings.get_strv("trashed-messages")
-        )
-        self.can_restore = not (self.can_trash or self.author_is_self)
-
-        if self._name_binding:
-            self._name_binding.unbind()
-        self._name_binding = mail.profiles[message.author].bind_property(
-            "name", self, "name", GObject.BindingFlags.SYNC_CREATE
-        )
-
-        if self._image_binding:
-            self._image_binding.unbind()
-        self._image_binding = mail.profiles[message.author].bind_property(
-            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
-        )
 
         self.attachments.remove_all()
         self.attachment_messages = {}
@@ -113,22 +59,7 @@ class MailMessageView(Adw.Bin):
             self.attachment_messages[row] = parts
             self.attachments.append(row)
 
-        self.original_author = f"{_('Original Author:')} {str(message.original_author)}"
-        self.different_author = message.author != message.original_author
-
-        if message.is_broadcast:
-            self.readers = _("Broadcast")
-            return
-
-        self.readers = f"{_('Readers:')} {str(mail.profiles[mail.user.address].name)}"
-
-        for reader in message.readers:
-            if reader == mail.user.address:
-                continue
-
-            self.readers += f", {profile.name if (profile := mail.profiles.get(reader)) else reader}"
-
-    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
         self.attachment_messages = {}
@@ -144,11 +75,7 @@ class MailMessageView(Adw.Bin):
 
             return True
 
-        self.add_controller(
-            controller := Gtk.ShortcutController(
-                scope=Gtk.ShortcutScope.MANAGED,
-            )
-        )
+        controller = Gtk.ShortcutController(scope=Gtk.ShortcutScope.MANAGED)
         controller.add_shortcut(
             Gtk.Shortcut.new(
                 Gtk.ShortcutTrigger.parse_string("<primary>z"),
@@ -156,13 +83,14 @@ class MailMessageView(Adw.Bin):
             )
         )
 
-        if message:
-            self.message = message
+        self.add_controller(controller)
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:
         self.profile_view.profile = (
-            mail.profiles[self.message.author].profile if self.message else None
+            mail.profiles[message.author].profile
+            if (self.message and (message := self.message.message))
+            else None
         )
         self.profile_dialog.present(self)
 
@@ -207,22 +135,16 @@ class MailMessageView(Adw.Bin):
         if not self.message:
             return
 
-        mail.trash_message(ident := self.message.ident)
-        self._add_to_undo(
-            _("Message moved to trash"),
-            lambda: mail.restore_message(ident),
-        )
+        (message := self.message).trash()
+        self._add_to_undo(_("Message moved to trash"), lambda: message.restore())
 
     @Gtk.Template.Callback()
     def _restore(self, *_args: Any) -> None:
         if not self.message:
             return
 
-        mail.restore_message(ident := self.message.ident)
-        self._add_to_undo(
-            _("Message restored"),
-            lambda: mail.trash_message(ident),
-        )
+        (message := self.message).restore()
+        self._add_to_undo(_("Message restored"), lambda: message.trash())
 
     @Gtk.Template.Callback()
     def _discard(self, *_args: Any) -> None:
@@ -233,7 +155,7 @@ class MailMessageView(Adw.Bin):
         if (response != "discard") or (not self.message):
             return
 
-        run_task(mail.discard_message(self.message))
+        run_task(self.message.discard())
 
     def _add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
         (

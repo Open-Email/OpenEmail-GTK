@@ -6,6 +6,7 @@ import asyncio
 from abc import abstractmethod
 from collections import defaultdict, namedtuple
 from dataclasses import fields
+from datetime import datetime
 from functools import wraps
 from itertools import chain
 from shutil import rmtree
@@ -294,42 +295,6 @@ async def send_message(
     await outbox.update()
 
 
-@_writes
-async def discard_message(message: Message) -> None:
-    """Discard `message` and its children."""
-    failed = False
-
-    for msg in [message] + message.children:
-        try:
-            await client.delete_message(msg.ident)
-        except WriteError:
-            if not failed:
-                notifier.send(_("Failed to discard message"))
-
-            failed = True
-            continue
-
-    await outbox.update()
-
-
-def trash_message(ident: str) -> None:
-    """Move the message associated with `ident` to the trash."""
-    settings.set_strv(
-        "trashed-messages",
-        tuple(set(settings.get_strv("trashed-messages")) | {ident}),
-    )
-
-
-def restore_message(ident: str) -> None:
-    """Restore the message associated with `ident` from the trash."""
-    try:
-        (trashed := settings.get_strv("trashed-messages")).remove(ident)
-    except ValueError:
-        return
-
-    settings.set_strv("trashed-messages", trashed)
-
-
 def empty_trash() -> None:
     """Empty the user's trash."""
     for store in inbox, broadcasts:
@@ -435,241 +400,6 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
         self.items_changed(0, n, 0)
 
 
-class MailMessage(GObject.Object):
-    """A Mail/HTTPS message."""
-
-    __gtype_name__ = "MailMessage"
-
-    name = GObject.Property(type=str)
-    date = GObject.Property(type=str)
-    subject = GObject.Property(type=str)
-    body = GObject.Property(type=str)
-    profile_image = GObject.Property(type=Gdk.Paintable)
-
-    unread = GObject.Property(type=bool, default=False)
-
-    subject_id = GObject.Property(type=str)
-    draft_id = GObject.Property(type=int)
-    broadcast = GObject.Property(type=bool, default=False)
-
-    _message: Message | None = None
-    _name_binding: GObject.Binding | None = None
-    _image_binding: GObject.Binding | None = None
-
-    @property
-    def trashed(self) -> bool:
-        """Whether the item is in the trash."""
-        if not self.message:
-            return False
-
-        return self.message.ident in settings.get_strv("trashed-messages")
-
-    @property
-    def message(self) -> Message | None:
-        """Get the `model.Message` that `self` represents."""
-        return self._message
-
-    @message.setter
-    def message(self, message: Message) -> None:
-        self._message = message
-
-        self.date = message.date.strftime("%x")
-        self.subject = message.subject
-        self.body = message.body
-        self.unread = message.new
-
-        if self._name_binding:
-            self._name_binding.unbind()
-        self._name_binding = profiles[message.author].bind_property(
-            "name", self, "name", GObject.BindingFlags.SYNC_CREATE
-        )
-
-        if self._image_binding:
-            self._image_binding.unbind()
-        self._image_binding = profiles[message.author].bind_property(
-            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
-        )
-
-    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-
-        if message:
-            self.message = message
-
-    def mark_read(self) -> None:
-        """Mark a message as read.
-
-        Does nothing if the message is not unread.
-        """
-        if not self.unread:
-            return
-
-        self.unread = False
-
-        if not self.message:
-            return
-
-        self.message.new = False
-        settings.set_strv(
-            "unread-messages",
-            tuple(set(settings.get_strv("unread-messages")) - {self.message.ident}),
-        )
-
-
-class MailMessageStore(DictStore[str, MailMessage]):
-    """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.item_type = MailMessage
-
-    def delete(self, ident: str) -> None:
-        """Delete the message with `ident`.
-
-        From the user's perspective, this means removing an item from the trash.
-        """
-        settings.set_strv(
-            "deleted-messages",
-            tuple(set(settings.get_strv("deleted-messages")) | {ident}),
-        )
-
-        if not ((message := self._items.get(ident)) and (parent := message.message)):
-            return
-
-        envelopes_dir = (
-            client.data_dir
-            / "envelopes"
-            / parent.author.host_part
-            / parent.author.local_part
-        )
-        messages_dir = (
-            client.data_dir
-            / "messages"
-            / parent.author.host_part
-            / parent.author.local_part
-        )
-
-        if parent.is_broadcast:
-            envelopes_dir /= "broadcasts"
-            messages_dir /= "broadcasts"
-
-        for child in [parent] + parent.children:
-            (envelopes_dir / f"{child.ident}.json").unlink(missing_ok=True)
-            (messages_dir / child.ident).unlink(missing_ok=True)
-
-        self.remove(ident)
-        restore_message(ident)
-
-    @_syncs
-    async def update(self) -> None:
-        """Update `self` asynchronously using `self._fetch()`."""
-        idents: set[str] = set()
-
-        async for message in self._fetch():  # type: ignore
-            idents.add(message.ident)
-            if message.ident in self._items:
-                continue
-
-            self._items[message.ident] = MailMessage(message)
-            self.items_changed(len(self._items) - 1, 0, 1)
-
-        removed = 0
-        for index, ident in enumerate(self._items.copy()):
-            if ident in idents:
-                continue
-
-            self._items.pop(ident)
-            self.items_changed(index - removed, 1, 0)
-            removed += 1
-
-    @abstractmethod
-    async def _fetch(self) -> ...: ...
-
-    async def _process_messages(
-        self, futures: Iterable[Awaitable[Iterable[Message]]]
-    ) -> AsyncGenerator[Message]:
-        unread = set()
-        async for messages in asyncio.as_completed(futures):
-            # This is async interation, we don't want a data race
-            current_unread = settings.get_strv("unread-messages")
-
-            for message in await messages:
-                if message.new:
-                    unread.add(message.ident)
-
-                elif message.ident in current_unread:
-                    message.new = True
-
-                yield message
-
-        settings.set_strv(
-            "unread-messages",
-            tuple(set(settings.get_strv("unread-messages")) | unread),
-        )
-
-
-class MailDraftStore(DictStore[int, MailMessage]):
-    """An implementation of `Gio.ListModel` for storing drafts."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.item_type = MailMessage
-
-    def save(
-        self,
-        readers: str | None = None,
-        subject: str | None = None,
-        body: str | None = None,
-        reply: str | None = None,
-        broadcast: bool = False,
-        draft_id: int | None = None,
-    ) -> None:
-        """Save a draft to disk for future use.
-
-        `draft_id` can be used to update a specific draft, by default, a new ID is generated.
-        """
-        client.save_draft(readers, subject, body, reply, broadcast, draft_id)
-        run_task(self.update())
-
-    def delete(self, draft_id: int) -> None:
-        """Delete a draft saved using `save()`."""
-        client.delete_draft(draft_id)
-        self.remove(draft_id)
-
-    def delete_all(self) -> None:
-        """Delete all drafts saved using `save()`."""
-        client.delete_all_saved_messages()
-        self.clear()
-
-    @_syncs
-    async def update(self) -> None:
-        """Update `self` by loading the latest drafts."""
-        idents: set[int] = set()
-
-        previous = len(self._items)
-        self._items.clear()
-
-        for draft in (drafts := tuple(client.load_drafts())):
-            message = MailMessage()
-            (
-                message.draft_id,
-                message.name,
-                message.subject,
-                message.body,
-                message.subject_id,
-                message.broadcast,
-            ) = draft
-
-            profiles[user.address].bind_property(
-                "image", message, "profile-image", GObject.BindingFlags.SYNC_CREATE
-            )
-
-            idents.add(message.draft_id)
-            self._items[message.draft_id] = message
-
-        self.items_changed(0, previous, len(drafts))
-
-
 class MailProfile(GObject.Object):
     """A GObject representation of a user profile."""
 
@@ -725,9 +455,7 @@ class MailProfile(GObject.Object):
 class MailProfileStore(DictStore[Address, MailProfile]):
     """An implementation of `Gio.ListModel` for storing profiles."""
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.item_type = MailProfile
+    item_type = MailProfile
 
     def add(self, contact: Address) -> None:
         """Manually add `contact` to `self`.
@@ -865,6 +593,339 @@ class MailContactRequests(MailProfileStore):
         run_task(self.update_profiles(trust_images=False))
 
 
+class MailMessage(GObject.Object):
+    """A Mail/HTTPS message."""
+
+    __gtype_name__ = "MailMessage"
+
+    date = GObject.Property(type=str)
+    datetime = GObject.Property(type=str)
+
+    subject = GObject.Property(type=str)
+    body = GObject.Property(type=str)
+    unread = GObject.Property(type=bool, default=False)
+
+    subject_id = GObject.Property(type=str)
+    draft_id = GObject.Property(type=int)
+    broadcast = GObject.Property(type=bool, default=False)
+
+    can_reply = GObject.Property(type=bool, default=False)
+    author_is_self = GObject.Property(type=bool, default=False)
+    can_trash = GObject.Property(type=bool, default=False)
+    can_restore = GObject.Property(type=bool, default=False)
+
+    original_author = GObject.Property(type=str)
+    different_author = GObject.Property(type=bool, default=False)
+    readers = GObject.Property(type=str)
+    reader_addresses = GObject.Property(type=str)
+
+    attachments: dict[str, list[Message]]
+
+    name = GObject.Property(type=str)
+    profile_image = GObject.Property(type=Gdk.Paintable)
+
+    _name_binding: GObject.Binding | None = None
+    _image_binding: GObject.Binding | None = None
+
+    _message: Message | None = None
+
+    @property
+    def trashed(self) -> bool:
+        """Whether the item is in the trash."""
+        if not self.message:
+            return False
+
+        return self.message.ident in settings.get_strv("trashed-messages")
+
+    @property
+    def message(self) -> Message | None:
+        """Get the `model.Message` that `self` represents."""
+        return self._message
+
+    @message.setter
+    def message(self, message: Message | None) -> None:
+        self._message = message
+
+        if not message:
+            self.unread = False
+            self.broadcast = False
+            self.can_reply = False
+            self.author_is_self = False
+            self.can_trash = False
+            self.can_restore = False
+            self.different_author = False
+            return
+
+        self.date = message.date.strftime("%x")
+        # Localized date format, time in H:M
+        self.datetime = _("{} at {}").format(
+            self.date, message.date.astimezone(datetime.now().tzinfo).strftime("%H:%M")
+        )
+
+        self.subject = message.subject
+        self.body = message.body or ""
+        self.unread = message.new
+
+        self.can_reply = True
+        self.author_is_self = message.author == user.address
+        self.can_trash = not (self.author_is_self or self.trashed)
+        self.can_restore = self.trashed
+
+        self.original_author = f"{_('Original Author:')} {str(message.original_author)}"
+        self.different_author = message.author != message.original_author
+
+        if message.is_broadcast:
+            self.readers = _("Broadcast")
+        else:
+            self.readers = f"{_('Readers:')} {str(profiles[user.address].name)}"
+            for reader in message.readers:
+                if reader == user.address:
+                    continue
+
+                self.readers += (
+                    f", {profile.name if (profile := profiles.get(reader)) else reader}"
+                )
+
+        self.reader_addresses = ", ".join(
+            str(reader)
+            for reader in list(dict.fromkeys(message.readers + [message.author]))
+            if (reader != user.address)
+        )
+
+        self.attachments = message.attachments
+
+        if self._name_binding:
+            self._name_binding.unbind()
+
+        self._name_binding = profiles[message.author].bind_property(
+            "name", self, "name", GObject.BindingFlags.SYNC_CREATE
+        )
+
+        if self._image_binding:
+            self._image_binding.unbind()
+
+        self._image_binding = profiles[message.author].bind_property(
+            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
+        )
+
+    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        self.attachments = {}
+
+        if message:
+            self.message = message
+
+    def trash(self) -> None:
+        """Move `self` to the trash."""
+        if not self._message:
+            return
+
+        settings.set_strv(
+            "trashed-messages",
+            tuple(set(settings.get_strv("trashed-messages")) | {self._message.ident}),
+        )
+
+    def restore(self) -> None:
+        """Restore `self` from the trash."""
+        if not self._message:
+            return
+
+        settings.set_strv(
+            "trashed-messages",
+            tuple(set(settings.get_strv("trashed-messages")) - {self._message.ident}),
+        )
+
+    @_writes
+    async def discard(self) -> None:
+        """Discard `self` and its children."""
+        if not self._message:
+            return
+
+        failed = False
+
+        for msg in [self._message] + self._message.children:
+            try:
+                await client.delete_message(msg.ident)
+            except WriteError:
+                if not failed:
+                    notifier.send(_("Failed to discard message"))
+
+                failed = True
+                continue
+
+        await outbox.update()
+
+    def mark_read(self) -> None:
+        """Mark a message as read.
+
+        Does nothing if the message is not unread.
+        """
+        if not self.unread:
+            return
+
+        self.unread = False
+
+        if not self.message:
+            return
+
+        self.message.new = False
+        settings.set_strv(
+            "unread-messages",
+            tuple(set(settings.get_strv("unread-messages")) - {self.message.ident}),
+        )
+
+
+class MailMessageStore(DictStore[str, MailMessage]):
+    """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
+
+    item_type = MailMessage
+
+    def delete(self, ident: str) -> None:
+        """Delete the message with `ident`.
+
+        From the user's perspective, this means removing an item from the trash.
+        """
+        settings.set_strv(
+            "deleted-messages",
+            tuple(set(settings.get_strv("deleted-messages")) | {ident}),
+        )
+
+        if not ((message := self._items.get(ident)) and (parent := message.message)):
+            return
+
+        envelopes_dir = (
+            client.data_dir
+            / "envelopes"
+            / parent.author.host_part
+            / parent.author.local_part
+        )
+        messages_dir = (
+            client.data_dir
+            / "messages"
+            / parent.author.host_part
+            / parent.author.local_part
+        )
+
+        if parent.is_broadcast:
+            envelopes_dir /= "broadcasts"
+            messages_dir /= "broadcasts"
+
+        for child in [parent] + parent.children:
+            (envelopes_dir / f"{child.ident}.json").unlink(missing_ok=True)
+            (messages_dir / child.ident).unlink(missing_ok=True)
+
+        self.remove(ident)
+        message.restore()
+
+    @_syncs
+    async def update(self) -> None:
+        """Update `self` asynchronously using `self._fetch()`."""
+        idents: set[str] = set()
+
+        async for message in self._fetch():  # type: ignore
+            idents.add(message.ident)
+            if message.ident in self._items:
+                continue
+
+            self._items[message.ident] = MailMessage(message)
+            self.items_changed(len(self._items) - 1, 0, 1)
+
+        removed = 0
+        for index, ident in enumerate(self._items.copy()):
+            if ident in idents:
+                continue
+
+            self._items.pop(ident)
+            self.items_changed(index - removed, 1, 0)
+            removed += 1
+
+    @abstractmethod
+    async def _fetch(self) -> ...: ...
+
+    async def _process_messages(
+        self, futures: Iterable[Awaitable[Iterable[Message]]]
+    ) -> AsyncGenerator[Message]:
+        unread = set()
+        async for messages in asyncio.as_completed(futures):
+            # This is async interation, we don't want a data race
+            current_unread = settings.get_strv("unread-messages")
+
+            for message in await messages:
+                if message.new:
+                    unread.add(message.ident)
+
+                elif message.ident in current_unread:
+                    message.new = True
+
+                yield message
+
+        settings.set_strv(
+            "unread-messages",
+            tuple(set(settings.get_strv("unread-messages")) | unread),
+        )
+
+
+class MailDraftStore(DictStore[int, MailMessage]):
+    """An implementation of `Gio.ListModel` for storing drafts."""
+
+    item_type = MailMessage
+
+    def save(
+        self,
+        readers: str | None = None,
+        subject: str | None = None,
+        body: str | None = None,
+        reply: str | None = None,
+        broadcast: bool = False,
+        draft_id: int | None = None,
+    ) -> None:
+        """Save a draft to disk for future use.
+
+        `draft_id` can be used to update a specific draft, by default, a new ID is generated.
+        """
+        client.save_draft(readers, subject, body, reply, broadcast, draft_id)
+        run_task(self.update())
+
+    def delete(self, draft_id: int) -> None:
+        """Delete a draft saved using `save()`."""
+        client.delete_draft(draft_id)
+        self.remove(draft_id)
+
+    def delete_all(self) -> None:
+        """Delete all drafts saved using `save()`."""
+        client.delete_all_saved_messages()
+        self.clear()
+
+    @_syncs
+    async def update(self) -> None:
+        """Update `self` by loading the latest drafts."""
+        idents: set[int] = set()
+
+        previous = len(self._items)
+        self._items.clear()
+
+        for draft in (drafts := tuple(client.load_drafts())):
+            message = MailMessage()
+            (
+                message.draft_id,
+                message.name,
+                message.subject,
+                message.body,
+                message.subject_id,
+                message.broadcast,
+            ) = draft
+
+            profiles[user.address].bind_property(
+                "image", message, "profile-image", GObject.BindingFlags.SYNC_CREATE
+            )
+
+            idents.add(message.draft_id)
+            self._items[message.draft_id] = message
+
+        self.items_changed(0, previous, len(drafts))
+
+
 class _BroadcastStore(MailMessageStore):
     async def _fetch(self) -> ...:
         async for message in self._process_messages(
@@ -925,14 +986,14 @@ class _OutboxStore(MailMessageStore):
                 yield message
 
 
+profiles: defaultdict[Address, MailProfile] = defaultdict(MailProfile)
+address_book = MailAddressBook()
+contact_requests = MailContactRequests()
+
 broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
 drafts = MailDraftStore()
-
-profiles: defaultdict[Address, MailProfile] = defaultdict(MailProfile)
-address_book = MailAddressBook()
-contact_requests = MailContactRequests()
 
 ProfileCategory = namedtuple("ProfileCategory", ("ident", "name"))
 profile_categories: dict[ProfileCategory, dict[str, str]] = {

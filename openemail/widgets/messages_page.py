@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from datetime import datetime
 from re import M, sub
 from typing import Any, Literal
 
@@ -116,7 +115,9 @@ class MailMessagesPage(Adw.NavigationPage):
             ),
         )
 
+        self.content.model.bind_property("selected-item", self.message_view, "message")
         self.content.model.connect("notify::selected", self._on_selected)
+
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{PREFIX}/gtk/message-row.ui"
         )
@@ -151,30 +152,20 @@ class MailMessagesPage(Adw.NavigationPage):
         if not self.message_view.message:
             return self._new_message()
 
-        message = self.message_view.message
+        message: MailMessage = self.message_view.message
 
         self.compose_dialog.attached_files.clear()
         self.compose_dialog.attachments.remove_all()
         self.compose_dialog.compose_form.reset()
-        self.compose_dialog.broadcast_switch.props.active = bool(
-            message.is_broadcast and (message.author == mail.user.address)
+        self.compose_dialog.broadcast_switch.props.active = (
+            message.broadcast and message.author_is_self
         )
-        self.compose_dialog.readers.props.text = ", ".join(
-            str(reader)
-            for reader in list(dict.fromkeys(message.readers + [message.author]))
-            if (reader != mail.user.address)
-        )
+        self.compose_dialog.readers.props.text = message.reader_addresses
 
         if body := self.message_view.message.body:
             self.compose_dialog.body.props.text = (
-                # Date, time, author
-                _("On {}, {}, {} wrote:").format(
-                    message.date.strftime("%x"),
-                    message.date.astimezone(datetime.now().tzinfo).strftime("%H:%M"),
-                    profile.name
-                    if (profile := mail.profiles.get(message.author))
-                    else message.author,
-                )
+                # Date and time, author
+                _("On {}, {} wrote:").format(message.datetime, message.name)
                 + "\n"
                 + sub(r"^(?!>)", r"> ", body, flags=M)
                 + "\n\n"
@@ -188,13 +179,8 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_dialog.body_view.grab_focus()
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not (
-            isinstance(selected := selection.props.selected_item, MailMessage)
-            and selected.message
-        ):
-            self.message_view.message = None
+        if not isinstance(selected := selection.props.selected_item, MailMessage):
             return
 
         selected.mark_read()
-        self.message_view.message = selected.message
         self.content.split_view.props.show_content = True

@@ -54,12 +54,7 @@ class MailContentView(Adw.BreakpointBin):
         Otherwise, a toast is presented at the start and end.
         """
         if periodic and (interval := settings.get_uint("sync-interval")):
-            GLib.timeout_add_seconds(
-                interval or 60,
-                self.load_content,
-                False,
-                True,
-            )
+            GLib.timeout_add_seconds(interval or 60, self.load_content, False, True)
 
             # The user chose manual sync, check again in a minute
             if not interval:

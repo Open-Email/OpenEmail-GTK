@@ -16,7 +16,6 @@ class MailContentPage(Adw.BreakpointBin):
     __gtype_name__ = "MailContentPage"
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
-    search_bar: Gtk.SearchBar = Gtk.Template.Child()
 
     factory = GObject.Property(type=Gtk.ListItemFactory)
 
@@ -54,34 +53,6 @@ class MailContentPage(Adw.BreakpointBin):
         self._model = model
 
         model.connect("items-changed", self._update_stack)
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-
-        self.add_controller(
-            controller := Gtk.ShortcutController(
-                scope=Gtk.ShortcutScope.MANAGED,
-            )
-        )
-        controller.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("<primary>f"),
-                Gtk.CallbackAction.new(
-                    lambda *_: not (
-                        self.search_bar.set_search_mode(
-                            not self.search_bar.props.search_mode_enabled,
-                        )
-                    )
-                ),
-            )
-        )
-
-        self.connect(
-            "realize",
-            lambda *_: self.search_bar.set_key_capture_widget(root)
-            if isinstance(root := self.props.root, Gtk.Widget)
-            else None,
-        )
 
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:

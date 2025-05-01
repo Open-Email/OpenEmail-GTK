@@ -34,6 +34,15 @@ template $MailContentPage: Adw.BreakpointBin {
           ToggleButton search_button {
             icon-name: "search-symbolic";
             tooltip-text: _("Search");
+
+            ShortcutController {
+              scope: managed;
+
+              Shortcut {
+                trigger: "<primary>f";
+                action: "activate";
+              }
+            }
           }
 
           [end]
@@ -43,8 +52,9 @@ template $MailContentPage: Adw.BreakpointBin {
         }
 
         [top]
-        SearchBar search_bar {
+        SearchBar {
           search-mode-enabled: bind search_button.active bidirectional;
+          key-capture-widget: bind template.root;
 
           SearchEntry {
             hexpand: true;
