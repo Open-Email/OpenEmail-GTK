@@ -365,52 +365,6 @@ async def delete_contact(address: Address) -> None:
     raise WriteError
 
 
-async def fetch_message_ids(author: Address, broadcasts: bool = False) -> set[str]:
-    """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
-    logging.debug("Fetching message IDs from %s…", author)
-
-    envelopes_dir = data_dir / "envelopes" / author.host_part / author.local_part
-    if broadcasts:
-        envelopes_dir /= "broadcasts"
-
-    if author == user.address:
-        local_ids = set()
-    else:
-        try:
-            children = envelopes_dir.iterdir()
-        except FileNotFoundError:
-            children = ()
-
-        local_ids = {path.stem for path in children if path.suffix == ".json"}
-
-    for agent in await get_agents(user.address):
-        if not (
-            response := await request(
-                (
-                    _Mail(agent, author)
-                    if broadcasts
-                    else _Link(agent, author, model.generate_link(user.address, author))
-                ).messages,
-                auth=True,
-            )
-        ):
-            continue
-
-        with response:
-            try:
-                contents = response.read().decode("utf-8")
-            except UnicodeError:
-                continue
-
-        logging.debug("Fetched message IDs from %s", author)
-        return local_ids | {
-            stripped for line in contents.split("\n") if (stripped := line.strip())
-        }
-
-    logging.warning("Could not fetch message IDs from %s", author)
-    return local_ids
-
-
 async def fetch_broadcasts(
     author: Address, *, exclude: Iterable[str] = ()
 ) -> tuple[Message, ...]:
@@ -941,6 +895,52 @@ async def _fetch_message_from_agent(
         return None
 
 
+async def _fetch_message_ids(author: Address, broadcasts: bool = False) -> set[str]:
+    """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
+    logging.debug("Fetching message IDs from %s…", author)
+
+    envelopes_dir = data_dir / "envelopes" / author.host_part / author.local_part
+    if broadcasts:
+        envelopes_dir /= "broadcasts"
+
+    if author == user.address:
+        local_ids = set()
+    else:
+        try:
+            children = envelopes_dir.iterdir()
+        except FileNotFoundError:
+            children = ()
+
+        local_ids = {path.stem for path in children if path.suffix == ".json"}
+
+    for agent in await get_agents(user.address):
+        if not (
+            response := await request(
+                (
+                    _Mail(agent, author)
+                    if broadcasts
+                    else _Link(agent, author, model.generate_link(user.address, author))
+                ).messages,
+                auth=True,
+            )
+        ):
+            continue
+
+        with response:
+            try:
+                contents = response.read().decode("utf-8")
+            except UnicodeError:
+                continue
+
+        logging.debug("Fetched message IDs from %s", author)
+        return local_ids | {
+            stripped for line in contents.split("\n") if (stripped := line.strip())
+        }
+
+    logging.warning("Could not fetch message IDs from %s", author)
+    return local_ids
+
+
 async def _fetch_messages(
     author: Address,
     *,
@@ -948,7 +948,7 @@ async def _fetch_messages(
     exclude: Iterable[str] = (),
 ) -> tuple[Message, ...]:
     messages: dict[str, Message] = {}
-    for ident in await fetch_message_ids(author, broadcasts=broadcasts):
+    for ident in await _fetch_message_ids(author, broadcasts=broadcasts):
         if ident in exclude:
             continue
 
