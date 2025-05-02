@@ -8,7 +8,7 @@ from typing import Any
 from gi.repository import Adw, Gio, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import Address, Profile
+from openemail.mail import Address
 
 from .content_page import ContentPage
 from .form import MailForm
@@ -65,7 +65,9 @@ class ContactsPage(Adw.NavigationPage):
             lambda *_: filter.changed(Gtk.FilterChange.DIFFERENT),
         )
 
+        self.content.model.bind_property("selected-item", self.profile_view, "profile")
         self.content.model.connect("notify::selected", self._on_selected)
+
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
             None, f"{PREFIX}/gtk/contact-row.ui"
         )
@@ -86,10 +88,4 @@ class ContactsPage(Adw.NavigationPage):
             return
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not isinstance(selected := selection.props.selected_item, Profile):
-            return
-
-        self.profile_view.profile = selected
-        self.profile_view.profile_image = selected.image
-
-        self.content.split_view.props.show_content = True
+        self.content.split_view.props.show_content = bool(selection.props.selected_item)

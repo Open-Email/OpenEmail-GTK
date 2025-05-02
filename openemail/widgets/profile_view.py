@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gdk, GObject, Gtk
+from gi.repository import Adw, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
 from openemail.mail import Profile
@@ -24,7 +24,6 @@ class ProfileView(Adw.Bin):
 
     name = GObject.Property(type=str)
     address = GObject.Property(type=str)
-    profile_image = GObject.Property(type=Gdk.Paintable)
     away = GObject.Property(type=bool, default=False)
     can_remove = GObject.Property(type=bool, default=False)
 
@@ -32,7 +31,7 @@ class ProfileView(Adw.Bin):
 
     _profile: Profile | None = None
 
-    @property
+    @GObject.Property(type=Profile)
     def profile(self) -> Profile | None:
         """Profile of the user, if one was found."""
         return self._profile
@@ -41,20 +40,19 @@ class ProfileView(Adw.Bin):
     def profile(self, profile: Profile | None) -> None:
         self._profile = profile
 
-        if not (profile and (p := profile.profile)):
+        if not (profile and (address := profile.value_of("address"))):
             self.visible_child_name = "not-found"
             self.can_remove = False
             return
 
-        string = str(p.address)
-        if any(contact.address == string for contact in mail.address_book):  # type: ignore
-            self.can_remove = True
-        else:
-            self.can_remove = False
+        self.can_remove = any(
+            contact.value_of("address") == address  # type: ignore
+            for contact in mail.address_book
+        )
 
-        self.name = p.name
-        self.address = p.address
-        self.away = p.away
+        self.name = profile.value_of("name")
+        self.address = str(profile.value_of("address") or "")
+        self.away = profile.value_of("away") or False
 
         while self._groups:
             self.page.remove(self._groups.pop())
@@ -64,7 +62,7 @@ class ProfileView(Adw.Bin):
         for category, fields in Profile.categories.items():
             group = None
             for ident, name in fields.items():
-                if not (profile_field := getattr(p, ident.replace("-", "_"))):
+                if not (value := str(profile.value_of(ident) or "")):
                     continue
 
                 if not group:
@@ -78,7 +76,7 @@ class ProfileView(Adw.Bin):
 
                 row = Adw.ActionRow(
                     title=name,
-                    subtitle=str(profile_field),
+                    subtitle=value,
                     subtitle_selectable=True,
                     use_markup=False,
                 )

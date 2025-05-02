@@ -55,7 +55,7 @@ template $ProfileSettings: Adw.PreferencesDialog {
 
               [overlay]
               Adw.Bin {
-                visible: bind $_is_image(template.profile-image) as <bool>;
+                visible: bind $_is_image(template.profile as <$Profile>.image) as <bool>;
                 halign: end;
                 valign: start;
 
@@ -79,7 +79,7 @@ template $ProfileSettings: Adw.PreferencesDialog {
               Adw.Avatar {
                 size: 128;
                 text: bind name.text;
-                custom-image: bind template.profile-image;
+                custom-image: bind template.profile as <$Profile>.image;
                 show-initials: true;
               }
             }

@@ -54,9 +54,9 @@ class MessageView(Adw.Bin):
         self.attachments_list.remove_all()
         self.attachments = {}
         for a in message.attachments:
-            row = Adw.ActionRow(title=a.name, activatable=True, use_markup=False)
+            row = Adw.ActionRow(title=a.name, activatable=True, use_markup=False)  # type: ignore
             row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
-            self.attachments[row] = a
+            self.attachments[row] = a  # type: ignore
             self.attachments_list.append(row)
 
     def __init__(self, **kwargs: Any) -> None:

@@ -62,7 +62,7 @@ template $ProfileView: Adw.Bin {
             Adw.Avatar {
               size: 128;
               text: bind template.name;
-              custom-image: bind template.profile-image;
+              custom-image: bind template.profile as <$Profile>.image;
               show-initials: true;
             }
           }

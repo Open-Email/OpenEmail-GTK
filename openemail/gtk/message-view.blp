@@ -227,9 +227,7 @@ template $MessageView: Adw.Bin {
 Adw.Dialog profile_dialog {
   content-width: 400;
 
-  $ProfileView profile_view {
-    profile-image: bind template.message as <$Message>.profile-image;
-  }
+  $ProfileView profile_view {}
 }
 
 Adw.AlertDialog confirm_discard_dialog {

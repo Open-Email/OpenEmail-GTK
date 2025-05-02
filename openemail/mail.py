@@ -239,13 +239,7 @@ async def send_message(
         files[name] = bytes
 
     try:
-        await client.send_message(
-            readers,
-            subject,
-            body,
-            reply,
-            attachments=files,
-        )
+        await client.send_message(readers, subject, body, reply, attachments=files)
     except WriteError as error:
         notifier.send(_("Failed to send message"))
         raise error
@@ -452,6 +446,13 @@ class Profile(GObject.Object):
         (profile := _profiles[address]).address = str(address)
         return profile
 
+    def value_of(self, ident: str) -> Any:
+        """Get the value of the field identified by `ident` in `self`."""
+        try:
+            return getattr(self.profile, ident.replace("-", "_"))
+        except AttributeError:
+            return None
+
 
 class ProfileStore(DictStore[Address, Profile]):
     """An implementation of `Gio.ListModel` for storing profiles."""
@@ -643,7 +644,7 @@ class Message(GObject.Object):
     readers = GObject.Property(type=str)
     reader_addresses = GObject.Property(type=str)
 
-    attachments: tuple[Attachment, ...]
+    attachments = GObject.Property(type=Gio.ListStore)
 
     name = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
@@ -714,9 +715,9 @@ class Message(GObject.Object):
             if (reader != user.address)
         )
 
-        self.attachments = tuple(
-            Attachment(name, parts) for name, parts in message.attachments.items()
-        )
+        self.attachments.remove_all()
+        for name, parts in message.attachments.items():
+            self.attachments.append(Attachment(name, parts))
 
         if self._name_binding:
             self._name_binding.unbind()
@@ -735,10 +736,8 @@ class Message(GObject.Object):
     def __init__(self, message: model.Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.attachments = ()
-
-        if message:
-            self.message = message
+        self.attachments = Gio.ListStore.new(Attachment)
+        self.message = message
 
     def trash(self) -> None:
         """Move `self` to the trash."""

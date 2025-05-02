@@ -30,14 +30,13 @@ class ProfileSettings(Adw.PreferencesDialog):
     _changed: bool = False
 
     address = GObject.Property(type=str)
-    profile_image = GObject.Property(type=Gdk.Paintable)
 
     pending = GObject.Property(type=bool, default=False)
     visible_child_name = GObject.Property(type=str, default="loading")
 
     _profile: Profile | None = None
 
-    @property
+    @GObject.Property(type=Profile)
     def profile(self) -> Profile | None:
         """Get the profile of the user, if one was found."""
         return self._profile
@@ -49,17 +48,18 @@ class ProfileSettings(Adw.PreferencesDialog):
         while self._pages:
             self.remove(self._pages.pop())
 
-        if not (profile and (p := profile.profile)):
+        if not profile:
             self.visible_child_name = "loading"
             self._changed = False
             return
 
-        self.address = str(p.address)
-        self.name.props.text = p.name
-        self.away.props.enable_expansion = self.away.props.expanded = p.away
-        self.away_warning.props.text = p.away_warning or ""
-        self.status.props.text = p.status or ""
-        self.about.props.text = p.about or ""
+        self.address = str(profile.value_of("address") or "")
+        self.name.props.text = profile.value_of("name")
+        self.away.props.enable_expansion = profile.value_of("away")
+        self.away.props.expanded = self.away.props.enable_expansion
+        self.away_warning.props.text = profile.value_of("away-warning") or ""
+        self.status.props.text = profile.value_of("status") or ""
+        self.about.props.text = profile.value_of("about") or ""
 
         for category, fields in Profile.categories.items():
             if category.ident == "general":  # Already added manually
@@ -75,12 +75,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             page.add(group := Adw.PreferencesGroup())
 
             for ident, name in fields.items():
-                profile_field = getattr(p, ident.replace("-", "_"))
-
-                row = Adw.EntryRow(
-                    title=name,
-                    text=str(profile_field or ""),
-                )
+                row = Adw.EntryRow(title=name, text=str(profile.value_of(ident) or ""))
                 row.add_css_class("property")
                 row.add_prefix(Gtk.Image(icon_name=f"{ident}-symbolic"))
                 row.connect("changed", self._on_change)
