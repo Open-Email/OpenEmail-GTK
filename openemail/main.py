@@ -28,13 +28,10 @@ class Application(Adw.Application):
     """The main application singleton class."""
 
     def __init__(self) -> None:
-        super().__init__(
-            application_id=APP_ID,
-            flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
-        )
-        self.create_action("sync", self.on_sync_action)
-        self.create_action("preferences", self.on_preferences_action)
-        self.create_action("about", self.on_about_action)
+        super().__init__(application_id=APP_ID)
+        self.create_action("sync", self._sync)
+        self.create_action("preferences", self._preferences)
+        self.create_action("about", self._about)
         self.create_action(
             "quit",
             lambda *_: win.close() if (win := self.props.active_window) else None,
@@ -64,7 +61,27 @@ class Application(Adw.Application):
         """
         (self.props.active_window or Window(application=self)).present()
 
-    def on_about_action(self, *_args: Any) -> None:
+    def create_action(
+        self,
+        name: str,
+        callback: Callable,
+        shortcuts: Sequence | None = None,
+    ) -> None:
+        """Add an application action.
+
+        Args:
+            name: the name of the action
+            callback: the function to be called when the action is activated
+            shortcuts: an optional list of accelerators
+
+        """
+        action = Gio.SimpleAction.new(name, None)
+        action.connect("activate", callback)
+        self.add_action(action)
+        if shortcuts:
+            self.set_accels_for_action(f"app.{name}", shortcuts)
+
+    def _about(self, *_args: Any) -> None:
         """Present the about dialog."""
         about = Adw.AboutDialog.new_from_appdata(f"{PREFIX}/{APP_ID}.metainfo.xml")
         about.props.developers = ["kramo https://kramo.page"]
@@ -86,7 +103,7 @@ class Application(Adw.Application):
 
         about.present(self.props.active_window)
 
-    def on_preferences_action(self, *_args: Any) -> None:
+    def _preferences(self, *_args: Any) -> None:
         """Present the preferences dialog."""
         if (
             isinstance(win := self.props.active_window, Adw.ApplicationWindow)
@@ -96,32 +113,12 @@ class Application(Adw.Application):
 
         Preferences().present(win)
 
-    def on_sync_action(self, *_args: Any) -> None:
+    def _sync(self, *_args: Any) -> None:
         """Sync remote content."""
         if not isinstance(win := self.props.active_window, Window):
             return
 
         win.content_view.load_content(first_sync=False)
-
-    def create_action(
-        self,
-        name: str,
-        callback: Callable,
-        shortcuts: Sequence | None = None,
-    ) -> None:
-        """Add an application action.
-
-        Args:
-            name: the name of the action
-            callback: the function to be called when the action is activated
-            shortcuts: an optional list of accelerators
-
-        """
-        action = Gio.SimpleAction.new(name, None)
-        action.connect("activate", callback)
-        self.add_action(action)
-        if shortcuts:
-            self.set_accels_for_action(f"app.{name}", shortcuts)
 
 
 def main() -> int:
@@ -132,7 +129,7 @@ def main() -> int:
         handlers=(
             (
                 logging.StreamHandler(),
-                RotatingFileHandler(log_file, maxBytes=1000000),
+                RotatingFileHandler(log_file, maxBytes=1_000_000),
             )
         ),
     )
