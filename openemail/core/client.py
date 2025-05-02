@@ -708,9 +708,7 @@ def save_draft(
 
 
 def load_drafts() -> Generator[
-    tuple[int, Iterable[Address] | None, str | None, str | None, str | None, bool],
-    None,
-    None,
+    tuple[int, str | None, str | None, str | None, str | None, bool], None, None
 ]:
     """Load all drafts saved to disk.
 
