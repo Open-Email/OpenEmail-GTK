@@ -6,8 +6,8 @@ from typing import Any, Callable
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, mail, run_task
-from openemail.mail import Attachment, Message
+from openemail import PREFIX, run_task
+from openemail.mail import Attachment, Message, Profile
 
 from .message_body import MessageBody
 from .profile_view import ProfileView
@@ -88,7 +88,7 @@ class MessageView(Adw.Bin):
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:
         self.profile_view.profile = (
-            mail.profiles[message.author].profile
+            Profile.of(message.author)
             if (self.message and (message := self.message.message))
             else None
         )

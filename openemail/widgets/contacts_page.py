@@ -89,7 +89,7 @@ class ContactsPage(Adw.NavigationPage):
         if not isinstance(selected := selection.props.selected_item, Profile):
             return
 
-        self.profile_view.profile = selected.profile
+        self.profile_view.profile = selected
         self.profile_view.profile_image = selected.image
 
         self.content.split_view.props.show_content = True

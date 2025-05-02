@@ -7,7 +7,7 @@ from typing import Any
 from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import CoreProfile
+from openemail.mail import Profile
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-view.ui")
@@ -30,41 +30,41 @@ class ProfileView(Adw.Bin):
 
     visible_child_name = GObject.Property(type=str, default="empty")
 
-    _profile: CoreProfile | None = None
+    _profile: Profile | None = None
 
     @property
-    def profile(self) -> CoreProfile | None:
+    def profile(self) -> Profile | None:
         """Profile of the user, if one was found."""
         return self._profile
 
     @profile.setter
-    def profile(self, profile: CoreProfile | None) -> None:
+    def profile(self, profile: Profile | None) -> None:
         self._profile = profile
 
-        if not profile:
+        if not (profile and (p := profile.profile)):
             self.visible_child_name = "not-found"
             self.can_remove = False
             return
 
-        string = str(profile.address)
+        string = str(p.address)
         if any(contact.address == string for contact in mail.address_book):  # type: ignore
             self.can_remove = True
         else:
             self.can_remove = False
 
-        self.name = profile.name
-        self.address = profile.address
-        self.away = profile.away
+        self.name = p.name
+        self.address = p.address
+        self.away = p.away
 
         while self._groups:
             self.page.remove(self._groups.pop())
 
         self._groups = []
 
-        for category, fields in mail.profile_categories.items():
+        for category, fields in Profile.categories.items():
             group = None
             for ident, name in fields.items():
-                if not (profile_field := getattr(profile, ident.replace("-", "_"))):
+                if not (profile_field := getattr(p, ident.replace("-", "_"))):
                     continue
 
                 if not group:

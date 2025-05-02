@@ -7,7 +7,7 @@ from typing import Any, Callable
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import CoreProfile, WriteError
+from openemail.mail import Profile, WriteError
 
 from .form import MailForm
 
@@ -35,33 +35,33 @@ class ProfileSettings(Adw.PreferencesDialog):
     pending = GObject.Property(type=bool, default=False)
     visible_child_name = GObject.Property(type=str, default="loading")
 
-    _profile: CoreProfile | None = None
+    _profile: Profile | None = None
 
     @property
-    def profile(self) -> CoreProfile | None:
-        """Profile of the user, if one was found."""
+    def profile(self) -> Profile | None:
+        """Get the profile of the user, if one was found."""
         return self._profile
 
     @profile.setter
-    def profile(self, profile: CoreProfile | None) -> None:
+    def profile(self, profile: Profile | None) -> None:
         self._profile = profile
 
         while self._pages:
             self.remove(self._pages.pop())
 
-        if not profile:
+        if not (profile and (p := profile.profile)):
             self.visible_child_name = "loading"
             self._changed = False
             return
 
-        self.address = profile.address
-        self.name.props.text = profile.name
-        self.away.props.enable_expansion = self.away.props.expanded = profile.away
-        self.away_warning.props.text = profile.away_warning or ""
-        self.status.props.text = profile.status or ""
-        self.about.props.text = profile.about or ""
+        self.address = str(p.address)
+        self.name.props.text = p.name
+        self.away.props.enable_expansion = self.away.props.expanded = p.away
+        self.away_warning.props.text = p.away_warning or ""
+        self.status.props.text = p.status or ""
+        self.about.props.text = p.about or ""
 
-        for category, fields in mail.profile_categories.items():
+        for category, fields in Profile.categories.items():
             if category.ident == "general":  # Already added manually
                 continue
 
@@ -75,7 +75,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             page.add(group := Adw.PreferencesGroup())
 
             for ident, name in fields.items():
-                profile_field = getattr(profile, ident.replace("-", "_"))
+                profile_field = getattr(p, ident.replace("-", "_"))
 
                 row = Adw.EntryRow(
                     title=name,

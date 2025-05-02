@@ -19,11 +19,9 @@ from openemail import notifier, run_task, secret_service, settings
 
 from .core import client, model
 from .core.client import WriteError as WriteError
-from .core.client import data_dir
 from .core.client import user as user
 from .core.crypto import KeyPair as KeyPair
 from .core.model import Address as Address
-from .core.model import Profile as CoreProfile
 from .core.model import User as User
 
 _syncing = 0
@@ -189,10 +187,10 @@ async def update_user_profile() -> None:
         if profile.encryption_key:
             user.encryption_keys.public = profile.encryption_key
 
-    profiles[user.address].profile = profile
+    Profile.of(user.address).profile = profile
 
     try:
-        profiles[user.address].image = Gdk.Texture.new_from_bytes(
+        Profile.of(user.address).image = Gdk.Texture.new_from_bytes(
             GLib.Bytes.new(
                 await client.fetch_profile_image(
                     user.address,
@@ -200,7 +198,7 @@ async def update_user_profile() -> None:
             )
         )
     except GLib.Error:
-        profiles[user.address].image = None
+        Profile.of(user.address).image = None
 
 
 async def delete_profile_image() -> None:
@@ -268,10 +266,10 @@ def empty_trash() -> None:
 
 def log_out() -> None:
     """Remove the user's local account."""
-    for profile in profiles.values():
+    for profile in _profiles.values():
         profile.profile = None
 
-    profiles.clear()
+    _profiles.clear()
     address_book.clear()
     contact_requests.clear()
     broadcasts.clear()
@@ -288,7 +286,7 @@ def log_out() -> None:
 
     keyring.delete_password(secret_service, str(user.address))
 
-    rmtree(data_dir, ignore_errors=True)
+    rmtree(client.data_dir, ignore_errors=True)
 
     for field in fields(User):
         delattr(user, field.name)
@@ -367,19 +365,56 @@ class Profile(GObject.Object):
 
     contact_request = GObject.Property(type=bool, default=False)
     has_name = GObject.Property(type=bool, default=False)
+
     image = GObject.Property(type=Gdk.Paintable)
 
-    _profile: CoreProfile | None = None
+    Category = namedtuple("Category", ("ident", "name"))
+    categories: dict[Category, dict[str, str]] = {
+        Category("general", _("General")): {
+            "status": _("Status"),
+            "about": _("About"),
+        },
+        Category("personal", _("Personal")): {
+            "gender": _("Gender"),
+            "relationship-status": _("Relationship Status"),
+            "birthday": _("Birthday"),
+            "education": _("Education"),
+            "languages": _("Languages"),
+            "places-lived": _("Places Lived"),
+            "notes": _("Notes"),
+        },
+        Category("work", _("Work")): {
+            "work": _("Work"),
+            "organization": _("Organization"),
+            "department": _("Department"),
+            "job-title": _("Job Title"),
+        },
+        Category("interests", _("Interests")): {
+            "interests": _("Interests"),
+            "books": _("Books"),
+            "movies": _("Movies"),
+            "music": _("Music"),
+            "sports": _("Sports"),
+        },
+        Category("contacts", _("Contacts")): {
+            "website": _("Website"),
+            "location": _("Location"),
+            "mailing-address": _("Mailing Address"),
+            "phone": _("Phone"),
+        },
+    }
+
+    _profile: model.Profile | None = None
     _address: str | None = None
     _name: str | None = None
 
     @property
-    def profile(self) -> CoreProfile | None:
-        """The profile of the user."""
+    def profile(self) -> model.Profile | None:
+        """Get the `model.Profile` that `self` represents."""
         return self._profile
 
     @profile.setter
-    def profile(self, profile: CoreProfile | None) -> None:
+    def profile(self, profile: model.Profile | None) -> None:
         self._profile = profile
 
         if not profile:
@@ -391,7 +426,7 @@ class Profile(GObject.Object):
 
     @GObject.Property(type=str)
     def address(self) -> str | None:
-        """Get the user's Mail/HTTPS address."""
+        """Get the profile owner's Mail/HTTPS address."""
         return self._address
 
     @address.setter
@@ -403,13 +438,19 @@ class Profile(GObject.Object):
 
     @GObject.Property(type=str)
     def name(self) -> str | None:
-        """Get the user's name."""
+        """Get the profile owner's name."""
         return self._name
 
     @name.setter
     def name(self, name: str) -> None:
         self._name = name
         self.has_name = name != self.address
+
+    @staticmethod
+    def of(address: Address) -> "Profile":
+        """Get the profile associated with `address`."""
+        (profile := _profiles[address]).address = str(address)
+        return profile
 
 
 class ProfileStore(DictStore[Address, Profile]):
@@ -426,7 +467,7 @@ class ProfileStore(DictStore[Address, Profile]):
         if contact in self._items:
             return
 
-        profiles[contact] = self._items[contact] = Profile(address=str(contact))
+        self._items[contact] = Profile.of(contact)
         self.items_changed(len(self._items) - 1, 0, 1)
 
     @_syncs
@@ -452,18 +493,18 @@ class ProfileStore(DictStore[Address, Profile]):
 
     @staticmethod
     async def _update_profile(address: Address) -> None:
-        profiles[address].profile = await client.fetch_profile(address)
+        Profile.of(address).profile = await client.fetch_profile(address)
 
     @staticmethod
     async def _update_profile_image(address: Address) -> None:
         try:
-            profiles[address].image = (
+            Profile.of(address).image = (
                 Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))
                 if (image := await client.fetch_profile_image(address))
                 else None
             )
         except GLib.Error:
-            profiles[address].image = None
+            Profile.of(address).image = None
 
 
 class AddressBook(ProfileStore):
@@ -471,7 +512,9 @@ class AddressBook(ProfileStore):
 
     async def new(self, address: Address) -> None:
         """Add `address` to the user's address book."""
+        Profile.of(address).contact_request = False
         self.add(address)
+
         run_task(self.update_profiles())
         run_task(broadcasts.update())
         run_task(inbox.update())
@@ -537,16 +580,17 @@ class MailContactRequests(ProfileStore):
         """
         for request in (requests := settings.get_strv("contact-requests")):
             try:
-                self.add(Address(request))
+                address = Address(request)
             except ValueError:
                 continue
 
+            Profile.of(address).contact_request = True
+            self.add(address)
+
         for request in self:
             if request.address not in requests:  # type: ignore
+                request.contact_request = False  # type: ignore
                 self.remove(request.address)  # type: ignore
-                continue
-
-            request.contact_request = True  # type: ignore
 
         run_task(self.update_profiles(trust_images=False))
 
@@ -657,14 +701,12 @@ class Message(GObject.Object):
         if message.is_broadcast:
             self.readers = _("Broadcast")
         else:
-            self.readers = f"{_('Readers:')} {str(profiles[user.address].name)}"
+            self.readers = f"{_('Readers:')} {str(Profile.of(user.address).name)}"
             for reader in message.readers:
                 if reader == user.address:
                     continue
 
-                self.readers += (
-                    f", {profile.name if (profile := profiles.get(reader)) else reader}"
-                )
+                self.readers += f", {Profile.of(reader).name or reader}"
 
         self.reader_addresses = ", ".join(
             str(reader)
@@ -679,14 +721,14 @@ class Message(GObject.Object):
         if self._name_binding:
             self._name_binding.unbind()
 
-        self._name_binding = profiles[message.author].bind_property(
+        self._name_binding = Profile.of(message.author).bind_property(
             "name", self, "name", GObject.BindingFlags.SYNC_CREATE
         )
 
         if self._image_binding:
             self._image_binding.unbind()
 
-        self._image_binding = profiles[message.author].bind_property(
+        self._image_binding = Profile.of(message.author).bind_property(
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
@@ -897,7 +939,7 @@ class MailDraftStore(DictStore[int, Message]):
                 message.broadcast,
             ) = draft
 
-            profiles[user.address].bind_property(
+            Profile.of(user.address).bind_property(
                 "image", message, "profile-image", GObject.BindingFlags.SYNC_CREATE
             )
 
@@ -967,7 +1009,7 @@ class _OutboxStore(MessageStore):
                 yield message
 
 
-profiles: defaultdict[Address, Profile] = defaultdict(Profile)
+_profiles: defaultdict[Address, Profile] = defaultdict(Profile)
 address_book = AddressBook()
 contact_requests = MailContactRequests()
 
@@ -975,39 +1017,3 @@ broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
 drafts = MailDraftStore()
-
-ProfileCategory = namedtuple("ProfileCategory", ("ident", "name"))
-profile_categories: dict[ProfileCategory, dict[str, str]] = {
-    ProfileCategory("general", _("General")): {
-        "status": _("Status"),
-        "about": _("About"),
-    },
-    ProfileCategory("personal", _("Personal")): {
-        "gender": _("Gender"),
-        "relationship-status": _("Relationship Status"),
-        "birthday": _("Birthday"),
-        "education": _("Education"),
-        "languages": _("Languages"),
-        "places-lived": _("Places Lived"),
-        "notes": _("Notes"),
-    },
-    ProfileCategory("work", _("Work")): {
-        "work": _("Work"),
-        "organization": _("Organization"),
-        "department": _("Department"),
-        "job-title": _("Job Title"),
-    },
-    ProfileCategory("interests", _("Interests")): {
-        "interests": _("Interests"),
-        "books": _("Books"),
-        "movies": _("Movies"),
-        "music": _("Music"),
-        "sports": _("Sports"),
-    },
-    ProfileCategory("contacts", _("Contacts")): {
-        "website": _("Website"),
-        "location": _("Location"),
-        "mailing-address": _("Mailing Address"),
-        "phone": _("Phone"),
-    },
-}

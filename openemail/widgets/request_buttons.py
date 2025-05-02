@@ -23,7 +23,7 @@ class RequestButtons(Gtk.Box):
         self._remove_address()
 
         try:
-            run_task(mail.address_book.new(Address(self.address.props.text)))
+            run_task(mail.address_book.new(Address(self.address)))
         except ValueError:
             return
 

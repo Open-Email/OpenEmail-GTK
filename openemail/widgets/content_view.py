@@ -7,6 +7,7 @@ from typing import Any
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, notifier, run_task, settings
+from openemail.mail import Profile
 
 from .compose_dialog import ComposeDialog
 from .contacts_page import ContactsPage
@@ -102,19 +103,14 @@ class ContentView(Adw.BreakpointBin):
             if not success:
                 return
 
-            profile = mail.profiles[mail.user.address]
-
             if self._image_binding:
                 self._image_binding.unbind()
 
-            self._image_binding = profile.bind_property(
-                "image",
-                self,
-                "profile-image",
-                GObject.BindingFlags.SYNC_CREATE,
+            self._image_binding = Profile.of(mail.user.address).bind_property(
+                "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
             )
 
-            self.profile_settings.profile = profile.profile
+            self.profile_settings.profile = Profile.of(mail.user.address)
             self.profile_stack_child_name = "profile"
 
         self.profile_stack_child_name = "spinner"
