@@ -867,7 +867,7 @@ class MessageStore(DictStore[str, Message]):
 
     async def _process_messages(
         self, futures: Iterable[Awaitable[Iterable[model.Message]]]
-    ) -> AsyncGenerator[model.Message]:
+    ) -> AsyncGenerator[model.Message, None]:
         unread = set()
         async for messages in asyncio.as_completed(futures):
             # This is async interation, we don't want a data race
