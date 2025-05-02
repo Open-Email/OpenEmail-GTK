@@ -7,7 +7,7 @@ from typing import Any, Callable
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import CoreMessage, Message
+from openemail.mail import Attachment, Message
 
 from .message_body import MessageBody
 from .profile_view import ProfileView
@@ -23,7 +23,7 @@ class MessageView(Adw.Bin):
 
     reply_button: Gtk.Button = Gtk.Template.Child()
     message_body: MessageBody = Gtk.Template.Child()
-    attachments: Gtk.ListBox = Gtk.Template.Child()
+    attachments_list: Gtk.ListBox = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
     profile_view: ProfileView = Gtk.Template.Child()
@@ -31,7 +31,7 @@ class MessageView(Adw.Bin):
 
     visible_child_name = GObject.Property(type=str, default="empty")
 
-    attachment_messages: dict[Adw.ActionRow, list[CoreMessage]]
+    attachments: dict[Adw.ActionRow, Attachment]
     undo: dict[Adw.Toast, Callable[[], Any]]
 
     _message: Message | None = None
@@ -51,18 +51,18 @@ class MessageView(Adw.Bin):
 
         self.visible_child_name = "message"
 
-        self.attachments.remove_all()
-        self.attachment_messages = {}
-        for name, parts in message.attachments.items():
-            row = Adw.ActionRow(title=name, activatable=True, use_markup=False)
+        self.attachments_list.remove_all()
+        self.attachments = {}
+        for a in message.attachments:
+            row = Adw.ActionRow(title=a.name, activatable=True, use_markup=False)
             row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
-            self.attachment_messages[row] = parts
-            self.attachments.append(row)
+            self.attachments[row] = a
+            self.attachments_list.append(row)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.attachment_messages = {}
+        self.attachments = {}
         self.undo = {}
 
         def undo(*_args: Any) -> bool:
@@ -96,7 +96,7 @@ class MessageView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _open_attachment(self, _obj: Any, row: Adw.ActionRow) -> None:
-        if not (parts := self.attachment_messages.get(row)):
+        if not (attachment := self.attachments.get(row)):
             return
 
         async def save() -> None:
@@ -114,7 +114,7 @@ class MessageView(Adw.Bin):
             except GLib.Error:
                 return
 
-            if not (data := await mail.download_attachment(parts)):
+            if not (data := await attachment.download()):
                 return
 
             try:

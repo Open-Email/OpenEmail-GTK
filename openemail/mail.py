@@ -17,13 +17,12 @@ from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
 
 from openemail import notifier, run_task, secret_service, settings
 
-from .core import client
+from .core import client, model
 from .core.client import WriteError as WriteError
 from .core.client import data_dir
 from .core.client import user as user
 from .core.crypto import KeyPair as KeyPair
 from .core.model import Address as Address
-from .core.model import Message as CoreMessage
 from .core.model import Profile as CoreProfile
 from .core.model import User as User
 
@@ -213,15 +212,6 @@ async def delete_profile_image() -> None:
         raise error
 
     await update_user_profile()
-
-
-async def download_attachment(parts: Iterable[CoreMessage]) -> bytes | None:
-    """Download and reconstruct an attachment from `parts`."""
-    if not (attachment := await client.download_attachment(parts)):
-        notifier.send(_("Failed to download attachment"))
-        return None
-
-    return attachment
 
 
 async def send_message(
@@ -561,6 +551,28 @@ class MailContactRequests(ProfileStore):
         run_task(self.update_profiles(trust_images=False))
 
 
+class Attachment(GObject.Object):
+    """An file attached to a Mail/HTTPS message."""
+
+    __gtype_name__ = "Attachment"
+
+    name = GObject.Property(type=str)
+    parts: list[model.Message]
+
+    def __init__(self, name: str, parts: list[model.Message], **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        self.name, self.parts = name, parts
+
+    async def download(self) -> bytes | None:
+        """Download and reconstruct `self` from its parts."""
+        if not (data := await client.download_attachment(self.parts)):
+            notifier.send(_("Failed to download attachment"))
+            return None
+
+        return data
+
+
 class Message(GObject.Object):
     """A Mail/HTTPS message."""
 
@@ -587,7 +599,7 @@ class Message(GObject.Object):
     readers = GObject.Property(type=str)
     reader_addresses = GObject.Property(type=str)
 
-    attachments: dict[str, list[CoreMessage]]
+    attachments: tuple[Attachment, ...]
 
     name = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
@@ -595,7 +607,7 @@ class Message(GObject.Object):
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
 
-    _message: CoreMessage | None = None
+    _message: model.Message | None = None
 
     @property
     def trashed(self) -> bool:
@@ -606,12 +618,12 @@ class Message(GObject.Object):
         return self.message.ident in settings.get_strv("trashed-messages")
 
     @property
-    def message(self) -> CoreMessage | None:
-        """Get the `CoreMessage` that `self` represents."""
+    def message(self) -> model.Message | None:
+        """Get the `model.Message` that `self` represents."""
         return self._message
 
     @message.setter
-    def message(self, message: CoreMessage | None) -> None:
+    def message(self, message: model.Message | None) -> None:
         self._message = message
 
         if not message:
@@ -660,7 +672,9 @@ class Message(GObject.Object):
             if (reader != user.address)
         )
 
-        self.attachments = message.attachments
+        self.attachments = tuple(
+            Attachment(name, parts) for name, parts in message.attachments.items()
+        )
 
         if self._name_binding:
             self._name_binding.unbind()
@@ -676,10 +690,10 @@ class Message(GObject.Object):
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
-    def __init__(self, message: CoreMessage | None = None, **kwargs: Any) -> None:
+    def __init__(self, message: model.Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.attachments = {}
+        self.attachments = ()
 
         if message:
             self.message = message
@@ -811,8 +825,8 @@ class MessageStore(DictStore[str, Message]):
     async def _fetch(self) -> ...: ...
 
     async def _process_messages(
-        self, futures: Iterable[Awaitable[Iterable[CoreMessage]]]
-    ) -> AsyncGenerator[CoreMessage]:
+        self, futures: Iterable[Awaitable[Iterable[model.Message]]]
+    ) -> AsyncGenerator[model.Message]:
         unread = set()
         async for messages in asyncio.as_completed(futures):
             # This is async interation, we don't want a data race

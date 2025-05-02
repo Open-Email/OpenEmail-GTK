@@ -208,7 +208,7 @@ template $MessageView: Adw.Bin {
                 text: bind template.message as <$Message>.body;
               }
 
-              ListBox attachments {
+              ListBox attachments_list {
                 selection-mode: none;
                 row-activated => $_open_attachment();
 
