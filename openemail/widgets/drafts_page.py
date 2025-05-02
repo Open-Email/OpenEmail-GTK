@@ -7,21 +7,21 @@ from typing import Any
 from gi.repository import Adw, GObject, Gtk
 
 from openemail import PREFIX, mail
-from openemail.mail import MailMessage
+from openemail.mail import Message
 
-from .compose_dialog import MailComposeDialog
-from .content_page import MailContentPage
+from .compose_dialog import ComposeDialog
+from .content_page import ContentPage
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/drafts-page.ui")
-class MailDraftsPage(Adw.NavigationPage):
+class DraftsPage(Adw.NavigationPage):
     """A page listing a subset of the user's messages."""
 
-    __gtype_name__ = "MailDraftsPage"
+    __gtype_name__ = "DraftsPage"
 
-    content: MailContentPage = Gtk.Template.Child()
+    content: ContentPage = Gtk.Template.Child()
 
-    compose_dialog = GObject.Property(type=MailComposeDialog)
+    compose_dialog = GObject.Property(type=ComposeDialog)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -60,7 +60,7 @@ class MailDraftsPage(Adw.NavigationPage):
         mail.drafts.delete_all()
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not (isinstance(message := selection.props.selected_item, MailMessage)):
+        if not (isinstance(message := selection.props.selected_item, Message)):
             return
 
         selection.unselect_all()

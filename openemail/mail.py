@@ -19,12 +19,12 @@ from openemail import notifier, run_task, secret_service, settings
 
 from .core import client
 from .core.client import WriteError as WriteError
-from .core.client import data_dir as data_dir
+from .core.client import data_dir
 from .core.client import user as user
 from .core.crypto import KeyPair as KeyPair
 from .core.model import Address as Address
-from .core.model import Message as Message
-from .core.model import Profile as Profile
+from .core.model import Message as CoreMessage
+from .core.model import Profile as CoreProfile
 from .core.model import User as User
 
 _syncing = 0
@@ -215,7 +215,7 @@ async def delete_profile_image() -> None:
     await update_user_profile()
 
 
-async def download_attachment(parts: Iterable[Message]) -> bytes | None:
+async def download_attachment(parts: Iterable[CoreMessage]) -> bytes | None:
     """Download and reconstruct an attachment from `parts`."""
     if not (attachment := await client.download_attachment(parts)):
         notifier.send(_("Failed to download attachment"))
@@ -269,7 +269,7 @@ def empty_trash() -> None:
     """Empty the user's trash."""
     for store in inbox, broadcasts:
         for message in store:
-            if not isinstance(message, MailMessage):
+            if not isinstance(message, Message):
                 continue
 
             if message.message and message.trashed:
@@ -370,26 +370,26 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
         self.items_changed(0, n, 0)
 
 
-class MailProfile(GObject.Object):
+class Profile(GObject.Object):
     """A GObject representation of a user profile."""
 
-    __gtype_name__ = "MailProfile"
+    __gtype_name__ = "Profile"
 
     contact_request = GObject.Property(type=bool, default=False)
     has_name = GObject.Property(type=bool, default=False)
     image = GObject.Property(type=Gdk.Paintable)
 
-    _profile: Profile | None = None
+    _profile: CoreProfile | None = None
     _address: str | None = None
     _name: str | None = None
 
     @property
-    def profile(self) -> Profile | None:
+    def profile(self) -> CoreProfile | None:
         """The profile of the user."""
         return self._profile
 
     @profile.setter
-    def profile(self, profile: Profile | None) -> None:
+    def profile(self, profile: CoreProfile | None) -> None:
         self._profile = profile
 
         if not profile:
@@ -422,10 +422,10 @@ class MailProfile(GObject.Object):
         self.has_name = name != self.address
 
 
-class MailProfileStore(DictStore[Address, MailProfile]):
+class ProfileStore(DictStore[Address, Profile]):
     """An implementation of `Gio.ListModel` for storing profiles."""
 
-    item_type = MailProfile
+    item_type = Profile
 
     def add(self, contact: Address) -> None:
         """Manually add `contact` to `self`.
@@ -436,7 +436,7 @@ class MailProfileStore(DictStore[Address, MailProfile]):
         if contact in self._items:
             return
 
-        profiles[contact] = self._items[contact] = MailProfile(address=str(contact))
+        profiles[contact] = self._items[contact] = Profile(address=str(contact))
         self.items_changed(len(self._items) - 1, 0, 1)
 
     @_syncs
@@ -476,7 +476,7 @@ class MailProfileStore(DictStore[Address, MailProfile]):
             profiles[address].image = None
 
 
-class MailAddressBook(MailProfileStore):
+class AddressBook(ProfileStore):
     """An implementation of `Gio.ListModel` for storing contacts."""
 
     async def new(self, address: Address) -> None:
@@ -526,7 +526,7 @@ class MailAddressBook(MailProfileStore):
                 self.remove(address)
 
 
-class MailContactRequests(MailProfileStore):
+class MailContactRequests(ProfileStore):
     """An implementation of `Gio.ListModel` for storing contact requests."""
 
     def __init__(self, **kwargs: Any) -> None:
@@ -561,10 +561,10 @@ class MailContactRequests(MailProfileStore):
         run_task(self.update_profiles(trust_images=False))
 
 
-class MailMessage(GObject.Object):
+class Message(GObject.Object):
     """A Mail/HTTPS message."""
 
-    __gtype_name__ = "MailMessage"
+    __gtype_name__ = "Message"
 
     date = GObject.Property(type=str)
     datetime = GObject.Property(type=str)
@@ -587,7 +587,7 @@ class MailMessage(GObject.Object):
     readers = GObject.Property(type=str)
     reader_addresses = GObject.Property(type=str)
 
-    attachments: dict[str, list[Message]]
+    attachments: dict[str, list[CoreMessage]]
 
     name = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
@@ -595,7 +595,7 @@ class MailMessage(GObject.Object):
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
 
-    _message: Message | None = None
+    _message: CoreMessage | None = None
 
     @property
     def trashed(self) -> bool:
@@ -606,12 +606,12 @@ class MailMessage(GObject.Object):
         return self.message.ident in settings.get_strv("trashed-messages")
 
     @property
-    def message(self) -> Message | None:
-        """Get the `model.Message` that `self` represents."""
+    def message(self) -> CoreMessage | None:
+        """Get the `CoreMessage` that `self` represents."""
         return self._message
 
     @message.setter
-    def message(self, message: Message | None) -> None:
+    def message(self, message: CoreMessage | None) -> None:
         self._message = message
 
         if not message:
@@ -676,7 +676,7 @@ class MailMessage(GObject.Object):
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
-    def __init__(self, message: Message | None = None, **kwargs: Any) -> None:
+    def __init__(self, message: CoreMessage | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
         self.attachments = {}
@@ -743,10 +743,10 @@ class MailMessage(GObject.Object):
         )
 
 
-class MailMessageStore(DictStore[str, MailMessage]):
+class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
-    item_type = MailMessage
+    item_type = Message
 
     def delete(self, ident: str) -> None:
         """Delete the message with `ident`.
@@ -795,7 +795,7 @@ class MailMessageStore(DictStore[str, MailMessage]):
             if message.ident in self._items:
                 continue
 
-            self._items[message.ident] = MailMessage(message)
+            self._items[message.ident] = Message(message)
             self.items_changed(len(self._items) - 1, 0, 1)
 
         removed = 0
@@ -811,8 +811,8 @@ class MailMessageStore(DictStore[str, MailMessage]):
     async def _fetch(self) -> ...: ...
 
     async def _process_messages(
-        self, futures: Iterable[Awaitable[Iterable[Message]]]
-    ) -> AsyncGenerator[Message]:
+        self, futures: Iterable[Awaitable[Iterable[CoreMessage]]]
+    ) -> AsyncGenerator[CoreMessage]:
         unread = set()
         async for messages in asyncio.as_completed(futures):
             # This is async interation, we don't want a data race
@@ -833,10 +833,10 @@ class MailMessageStore(DictStore[str, MailMessage]):
         )
 
 
-class MailDraftStore(DictStore[int, MailMessage]):
+class MailDraftStore(DictStore[int, Message]):
     """An implementation of `Gio.ListModel` for storing drafts."""
 
-    item_type = MailMessage
+    item_type = Message
 
     def save(
         self,
@@ -873,7 +873,7 @@ class MailDraftStore(DictStore[int, MailMessage]):
         self._items.clear()
 
         for draft in (drafts := tuple(client.load_drafts())):
-            message = MailMessage()
+            message = Message()
             (
                 message.draft_id,
                 message.name,
@@ -893,7 +893,7 @@ class MailDraftStore(DictStore[int, MailMessage]):
         self.items_changed(0, previous, len(drafts))
 
 
-class _BroadcastStore(MailMessageStore):
+class _BroadcastStore(MessageStore):
     async def _fetch(self) -> ...:
         async for message in self._process_messages(
             client.fetch_broadcasts(
@@ -905,7 +905,7 @@ class _BroadcastStore(MailMessageStore):
             yield message
 
 
-class _InboxStore(MailMessageStore):
+class _InboxStore(MessageStore):
     async def _fetch(self) -> ...:
         known_notifiers = set()
         other_contacts = {Address(contact.address) for contact in address_book}  # type: ignore
@@ -939,7 +939,7 @@ class _InboxStore(MailMessageStore):
             yield message
 
 
-class _OutboxStore(MailMessageStore):
+class _OutboxStore(MessageStore):
     async def _fetch(self) -> ...:
         async for messages in asyncio.as_completed(
             (
@@ -953,8 +953,8 @@ class _OutboxStore(MailMessageStore):
                 yield message
 
 
-profiles: defaultdict[Address, MailProfile] = defaultdict(MailProfile)
-address_book = MailAddressBook()
+profiles: defaultdict[Address, Profile] = defaultdict(Profile)
+address_book = AddressBook()
 contact_requests = MailContactRequests()
 
 broadcasts = _BroadcastStore()

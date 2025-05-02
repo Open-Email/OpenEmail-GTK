@@ -9,14 +9,14 @@ from gi.repository import Adw, GObject, Gtk
 from openemail import PREFIX, mail, run_task, settings
 
 from .form import MailForm
-from .window import MailWindow
+from .window import Window
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/preferences.ui")
-class MailPreferences(Adw.PreferencesDialog):
+class Preferences(Adw.PreferencesDialog):
     """The application's preferences dialog."""
 
-    __gtype_name__ = "MailPreferences"
+    __gtype_name__ = "Preferences"
 
     confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()
     confirm_delete_dialog: Adw.AlertDialog = Gtk.Template.Child()
@@ -82,7 +82,7 @@ class MailPreferences(Adw.PreferencesDialog):
         self.force_close()
         mail.log_out()
 
-        if not isinstance(win := self.props.root, MailWindow):
+        if not isinstance(win := self.props.root, Window):
             return
 
         win.visible_child_name = "auth"

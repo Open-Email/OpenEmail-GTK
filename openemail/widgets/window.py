@@ -10,20 +10,20 @@ from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, mail, notifier, settings, state_settings
 
-from .auth_view import MailAuthView
-from .content_view import MailContentView
+from .auth_view import AuthView
+from .content_view import ContentView
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/window.ui")
-class MailWindow(Adw.ApplicationWindow):
+class Window(Adw.ApplicationWindow):
     """The main application window."""
 
-    __gtype_name__ = "MailWindow"
+    __gtype_name__ = "Window"
 
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
 
-    auth_view: MailAuthView = Gtk.Template.Child()
-    content_view: MailContentView = Gtk.Template.Child()
+    auth_view: AuthView = Gtk.Template.Child()
+    content_view: ContentView = Gtk.Template.Child()
 
     visible_child_name = GObject.Property(type=str, default="auth")
 

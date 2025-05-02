@@ -7,16 +7,16 @@ from typing import Any, Callable
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import Profile, WriteError
+from openemail.mail import CoreProfile, WriteError
 
 from .form import MailForm
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-settings.ui")
-class MailProfileSettings(Adw.PreferencesDialog):
+class ProfileSettings(Adw.PreferencesDialog):
     """A page presenting the user's editable public profile."""
 
-    __gtype_name__ = "MailProfileSettings"
+    __gtype_name__ = "ProfileSettings"
 
     name: Adw.EntryRow = Gtk.Template.Child()
     away: Adw.ExpanderRow = Gtk.Template.Child()
@@ -35,15 +35,15 @@ class MailProfileSettings(Adw.PreferencesDialog):
     pending = GObject.Property(type=bool, default=False)
     visible_child_name = GObject.Property(type=str, default="loading")
 
-    _profile: Profile | None = None
+    _profile: CoreProfile | None = None
 
     @property
-    def profile(self) -> Profile | None:
+    def profile(self) -> CoreProfile | None:
         """Profile of the user, if one was found."""
         return self._profile
 
     @profile.setter
-    def profile(self, profile: Profile | None) -> None:
+    def profile(self, profile: CoreProfile | None) -> None:
         self._profile = profile
 
         while self._pages:

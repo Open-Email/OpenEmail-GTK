@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MailContentView: Adw.BreakpointBin {
+template $ContentView: Adw.BreakpointBin {
   width-request: 360;
   height-request: 294;
 
@@ -54,27 +54,27 @@ template $MailContentView: Adw.BreakpointBin {
             vexpand: true;
             row-selected => $_on_row_selected();
 
-            $MailNavigationRow {
+            $NavigationRow {
               label: _("Broadcasts");
               icon-name: _("broadcasts-symbolic");
             }
 
-            $MailNavigationRow {
+            $NavigationRow {
               label: _("Inbox");
               icon-name: _("inbox-symbolic");
             }
 
-            $MailNavigationRow {
+            $NavigationRow {
               label: _("Outbox");
               icon-name: _("outbox-symbolic");
             }
 
-            $MailNavigationRow {
+            $NavigationRow {
               label: _("Drafts");
               icon-name: _("drafts-symbolic");
             }
 
-            $MailNavigationRow {
+            $NavigationRow {
               label: _("Trash");
               icon-name: _("trash-symbolic");
             }
@@ -87,7 +87,7 @@ template $MailContentView: Adw.BreakpointBin {
           ListBox contacts_sidebar {
             row-selected => $_on_contacts_selected();
 
-            $MailNavigationRow {
+            $NavigationRow {
               label: _("Contacts");
               icon-name: _("contacts-symbolic");
             }
@@ -110,7 +110,7 @@ template $MailContentView: Adw.BreakpointBin {
         StackPage {
           name: "broadcasts";
 
-          child: $MailMessagesPage broadcasts_page {
+          child: $MessagesPage broadcasts_page {
             folder: "broadcasts";
             compose-dialog: compose_dialog;
           };
@@ -119,7 +119,7 @@ template $MailContentView: Adw.BreakpointBin {
         StackPage {
           name: "inbox";
 
-          child: $MailMessagesPage inbox_page {
+          child: $MessagesPage inbox_page {
             folder: "inbox";
             compose-dialog: compose_dialog;
           };
@@ -128,7 +128,7 @@ template $MailContentView: Adw.BreakpointBin {
         StackPage {
           name: "outbox";
 
-          child: $MailMessagesPage outbox_page {
+          child: $MessagesPage outbox_page {
             folder: "outbox";
             compose-dialog: compose_dialog;
           };
@@ -137,7 +137,7 @@ template $MailContentView: Adw.BreakpointBin {
         StackPage {
           name: "drafts";
 
-          child: $MailDraftsPage drafts_page {
+          child: $DraftsPage drafts_page {
             compose-dialog: compose_dialog;
           };
         }
@@ -145,7 +145,7 @@ template $MailContentView: Adw.BreakpointBin {
         StackPage {
           name: "trash";
 
-          child: $MailMessagesPage trash_page {
+          child: $MessagesPage trash_page {
             folder: "trash";
             compose-dialog: compose_dialog;
           };
@@ -154,14 +154,14 @@ template $MailContentView: Adw.BreakpointBin {
         StackPage {
           name: "contacts";
 
-          child: $MailContactsPage contacts_page {};
+          child: $ContactsPage contacts_page {};
         }
       }
     };
   }
 }
 
-$MailProfileSettings profile_settings {
+$ProfileSettings profile_settings {
   profile-image: bind template.profile-image;
 }
 
@@ -174,4 +174,4 @@ menu primary_menu {
   }
 }
 
-$MailComposeDialog compose_dialog {}
+$ComposeDialog compose_dialog {}

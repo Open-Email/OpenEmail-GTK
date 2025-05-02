@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MailMessageView: Adw.Bin {
+template $MessageView: Adw.Bin {
   Adw.ToastOverlay toast_overlay {
     Adw.ToolbarView {
       [top]
@@ -10,7 +10,7 @@ template $MailMessageView: Adw.Bin {
 
         [end]
         Button trash_button {
-          visible: bind template.message as <$MailMessage>.can-trash;
+          visible: bind template.message as <$Message>.can-trash;
           icon-name: "trash-symbolic";
           tooltip-text: _("Trash Message");
           clicked => $_trash();
@@ -31,7 +31,7 @@ template $MailMessageView: Adw.Bin {
 
         [end]
         Button restore_button {
-          visible: bind template.message as <$MailMessage>.can-restore;
+          visible: bind template.message as <$Message>.can-restore;
           label: _("Restore");
           clicked => $_restore();
 
@@ -51,7 +51,7 @@ template $MailMessageView: Adw.Bin {
 
         [end]
         Button discard_button {
-          visible: bind template.message as <$MailMessage>.author-is-self;
+          visible: bind template.message as <$Message>.author-is-self;
           icon-name: "trash-symbolic";
           tooltip-text: _("Discard Message");
           clicked => $_discard();
@@ -72,7 +72,7 @@ template $MailMessageView: Adw.Bin {
 
         [end]
         Button reply_button {
-          visible: bind template.message as <$MailMessage>.can-reply;
+          visible: bind template.message as <$Message>.can-reply;
           icon-name: "mail-reply-sender-symbolic";
           tooltip-text: _("Reply");
 
@@ -121,8 +121,8 @@ template $MailMessageView: Adw.Bin {
 
                   Adw.Avatar {
                     size: 48;
-                    text: bind template.message as <$MailMessage>.name;
-                    custom-image: bind template.message as <$MailMessage>.profile-image;
+                    text: bind template.message as <$Message>.name;
+                    custom-image: bind template.message as <$Message>.profile-image;
                     show-initials: true;
                   }
 
@@ -140,7 +140,7 @@ template $MailMessageView: Adw.Bin {
                     Label {
                       hexpand: true;
                       halign: start;
-                      label: bind template.message as <$MailMessage>.name;
+                      label: bind template.message as <$Message>.name;
                       wrap: true;
                       wrap-mode: word_char;
 
@@ -152,7 +152,7 @@ template $MailMessageView: Adw.Bin {
                     Label {
                       margin-start: 6;
                       halign: end;
-                      label: bind template.message as <$MailMessage>.datetime;
+                      label: bind template.message as <$Message>.datetime;
                       wrap: true;
                       wrap-mode: word_char;
                       justify: right;
@@ -166,7 +166,7 @@ template $MailMessageView: Adw.Bin {
 
                   Label {
                     halign: start;
-                    label: bind template.message as <$MailMessage>.subject;
+                    label: bind template.message as <$Message>.subject;
                     wrap: true;
                     wrap-mode: word_char;
                     selectable: true;
@@ -178,8 +178,8 @@ template $MailMessageView: Adw.Bin {
 
                   Label {
                     halign: start;
-                    label: bind template.message as <$MailMessage>.original_author;
-                    visible: bind template.message as <$MailMessage>.different-author;
+                    label: bind template.message as <$Message>.original_author;
+                    visible: bind template.message as <$Message>.different-author;
                     wrap: true;
                     wrap-mode: word_char;
                     selectable: true;
@@ -191,7 +191,7 @@ template $MailMessageView: Adw.Bin {
 
                   Label {
                     halign: start;
-                    label: bind template.message as <$MailMessage>.readers;
+                    label: bind template.message as <$Message>.readers;
                     wrap: true;
                     wrap-mode: word_char;
                     selectable: true;
@@ -203,9 +203,9 @@ template $MailMessageView: Adw.Bin {
                 }
               }
 
-              $MailMessageBody message_body {
+              $MessageBody message_body {
                 editable: false;
-                text: bind template.message as <$MailMessage>.body;
+                text: bind template.message as <$Message>.body;
               }
 
               ListBox attachments {
@@ -227,8 +227,8 @@ template $MailMessageView: Adw.Bin {
 Adw.Dialog profile_dialog {
   content-width: 400;
 
-  $MailProfileView profile_view {
-    profile-image: bind template.message as <$MailMessage>.profile-image;
+  $ProfileView profile_view {
+    profile-image: bind template.message as <$Message>.profile-image;
   }
 }
 

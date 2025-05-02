@@ -13,10 +13,10 @@ from .form import MailForm
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/auth-view.ui")
-class MailAuthView(Adw.Bin):
+class AuthView(Adw.Bin):
     """A view prompting the user to log in."""
 
-    __gtype_name__ = "MailAuthView"
+    __gtype_name__ = "AuthView"
 
     navigation_view: Adw.NavigationView = Gtk.Template.Child()
 

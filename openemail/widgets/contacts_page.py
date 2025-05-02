@@ -8,22 +8,22 @@ from typing import Any
 from gi.repository import Adw, Gio, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import Address, MailProfile
+from openemail.mail import Address, Profile
 
-from .content_page import MailContentPage
+from .content_page import ContentPage
 from .form import MailForm
-from .profile_view import MailProfileView
-from .request_buttons import MailRequestButtons  # noqa: F401
+from .profile_view import ProfileView
+from .request_buttons import RequestButtons  # noqa: F401
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/contacts-page.ui")
-class MailContactsPage(Adw.NavigationPage):
+class ContactsPage(Adw.NavigationPage):
     """A page with the contents of the user's address book."""
 
-    __gtype_name__ = "MailContactsPage"
+    __gtype_name__ = "ContactsPage"
 
-    content: MailContentPage = Gtk.Template.Child()
-    profile_view: MailProfileView = Gtk.Template.Child()
+    content: ContentPage = Gtk.Template.Child()
+    profile_view: ProfileView = Gtk.Template.Child()
 
     add_contact_dialog: Adw.AlertDialog = Gtk.Template.Child()
     address: Adw.EntryRow = Gtk.Template.Child()
@@ -86,7 +86,7 @@ class MailContactsPage(Adw.NavigationPage):
             return
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not isinstance(selected := selection.props.selected_item, MailProfile):
+        if not isinstance(selected := selection.props.selected_item, Profile):
             return
 
         self.profile_view.profile = selected.profile

@@ -11,10 +11,10 @@ from openemail.mail import Address
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/request-buttons.ui")
-class MailRequestButtons(Gtk.Box):
+class RequestButtons(Gtk.Box):
     """Buttons to accept or decline a contact request."""
 
-    __gtype_name__ = "MailRequestButtons"
+    __gtype_name__ = "RequestButtons"
 
     address = GObject.Property(type=str)
 

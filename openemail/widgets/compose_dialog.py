@@ -10,19 +10,19 @@ from openemail import PREFIX, mail, run_task
 from openemail.mail import Address
 
 from .form import MailForm
-from .message_body import MailMessageBody
+from .message_body import MessageBody
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/compose-dialog.ui")
-class MailComposeDialog(Adw.Dialog):
+class ComposeDialog(Adw.Dialog):
     """A page listing a subset of the user's messages."""
 
-    __gtype_name__ = "MailComposeDialog"
+    __gtype_name__ = "ComposeDialog"
 
     broadcast_switch: Gtk.Switch = Gtk.Template.Child()
     readers: Gtk.Text = Gtk.Template.Child()
     subject: Gtk.Text = Gtk.Template.Child()
-    body_view: MailMessageBody = Gtk.Template.Child()
+    body_view: MessageBody = Gtk.Template.Child()
     compose_form: MailForm = Gtk.Template.Child()
 
     attachments: Gtk.ListBox = Gtk.Template.Child()

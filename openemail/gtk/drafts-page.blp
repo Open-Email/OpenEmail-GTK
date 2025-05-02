@@ -1,10 +1,10 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MailDraftsPage: Adw.NavigationPage {
+template $DraftsPage: Adw.NavigationPage {
   title: _("Drafts");
 
-  $MailContentPage content {
+  $ContentPage content {
     title: bind template.title;
 
     details: Adw.ToolbarView {

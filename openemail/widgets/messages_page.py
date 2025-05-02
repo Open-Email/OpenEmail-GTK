@@ -8,26 +8,26 @@ from typing import Any, Literal
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import PREFIX, mail, settings
-from openemail.mail import MailMessage, empty_trash
+from openemail.mail import Message, empty_trash
 
-from .compose_dialog import MailComposeDialog
-from .content_page import MailContentPage
-from .message_view import MailMessageView
+from .compose_dialog import ComposeDialog
+from .content_page import ContentPage
+from .message_view import MessageView
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/messages-page.ui")
-class MailMessagesPage(Adw.NavigationPage):
+class MessagesPage(Adw.NavigationPage):
     """A page listing a subset of the user's messages."""
 
-    __gtype_name__ = "MailMessagesPage"
+    __gtype_name__ = "MessagesPage"
 
-    content: MailContentPage = Gtk.Template.Child()
-    message_view: MailMessageView = Gtk.Template.Child()
+    content: ContentPage = Gtk.Template.Child()
+    message_view: MessageView = Gtk.Template.Child()
 
     confirm_empty_dialog = Gtk.Template.Child()
 
     title = GObject.Property(type=str, default=_("Messages"))
-    compose_dialog = GObject.Property(type=MailComposeDialog)
+    compose_dialog = GObject.Property(type=ComposeDialog)
 
     _folder: str | None = None
 
@@ -152,7 +152,7 @@ class MailMessagesPage(Adw.NavigationPage):
         if not self.message_view.message:
             return self._new_message()
 
-        message: MailMessage = self.message_view.message
+        message: Message = self.message_view.message
 
         self.compose_dialog.attached_files.clear()
         self.compose_dialog.attachments.remove_all()
@@ -179,7 +179,7 @@ class MailMessagesPage(Adw.NavigationPage):
         self.compose_dialog.body_view.grab_focus()
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not isinstance(selected := selection.props.selected_item, MailMessage):
+        if not isinstance(selected := selection.props.selected_item, Message):
             return
 
         selected.mark_read()

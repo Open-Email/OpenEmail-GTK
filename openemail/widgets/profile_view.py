@@ -7,14 +7,14 @@ from typing import Any
 from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import Profile
+from openemail.mail import CoreProfile
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-view.ui")
-class MailProfileView(Adw.Bin):
+class ProfileView(Adw.Bin):
     """A page presenting a user's profile."""
 
-    __gtype_name__ = "MailProfileView"
+    __gtype_name__ = "ProfileView"
 
     _groups: list[Adw.PreferencesGroup]
 
@@ -30,15 +30,15 @@ class MailProfileView(Adw.Bin):
 
     visible_child_name = GObject.Property(type=str, default="empty")
 
-    _profile: Profile | None = None
+    _profile: CoreProfile | None = None
 
     @property
-    def profile(self) -> Profile | None:
+    def profile(self) -> CoreProfile | None:
         """Profile of the user, if one was found."""
         return self._profile
 
     @profile.setter
-    def profile(self, profile: Profile | None) -> None:
+    def profile(self, profile: CoreProfile | None) -> None:
         self._profile = profile
 
         if not profile:

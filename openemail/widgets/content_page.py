@@ -10,10 +10,10 @@ from openemail import PREFIX
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/content-page.ui")
-class MailContentPage(Adw.BreakpointBin):
+class ContentPage(Adw.BreakpointBin):
     """A split view for content and details."""
 
-    __gtype_name__ = "MailContentPage"
+    __gtype_name__ = "ContentPage"
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
 

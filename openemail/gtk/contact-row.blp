@@ -9,8 +9,8 @@ template ListItem {
 
     Adw.Avatar {
       size: 32;
-      text: bind template.item as <$MailProfile>.name;
-      custom-image: bind template.item as <$MailProfile>.image;
+      text: bind template.item as <$Profile>.name;
+      custom-image: bind template.item as <$Profile>.image;
       show-initials: true;
     }
 
@@ -20,14 +20,14 @@ template ListItem {
 
       Label {
         halign: start;
-        label: bind template.item as <$MailProfile>.name;
+        label: bind template.item as <$Profile>.name;
         ellipsize: end;
       }
 
       Label {
-        visible: bind template.item as <$MailProfile>.has-name;
+        visible: bind template.item as <$Profile>.has-name;
         halign: start;
-        label: bind template.item as <$MailProfile>.address;
+        label: bind template.item as <$Profile>.address;
         ellipsize: end;
 
         styles [
@@ -36,11 +36,11 @@ template ListItem {
       }
     }
 
-    $MailRequestButtons {
-      visible: bind template.item as <$MailProfile>.contact-request;
+    $RequestButtons {
+      visible: bind template.item as <$Profile>.contact-request;
       hexpand: true;
       halign: end;
-      address: bind template.item as <$MailProfile>.address;
+      address: bind template.item as <$Profile>.address;
     }
   };
 }

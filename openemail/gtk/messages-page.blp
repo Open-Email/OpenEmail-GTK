@@ -1,11 +1,11 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MailMessagesPage: Adw.NavigationPage {
-  $MailContentPage content {
+template $MessagesPage: Adw.NavigationPage {
+  $ContentPage content {
     title: bind template.title;
 
-    details: $MailMessageView message_view {};
+    details: $MessageView message_view {};
 
     toolbar-button: Button {
       icon-name: "mail-message-new-symbolic";

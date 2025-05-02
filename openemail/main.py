@@ -20,11 +20,11 @@ from gi.repository import Adw, Gio
 from openemail import APP_ID, PREFIX, log_file, mail, secret_service, settings
 from openemail.mail import Address, KeyPair
 
-from .widgets.preferences import MailPreferences
-from .widgets.window import MailWindow
+from .widgets.preferences import Preferences
+from .widgets.window import Window
 
 
-class MailApplication(Adw.Application):
+class Application(Adw.Application):
     """The main application singleton class."""
 
     def __init__(self) -> None:
@@ -62,7 +62,7 @@ class MailApplication(Adw.Application):
 
         Called when the application is activated.
         """
-        (self.props.active_window or MailWindow(application=self)).present()
+        (self.props.active_window or Window(application=self)).present()
 
     def on_about_action(self, *_args: Any) -> None:
         """Present the about dialog."""
@@ -94,11 +94,11 @@ class MailApplication(Adw.Application):
         ):
             return
 
-        MailPreferences().present(win)
+        Preferences().present(win)
 
     def on_sync_action(self, *_args: Any) -> None:
         """Sync remote content."""
-        if not isinstance(win := self.props.active_window, MailWindow):
+        if not isinstance(win := self.props.active_window, Window):
             return
 
         win.content_view.load_content(first_sync=False)
@@ -137,4 +137,4 @@ def main() -> int:
         ),
     )
 
-    return MailApplication().run(sys.argv)
+    return Application().run(sys.argv)

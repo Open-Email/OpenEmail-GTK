@@ -8,38 +8,38 @@ from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, notifier, run_task, settings
 
-from .compose_dialog import MailComposeDialog
-from .contacts_page import MailContactsPage
-from .drafts_page import MailDraftsPage
-from .messages_page import MailMessagesPage
-from .navigation_row import MailNavigationRow
-from .profile_settings import MailProfileSettings
+from .compose_dialog import ComposeDialog
+from .contacts_page import ContactsPage
+from .drafts_page import DraftsPage
+from .messages_page import MessagesPage
+from .navigation_row import NavigationRow
+from .profile_settings import ProfileSettings
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/content-view.ui")
-class MailContentView(Adw.BreakpointBin):
+class ContentView(Adw.BreakpointBin):
     """The main content of the application."""
 
-    __gtype_name__ = "MailContentView"
+    __gtype_name__ = "ContentView"
 
     split_view: Adw.OverlaySplitView = Gtk.Template.Child()
 
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     contacts_sidebar: Gtk.ListBox = Gtk.Template.Child()
-    profile_settings: MailProfileSettings = Gtk.Template.Child()
+    profile_settings: ProfileSettings = Gtk.Template.Child()
 
-    broadcasts_page: MailMessagesPage = Gtk.Template.Child()
-    inbox_page: MailMessagesPage = Gtk.Template.Child()
-    outbox_page: MailMessagesPage = Gtk.Template.Child()
-    drafts_page: MailDraftsPage = Gtk.Template.Child()
-    trash_page: MailMessagesPage = Gtk.Template.Child()
-    contacts_page: MailContactsPage = Gtk.Template.Child()
+    broadcasts_page: MessagesPage = Gtk.Template.Child()
+    inbox_page: MessagesPage = Gtk.Template.Child()
+    outbox_page: MessagesPage = Gtk.Template.Child()
+    drafts_page: DraftsPage = Gtk.Template.Child()
+    trash_page: MessagesPage = Gtk.Template.Child()
+    contacts_page: ContactsPage = Gtk.Template.Child()
 
     content_child_name = GObject.Property(type=str, default="inbox")
     profile_stack_child_name = GObject.Property(type=str, default="loading")
     profile_image = GObject.Property(type=Gdk.Paintable)
 
-    compose_dialog: MailComposeDialog = Gtk.Template.Child()
+    compose_dialog: ComposeDialog = Gtk.Template.Child()
 
     _image_binding: GObject.Binding | None = None
 
@@ -121,7 +121,7 @@ class MailContentView(Adw.BreakpointBin):
         run_task(mail.update_user_profile(), update_user_profile_cb)
 
     @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:
+    def _on_row_selected(self, _obj: Any, row: NavigationRow | None) -> None:
         if not row:
             return
 
@@ -140,7 +140,7 @@ class MailContentView(Adw.BreakpointBin):
             self.split_view.props.show_sidebar = False
 
     @Gtk.Template.Callback()
-    def _on_contacts_selected(self, _obj: Any, row: MailNavigationRow | None) -> None:
+    def _on_contacts_selected(self, _obj: Any, row: NavigationRow | None) -> None:
         if not row:
             return
 

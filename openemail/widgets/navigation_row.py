@@ -8,10 +8,10 @@ from openemail import PREFIX
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/navigation-row.ui")
-class MailNavigationRow(Gtk.ListBoxRow):
+class NavigationRow(Gtk.ListBoxRow):
     """An item in the main sidebar."""
 
-    __gtype_name__ = "MailNavigationRow"
+    __gtype_name__ = "NavigationRow"
 
     label = GObject.Property(type=str)
     icon_name = GObject.Property(type=str)

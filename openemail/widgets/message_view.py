@@ -7,42 +7,42 @@ from typing import Any, Callable
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import MailMessage, Message
+from openemail.mail import CoreMessage, Message
 
-from .message_body import MailMessageBody
-from .profile_view import MailProfileView
+from .message_body import MessageBody
+from .profile_view import ProfileView
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/message-view.ui")
-class MailMessageView(Adw.Bin):
+class MessageView(Adw.Bin):
     """A view displaying metadata about, and the contents of a message."""
 
-    __gtype_name__ = "MailMessageView"
+    __gtype_name__ = "MessageView"
 
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
 
     reply_button: Gtk.Button = Gtk.Template.Child()
-    message_body: MailMessageBody = Gtk.Template.Child()
+    message_body: MessageBody = Gtk.Template.Child()
     attachments: Gtk.ListBox = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
-    profile_view: MailProfileView = Gtk.Template.Child()
+    profile_view: ProfileView = Gtk.Template.Child()
     confirm_discard_dialog: Adw.AlertDialog = Gtk.Template.Child()
 
     visible_child_name = GObject.Property(type=str, default="empty")
 
-    attachment_messages: dict[Adw.ActionRow, list[Message]]
+    attachment_messages: dict[Adw.ActionRow, list[CoreMessage]]
     undo: dict[Adw.Toast, Callable[[], Any]]
 
-    _message: MailMessage | None = None
+    _message: Message | None = None
 
-    @GObject.Property(type=MailMessage)
-    def message(self) -> MailMessage | None:
-        """Get the `MailMessage` that `self` represents."""
-        return self._message or MailMessage()
+    @GObject.Property(type=Message)
+    def message(self) -> Message | None:
+        """Get the `Message` that `self` represents."""
+        return self._message or Message()
 
     @message.setter
-    def message(self, message: MailMessage | None) -> None:
+    def message(self, message: Message | None) -> None:
         self._message = message
 
         if not message:

@@ -1,13 +1,13 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $MailContactsPage: Adw.NavigationPage {
+template $ContactsPage: Adw.NavigationPage {
   title: _("Contacts");
 
-  $MailContentPage content {
+  $ContentPage content {
     title: bind template.title;
 
-    details: $MailProfileView profile_view {};
+    details: $ProfileView profile_view {};
 
     toolbar-button: Button {
       icon-name: "contact-new-symbolic";

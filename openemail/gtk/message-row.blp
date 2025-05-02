@@ -5,7 +5,7 @@ template ListItem {
   child: Box {
     Revealer {
       transition-type: crossfade;
-      reveal-child: bind template.item as <$MailMessage>.unread;
+      reveal-child: bind template.item as <$Message>.unread;
 
       Label {
         valign: start;
@@ -32,8 +32,8 @@ template ListItem {
         valign: start;
         margin-top: 3;
         size: 32;
-        text: bind template.item as <$MailMessage>.name;
-        custom-image: bind template.item as <$MailMessage>.profile-image;
+        text: bind template.item as <$Message>.name;
+        custom-image: bind template.item as <$Message>.profile-image;
         show-initials: true;
       }
 
@@ -45,7 +45,7 @@ template ListItem {
           Label {
             hexpand: true;
             halign: start;
-            label: bind template.item as <$MailMessage>.name;
+            label: bind template.item as <$Message>.name;
             ellipsize: end;
 
             styles [
@@ -55,7 +55,7 @@ template ListItem {
 
           Label {
             halign: end;
-            label: bind template.item as <$MailMessage>.date;
+            label: bind template.item as <$Message>.date;
             ellipsize: end;
 
             styles [
@@ -66,7 +66,7 @@ template ListItem {
 
         Label {
           halign: start;
-          label: bind template.item as <$MailMessage>.subject;
+          label: bind template.item as <$Message>.subject;
           ellipsize: end;
           wrap: true;
           wrap-mode: word_char;
@@ -77,10 +77,10 @@ template ListItem {
           ]
         }
 
-        $MailMessageBody {
+        $MessageBody {
           sensitive: false;
           editable: false;
-          text: bind template.item as <$MailMessage>.body;
+          text: bind template.item as <$Message>.body;
           summary: true;
 
           styles [

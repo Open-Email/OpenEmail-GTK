@@ -8,10 +8,10 @@ from typing import Any
 from gi.repository import GLib, GObject, Gtk, Pango
 
 
-class MailMessageBody(Gtk.TextView):
+class MessageBody(Gtk.TextView):
     """A widget for displaying a message's (optionally editable) body with Markdown support."""
 
-    __gtype_name__ = "MailMessageBody"
+    __gtype_name__ = "MessageBody"
 
     summary = GObject.Property(type=bool, default=False)
 
