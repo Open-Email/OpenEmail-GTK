@@ -25,14 +25,14 @@ class ProfileSettings(Adw.PreferencesDialog):
     about: Adw.EntryRow = Gtk.Template.Child()
     name_form: MailForm = Gtk.Template.Child()
 
-    _pages: list[Adw.PreferencesPage]
-    _fields: dict[str, Callable[[], str]]
-    _changed: bool = False
-
     address = GObject.Property(type=str)
 
     pending = GObject.Property(type=bool, default=False)
     visible_child_name = GObject.Property(type=str, default="loading")
+
+    _pages: list[Adw.PreferencesPage]
+    _fields: dict[str, Callable[[], str]]
+    _changed: bool = False
 
     _profile: Profile | None = None
 
