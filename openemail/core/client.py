@@ -70,7 +70,7 @@ class _Link:
         self.home = f"{_Home(agent, address).home}/links/{link}"
         self.mail = f"{_Mail(agent, address).mail}/link/{link}"
         self.messages = f"{self.mail}/messages"
-        self.notifications = f"{self.home}/notifications"
+        self.notifications = f"{self.mail}/notifications"
 
 
 async def request(
@@ -536,7 +536,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
             (profile := await fetch_profile(reader)) and (key := profile.encryption_key)
         ):
             logging.warning(
-                "Failed notifying notify %s: Could not fetch profile",
+                "Failed notifying %s: Could not fetch profile",
                 reader,
             )
             continue
@@ -554,6 +554,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
             continue
 
         link = model.generate_link(reader, user.address)
+        one_notified = False
         for agent in await get_agents(reader):
             if await request(
                 _Link(agent, reader, link).notifications,
@@ -562,16 +563,16 @@ async def notify_readers(readers: Iterable[Address]) -> None:
                 data=address,
             ):
                 logging.debug("Notified %s", reader)
-                break
-
-        logging.warning("Failed notifying %s", reader)
+                one_notified = True
+        if not one_notified:
+            logging.warning("Failed notifying %s", reader)
 
 
 async def fetch_notifications() -> AsyncGenerator[Notification, None]:
     """Fetch all of `client.user`'s new notifications.
 
-    Note that this generator is assumes that you process all notifications yielded by it
-    and a subsequent iteration will not yield "old" notifications that were already processed.
+    Note that this generator assumes that you process all notifications yielded by it
+    and that a subsequent iteration will not yield "old" notifications that were already processed.
     """
     contents = None
     logging.debug("Fetching notifications…")
@@ -591,7 +592,8 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
         notifications_path = data_dir / "notifications.json"
 
         try:
-            notifications = set(json.load(notifications_path.open("r")))
+            with notifications_path.open("r") as file:
+                notifications = set(json.load(file))
         except (FileNotFoundError, JSONDecodeError, ValueError):
             notifications = set()
 
@@ -628,14 +630,13 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
                 )
                 continue
 
-            if not (signing_key_fp == crypto.fingerprint(profile.signing_key)) or (
-                profile.last_signing_key
-                and (signing_key_fp == crypto.fingerprint(profile.last_signing_key))
-            ):
+            if signing_key_fp not in {
+                crypto.fingerprint(profile.signing_key),
+                crypto.fingerprint(profile.last_signing_key) if profile.last_signing_key else None,
+            }:
                 logging.debug("Fingerprint mismatch for notification: %s", notification)
                 continue
 
-            notifications.add(ident)
             yield Notification(
                 ident,
                 datetime.now(timezone.utc),
@@ -643,9 +644,11 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
                 notifier,
                 signing_key_fp,
             )
-
-        notifications_path.parent.mkdir(parents=True, exist_ok=True)
-        json.dump(tuple(notifications), notifications_path.open("w"))
+            notifications.add(ident)
+        if not notifications_path.parent.exists():
+            notifications_path.parent.mkdir(parents=True, exist_ok=True)
+        with notifications_path.open("w") as file:
+            json.dump(tuple(notifications), file)
 
     logging.debug("Notifications fetched")
 
