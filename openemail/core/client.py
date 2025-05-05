@@ -1105,8 +1105,7 @@ async def _build_message(
         headers.update(
             {
                 "Message-Access": ",".join(message_access),
-                "Message-Encryption": crypto.SYMMETRIC_CIPHER,
-                "Message-Headers": f"algorithm={crypto.SYMMETRIC_CIPHER};",
+                "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
             }
         )
 
