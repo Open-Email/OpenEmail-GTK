@@ -26,7 +26,7 @@ class ContentView(Adw.BreakpointBin):
     split_view: Adw.OverlaySplitView = Gtk.Template.Child()
 
     sidebar: Gtk.ListBox = Gtk.Template.Child()
-    contacts_sidebar: Gtk.ListBox = Gtk.Template.Child()
+    bottom_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_settings: ProfileSettings = Gtk.Template.Child()
 
     broadcasts_page: MessagesPage = Gtk.Template.Child()
@@ -46,7 +46,7 @@ class ContentView(Adw.BreakpointBin):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.sidebar.select_row(self.sidebar.get_row_at_index(1))
+        self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
     def load_content(self, first_sync: bool = True, periodic: bool = False) -> None:
         """Populate the content view by fetching the user's data.
@@ -121,11 +121,10 @@ class ContentView(Adw.BreakpointBin):
         if not row:
             return
 
-        self.contacts_sidebar.unselect_all()
+        self.bottom_sidebar.unselect_all()
         self.sidebar.select_row(row)
 
         self.content_child_name = (
-            "broadcasts",
             "inbox",
             "outbox",
             "drafts",
@@ -136,14 +135,17 @@ class ContentView(Adw.BreakpointBin):
             self.split_view.props.show_sidebar = False
 
     @Gtk.Template.Callback()
-    def _on_contacts_selected(self, _obj: Any, row: NavigationRow | None) -> None:
+    def _on_bottom_row_selected(self, _obj: Any, row: NavigationRow | None) -> None:
         if not row:
             return
 
         self.sidebar.unselect_all()
-        self.contacts_sidebar.select_row(row)
+        self.bottom_sidebar.select_row(row)
 
-        self.content_child_name = "contacts"
+        self.content_child_name = (
+            "broadcasts",
+            "contacts",
+        )[row.get_index()]
 
         if self.split_view.props.collapsed:
             self.split_view.props.show_sidebar = False

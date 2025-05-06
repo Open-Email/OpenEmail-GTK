@@ -55,11 +55,6 @@ template $ContentView: Adw.BreakpointBin {
             row-selected => $_on_row_selected();
 
             $NavigationRow {
-              label: _("Broadcasts");
-              icon-name: _("broadcasts-symbolic");
-            }
-
-            $NavigationRow {
               label: _("Inbox");
               icon-name: _("inbox-symbolic");
             }
@@ -84,8 +79,13 @@ template $ContentView: Adw.BreakpointBin {
             ]
           }
 
-          ListBox contacts_sidebar {
-            row-selected => $_on_contacts_selected();
+          ListBox bottom_sidebar {
+            row-selected => $_on_bottom_row_selected();
+            
+            $NavigationRow {
+              label: _("Broadcasts");
+              icon-name: _("broadcasts-symbolic");
+            }
 
             $NavigationRow {
               label: _("Contacts");
