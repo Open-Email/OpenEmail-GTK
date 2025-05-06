@@ -996,16 +996,10 @@ class _InboxStore(MessageStore):
 
 class _OutboxStore(MessageStore):
     async def _fetch(self) -> ...:
-        async for messages in asyncio.as_completed(
-            (
-                client.fetch_link_messages(user.address),
-                client.fetch_broadcasts(user.address),
-            )
-        ):
-            for message in await messages:
-                message.new = False  # New outbox messages should be marked read
+        for message in await client.fetch_outbox():
+            message.new = False  # New outbox messages should be marked read
 
-                yield message
+            yield message
 
 
 _profiles: defaultdict[Address, Profile] = defaultdict(Profile)

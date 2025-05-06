@@ -432,6 +432,12 @@ async def fetch_link_messages(
     return await _fetch_messages(author, exclude=exclude)
 
 
+async def fetch_outbox() -> tuple[Message, ...]:
+    """Fetch messages by `client.user`."""
+    logging.debug("Fetching outbox…")
+    return await _fetch_messages(user.address)
+
+
 async def download_attachment(parts: Iterable[Message]) -> bytes | None:
     """Download and reconstruct an attachment from `parts`."""
     data = b""
@@ -929,7 +935,9 @@ async def _fetch_message_ids(author: Address, broadcasts: bool = False) -> set[s
         if not (
             response := await request(
                 (
-                    _Mail(agent, author)
+                    _Home(agent, author)
+                    if author == user.address
+                    else _Mail(agent, author)
                     if broadcasts
                     else _Link(agent, author, model.generate_link(user.address, author))
                 ).messages,
@@ -967,7 +975,9 @@ async def _fetch_messages(
         for agent in await get_agents(user.address):
             if message := await _fetch_message_from_agent(
                 (
-                    _Mail(agent, author)
+                    _Home(agent, author)
+                    if author == user.address
+                    else _Mail(agent, author)
                     if broadcasts
                     else _Link(agent, author, model.generate_link(user.address, author))
                 ).messages
