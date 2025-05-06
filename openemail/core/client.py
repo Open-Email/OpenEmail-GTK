@@ -554,6 +554,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
             continue
 
         link = model.generate_link(reader, user.address)
+
         one_notified = False
         for agent in await get_agents(reader):
             if await request(
@@ -562,10 +563,13 @@ async def notify_readers(readers: Iterable[Address]) -> None:
                 method="PUT",
                 data=address,
             ):
-                logging.debug("Notified %s", reader)
                 one_notified = True
-        if not one_notified:
-            logging.warning("Failed notifying %s", reader)
+                logging.debug("Notified %s", reader)
+
+        if one_notified:
+            return
+
+        logging.warning("Failed notifying %s", reader)
 
 
 async def fetch_notifications() -> AsyncGenerator[Notification, None]:
@@ -632,7 +636,9 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
 
             if signing_key_fp not in {
                 crypto.fingerprint(profile.signing_key),
-                crypto.fingerprint(profile.last_signing_key) if profile.last_signing_key else None,
+                crypto.fingerprint(profile.last_signing_key)
+                if profile.last_signing_key
+                else None,
             }:
                 logging.debug("Fingerprint mismatch for notification: %s", notification)
                 continue
