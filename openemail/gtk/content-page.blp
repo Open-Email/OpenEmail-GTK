@@ -29,16 +29,16 @@ template $ContentPage: Adw.BreakpointBin {
             tooltip-text: _("Toggle Sidebar");
             clicked => $_show_sidebar();
           }
-          
+
           [start]
           Button {
             icon-name: "sync-symbolic";
             tooltip-text: _("Sync");
             clicked => $_sync();
-            
+
             ShortcutController {
               scope: managed;
-            
+
               Shortcut {
                 trigger: "<primary>r|F5";
                 action: "activate";

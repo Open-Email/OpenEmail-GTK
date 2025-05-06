@@ -181,10 +181,10 @@ template $ComposeDialog: Adw.Dialog {
         icon-name: "text-bold-symbolic";
         tooltip-text: _("Bold");
         clicked => $_format_bold();
-        
+
         ShortcutController {
           scope: managed;
-        
+
           Shortcut {
             trigger: "<primary>b";
             action: "activate";
@@ -197,10 +197,10 @@ template $ComposeDialog: Adw.Dialog {
         icon-name: "text-italic-symbolic";
         tooltip-text: _("Italic");
         clicked => $_format_italic();
-        
+
         ShortcutController {
           scope: managed;
-        
+
           Shortcut {
             trigger: "<primary>i";
             action: "activate";
