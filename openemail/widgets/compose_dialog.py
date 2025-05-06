@@ -2,12 +2,13 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
+from collections.abc import Iterable
 from typing import Any
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import Address
+from openemail.mail import Address, Profile
 
 from .form import MailForm
 from .message_body import MessageBody
@@ -43,16 +44,50 @@ class ComposeDialog(Adw.Dialog):
     @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:
         readers: list[Address] = []
+        warnings: dict[Address, str | None] = {}
         if not self.broadcast_switch.props.active:
             for reader in self.readers.props.text.split(","):
                 if not (reader := reader.strip()):
                     continue
 
                 try:
-                    readers.append(Address(reader))
+                    readers.append(address := Address(reader))
                 except ValueError:
                     return
 
+                if Profile.of(address).value_of("away"):
+                    warnings[address] = Profile.of(address).value_of("away-warning")
+
+        if not warnings:
+            self._send(readers)
+            return
+
+        alert = Adw.AlertDialog.new(
+            _("Send Message?"),
+            _("The following readers indicated that they are away and may not see it:")
+            + "\n",
+        )
+
+        for address, warning in warnings.items():
+            alert.props.body += f"\n{Profile.of(address).name}"
+            if not warning:
+                continue
+
+            alert.props.body += f": “{warning}”"
+
+        alert.add_response("close", _("Cancel"))
+        alert.add_response("send", _("Send"))
+        alert.set_response_appearance("send", Adw.ResponseAppearance.SUGGESTED)
+        alert.set_default_response("send")
+
+        alert.connect(
+            "response",
+            lambda _obj, response: self._send(readers) if response == "send" else None,
+        )
+
+        alert.present(self)
+
+    def _send(self, readers: Iterable[Address]) -> None:
         if self.draft_id:
             mail.drafts.delete(self.draft_id)
             self.draft_id = None
