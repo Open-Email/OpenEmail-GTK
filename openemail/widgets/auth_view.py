@@ -39,21 +39,21 @@ class AuthView(Adw.Bin):
 
     authenticated = GObject.Signal()
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **_kwargs: Any) -> None:
         self.email_status_page.props.icon_name = APP_ID
 
     @Gtk.Template.Callback()
-    def _log_in(self, *args: Any) -> None:
+    def _log_in(self, *_args: Any) -> None:
         self.keys_status_page.props.title = self.email_entry.props.text
         self.navigation_view.push(self.keys_page)
         self.signing_key_entry.grab_focus()
 
     @Gtk.Template.Callback()
-    def _sign_up(self, *args: Any) -> None:
+    def _sign_up(self, *_args: Any) -> None:
         self.navigation_view.push(self.sign_up_page)
 
     @Gtk.Template.Callback()
-    def _register(self, *args: Any) -> None:
+    def _register(self, *_args: Any) -> None:
         try:
             mail.user.address = Address(self.user_name_entry.props.text + "@open.email")
         except ValueError:
