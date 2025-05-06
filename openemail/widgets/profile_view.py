@@ -21,7 +21,8 @@ class ProfileView(Adw.Bin):
 
     page: Adw.PreferencesPage = Gtk.Template.Child()
 
-    confirm_remove_dialog: Adw.Dialog = Gtk.Template.Child()
+    image_dialog: Adw.Dialog = Gtk.Template.Child()
+    confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()
 
     name = GObject.Property(type=str)
     address = GObject.Property(type=str)
@@ -111,3 +112,10 @@ class ProfileView(Adw.Bin):
             run_task(mail.address_book.delete(Address(self._profile.address)))
         except ValueError:
             return
+
+    @Gtk.Template.Callback()
+    def _show_image_dialog(self, *_args: Any) -> None:
+        if not self.profile.image:
+            return
+
+        self.image_dialog.present(self)

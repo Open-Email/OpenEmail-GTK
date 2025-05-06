@@ -19,3 +19,13 @@
   background-color: rgb(from var(--warning-bg-color) r g b / 0.2);
   border-radius: 9999px;
 }
+
+headerbar.overlaid {
+  color: white;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+headerbar.overlaid windowcontrols {
+  filter: drop-shadow(0 0 4px black);
+}
