@@ -240,7 +240,11 @@ async def update_profile(values: dict[str, str]) -> None:
 
     data = (
         f"## Profile of {user.address}\n"
-        + "\n".join((": ".join((k.title(), v))) for k, v in values.items() if v)
+        + "\n".join(
+            (": ".join((k.title(), v.replace("\n", r"\n"))))
+            for k, v in values.items()
+            if v
+        )
         + "\n##End of profile"
     ).encode("utf-8")
 

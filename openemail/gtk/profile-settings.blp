@@ -123,14 +123,29 @@ template $ProfileSettings: Adw.PreferencesDialog {
             }
 
             Adw.PreferencesGroup {
-              Adw.EntryRow about {
-                title: _("About");
-                changed => $_on_change();
+              title: _("About");
 
-                [prefix]
-                Image {
-                  icon-name: "about-symbolic";
+              Box {
+                TextView {
+                  hexpand: true;
+                  top-margin: 12;
+                  bottom-margin: 12;
+                  left-margin: 12;
+                  right-margin: 12;
+                  wrap-mode: word_char;
+
+                  buffer: TextBuffer about {
+                    changed => $_on_change();
+                  };
+
+                  styles [
+                    "inline",
+                  ]
                 }
+
+                styles [
+                  "card",
+                ]
               }
             }
           };
