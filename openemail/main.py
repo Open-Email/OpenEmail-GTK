@@ -29,7 +29,6 @@ class Application(Adw.Application):
 
     def __init__(self) -> None:
         super().__init__(application_id=APP_ID)
-        self.create_action("sync", self._sync)
         self.create_action("preferences", self._preferences)
         self.create_action("about", self._about)
         self.create_action(
@@ -82,7 +81,6 @@ class Application(Adw.Application):
             self.set_accels_for_action(f"app.{name}", shortcuts)
 
     def _about(self, *_args: Any) -> None:
-        """Present the about dialog."""
         about = Adw.AboutDialog.new_from_appdata(f"{PREFIX}/{APP_ID}.metainfo.xml")
         about.props.developers = ["kramo https://kramo.page"]
         about.props.designers = [
@@ -104,7 +102,6 @@ class Application(Adw.Application):
         about.present(self.props.active_window)
 
     def _preferences(self, *_args: Any) -> None:
-        """Present the preferences dialog."""
         if (
             isinstance(win := self.props.active_window, Adw.ApplicationWindow)
             and win.props.visible_dialog
@@ -112,13 +109,6 @@ class Application(Adw.Application):
             return
 
         Preferences().present(win)
-
-    def _sync(self, *_args: Any) -> None:
-        """Sync remote content."""
-        if not isinstance(win := self.props.active_window, Window):
-            return
-
-        win.content_view.load_content(first_sync=False)
 
 
 def main() -> int:

@@ -68,6 +68,10 @@ class ContentPage(Adw.BreakpointBin):
 
         split_view.props.show_sidebar = not split_view.props.show_sidebar
 
+    @Gtk.Template.Callback()
+    def _sync(self, *_args: Any) -> None:
+        self.props.root.content_view.load_content(first_sync=False)  # type: ignore
+
     def _update_stack(self, *_args: Any) -> None:
         self.sidebar_child_name = (
             "content"

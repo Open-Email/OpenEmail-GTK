@@ -29,6 +29,13 @@ template $ContentPage: Adw.BreakpointBin {
             tooltip-text: _("Toggle Sidebar");
             clicked => $_show_sidebar();
           }
+          
+          [start]
+          Button {
+            icon-name: "sync-symbolic";
+            tooltip-text: _("Sync Now");
+            clicked => $_sync();
+          }
 
           [end]
           ToggleButton search_button {

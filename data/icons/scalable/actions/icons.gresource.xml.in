@@ -19,6 +19,7 @@
     <file preprocess="xml-stripblanks">settings-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic-rtl.svg</file>
+    <file preprocess="xml-stripblanks">sync-symbolic.svg</file>
     <!-- Text Editing -->
     <file preprocess="xml-stripblanks">quotation-symbolic.svg</file>
     <file preprocess="xml-stripblanks">text-bold-symbolic.svg</file>
