@@ -7,6 +7,7 @@ from typing import Any
 from gi.repository import Adw, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
+from openemail.core.model import Address
 from openemail.mail import Profile
 
 
@@ -40,15 +41,16 @@ class ProfileView(Adw.Bin):
     def profile(self, profile: Profile | None) -> None:
         self._profile = profile
 
-        if not (profile and (address := profile.value_of("address"))):
-            self.visible_child_name = "not-found"
+        if not profile:
+            self.visible_child_name = "empty"
             self.can_remove = False
             return
 
-        self.can_remove = any(
-            contact.value_of("address") == address  # type: ignore
-            for contact in mail.address_book
-        )
+        self.can_remove = profile in mail.address_book if profile.address else False
+
+        if not profile.value_of("address"):
+            self.visible_child_name = "not-found"
+            return
 
         self.name = profile.value_of("name")
         self.address = str(profile.value_of("address") or "")
@@ -102,7 +104,10 @@ class ProfileView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _confirm_remove(self, _obj: Any, response: str) -> None:
-        if (response != "remove") or (not self.profile):
+        if (response != "remove") or (not self._profile):
             return
 
-        run_task(mail.address_book.delete(self.profile.address))
+        try:
+            run_task(mail.address_book.delete(Address(self._profile.address)))
+        except ValueError:
+            return
