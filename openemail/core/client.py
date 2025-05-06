@@ -354,8 +354,11 @@ async def fetch_contacts() -> set[Address]:
     return set(addresses)
 
 
-async def new_contact(address: Address) -> None:
-    """Add `address` to `client.user`'s address book."""
+async def new_contact(address: Address) -> Profile:
+    """Add `address` to `client.user`'s address book.
+
+    Returns `address`'s profile on success.
+    """
     logging.debug("Adding %s to address book…", address)
 
     try:
@@ -373,6 +376,10 @@ async def new_contact(address: Address) -> None:
         )
         raise WriteError
 
+    if not (profile := await fetch_profile(address)):
+        logging.error("Failed adding %s to address book: No profile found")
+        raise WriteError
+
     link = model.generate_link(address, user.address)
     for agent in await get_agents(address):
         if await request(
@@ -382,7 +389,7 @@ async def new_contact(address: Address) -> None:
             data=data,
         ):
             logging.info("Added %s to address book", address)
-            return
+            return profile
 
     logging.error("Failed adding %s to address book", address)
     raise WriteError
