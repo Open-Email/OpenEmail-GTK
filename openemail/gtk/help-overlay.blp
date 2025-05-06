@@ -9,6 +9,11 @@ ShortcutsWindow help_overlay {
 
     ShortcutsGroup {
       title: _("General");
+      
+      ShortcutsShortcut {
+        title: _("Sync");
+        accelerator: "<primary>r F5";
+      }
 
       ShortcutsShortcut {
         title: _("Search");
@@ -47,6 +52,20 @@ ShortcutsWindow help_overlay {
       ShortcutsShortcut {
         title: _("Delete Message");
         accelerator: "Delete";
+      }
+    }
+    
+    ShortcutsGroup {
+      title: _("New Message");
+    
+      ShortcutsShortcut {
+        title: _("Bold");
+        accelerator: "<primary>b";
+      }
+    
+      ShortcutsShortcut {
+        title: _("Italic");
+        accelerator: "<primary>i";
       }
     }
 

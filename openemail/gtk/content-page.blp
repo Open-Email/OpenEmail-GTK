@@ -33,8 +33,17 @@ template $ContentPage: Adw.BreakpointBin {
           [start]
           Button {
             icon-name: "sync-symbolic";
-            tooltip-text: _("Sync Now");
+            tooltip-text: _("Sync");
             clicked => $_sync();
+            
+            ShortcutController {
+              scope: managed;
+            
+              Shortcut {
+                trigger: "<primary>r|F5";
+                action: "activate";
+              }
+            }
           }
 
           [end]
