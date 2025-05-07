@@ -879,8 +879,9 @@ class MessageStore(DictStore[str, Message]):
         self, futures: Iterable[Awaitable[Iterable[model.Message]]]
     ) -> AsyncGenerator[model.Message, None]:
         unread = set()
-        async for messages in asyncio.as_completed(futures):
-            # This is async interation, we don't want a data race
+        # TODO: Replace with async for in 3.13, not supported in 3.12
+        for messages in asyncio.as_completed(futures):
+            # This is async iteration, we don't want a data race
             current_unread = settings.get_strv("unread-messages")
 
             for message in await messages:

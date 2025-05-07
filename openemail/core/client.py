@@ -917,19 +917,17 @@ async def _fetch_message_ids(author: Address, broadcasts: bool = False) -> set[s
     """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
     logging.debug("Fetching message IDs from %s…", author)
 
-    envelopes_dir = data_dir / "envelopes" / author.host_part / author.local_part
+    dir = data_dir / "envelopes" / author.host_part / author.local_part
     if broadcasts:
-        envelopes_dir /= "broadcasts"
+        dir /= "broadcasts"
 
     if author == user.address:
         local_ids = set()
     else:
         try:
-            children = envelopes_dir.iterdir()
+            local_ids = {path.stem for path in dir.iterdir() if path.suffix == ".json"}
         except FileNotFoundError:
-            children = ()
-
-        local_ids = {path.stem for path in children if path.suffix == ".json"}
+            local_ids = set()
 
     for agent in await get_agents(user.address):
         if not (
