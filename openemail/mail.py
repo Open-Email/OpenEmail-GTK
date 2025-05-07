@@ -5,12 +5,20 @@
 import asyncio
 from abc import abstractmethod
 from collections import defaultdict, namedtuple
+from collections.abc import (
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Iterable,
+    Iterator,
+)
 from dataclasses import fields
 from datetime import datetime
 from functools import wraps
 from itertools import chain
 from shutil import rmtree
-from typing import Any, AsyncGenerator, Awaitable, Callable, Coroutine, Iterable
+from typing import Any, cast
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
@@ -232,11 +240,13 @@ async def send_message(
     files = {}
     for gfile, name in attachments.items():
         try:
-            _success, bytes, _etag = await gfile.load_contents_async()  # type: ignore
+            _success, data, _etag = await cast(
+                Awaitable[tuple[bool, bytes, str]], gfile.load_contents_async()
+            )
         except GLib.Error as error:
             raise WriteError from error
 
-        files[name] = bytes
+        files[name] = data
 
     try:
         await client.send_message(readers, subject, body, reply, attachments=files)
@@ -307,6 +317,9 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
         super().__init__(**kwargs)
 
         self._items = {}
+
+    def __iter__(self) -> Iterator[V]:  # type: ignore
+        return super().__iter__()  # type: ignore
 
     def do_get_item(self, position: int) -> V | None:
         """Get the item at `position`.
@@ -479,12 +492,9 @@ class ProfileStore(DictStore[Address, Profile]):
         """
         await asyncio.gather(
             *chain(
+                (self._update_profile(Address(contact.address)) for contact in self),
                 (
-                    self._update_profile(Address(contact.address))  # type: ignore
-                    for contact in self
-                ),
-                (
-                    self._update_profile_image(Address(contact.address))  # type: ignore
+                    self._update_profile_image(Address(contact.address))
                     for contact in self
                 )
                 if trust_images
@@ -589,9 +599,9 @@ class MailContactRequests(ProfileStore):
             self.add(address)
 
         for request in self:
-            if request.address not in requests:  # type: ignore
-                request.contact_request = False  # type: ignore
-                self.remove(request.address)  # type: ignore
+            if request.address not in requests:
+                request.contact_request = False
+                self.remove(request.address)
 
         run_task(self.update_profiles(trust_images=False))
 
@@ -952,7 +962,7 @@ class _BroadcastStore(MessageStore):
     async def _fetch(self) -> ...:
         async for message in self._process_messages(
             client.fetch_broadcasts(
-                Address(contact.address),  # type: ignore
+                Address(contact.address),
                 exclude=settings.get_strv("deleted-messages"),
             )
             for contact in address_book
@@ -963,7 +973,7 @@ class _BroadcastStore(MessageStore):
 class _InboxStore(MessageStore):
     async def _fetch(self) -> ...:
         known_notifiers = set()
-        other_contacts = {Address(contact.address) for contact in address_book}  # type: ignore
+        other_contacts = {Address(contact.address) for contact in address_book}
 
         async for notification in client.fetch_notifications():
             if notification.is_expired:

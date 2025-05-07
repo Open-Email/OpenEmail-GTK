@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any, cast
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
@@ -166,17 +167,20 @@ class ProfileSettings(Adw.PreferencesDialog):
         )
 
         try:
-            gfile = await Gtk.FileDialog(  # type: ignore
-                initial_name=_("Select an Image"), filters=filters
-            ).open(win if isinstance(win := self.props.root, Gtk.Window) else None)
+            gfile = await cast(
+                Awaitable[Gio.File],
+                Gtk.FileDialog(initial_name=_("Select an Image"), filters=filters).open(
+                    win if isinstance(win := self.props.root, Gtk.Window) else None
+                ),
+            )
         except GLib.Error:
             return
 
-        if not (gfile and gfile.get_path()):
+        if not (gfile and (path := gfile.get_path())):
             return
 
         try:
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file(gfile.get_path())
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(path)
         except GLib.Error:
             return
 

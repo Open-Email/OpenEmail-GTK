@@ -11,8 +11,9 @@ gi.require_version("Adw", "1")
 import json
 import logging
 import sys
+from collections.abc import Callable, Sequence
 from logging.handlers import RotatingFileHandler
-from typing import Any, Callable, Sequence
+from typing import Any
 
 import keyring
 from gi.repository import Adw, Gio

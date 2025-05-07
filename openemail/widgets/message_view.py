@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any, cast
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
@@ -54,9 +55,13 @@ class MessageView(Adw.Bin):
         self.attachments_list.remove_all()
         self.attachments = {}
         for a in message.attachments:
-            row = Adw.ActionRow(title=a.name, activatable=True, use_markup=False)  # type: ignore
+            row = Adw.ActionRow(
+                title=(a := cast(Attachment, a)).name,
+                activatable=True,
+                use_markup=False,
+            )
             row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
-            self.attachments[row] = a  # type: ignore
+            self.attachments[row] = a
             self.attachments_list.append(row)
 
     def __init__(self, **kwargs: Any) -> None:
@@ -101,16 +106,21 @@ class MessageView(Adw.Bin):
 
         async def save() -> None:
             try:
-                gfile = await Gtk.FileDialog(  # type: ignore
-                    initial_name=row.props.title,
-                    initial_folder=Gio.File.new_for_path(downloads)
-                    if (
-                        downloads := GLib.get_user_special_dir(
-                            GLib.UserDirectory.DIRECTORY_DOWNLOAD
+                gfile = await cast(
+                    Awaitable[Gio.File],
+                    Gtk.FileDialog(
+                        initial_name=row.props.title,
+                        initial_folder=Gio.File.new_for_path(downloads)
+                        if (
+                            downloads := GLib.get_user_special_dir(
+                                GLib.UserDirectory.DIRECTORY_DOWNLOAD
+                            )
                         )
-                    )
-                    else None,
-                ).save(win if isinstance(win := self.props.root, Gtk.Window) else None)
+                        else None,
+                    ).save(
+                        win if isinstance(win := self.props.root, Gtk.Window) else None
+                    ),
+                )
             except GLib.Error:
                 return
 
@@ -121,10 +131,16 @@ class MessageView(Adw.Bin):
                 stream = gfile.replace(
                     None, True, Gio.FileCreateFlags.REPLACE_DESTINATION
                 )
-                await stream.write_bytes_async(
-                    GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT
+                await cast(
+                    Awaitable,
+                    stream.write_bytes_async(
+                        GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT
+                    ),
                 )
-                await stream.close_async(GLib.PRIORITY_DEFAULT)
+                await cast(
+                    Awaitable,
+                    stream.close_async(GLib.PRIORITY_DEFAULT),
+                )
             except GLib.Error:
                 return
 

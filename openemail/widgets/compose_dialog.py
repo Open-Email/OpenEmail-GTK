@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from collections.abc import Iterable
-from typing import Any
+from collections.abc import Awaitable, Iterable
+from typing import Any, cast
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
@@ -163,8 +163,11 @@ class ComposeDialog(Adw.Dialog):
 
     async def _attach_files_task(self) -> None:
         try:
-            gfiles = await Gtk.FileDialog().open_multiple(  # type: ignore
-                win if isinstance(win := self.props.root, Gtk.Window) else None
+            gfiles = await cast(
+                Awaitable[Gio.ListModel],
+                Gtk.FileDialog().open_multiple(
+                    win if isinstance(win := self.props.root, Gtk.Window) else None
+                ),
             )
         except GLib.Error:
             return
@@ -172,10 +175,13 @@ class ComposeDialog(Adw.Dialog):
         for gfile in gfiles:
             try:
                 display_name = (
-                    await gfile.query_info_async(
-                        Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
-                        Gio.FileQueryInfoFlags.NONE,
-                        GLib.PRIORITY_DEFAULT,
+                    await cast(
+                        Awaitable[Gio.FileInfo],
+                        (gfile := cast(Gio.File, gfile)).query_info_async(
+                            Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
+                            Gio.FileQueryInfoFlags.NONE,
+                            GLib.PRIORITY_DEFAULT,
+                        ),
                     )
                 ).get_display_name()
             except GLib.Error:

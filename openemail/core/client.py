@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 from base64 import b64encode
+from collections.abc import AsyncGenerator, Generator, Iterable, Sequence
 from datetime import datetime, timezone
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
@@ -13,7 +14,6 @@ from json import JSONDecodeError
 from os import getenv
 from pathlib import Path
 from shutil import rmtree
-from typing import AsyncGenerator, Generator, Iterable, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen

@@ -6,8 +6,9 @@
 
 import asyncio
 from asyncio import Task
+from collections.abc import Callable, Coroutine
 from pathlib import Path
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Gio, GLib, GObject
