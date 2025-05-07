@@ -33,7 +33,6 @@ template $ContactsPage: Adw.NavigationPage {
 
 Adw.AlertDialog add_contact_dialog {
   heading: _("New Contact");
-  close-response: "cancel";
   default-response: "add";
   response => $_add_contact();
 
@@ -45,7 +44,7 @@ Adw.AlertDialog add_contact_dialog {
   }
 
   responses [
-    cancel: _("Cancel"),
+    close: _("Cancel"),
     add: _("Add") suggested,
   ]
 }
