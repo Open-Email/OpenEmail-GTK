@@ -20,6 +20,7 @@ class ContentPage(Adw.BreakpointBin):
     factory = GObject.Property(type=Gtk.ListItemFactory)
 
     sidebar_child_name = GObject.Property(type=str, default="empty")
+    layout_name = GObject.Property(type=str, default="split")
     search_text = GObject.Property(type=str)
 
     title = GObject.Property(type=str, default=_("Content"))

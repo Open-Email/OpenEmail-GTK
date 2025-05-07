@@ -6,20 +6,13 @@ template $DraftsPage: Adw.NavigationPage {
 
   $ContentPage content {
     title: bind template.title;
+    layout-name: "single";
 
     details: Adw.ToolbarView {
       [top]
       Adw.HeaderBar {
         show-title: false;
       }
-
-      content: Adw.StatusPage {
-        title: bind template.title;
-
-        styles [
-          "dim-label",
-        ]
-      };
     };
 
     toolbar-button: Button {
