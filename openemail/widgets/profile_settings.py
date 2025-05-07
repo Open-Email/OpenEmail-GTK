@@ -172,11 +172,11 @@ class ProfileSettings(Adw.PreferencesDialog):
         except GLib.Error:
             return
 
-        if not (gfile and gfile.props.path):
+        if not (gfile and gfile.get_path()):
             return
 
         try:
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file(gfile.props.path)
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(gfile.get_path())
         except GLib.Error:
             return
 
