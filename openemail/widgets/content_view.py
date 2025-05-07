@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GLib, GObject, Gtk
 
-from openemail import PREFIX, mail, notifier, run_task, settings
+from openemail import APP_ID, PREFIX, mail, notifier, run_task, settings
 from openemail.mail import Profile
 
 from .compose_dialog import ComposeDialog
@@ -25,6 +25,7 @@ class ContentView(Adw.BreakpointBin):
 
     split_view: Adw.OverlaySplitView = Gtk.Template.Child()
 
+    avatar: Adw.Avatar = Gtk.Template.Child()
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     bottom_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_settings: ProfileSettings = Gtk.Template.Child()
@@ -46,6 +47,7 @@ class ContentView(Adw.BreakpointBin):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+        self.avatar.set_icon_name(f"{APP_ID}-symbolic")
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
     def load_content(self, first_sync: bool = True, periodic: bool = False) -> None:

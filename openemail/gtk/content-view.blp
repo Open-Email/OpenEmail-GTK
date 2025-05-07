@@ -28,9 +28,10 @@ template $ContentView: Adw.BreakpointBin {
             tooltip-text: _("Profile");
             clicked => $_on_profile_button_clciked();
 
-            Adw.Avatar {
+            Adw.Avatar avatar {
               size: 24;
               custom-image: bind template.profile-image;
+              text: "e"; // For a blue color
             }
 
             styles [
