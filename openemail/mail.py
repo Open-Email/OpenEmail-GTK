@@ -211,9 +211,7 @@ async def update_user_profile() -> None:
     """Update the profile of the user by fetching new data remotely."""
     user_profile.updating = True
 
-    user_profile.image = None
     user_profile.profile = await client.fetch_profile(user.address)
-
     if user_profile.profile:
         user.signing_keys.public = user_profile.profile.signing_key
 
@@ -225,11 +223,10 @@ async def update_user_profile() -> None:
             GLib.Bytes.new(await client.fetch_profile_image(user.address))
         )
     except GLib.Error:
-        pass
+        user_profile.image = None
 
     Profile.of(user.address).image = user_profile.image
     Profile.of(user.address).profile = user_profile.profile
-
     user_profile.updating = False
 
 
