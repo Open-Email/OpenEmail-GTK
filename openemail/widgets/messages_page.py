@@ -47,18 +47,26 @@ class MessagesPage(Adw.NavigationPage):
             case "broadcasts":
                 self.title = _("Broadcasts")
                 model = mail.broadcasts
+
             case "inbox":
                 self.title = _("Inbox")
                 model = mail.inbox
+
             case "outbox":
                 self.title = _("Outbox")
                 model = mail.outbox
+
             case "trash":
                 self.title = _("Trash")
                 inboxes = Gio.ListStore.new(Gio.ListModel)
                 inboxes.append(mail.broadcasts)
                 inboxes.append(mail.inbox)
                 model = Gtk.FlattenListModel.new(inboxes)
+
+                self.content.empty_page = Adw.StatusPage(
+                    icon_name="trash-symbolic",
+                    title=_("Trash is Empty"),
+                )
 
                 self.content.toolbar_button = Gtk.Button(
                     icon_name="trash-symbolic",
@@ -68,6 +76,7 @@ class MessagesPage(Adw.NavigationPage):
                     "clicked", lambda *_: self.confirm_empty_dialog.present(self)
                 )
 
+        self.content.empty_page.add_css_class("compact")
         self.content.model = Gtk.SingleSelection(
             autoselect=False,
             model=Gtk.SortListModel.new(

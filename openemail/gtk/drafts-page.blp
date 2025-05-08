@@ -24,7 +24,11 @@ template $DraftsPage: Adw.NavigationPage {
     empty-page: Adw.StatusPage {
       icon-name: "drafts-symbolic";
       title: _("No Drafts");
-      description: _("New messages that weren’t sent will appear here");
+      description: _("New unsent messages will appear here");
+      
+      styles [
+        "compact",
+      ]
     };
   }
 }

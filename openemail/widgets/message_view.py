@@ -7,7 +7,7 @@ from typing import Any, cast
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, run_task
+from openemail import APP_ID, PREFIX, run_task
 from openemail.mail import Attachment, Message, Profile
 
 from .message_body import MessageBody
@@ -25,6 +25,7 @@ class MessageView(Adw.Bin):
     reply_button: Gtk.Button = Gtk.Template.Child()
     message_body: MessageBody = Gtk.Template.Child()
     attachments_list: Gtk.ListBox = Gtk.Template.Child()
+    empty_page: Adw.StatusPage = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
     profile_view: ProfileView = Gtk.Template.Child()
@@ -89,6 +90,7 @@ class MessageView(Adw.Bin):
         )
 
         self.add_controller(controller)
+        self.empty_page.set_icon_name(f"{APP_ID}-symbolic")
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:

@@ -88,10 +88,9 @@ template $MessageView: Adw.Bin {
         StackPage {
           name: "empty";
 
-          child: Adw.StatusPage {
-            title: _("Select a Message");
-
+          child: Adw.StatusPage empty_page {
             styles [
+              "compact",
               "dim-label",
             ]
           };

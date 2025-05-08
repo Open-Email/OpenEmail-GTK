@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import PREFIX, mail, run_task
+from openemail import APP_ID, PREFIX, mail, run_task
 from openemail.core.model import Address
 from openemail.mail import Profile
 
@@ -20,6 +20,7 @@ class ProfileView(Adw.Bin):
     _groups: list[Adw.PreferencesGroup]
 
     page: Adw.PreferencesPage = Gtk.Template.Child()
+    empty_page: Adw.StatusPage = Gtk.Template.Child()
 
     image_dialog: Adw.Dialog = Gtk.Template.Child()
     confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()
@@ -97,7 +98,10 @@ class ProfileView(Adw.Bin):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
         self._groups = []
+
+        self.empty_page.set_icon_name(f"{APP_ID}-symbolic")
 
     @Gtk.Template.Callback()
     def _remove_contact(self, *_args: Any) -> None:
