@@ -5,19 +5,12 @@
 import asyncio
 from abc import abstractmethod
 from collections import defaultdict, namedtuple
-from collections.abc import (
-    AsyncGenerator,
-    Awaitable,
-    Callable,
-    Coroutine,
-    Iterable,
-    Iterator,
-)
+from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable, Iterator
 from dataclasses import fields
 from datetime import datetime
-from functools import wraps
 from itertools import chain
 from shutil import rmtree
+from types import CoroutineType
 from typing import Any, cast
 
 import keyring
@@ -31,33 +24,6 @@ from .core.client import user as user
 from .core.crypto import KeyPair as KeyPair
 from .core.model import Address as Address
 from .core.model import User as User
-
-_syncing = 0
-
-
-def is_syncing() -> bool:
-    """Check whether or not a sync operation is currently ongoing."""
-    return bool(_syncing)
-
-
-def _syncs(
-    func: Callable[..., Coroutine[Any, Any, Any]],
-) -> Callable[..., Coroutine[Any, Any, Any]]:
-    @wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> Coroutine[Any, Any, Any]:
-        global _syncing
-        _syncing += 1
-
-        try:
-            result = await func(*args, **kwargs)
-        except Exception as error:
-            _syncing -= 1
-            raise error
-
-        _syncing -= 1
-        return result
-
-    return wrapper
 
 
 def try_auth(
@@ -106,6 +72,61 @@ def register(
             on_failure()
 
     run_task(auth(), done)
+
+
+syncing = False
+_first_sync = True
+
+
+async def sync(periodic: bool = False) -> None:
+    """Populate the app's content by fetching the user's data."""
+    global syncing
+    global _first_sync
+
+    if periodic and (interval := settings.get_uint("sync-interval")):
+        GLib.timeout_add_seconds(interval or 60, sync, True)
+
+        # The user chose manual sync, check again in a minute
+        if not interval:
+            return
+
+        # Assume that nobody is logged in, skip sync for now
+        if not settings.get_string("address"):
+            return
+
+    if not _first_sync:
+        if syncing:
+            notifier.send(_("Sync already running"))
+            return
+
+        notifier.send(_("Syncing…"))
+
+    syncing = True
+    _first_sync = False
+
+    broadcasts.updating = True
+    inbox.updating = True
+    outbox.updating = True
+
+    await address_book.update()
+
+    tasks = {
+        update_user_profile(),
+        address_book.update_profiles(),
+        broadcasts.update(),
+        inbox.update(),
+        outbox.update(),
+        drafts.update(),
+    }
+
+    def done(task: CoroutineType[Any, Any, None]) -> None:
+        global syncing
+
+        tasks.discard(task)
+        syncing = bool(tasks)
+
+    for task in tasks:
+        run_task(task, lambda _, t=task: done(t))
 
 
 async def update_profile(values: dict[str, str]) -> None:
@@ -186,27 +207,30 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
     await update_user_profile()
 
 
-@_syncs
 async def update_user_profile() -> None:
     """Update the profile of the user by fetching new data remotely."""
-    if profile := await client.fetch_profile(user.address):
-        user.signing_keys.public = profile.signing_key
+    user_profile.updating = True
 
-        if profile.encryption_key:
-            user.encryption_keys.public = profile.encryption_key
+    user_profile.image = None
+    user_profile.profile = await client.fetch_profile(user.address)
 
-    Profile.of(user.address).profile = profile
+    if user_profile.profile:
+        user.signing_keys.public = user_profile.profile.signing_key
+
+        if user_profile.profile.encryption_key:
+            user.encryption_keys.public = user_profile.profile.encryption_key
 
     try:
-        Profile.of(user.address).image = Gdk.Texture.new_from_bytes(
-            GLib.Bytes.new(
-                await client.fetch_profile_image(
-                    user.address,
-                )
-            )
+        user_profile.image = Gdk.Texture.new_from_bytes(
+            GLib.Bytes.new(await client.fetch_profile_image(user.address))
         )
     except GLib.Error:
-        Profile.of(user.address).image = None
+        pass
+
+    Profile.of(user.address).image = user_profile.image
+    Profile.of(user.address).profile = user_profile.profile
+
+    user_profile.updating = False
 
 
 async def delete_profile_image() -> None:
@@ -310,8 +334,11 @@ async def delete_account() -> None:
 class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
 
-    _items: dict[K, V]
     item_type: type
+
+    updating = GObject.Property(type=bool, default=False)
+
+    _items: dict[K, V]
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -339,10 +366,11 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
         """Get the number of items in `self`."""
         return len(self._items)
 
-    @abstractmethod
-    @_syncs
     async def update(self) -> None:
         """Update `self` asynchronously."""
+        self.updating = True
+        await self._update()
+        self.updating = False
 
     def remove(self, item: K) -> None:
         """Remove `item` from `self`.
@@ -364,12 +392,16 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
         self._items.clear()
         self.items_changed(0, n, 0)
 
+    @abstractmethod
+    async def _update(self) -> None: ...
+
 
 class Profile(GObject.Object):
     """A GObject representation of a user profile."""
 
     __gtype_name__ = "Profile"
 
+    updating = GObject.Property(type=bool, default=False)
     contact_request = GObject.Property(type=bool, default=False)
     has_name = GObject.Property(type=bool, default=False)
 
@@ -484,7 +516,6 @@ class ProfileStore(DictStore[Address, Profile]):
         self._items[contact] = Profile.of(contact)
         self.items_changed(len(self._items) - 1, 0, 1)
 
-    @_syncs
     async def update_profiles(self, trust_images: bool = True) -> None:
         """Update the profiles of contacts in the user's address book.
 
@@ -556,8 +587,7 @@ class AddressBook(ProfileStore):
             notifier.send(_("Failed to remove contact"))
             raise error
 
-    @_syncs
-    async def update(self) -> None:
+    async def _update(self) -> None:
         """Update `self` from remote data asynchronously."""
         contacts: set[Address] = set()
 
@@ -582,8 +612,7 @@ class MailContactRequests(ProfileStore):
         )
         run_task(self.update())
 
-    @_syncs
-    async def update(self) -> None:
+    async def _update(self) -> None:
         """Update `self` from remote data asynchronously.
 
         Note that calling this method manually is typically not required
@@ -712,7 +741,7 @@ class Message(GObject.Object):
         if message.is_broadcast:
             self.readers = _("Broadcast")
         else:
-            self.readers = f"{_('Readers:')} {str(Profile.of(user.address).name)}"
+            self.readers = f"{_('Readers:')} {str(user_profile.name)}"
             for reader in message.readers:
                 if reader == user.address:
                     continue
@@ -850,8 +879,7 @@ class MessageStore(DictStore[str, Message]):
         self.remove(ident)
         message.restore()
 
-    @_syncs
-    async def update(self) -> None:
+    async def _update(self) -> None:
         """Update `self` asynchronously using `self._fetch()`."""
         idents: set[str] = set()
 
@@ -930,8 +958,7 @@ class MailDraftStore(DictStore[int, Message]):
         client.delete_all_saved_messages()
         self.clear()
 
-    @_syncs
-    async def update(self) -> None:
+    async def _update(self) -> None:
         """Update `self` by loading the latest drafts."""
         idents: set[int] = set()
 
@@ -949,8 +976,11 @@ class MailDraftStore(DictStore[int, Message]):
                 message.broadcast,
             ) = draft
 
-            Profile.of(user.address).bind_property(
-                "image", message, "profile-image", GObject.BindingFlags.SYNC_CREATE
+            user_profile.bind_property(
+                "image",
+                message,
+                "profile-image",
+                GObject.BindingFlags.SYNC_CREATE,
             )
 
             idents.add(message.draft_id)
@@ -1016,8 +1046,11 @@ class _OutboxStore(MessageStore):
 _profiles: defaultdict[Address, Profile] = defaultdict(Profile)
 address_book = AddressBook()
 contact_requests = MailContactRequests()
+user_profile = Profile()
 
 broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
 drafts = MailDraftStore()
+
+run_task(sync(periodic=True))

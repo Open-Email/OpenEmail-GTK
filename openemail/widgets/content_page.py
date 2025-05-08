@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import PREFIX
+from openemail import PREFIX, mail, run_task
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/content-page.ui")
@@ -71,7 +71,7 @@ class ContentPage(Adw.BreakpointBin):
 
     @Gtk.Template.Callback()
     def _sync(self, *_args: Any) -> None:
-        self.props.root.content_view.load_content(first_sync=False)  # type: ignore
+        run_task(mail.sync())
 
     def _update_stack(self, *_args: Any) -> None:
         self.sidebar_child_name = (

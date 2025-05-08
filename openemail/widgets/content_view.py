@@ -4,10 +4,9 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gdk, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, mail, notifier, run_task, settings
-from openemail.mail import Profile
+from openemail import APP_ID, PREFIX, mail
 
 from .compose_dialog import ComposeDialog
 from .contacts_page import ContactsPage
@@ -43,80 +42,17 @@ class ContentView(Adw.BreakpointBin):
 
     compose_dialog: ComposeDialog = Gtk.Template.Child()
 
-    _image_binding: GObject.Binding | None = None
-
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.avatar.set_icon_name(f"{APP_ID}-symbolic")
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
-    def load_content(self, first_sync: bool = True, periodic: bool = False) -> None:
-        """Populate the content view by fetching the user's data.
-
-        Shows a placeholder page while loading if `first_sync` is set to True.
-        Otherwise, a toast is presented at the start and end.
-        """
-        if periodic and (interval := settings.get_uint("sync-interval")):
-            GLib.timeout_add_seconds(interval or 60, self.load_content, False, True)
-
-            # The user chose manual sync, check again in a minute
-            if not interval:
-                return
-
-            # Assume that nobody is logged in, skip sync for now
-            if not settings.get_string("address"):
-                return
-
-        if not first_sync:
-            if mail.is_syncing():
-                notifier.send(_("Sync already running"))
-                return
-
-            notifier.send(_("Syncing…"))
-
-        def update_address_book_cb(success: bool) -> None:
-            self.contacts_page.content.loading = False
-
-            if not success:
-                return
-
-            run_task(mail.address_book.update_profiles())
-            run_task(
-                mail.broadcasts.update(),
-                lambda _: self.broadcasts_page.content.set_property("loading", False),
-            )
-            run_task(
-                mail.inbox.update(),
-                lambda _: self.inbox_page.content.set_property("loading", False),
-            )
-            run_task(
-                mail.outbox.update(),
-                lambda _: self.outbox_page.content.set_property("loading", False),
-            )
-
-        self.contacts_page.content.loading = True
-        self.broadcasts_page.content.loading = True
-        self.inbox_page.content.loading = True
-        self.outbox_page.content.loading = True
-        run_task(mail.address_book.update(), update_address_book_cb)
-        run_task(mail.drafts.update())
-
-        def update_user_profile_cb(success: bool) -> None:
-            if not success:
-                return
-
-            if self._image_binding:
-                self._image_binding.unbind()
-
-            self._image_binding = Profile.of(mail.user.address).bind_property(
-                "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
-            )
-
-            self.profile_settings.profile = Profile.of(mail.user.address)
-            self.profile_stack_child_name = "profile"
-
-        self.profile_stack_child_name = "spinner"
-        run_task(mail.update_user_profile(), update_user_profile_cb)
+        mail.user_profile.bind_property(
+            "image",
+            self,
+            "profile-image",
+            GObject.BindingFlags.SYNC_CREATE,
+        )
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: NavigationRow | None) -> None:

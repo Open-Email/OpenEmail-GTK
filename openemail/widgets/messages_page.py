@@ -8,7 +8,7 @@ from typing import Any, Literal
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import PREFIX, mail, settings
-from openemail.mail import Message, empty_trash
+from openemail.mail import DictStore, Message, empty_trash
 
 from .compose_dialog import ComposeDialog
 from .content_page import ContentPage
@@ -103,7 +103,15 @@ class MessagesPage(Adw.NavigationPage):
             ),
         )
 
-        def on_trash_changed(_obj: Any, key: str) -> None:
+        if isinstance(model, DictStore):
+            model.bind_property(
+                "updating",
+                self.content,
+                "loading",
+                GObject.BindingFlags.SYNC_CREATE,
+            )
+
+        def on_trash_changed(*_args: Any) -> None:
             filter.changed(Gtk.FilterChange.DIFFERENT)
             self.content.model.props.selected = 0
 

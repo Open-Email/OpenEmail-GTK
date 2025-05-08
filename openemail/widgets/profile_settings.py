@@ -114,6 +114,7 @@ class ProfileSettings(Adw.PreferencesDialog):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
         self._pages = []
         self._fields = {
             "name": self.name.get_text,
@@ -122,6 +123,11 @@ class ProfileSettings(Adw.PreferencesDialog):
             "status": self.status.get_text,
             "about": lambda: self.about.get_property("text"),
         }
+
+        mail.user_profile.connect(
+            "notify::updating",
+            lambda p, _: self.set_property("profile", None if p.updating else p),
+        )
 
     @Gtk.Template.Callback()
     def _is_image(self, _obj: Any, image: Gdk.Paintable | None) -> bool:

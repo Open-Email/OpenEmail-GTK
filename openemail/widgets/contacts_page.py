@@ -5,7 +5,7 @@
 from locale import strcoll
 from typing import Any
 
-from gi.repository import Adw, Gio, Gtk
+from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
 from openemail.mail import Address
@@ -58,6 +58,13 @@ class ContactsPage(Adw.NavigationPage):
                     or strcoll(a.name, b.name)
                 ),
             ),
+        )
+
+        mail.address_book.bind_property(
+            "updating",
+            self.content,
+            "loading",
+            GObject.BindingFlags.SYNC_CREATE,
         )
 
         self.content.connect(
