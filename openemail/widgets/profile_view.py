@@ -20,7 +20,6 @@ class ProfileView(Adw.Bin):
     _groups: list[Adw.PreferencesGroup]
 
     page: Adw.PreferencesPage = Gtk.Template.Child()
-    empty_page: Adw.StatusPage = Gtk.Template.Child()
 
     image_dialog: Adw.Dialog = Gtk.Template.Child()
     confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()
@@ -29,6 +28,7 @@ class ProfileView(Adw.Bin):
     address = GObject.Property(type=str)
     away = GObject.Property(type=bool, default=False)
     can_remove = GObject.Property(type=bool, default=False)
+    app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
 
     visible_child_name = GObject.Property(type=str, default="empty")
 
@@ -100,8 +100,6 @@ class ProfileView(Adw.Bin):
         super().__init__(**kwargs)
 
         self._groups = []
-
-        self.empty_page.set_icon_name(f"{APP_ID}-symbolic")
 
     @Gtk.Template.Callback()
     def _remove_contact(self, *_args: Any) -> None:

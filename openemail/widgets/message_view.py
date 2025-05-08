@@ -25,13 +25,13 @@ class MessageView(Adw.Bin):
     reply_button: Gtk.Button = Gtk.Template.Child()
     message_body: MessageBody = Gtk.Template.Child()
     attachments_list: Gtk.ListBox = Gtk.Template.Child()
-    empty_page: Adw.StatusPage = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
     profile_view: ProfileView = Gtk.Template.Child()
     confirm_discard_dialog: Adw.AlertDialog = Gtk.Template.Child()
 
     visible_child_name = GObject.Property(type=str, default="empty")
+    app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
 
     attachments: dict[Adw.ActionRow, Attachment]
     undo: dict[Adw.Toast, Callable[[], Any]]
@@ -90,7 +90,6 @@ class MessageView(Adw.Bin):
         )
 
         self.add_controller(controller)
-        self.empty_page.set_icon_name(f"{APP_ID}-symbolic")
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:

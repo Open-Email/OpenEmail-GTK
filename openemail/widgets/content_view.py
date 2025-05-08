@@ -24,7 +24,6 @@ class ContentView(Adw.BreakpointBin):
 
     split_view: Adw.OverlaySplitView = Gtk.Template.Child()
 
-    avatar: Adw.Avatar = Gtk.Template.Child()
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     bottom_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_settings: ProfileSettings = Gtk.Template.Child()
@@ -39,12 +38,12 @@ class ContentView(Adw.BreakpointBin):
     content_child_name = GObject.Property(type=str, default="inbox")
     profile_stack_child_name = GObject.Property(type=str, default="loading")
     profile_image = GObject.Property(type=Gdk.Paintable)
+    app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
 
     compose_dialog: ComposeDialog = Gtk.Template.Child()
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.avatar.set_icon_name(f"{APP_ID}-symbolic")
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
         mail.user_profile.bind_property(

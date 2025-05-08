@@ -35,7 +35,9 @@ template $ProfileView: Adw.Bin {
       StackPage {
         name: "empty";
 
-        child: Adw.StatusPage empty_page {
+        child: Adw.StatusPage {
+          icon-name: bind template.app-icon-name;
+
           styles [
             "compact",
             "dim-label",
