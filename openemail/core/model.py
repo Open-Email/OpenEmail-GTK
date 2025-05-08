@@ -2,11 +2,11 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
+import re
 from base64 import b64decode
 from dataclasses import dataclass, field, fields
 from datetime import date, datetime, timezone
 from hashlib import sha256
-from re import match
 from types import NoneType, UnionType
 from typing import NamedTuple, Self, get_args, get_origin
 
@@ -23,7 +23,7 @@ class Address:
     host_part: str
 
     def __init__(self, address: str) -> None:
-        if not match(
+        if not re.match(
             r"^[a-z0-9][a-z0-9\.\-_\+]{2,}@[a-z0-9.-]+\.[a-z]{2,}|xn--[a-z0-9]{2,}$",
             address := address.lower(),
         ):

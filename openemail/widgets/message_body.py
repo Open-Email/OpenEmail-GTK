@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from re import compile, search
+import re
 from typing import Any
 
 from gi.repository import GLib, GObject, Gtk, Pango
@@ -54,7 +54,7 @@ class MessageBody(Gtk.TextView):
             "bold italic": r"(?<!\\)\*\*\*(.+?)(?<!\\)\*\*\*",
             "escape": r"(?<!\\)(\\)[>#~*]",
         }.items():
-            for match in compile(pattern).finditer(text):
+            for match in re.compile(pattern).finditer(text):
                 if (not self.props.editable) and (
                     match.start(1) - match.start() == len(match.group())
                 ):
@@ -75,7 +75,7 @@ class MessageBody(Gtk.TextView):
                     else "heading "
                     + str(
                         len(m.group())
-                        if (m := search(r"(#{1,6})", match.group()))
+                        if (m := re.search(r"(#{1,6})", match.group()))
                         else 6
                     ),
                     buffer.get_iter_at_offset(match.start()),

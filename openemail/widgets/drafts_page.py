@@ -64,14 +64,4 @@ class DraftsPage(Adw.NavigationPage):
             return
 
         selection.unselect_all()
-
-        self.compose_dialog.attached_files.clear()
-        self.compose_dialog.attachments.remove_all()
-        self.compose_dialog.broadcast_switch.props.active = message.broadcast
-        self.compose_dialog.subject_id = message.subject_id
-        self.compose_dialog.draft_id = message.draft_id
-        self.compose_dialog.readers.props.text = message.name
-        self.compose_dialog.subject.props.text = message.subject
-        self.compose_dialog.body.props.text = message.body
-
-        self.compose_dialog.present(self)
+        self.compose_dialog.present_message(message, self)

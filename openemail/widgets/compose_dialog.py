@@ -2,13 +2,14 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
+import re
 from collections.abc import Awaitable, Iterable
 from typing import Any, cast
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import Address, Profile
+from openemail.mail import Address, Message, Profile
 
 from .form import MailForm
 from .message_body import MessageBody
@@ -40,6 +41,57 @@ class ComposeDialog(Adw.Dialog):
 
         self.attached_files = {}
         self.body = self.body_view.props.buffer
+
+    def present_new(self, parent: Gtk.Widget) -> None:
+        """Present `self` with empty contents."""
+        self.subject_id = None
+        self.draft_id = None
+        self.broadcast_switch.props.active = False
+        self.attached_files.clear()
+        self.attachments.remove_all()
+        self.compose_form.reset()
+
+        self.present(parent)
+        self.readers.grab_focus()
+
+    def present_message(self, message: Message, parent: Gtk.Widget) -> None:
+        """Present `self`, displaying the contents of `message`."""
+        self.attached_files.clear()
+        self.attachments.remove_all()
+        self.broadcast_switch.props.active = message.broadcast
+        self.subject_id = message.subject_id
+        self.draft_id = message.draft_id
+        self.readers.props.text = message.name
+        self.subject.props.text = message.subject
+        self.body.props.text = message.body
+
+        self.present(parent)
+
+    def present_reply(self, message: Message, parent: Gtk.Widget) -> None:
+        """Present `self`, replying to `message`."""
+        self.attached_files.clear()
+        self.attachments.remove_all()
+        self.compose_form.reset()
+        self.broadcast_switch.props.active = (
+            message.broadcast and message.author_is_self
+        )
+        self.readers.props.text = message.reader_addresses
+
+        if body := message.body:
+            self.body.props.text = (
+                # Date and time, author
+                _("On {}, {} wrote:").format(message.datetime, message.name)
+                + "\n"
+                + re.sub(r"^(?!>)", r"> ", body, flags=re.M)
+                + "\n\n"
+            )
+
+        self.subject.props.text = message.subject
+        self.subject_id = message.subject_id
+        self.draft_id = None
+
+        self.present(parent)
+        self.body_view.grab_focus()
 
     @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:

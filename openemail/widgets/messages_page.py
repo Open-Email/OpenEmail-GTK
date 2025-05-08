@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from re import M, sub
 from typing import Any, Literal
 
 from gi.repository import Adw, Gio, GObject, Gtk
@@ -146,45 +145,13 @@ class MessagesPage(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _new_message(self, *_args: Any) -> None:
-        self.compose_dialog.subject_id = None
-        self.compose_dialog.draft_id = None
-        self.compose_dialog.broadcast_switch.props.active = False
-        self.compose_dialog.attached_files.clear()
-        self.compose_dialog.attachments.remove_all()
-        self.compose_dialog.compose_form.reset()
-
-        self.compose_dialog.present(self)
-        self.compose_dialog.readers.grab_focus()
+        self.compose_dialog.present_new(self)
 
     def _reply(self, *_args: Any) -> None:
         if not self.message_view.message:
             return self._new_message()
 
-        message: Message = self.message_view.message
-
-        self.compose_dialog.attached_files.clear()
-        self.compose_dialog.attachments.remove_all()
-        self.compose_dialog.compose_form.reset()
-        self.compose_dialog.broadcast_switch.props.active = (
-            message.broadcast and message.author_is_self
-        )
-        self.compose_dialog.readers.props.text = message.reader_addresses
-
-        if body := self.message_view.message.body:
-            self.compose_dialog.body.props.text = (
-                # Date and time, author
-                _("On {}, {} wrote:").format(message.datetime, message.name)
-                + "\n"
-                + sub(r"^(?!>)", r"> ", body, flags=M)
-                + "\n\n"
-            )
-
-        self.compose_dialog.subject.props.text = message.subject
-        self.compose_dialog.subject_id = message.subject_id
-        self.compose_dialog.draft_id = None
-
-        self.compose_dialog.present(self)
-        self.compose_dialog.body_view.grab_focus()
+        self.compose_dialog.present_reply(self.message_view.message, self)
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         if not isinstance(selected := selection.props.selected_item, Message):
