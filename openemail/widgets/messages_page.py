@@ -44,10 +44,6 @@ class MessagesPage(Adw.NavigationPage):
     @folder.setter
     def folder(self, folder: Literal["broadcasts", "inbox", "outbox", "trash"]) -> None:
         match folder:
-            case "broadcasts":
-                self.title = _("Broadcasts")
-                model = mail.broadcasts
-
             case "inbox":
                 self.title = _("Inbox")
                 model = mail.inbox
@@ -75,6 +71,10 @@ class MessagesPage(Adw.NavigationPage):
                 self.content.toolbar_button.connect(
                     "clicked", lambda *_: self.confirm_empty_dialog.present(self)
                 )
+
+            case "broadcasts":
+                self.title = _("Broadcasts")
+                model = mail.broadcasts
 
         self.content.empty_page.add_css_class("compact")
         self.content.model = Gtk.SingleSelection(
