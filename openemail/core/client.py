@@ -444,7 +444,12 @@ async def download_attachment(parts: Iterable[Message]) -> bytes | None:
     for part in parts:
         if not (
             part.attachment_url
-            and (response := await request(part.attachment_url, auth=True))
+            and (
+                response := await request(
+                    part.attachment_url,
+                    auth=not part.is_broadcast,
+                )
+            )
         ):
             return None
 
@@ -824,7 +829,7 @@ async def _fetch_envelope(
         headers = dict(json.load(envelope_path.open("r")))
 
     except (FileNotFoundError, JSONDecodeError, ValueError):
-        if not (response := await request(url, auth=True, method="HEAD")):
+        if not (response := await request(url, auth=not broadcast, method="HEAD")):
             logging.error("Fetching envelope %s failed", ident[:8])
             return None, False
 
@@ -874,7 +879,7 @@ async def _fetch_message_from_agent(
     try:
         contents = message_path.read_bytes()
     except FileNotFoundError:
-        if not (response := await request(url, auth=True)):
+        if not (response := await request(url, auth=not broadcast)):
             logging.error(
                 "Fetching message %s failed: Failed fetching body",
                 ident[:8],
@@ -939,7 +944,7 @@ async def _fetch_message_ids(author: Address, broadcasts: bool = False) -> set[s
                     if broadcasts
                     else _Link(agent, author, model.generate_link(user.address, author))
                 ).messages,
-                auth=True,
+                auth=not broadcasts,
             )
         ):
             continue
