@@ -9,7 +9,7 @@ from gi.repository import Adw, GLib, GObject, Gtk
 from openemail import APP_ID, PREFIX, mail, notifier
 from openemail.mail import Address, KeyPair
 
-from .form import MailForm
+from .form import Form
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/auth-view.ui")
@@ -22,17 +22,17 @@ class AuthView(Adw.Bin):
 
     email_status_page: Adw.StatusPage = Gtk.Template.Child()
     email_entry: Adw.EntryRow = Gtk.Template.Child()
-    email_form: MailForm = Gtk.Template.Child()
+    email_form: Form = Gtk.Template.Child()
 
     sign_up_page: Adw.NavigationPage = Gtk.Template.Child()
     user_name_entry: Adw.EntryRow = Gtk.Template.Child()
-    register_form: MailForm = Gtk.Template.Child()
+    register_form: Form = Gtk.Template.Child()
 
     keys_status_page: Adw.StatusPage = Gtk.Template.Child()
     keys_page: Adw.NavigationPage = Gtk.Template.Child()
     signing_key_entry: Adw.EntryRow = Gtk.Template.Child()
     encryption_key_entry: Adw.EntryRow = Gtk.Template.Child()
-    auth_form: MailForm = Gtk.Template.Child()
+    auth_form: Form = Gtk.Template.Child()
 
     button_child_name = GObject.Property(type=str, default="label")
     register_button_child_name = GObject.Property(type=str, default="label")

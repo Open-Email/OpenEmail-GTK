@@ -10,7 +10,7 @@ from gi.repository import Adw, GObject, Gtk
 from openemail.mail import Address
 
 
-class MailFormField(Enum):
+class FormField(Enum):
     """A type of field in a form."""
 
     PLAIN = 1
@@ -18,44 +18,44 @@ class MailFormField(Enum):
     ADDRESS_LIST = 3
 
 
-class MailForm(GObject.Object):
+class Form(GObject.Object):
     """An abstract representation of a form in UI with validation."""
 
-    __gtype_name__ = "MailForm"
+    __gtype_name__ = "Form"
 
     form = GObject.Property(type=Gtk.Widget)
     submit = GObject.Property(type=GObject.Object)
 
     invalid: set[Gtk.Editable | Gtk.TextBuffer]
 
-    _fields: dict[MailFormField, Gtk.StringList]
+    _fields: dict[FormField, Gtk.StringList]
 
     @GObject.Property(type=Gtk.StringList)
     def plain(self) -> Gtk.StringList | None:
         """Get the plain, text-only fields of the form."""
-        return self._fields.get(MailFormField.PLAIN)
+        return self._fields.get(FormField.PLAIN)
 
     @plain.setter
     def plain(self, fields: Gtk.StringList) -> None:
-        self._assign_fields(MailFormField.PLAIN, fields)
+        self._assign_fields(FormField.PLAIN, fields)
 
     @GObject.Property(type=Gtk.StringList)
     def addresses(self) -> Gtk.StringList | None:
         """Get fields of the form for addresses."""
-        return self._fields.get(MailFormField.ADDRESS)
+        return self._fields.get(FormField.ADDRESS)
 
     @addresses.setter
     def addresses(self, fields: Gtk.StringList) -> None:
-        self._assign_fields(MailFormField.ADDRESS, fields)
+        self._assign_fields(FormField.ADDRESS, fields)
 
     @GObject.Property(type=Gtk.StringList)
     def address_lists(self) -> Gtk.StringList | None:
         """Get fields of the form for comma-separated lists of addresses."""
-        return self._fields.get(MailFormField.ADDRESS_LIST)
+        return self._fields.get(FormField.ADDRESS_LIST)
 
     @address_lists.setter
     def address_lists(self, fields: Gtk.StringList) -> None:
-        self._assign_fields(MailFormField.ADDRESS_LIST, fields)
+        self._assign_fields(FormField.ADDRESS_LIST, fields)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -73,7 +73,7 @@ class MailForm(GObject.Object):
                 except AttributeError:
                     continue
 
-    def _assign_fields(self, type: MailFormField, fields: Gtk.StringList) -> None:
+    def _assign_fields(self, type: FormField, fields: Gtk.StringList) -> None:
         self._fields[type] = fields
 
         if self.form.get_realized():
@@ -105,15 +105,15 @@ class MailForm(GObject.Object):
     def _validate(
         self,
         field: Gtk.Editable | Gtk.TextBuffer,
-        type: MailFormField,
+        type: FormField,
     ) -> None:
         text = field.props.text
 
         match type:
-            case MailFormField.PLAIN:
+            case FormField.PLAIN:
                 (self._valid if text else self._invalid)(field)
 
-            case MailFormField.ADDRESS:
+            case FormField.ADDRESS:
                 try:
                     Address(text)
                 except ValueError:
@@ -122,7 +122,7 @@ class MailForm(GObject.Object):
 
                 self._valid(field)
 
-            case MailFormField.ADDRESS_LIST:
+            case FormField.ADDRESS_LIST:
                 if not (
                     addresses := tuple(
                         stripped

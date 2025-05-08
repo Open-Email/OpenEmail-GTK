@@ -10,7 +10,7 @@ from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 from openemail import PREFIX, mail, run_task
 from openemail.mail import Profile, WriteError
 
-from .form import MailForm
+from .form import Form
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-settings.ui")
@@ -24,7 +24,7 @@ class ProfileSettings(Adw.PreferencesDialog):
     away_warning: Adw.EntryRow = Gtk.Template.Child()
     status: Adw.EntryRow = Gtk.Template.Child()
     about: Gtk.TextBuffer = Gtk.Template.Child()
-    name_form: MailForm = Gtk.Template.Child()
+    name_form: Form = Gtk.Template.Child()
 
     address = GObject.Property(type=str)
 

@@ -11,7 +11,7 @@ from gi.repository import Adw, Gio, GLib, Gtk
 from openemail import PREFIX, mail, run_task
 from openemail.mail import Address, Message, Profile
 
-from .form import MailForm
+from .form import Form
 from .message_body import MessageBody
 
 
@@ -25,7 +25,7 @@ class ComposeDialog(Adw.Dialog):
     readers: Gtk.Text = Gtk.Template.Child()
     subject: Gtk.Text = Gtk.Template.Child()
     body_view: MessageBody = Gtk.Template.Child()
-    compose_form: MailForm = Gtk.Template.Child()
+    compose_form: Form = Gtk.Template.Child()
 
     attachments: Gtk.ListBox = Gtk.Template.Child()
 

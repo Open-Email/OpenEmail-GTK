@@ -11,7 +11,7 @@ from openemail import PREFIX, mail, run_task
 from openemail.mail import Address
 
 from .content_page import ContentPage
-from .form import MailForm
+from .form import Form
 from .profile_view import ProfileView
 from .request_buttons import RequestButtons  # noqa: F401
 
@@ -27,7 +27,7 @@ class ContactsPage(Adw.NavigationPage):
 
     add_contact_dialog: Adw.AlertDialog = Gtk.Template.Child()
     address: Adw.EntryRow = Gtk.Template.Child()
-    address_form: MailForm = Gtk.Template.Child()
+    address_form: Form = Gtk.Template.Child()
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

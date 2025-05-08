@@ -8,7 +8,7 @@ from gi.repository import Adw, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task, settings
 
-from .form import MailForm
+from .form import Form
 from .window import Window
 
 
@@ -25,7 +25,7 @@ class Preferences(Adw.PreferencesDialog):
     domains: Adw.PreferencesGroup = Gtk.Template.Child()
     add_domain_dialog: Adw.AlertDialog = Gtk.Template.Child()
     domain_entry: Adw.EntryRow = Gtk.Template.Child()
-    domain_form: MailForm = Gtk.Template.Child()
+    domain_form: Form = Gtk.Template.Child()
 
     private_signing_key = GObject.Property(type=str)
     private_encryption_key = GObject.Property(type=str)
