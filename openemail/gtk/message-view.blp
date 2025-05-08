@@ -116,11 +116,14 @@ template $MessageView: Adw.Bin {
 
                 Button {
                   valign: start;
-                  margin-top: 6;
                   tooltip-text: _("Profile");
                   clicked => $_show_profile_dialog();
 
                   Adw.Avatar {
+                    margin-top: 6;
+                    margin-bottom: 6;
+                    margin-start: 6;
+                    margin-end: 6;
                     size: 48;
                     text: bind template.message as <$Message>.name;
                     custom-image: bind template.message as <$Message>.profile-image;
@@ -129,7 +132,7 @@ template $MessageView: Adw.Bin {
 
                   styles [
                     "circular",
-                    "avatar-button",
+                    "flat",
                   ]
                 }
 

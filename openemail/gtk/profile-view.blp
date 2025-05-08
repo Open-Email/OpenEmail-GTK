@@ -64,6 +64,10 @@ template $ProfileView: Adw.Bin {
               halign: center;
 
               Adw.Avatar {
+                margin-top: 9;
+                margin-bottom: 9;
+                margin-start: 9;
+                margin-end: 9;
                 size: 128;
                 text: bind template.name;
                 custom-image: bind template.profile as <$Profile>.image;
@@ -74,7 +78,7 @@ template $ProfileView: Adw.Bin {
 
               styles [
                 "circular",
-                "avatar-button",
+                "flat",
               ]
             }
           }
