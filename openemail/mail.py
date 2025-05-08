@@ -803,8 +803,9 @@ class Message(GObject.Object):
         if not self._message:
             return
 
-        failed = False
+        outbox.remove(self._message.ident)
 
+        failed = False
         for msg in [self._message] + self._message.children:
             try:
                 await client.delete_message(msg.ident)
