@@ -9,7 +9,7 @@ template $MessageView: Adw.Bin {
         show-title: false;
 
         [end]
-        Button trash_button {
+        Button {
           visible: bind template.message as <$Message>.can-trash;
           icon-name: "trash-symbolic";
           tooltip-text: _("Trash Message");
@@ -30,7 +30,7 @@ template $MessageView: Adw.Bin {
         }
 
         [end]
-        Button restore_button {
+        Button {
           visible: bind template.message as <$Message>.can-restore;
           label: _("Restore");
           clicked => $_restore();
@@ -50,7 +50,7 @@ template $MessageView: Adw.Bin {
         }
 
         [end]
-        Button discard_button {
+        Button {
           visible: bind template.message as <$Message>.author-is-self;
           icon-name: "trash-symbolic";
           tooltip-text: _("Discard Message");

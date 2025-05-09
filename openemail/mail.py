@@ -763,10 +763,9 @@ class Message(GObject.Object):
         self.body = message.body or ""
         self.unread = message.new
 
-        self.can_reply = True
         self.author_is_self = message.author == user.address
-        self.can_trash = not (self.author_is_self or self.trashed)
-        self.can_restore = self.trashed
+
+        self._update_trashed_state()
 
         self.original_author = f"{_('Original Author:')} {str(message.original_author)}"
         self.different_author = message.author != message.original_author
@@ -821,6 +820,8 @@ class Message(GObject.Object):
             tuple(set(settings.get_strv("trashed-messages")) | {self._message.ident}),
         )
 
+        self._update_trashed_state()
+
     def restore(self) -> None:
         """Restore `self` from the trash."""
         if not self._message:
@@ -830,6 +831,8 @@ class Message(GObject.Object):
             "trashed-messages",
             tuple(set(settings.get_strv("trashed-messages")) - {self._message.ident}),
         )
+
+        self._update_trashed_state()
 
     async def discard(self) -> None:
         """Discard `self` and its children."""
@@ -869,6 +872,11 @@ class Message(GObject.Object):
             "unread-messages",
             tuple(set(settings.get_strv("unread-messages")) - {self.message.ident}),
         )
+
+    def _update_trashed_state(self) -> None:
+        self.can_trash = not (self.author_is_self or self.trashed)
+        self.can_restore = self.trashed
+        self.can_reply = not self.can_restore
 
 
 class MessageStore(DictStore[str, Message]):
