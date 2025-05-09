@@ -2,11 +2,11 @@ using Gtk 4.0;
 using Adw 1;
 
 template $AuthView: Adw.Bin {
-  Adw.NavigationView navigation_view {
+  child: Adw.NavigationView navigation_view {
     Adw.NavigationPage {
       title: _("Log In");
 
-      Adw.ToolbarView {
+      child: Adw.ToolbarView {
         [top]
         Adw.HeaderBar {}
 
@@ -14,8 +14,8 @@ template $AuthView: Adw.Bin {
           title: _("Email of the Future, Today");
           description: _("Spam-free, phishing-free, private &amp; secure by design");
 
-          Adw.Clamp {
-            Adw.PreferencesGroup {
+          child: Adw.Clamp {
+            child: Adw.PreferencesGroup {
               Adw.EntryRow email_entry {
                 title: _("Email");
               }
@@ -44,16 +44,16 @@ template $AuthView: Adw.Bin {
                   ]
                 }
               }
-            }
-          }
+            };
+          };
         };
-      }
+      };
     }
 
     Adw.NavigationPage keys_page {
       title: _("Private Keys");
 
-      Adw.ToolbarView {
+      child: Adw.ToolbarView {
         [top]
         Adw.HeaderBar {}
 
@@ -61,8 +61,8 @@ template $AuthView: Adw.Bin {
           description: _("Enter your private keys");
           icon-name: "key-symbolic";
 
-          Adw.Clamp {
-            Adw.PreferencesGroup {
+          child: Adw.Clamp {
+            child: Adw.PreferencesGroup {
               separate-rows: true;
 
               Adw.PasswordEntryRow signing_key_entry {
@@ -80,7 +80,7 @@ template $AuthView: Adw.Bin {
                 halign: center;
                 clicked => $_authenticate();
 
-                Stack {
+                child: Stack {
                   transition-type: crossfade;
                   visible-child-name: bind template.button-child-name;
 
@@ -97,7 +97,7 @@ template $AuthView: Adw.Bin {
 
                     child: Adw.Spinner {};
                   }
-                }
+                };
 
                 styles [
                   "pill",
@@ -105,16 +105,16 @@ template $AuthView: Adw.Bin {
                   "suggested-action",
                 ]
               }
-            }
-          }
+            };
+          };
         };
-      }
+      };
     }
 
     Adw.NavigationPage sign_up_page {
       title: _("Create Account");
 
-      Adw.ToolbarView {
+      child: Adw.ToolbarView {
         [top]
         Adw.HeaderBar {}
 
@@ -122,8 +122,8 @@ template $AuthView: Adw.Bin {
           title: _("Up & Running in Seconds");
           description: _("Get a free email address on the network");
 
-          Adw.Clamp {
-            Adw.PreferencesGroup {
+          child: Adw.Clamp {
+            child: Adw.PreferencesGroup {
               Adw.EntryRow user_name_entry {
                 title: _("User Name");
                 text: bind email_entry.text bidirectional;
@@ -144,7 +144,7 @@ template $AuthView: Adw.Bin {
                 halign: center;
                 clicked => $_register();
 
-                Stack {
+                child: Stack {
                   transition-type: crossfade;
                   visible-child-name: bind template.register-button-child-name;
 
@@ -161,19 +161,19 @@ template $AuthView: Adw.Bin {
 
                     child: Adw.Spinner {};
                   }
-                }
+                };
 
                 styles [
                   "pill",
                   "suggested-action",
                 ]
               }
-            }
-          }
+            };
+          };
         };
-      }
+      };
     }
-  }
+  };
 }
 
 $Form email_form {

@@ -1,7 +1,7 @@
 using Gtk 4.0;
 
 template $NavigationRow: Gtk.ListBoxRow {
-  Box {
+  child: Box {
     margin-top: 6;
     margin-bottom: 6;
     margin-start: 6;
@@ -15,5 +15,5 @@ template $NavigationRow: Gtk.ListBoxRow {
       label: bind template.label;
       ellipsize: end;
     }
-  }
+  };
 }

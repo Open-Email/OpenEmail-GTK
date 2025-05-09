@@ -37,7 +37,7 @@ template $ProfileSettings: Adw.PreferencesDialog {
                 halign: end;
                 valign: end;
 
-                Button {
+                child: Button {
                   sensitive: bind template.pending inverted;
                   icon-name: "edit-symbolic";
                   tooltip-text: _("Replace Image");
@@ -46,7 +46,7 @@ template $ProfileSettings: Adw.PreferencesDialog {
                   styles [
                     "circular",
                   ]
-                }
+                };
 
                 styles [
                   "cutout-button",
@@ -59,7 +59,7 @@ template $ProfileSettings: Adw.PreferencesDialog {
                 halign: end;
                 valign: start;
 
-                Button {
+                child: Button {
                   sensitive: bind template.pending inverted;
                   icon-name: "trash-symbolic";
                   tooltip-text: _("Delete Image");
@@ -69,19 +69,19 @@ template $ProfileSettings: Adw.PreferencesDialog {
                     "circular",
                     "destructive-action",
                   ]
-                }
+                };
 
                 styles [
                   "cutout-button",
                 ]
               }
 
-              Adw.Avatar {
+              child: Adw.Avatar {
                 size: 128;
                 text: bind name.text;
                 custom-image: bind template.profile as <$Profile>.image;
                 show-initials: true;
-              }
+              };
             }
 
             Label {

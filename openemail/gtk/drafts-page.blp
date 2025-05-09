@@ -4,7 +4,7 @@ using Adw 1;
 template $DraftsPage: Adw.NavigationPage {
   title: _("Drafts");
 
-  $ContentPage content {
+  child: $ContentPage content {
     title: bind template.title;
     layout-name: "single";
 
@@ -30,5 +30,5 @@ template $DraftsPage: Adw.NavigationPage {
         "compact",
       ]
     };
-  }
+  };
 }

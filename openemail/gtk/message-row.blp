@@ -7,7 +7,7 @@ template ListItem {
       transition-type: crossfade;
       reveal-child: bind template.item as <$Message>.unread;
 
-      Label {
+      child: Label {
         valign: start;
         margin-top: 6;
         label: "•";
@@ -19,7 +19,7 @@ template ListItem {
         accessibility {
           label: _("Unread");
         }
-      }
+      };
     }
 
     Box {

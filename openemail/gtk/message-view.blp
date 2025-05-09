@@ -2,8 +2,8 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MessageView: Adw.Bin {
-  Adw.ToastOverlay toast_overlay {
-    Adw.ToolbarView {
+  child: Adw.ToastOverlay toast_overlay {
+    child: Adw.ToolbarView {
       [top]
       Adw.HeaderBar {
         show-title: false;
@@ -102,7 +102,7 @@ template $MessageView: Adw.Bin {
           name: "message";
 
           child: ScrolledWindow {
-            Box {
+            child: Box {
               margin-top: 12;
               margin-bottom: 32;
               margin-start: 24;
@@ -119,7 +119,7 @@ template $MessageView: Adw.Bin {
                   tooltip-text: _("Profile");
                   clicked => $_show_profile_dialog();
 
-                  Adw.Avatar {
+                  child: Adw.Avatar {
                     margin-top: 6;
                     margin-bottom: 6;
                     margin-start: 6;
@@ -128,7 +128,7 @@ template $MessageView: Adw.Bin {
                     text: bind template.message as <$Message>.name;
                     custom-image: bind template.message as <$Message>.profile-image;
                     show-initials: true;
-                  }
+                  };
 
                   styles [
                     "circular",
@@ -220,18 +220,18 @@ template $MessageView: Adw.Bin {
                   "boxed-list-separate",
                 ]
               }
-            }
+            };
           };
         }
       };
-    }
-  }
+    };
+  };
 }
 
 Adw.Dialog profile_dialog {
   content-width: 400;
 
-  $ProfileView profile_view {}
+  child: $ProfileView profile_view {};
 }
 
 Adw.AlertDialog confirm_discard_dialog {
