@@ -54,7 +54,6 @@ template $ContentView: Adw.BreakpointBin {
           orientation: vertical;
 
           ListBox sidebar {
-            vexpand: true;
             row-selected => $_on_row_selected();
 
             $NavigationRow {
@@ -80,6 +79,11 @@ template $ContentView: Adw.BreakpointBin {
             styles [
               "navigation-sidebar",
             ]
+          }
+          
+          Separator {
+            margin-start: 12;
+            margin-end: 12;
           }
 
           ListBox bottom_sidebar {
