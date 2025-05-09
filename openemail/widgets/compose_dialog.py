@@ -98,8 +98,8 @@ class ComposeDialog(Adw.Dialog):
         readers: list[Address] = []
         warnings: dict[Address, str | None] = {}
         if not self.broadcast_switch.props.active:
-            for reader in self.readers.props.text.split(","):
-                if not (reader := reader.strip()):
+            for reader in re.split(",|;| ", self.readers.props.text):
+                if not reader:
                     continue
 
                 try:

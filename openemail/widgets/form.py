@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
+import re
 from enum import Enum
 from typing import Any
 
@@ -125,9 +126,7 @@ class Form(GObject.Object):
             case FormField.ADDRESS_LIST:
                 if not (
                     addresses := tuple(
-                        stripped
-                        for address in text.split(",")
-                        if (stripped := address.strip())
+                        address for address in re.split(",|;| ", text) if address
                     )
                 ):
                     self._invalid(field)
