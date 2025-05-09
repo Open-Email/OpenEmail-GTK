@@ -462,25 +462,10 @@ class Profile(GObject.Object):
         self.name = profile.name
 
     @GObject.Property(type=bool, default=True)
-    def receives_broadcasts(self) -> bool:
-        """Whether to receive broadcasts from the owner of the profile.
-
-        Use this property to update the local state from remote data.
-
-        Use `Profile.receive_broadcasts` to change the remote state when setting it.
-        """
-        return self._broadcasts
-
-    @receives_broadcasts.setter
-    def receives_broadcasts(self, receives_broadcasts: bool) -> None:
-        self._broadcasts = receives_broadcasts
-        self.notify("receive-broadcasts")
-
-    @GObject.Property(type=bool, default=True)
     def receive_broadcasts(self) -> bool:
         """Whether to receive broadcasts from the owner of the profile.
 
-        See `Profile.receives_broadcasts`.
+        See `Profile.set_receives_broadcasts()`.
         """
         return self._broadcasts
 
@@ -490,7 +475,6 @@ class Profile(GObject.Object):
             return
 
         self._broadcasts = receive_broadcasts
-        self.notify("receives-broadcasts")
 
         run_task(broadcasts.update())
         run_task(
@@ -535,6 +519,17 @@ class Profile(GObject.Object):
         except AttributeError:
             return None
 
+    def set_receives_broadcasts(self, value: bool) -> None:
+        """Use this method to update the local state from remote data.
+
+        Set `Profile.receive_broadcasts` to update the remote state as well.
+        """
+        if value == self._broadcasts:
+            return
+
+        self._broadcasts = value
+        self.notify("receive-broadcasts")
+
 
 class ProfileStore(DictStore[Address, Profile]):
     """An implementation of `Gio.ListModel` for storing profiles."""
@@ -550,8 +545,7 @@ class ProfileStore(DictStore[Address, Profile]):
         if contact in self._items:
             return
 
-        Profile.of(contact).receives_broadcasts = receives_broadcasts
-
+        Profile.of(contact).set_receives_broadcasts(receives_broadcasts)
         self._items[contact] = Profile.of(contact)
         self.items_changed(len(self._items) - 1, 0, 1)
 
