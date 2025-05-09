@@ -73,6 +73,9 @@ class ContentPage(Adw.BreakpointBin):
     def _sync(self, *_args: Any) -> None:
         run_task(mail.sync())
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
     def _update_stack(self, *_args: Any) -> None:
         self.sidebar_child_name = (
             "content"

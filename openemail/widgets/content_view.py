@@ -8,10 +8,8 @@ from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, mail
 
-from .compose_dialog import ComposeDialog
 from .contacts_page import ContactsPage
-from .drafts_page import DraftsPage
-from .messages_page import MessagesPage
+from .messages_page import BroadcastsPage, DraftsPage, InboxPage, OutboxPage, TrashPage
 from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
@@ -28,19 +26,17 @@ class ContentView(Adw.BreakpointBin):
     bottom_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_settings: ProfileSettings = Gtk.Template.Child()
 
-    broadcasts_page: MessagesPage = Gtk.Template.Child()
-    inbox_page: MessagesPage = Gtk.Template.Child()
-    outbox_page: MessagesPage = Gtk.Template.Child()
+    inbox_page: InboxPage = Gtk.Template.Child()
+    outbox_page: OutboxPage = Gtk.Template.Child()
     drafts_page: DraftsPage = Gtk.Template.Child()
-    trash_page: MessagesPage = Gtk.Template.Child()
+    trash_page: TrashPage = Gtk.Template.Child()
+    broadcasts_page: BroadcastsPage = Gtk.Template.Child()
     contacts_page: ContactsPage = Gtk.Template.Child()
 
     content_child_name = GObject.Property(type=str, default="inbox")
     profile_stack_child_name = GObject.Property(type=str, default="loading")
     profile_image = GObject.Property(type=Gdk.Paintable)
     app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
-
-    compose_dialog: ComposeDialog = Gtk.Template.Child()
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

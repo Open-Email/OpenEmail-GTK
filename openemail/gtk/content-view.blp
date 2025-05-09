@@ -117,45 +117,31 @@ template $ContentView: Adw.BreakpointBin {
         StackPage {
           name: "broadcasts";
 
-          child: $MessagesPage broadcasts_page {
-            folder: "broadcasts";
-            compose-dialog: compose_dialog;
-          };
+          child: $BroadcastsPage broadcasts_page {};
         }
 
         StackPage {
           name: "inbox";
 
-          child: $MessagesPage inbox_page {
-            folder: "inbox";
-            compose-dialog: compose_dialog;
-          };
+          child: $InboxPage inbox_page {};
         }
 
         StackPage {
           name: "outbox";
 
-          child: $MessagesPage outbox_page {
-            folder: "outbox";
-            compose-dialog: compose_dialog;
-          };
+          child: $OutboxPage outbox_page {};
         }
 
         StackPage {
           name: "drafts";
 
-          child: $DraftsPage drafts_page {
-            compose-dialog: compose_dialog;
-          };
+          child: $DraftsPage drafts_page {};
         }
 
         StackPage {
           name: "trash";
 
-          child: $MessagesPage trash_page {
-            folder: "trash";
-            compose-dialog: compose_dialog;
-          };
+          child: $TrashPage trash_page {};
         }
 
         StackPage {
@@ -177,5 +163,3 @@ menu primary_menu {
     item (_("_About OpenEmail"), "app.about")
   }
 }
-
-$ComposeDialog compose_dialog {}
