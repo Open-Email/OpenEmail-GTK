@@ -7,7 +7,7 @@ from typing import Any, Literal
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import PREFIX, mail, settings
-from openemail.mail import DictStore, Message, empty_trash
+from openemail.mail import Message, empty_trash
 
 from .compose_dialog import ComposeDialog
 from .content_page import ContentPage
@@ -111,7 +111,14 @@ class MessagesPage(Adw.NavigationPage):
             ),
         )
 
-        if isinstance(model, DictStore):
+        if folder == "trash":
+
+            def set_loading(*_args: Any) -> None:
+                self.content.loading = mail.inbox.updating or mail.broadcasts.updating
+
+            mail.inbox.connect("notify::updating", set_loading)
+            mail.broadcasts.connect("notify::updating", set_loading)
+        else:
             model.bind_property(
                 "updating",
                 self.content,
