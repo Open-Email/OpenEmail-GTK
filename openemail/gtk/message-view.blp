@@ -141,6 +141,8 @@ template $MessageView: Adw.Bin {
                   spacing: 3;
 
                   Box {
+                    spacing: 6;
+
                     Label {
                       hexpand: true;
                       halign: start;
@@ -154,7 +156,6 @@ template $MessageView: Adw.Bin {
                     }
 
                     Label {
-                      margin-start: 6;
                       halign: end;
                       label: bind template.message as <$Message>.datetime;
                       wrap: true;
