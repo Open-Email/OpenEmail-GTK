@@ -355,6 +355,7 @@ class Profile:
     updated: datetime
 
     about: str | None
+    address_expansion: str | None
     away_warning: str | None
     birthday: date | None
     books: str | None
@@ -376,12 +377,14 @@ class Profile:
     places_lived: str | None
     relationship_status: str | None
     sports: str | None
+    streams: str | None
     status: str | None
     website: str | None
     work: str | None
 
     away: bool = False
     last_seen_public: bool = True
+    public_links: bool = True
     public_access: bool = True
 
     def __init__(self, address: Address, data: str) -> None:
@@ -413,7 +416,7 @@ class Profile:
                 t = next(iter(set(get_args(f.type)) - {NoneType}))
 
             if t is bool:
-                setattr(self, f.name, value == "Yes")
+                value = value == "Yes"
 
             elif t is date:
                 try:

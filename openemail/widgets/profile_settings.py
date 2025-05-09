@@ -76,12 +76,20 @@ class ProfileSettings(Adw.PreferencesDialog):
             page.add(group := Adw.PreferencesGroup())
 
             for ident, name in fields.items():
-                row = Adw.EntryRow(title=name, text=str(profile.value_of(ident) or ""))
-                row.add_css_class("property")
+                if not isinstance(value := profile.value_of(ident), bool):
+                    row = Adw.EntryRow(title=name, text=str(value or ""))
+                    row.add_css_class("property")
+                    row.add_prefix(Gtk.Image(icon_name=f"{ident}-symbolic"))
+                    row.connect("changed", self._on_change)
+                    group.add(row)
+                    self._fields[ident] = row.get_text
+                    continue
+
+                row = Adw.SwitchRow(title=name, active=value)
                 row.add_prefix(Gtk.Image(icon_name=f"{ident}-symbolic"))
-                row.connect("changed", self._on_change)
+                row.connect("notify::active", self._on_change)
                 group.add(row)
-                self._fields[ident] = row.get_text
+                self._fields[ident] = lambda r=row: "Yes" if r.props.active else "No"
 
         self.visible_child_name = "profile"
         self._changed = False
@@ -92,7 +100,7 @@ class ProfileSettings(Adw.PreferencesDialog):
         self._pages = []
         self._fields = {
             "name": self.name.get_text,
-            "away": lambda: "Yes" if self.away.get_enable_expansion() else "No",
+            "away": lambda: "Yes" if self.away.props.enable_expansion else "No",
             "away-warning": self.away_warning.get_text,
             "status": self.status.get_text,
             "about": self.about.get_text,

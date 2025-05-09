@@ -66,6 +66,9 @@ class ProfileView(Adw.Bin):
         self._groups = []
 
         for category, fields in Profile.categories.items():
+            if category.ident == "configuration":  # Only relevant for settings
+                continue
+
             group = None
             for ident, name in fields.items():
                 if not (value := str(profile.value_of(ident) or "")):

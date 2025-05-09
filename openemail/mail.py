@@ -432,11 +432,18 @@ class Profile(GObject.Object):
             "music": _("Music"),
             "sports": _("Sports"),
         },
-        Category("contacts", _("Contacts")): {
+        Category("contacts", _("Contact")): {
             "website": _("Website"),
             "location": _("Location"),
             "mailing-address": _("Mailing Address"),
             "phone": _("Phone"),
+            "streams": _("Topics"),
+        },
+        Category("configuration", _("Options")): {
+            "public-access": _("People Can Reach Me"),
+            "public-links": _("Public Contacts"),
+            "last-seen-public": _("Share Presence"),
+            "address-expansion": _("Address Expansion"),
         },
     }
 
