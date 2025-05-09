@@ -23,7 +23,7 @@ class ProfileSettings(Adw.PreferencesDialog):
     away: Adw.ExpanderRow = Gtk.Template.Child()
     away_warning: Adw.EntryRow = Gtk.Template.Child()
     status: Adw.EntryRow = Gtk.Template.Child()
-    about: Gtk.TextBuffer = Gtk.Template.Child()
+    about: Adw.EntryRow = Gtk.Template.Child()
     name_form: Form = Gtk.Template.Child()
 
     address = GObject.Property(type=str)
@@ -76,32 +76,6 @@ class ProfileSettings(Adw.PreferencesDialog):
             page.add(group := Adw.PreferencesGroup())
 
             for ident, name in fields.items():
-                if ident == "notes":
-                    buffer = Gtk.TextBuffer(text=str(profile.value_of(ident) or ""))
-                    buffer.connect("changed", self._on_change)
-
-                    text_view = Gtk.TextView(
-                        buffer=buffer,
-                        hexpand=True,
-                        top_margin=12,
-                        bottom_margin=12,
-                        left_margin=12,
-                        right_margin=12,
-                        wrap_mode=Gtk.WrapMode.WORD_CHAR,
-                    )
-                    text_view.add_css_class("inline")
-
-                    box = Gtk.Box()
-                    box.append(text_view)
-                    box.add_css_class("card")
-
-                    group = Adw.PreferencesGroup(title=name)
-                    group.add(box)
-
-                    page.add(group)
-                    self._fields[ident] = lambda: buffer.get_property("text")
-                    continue
-
                 row = Adw.EntryRow(title=name, text=str(profile.value_of(ident) or ""))
                 row.add_css_class("property")
                 row.add_prefix(Gtk.Image(icon_name=f"{ident}-symbolic"))
@@ -121,7 +95,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             "away": lambda: "Yes" if self.away.get_enable_expansion() else "No",
             "away-warning": self.away_warning.get_text,
             "status": self.status.get_text,
-            "about": lambda: self.about.get_property("text"),
+            "about": self.about.get_text,
         }
 
         mail.user_profile.connect(

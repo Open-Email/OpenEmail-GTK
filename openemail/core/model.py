@@ -439,9 +439,6 @@ class Profile:
                 except (KeyError, ValueError):
                     value = None
 
-            else:
-                value = value.replace(r"\n", "\n")
-
             if required and (value is None):
                 raise ValueError(f'Required field "{f.name}" contains invalid data')
 
