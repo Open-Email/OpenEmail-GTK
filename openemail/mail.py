@@ -5,12 +5,18 @@
 import asyncio
 from abc import abstractmethod
 from collections import defaultdict, namedtuple
-from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable, Iterator
+from collections.abc import (
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Iterable,
+    Iterator,
+)
 from dataclasses import fields
 from datetime import datetime
 from itertools import chain
 from shutil import rmtree
-from types import CoroutineType
 from typing import Any, cast
 
 import keyring
@@ -110,7 +116,7 @@ async def sync(periodic: bool = False) -> None:
 
     await address_book.update()
 
-    tasks = {
+    tasks: set[Coroutine[Any, Any, Any]] = {
         update_user_profile(),
         address_book.update_profiles(),
         broadcasts.update(),
@@ -119,7 +125,7 @@ async def sync(periodic: bool = False) -> None:
         drafts.update(),
     }
 
-    def done(task: CoroutineType[Any, Any, None]) -> None:
+    def done(task: Coroutine[Any, Any, Any]) -> None:
         global syncing
 
         tasks.discard(task)
