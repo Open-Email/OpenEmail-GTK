@@ -50,59 +50,61 @@ template $ContentView: Adw.BreakpointBin {
           }
         }
 
-        content: Box {
-          orientation: vertical;
+        content: ScrolledWindow {
+          child: Box {
+            orientation: vertical;
 
-          ListBox sidebar {
-            row-selected => $_on_row_selected();
+            ListBox sidebar {
+              row-selected => $_on_row_selected();
 
-            $NavigationRow {
-              label: _("Inbox");
-              icon-name: _("inbox-symbolic");
+              $NavigationRow {
+                label: _("Inbox");
+                icon-name: _("inbox-symbolic");
+              }
+
+              $NavigationRow {
+                label: _("Outbox");
+                icon-name: _("outbox-symbolic");
+              }
+
+              $NavigationRow {
+                label: _("Drafts");
+                icon-name: _("drafts-symbolic");
+              }
+
+              $NavigationRow {
+                label: _("Trash");
+                icon-name: _("trash-symbolic");
+              }
+
+              styles [
+                "navigation-sidebar",
+              ]
             }
 
-            $NavigationRow {
-              label: _("Outbox");
-              icon-name: _("outbox-symbolic");
+            Separator {
+              margin-start: 12;
+              margin-end: 12;
             }
 
-            $NavigationRow {
-              label: _("Drafts");
-              icon-name: _("drafts-symbolic");
+            ListBox bottom_sidebar {
+              row-selected => $_on_bottom_row_selected();
+
+              $NavigationRow {
+                label: _("Broadcasts");
+                icon-name: _("broadcasts-symbolic");
+              }
+
+              $NavigationRow {
+                label: _("Contacts");
+                icon-name: _("contacts-symbolic");
+              }
+
+              styles [
+                "navigation-sidebar",
+              ]
             }
-
-            $NavigationRow {
-              label: _("Trash");
-              icon-name: _("trash-symbolic");
-            }
-
-            styles [
-              "navigation-sidebar",
-            ]
-          }
-
-          Separator {
-            margin-start: 12;
-            margin-end: 12;
-          }
-
-          ListBox bottom_sidebar {
-            row-selected => $_on_bottom_row_selected();
-
-            $NavigationRow {
-              label: _("Broadcasts");
-              icon-name: _("broadcasts-symbolic");
-            }
-
-            $NavigationRow {
-              label: _("Contacts");
-              icon-name: _("contacts-symbolic");
-            }
-
-            styles [
-              "navigation-sidebar",
-            ]
-          }
+          };
         };
       };
     };
