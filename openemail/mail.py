@@ -441,6 +441,7 @@ class Profile(GObject.Object):
     }
 
     _profile: model.Profile | None = None
+    _broadcasts: bool = True
     _address: str | None = None
     _name: str | None = None
 
@@ -459,6 +460,45 @@ class Profile(GObject.Object):
 
         self.address = str(profile.address)
         self.name = profile.name
+
+    @GObject.Property(type=bool, default=True)
+    def receives_broadcasts(self) -> bool:
+        """Whether to receive broadcasts from the owner of the profile.
+
+        Use this property to update the local state from remote data.
+
+        Use `Profile.receive_broadcasts` to change the remote state when setting it.
+        """
+        return self._broadcasts
+
+    @receives_broadcasts.setter
+    def receives_broadcasts(self, receives_broadcasts: bool) -> None:
+        self._broadcasts = receives_broadcasts
+        self.notify("receive-broadcasts")
+
+    @GObject.Property(type=bool, default=True)
+    def receive_broadcasts(self) -> bool:
+        """Whether to receive broadcasts from the owner of the profile.
+
+        See `Profile.receives_broadcasts`.
+        """
+        return self._broadcasts
+
+    @receive_broadcasts.setter
+    def receive_broadcasts(self, receive_broadcasts: bool) -> None:
+        if self._broadcasts == receive_broadcasts or (not self.profile):
+            return
+
+        self._broadcasts = receive_broadcasts
+        self.notify("receives-broadcasts")
+
+        run_task(broadcasts.update())
+        run_task(
+            client.new_contact(
+                self.profile.address,
+                receive_broadcasts=receive_broadcasts,
+            )
+        )
 
     @GObject.Property(type=str)
     def address(self) -> str | None:
@@ -501,7 +541,7 @@ class ProfileStore(DictStore[Address, Profile]):
 
     item_type = Profile
 
-    def add(self, contact: Address) -> None:
+    def add(self, contact: Address, *, receives_broadcasts: bool = True) -> None:
         """Manually add `contact` to `self`.
 
         Note that this item will be removed after `update()` is called
@@ -509,6 +549,8 @@ class ProfileStore(DictStore[Address, Profile]):
         """
         if contact in self._items:
             return
+
+        Profile.of(contact).receives_broadcasts = receives_broadcasts
 
         self._items[contact] = Profile.of(contact)
         self.items_changed(len(self._items) - 1, 0, 1)
@@ -549,7 +591,7 @@ class ProfileStore(DictStore[Address, Profile]):
 class AddressBook(ProfileStore):
     """An implementation of `Gio.ListModel` for storing contacts."""
 
-    async def new(self, address: Address) -> None:
+    async def new(self, address: Address, *, receive_broadcasts: bool = False) -> None:
         """Add `address` to the user's address book."""
         Profile.of(address).contact_request = False
         self.add(address)
@@ -559,7 +601,7 @@ class AddressBook(ProfileStore):
         run_task(inbox.update())
 
         try:
-            await client.new_contact(address)
+            await client.new_contact(address, receive_broadcasts=receive_broadcasts)
         except WriteError as error:
             self.remove(address)
             run_task(broadcasts.update())
@@ -588,9 +630,9 @@ class AddressBook(ProfileStore):
         """Update `self` from remote data asynchronously."""
         contacts: set[Address] = set()
 
-        for contact in await client.fetch_contacts():
+        for contact, receives_broadcasts in await client.fetch_contacts():
             contacts.add(contact)
-            self.add(contact)
+            self.add(contact, receives_broadcasts=receives_broadcasts)
 
         for index, address in enumerate(self._items.copy()):
             if address not in contacts:
@@ -995,6 +1037,7 @@ class _BroadcastStore(MessageStore):
                 exclude=settings.get_strv("deleted-messages"),
             )
             for contact in address_book
+            if contact.receive_broadcasts
         ):
             yield message
 

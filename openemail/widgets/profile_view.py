@@ -27,12 +27,14 @@ class ProfileView(Adw.Bin):
     name = GObject.Property(type=str)
     address = GObject.Property(type=str)
     away = GObject.Property(type=bool, default=False)
-    can_remove = GObject.Property(type=bool, default=False)
+    is_contact = GObject.Property(type=bool, default=False)
     app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
+    broadcasts = GObject.Property(type=bool, default=True)
 
     visible_child_name = GObject.Property(type=str, default="empty")
 
     _profile: Profile | None = None
+    _broadcasts_binding: GObject.Binding | None = None
 
     @GObject.Property(type=Profile)
     def profile(self) -> Profile | None:
@@ -45,10 +47,10 @@ class ProfileView(Adw.Bin):
 
         if not profile:
             self.visible_child_name = "empty"
-            self.can_remove = False
+            self.is_contact = False
             return
 
-        self.can_remove = profile in mail.address_book if profile.address else False
+        self.is_contact = profile in mail.address_book if profile.address else False
 
         if not profile.value_of("address"):
             self.visible_child_name = "not-found"
@@ -94,6 +96,16 @@ class ProfileView(Adw.Bin):
                 )
                 group.add(row)
 
+        if self._broadcasts_binding:
+            self._broadcasts_binding.unbind()
+
+        self._broadcasts_binding = self.profile.bind_property(
+            "receive-broadcasts",
+            self,
+            "broadcasts",
+            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
+        )
+
         self.visible_child_name = "profile"
 
     def __init__(self, **kwargs: Any) -> None:
@@ -107,11 +119,11 @@ class ProfileView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _confirm_remove(self, _obj: Any, response: str) -> None:
-        if (response != "remove") or (not self._profile):
+        if (response != "remove") or (not self.profile):
             return
 
         try:
-            run_task(mail.address_book.delete(Address(self._profile.address)))
+            run_task(mail.address_book.delete(Address(self.profile.address)))
         except ValueError:
             return
 

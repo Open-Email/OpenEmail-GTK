@@ -9,7 +9,7 @@ template $ProfileView: Adw.Bin {
 
       [end]
       Button {
-        visible: bind template.can-remove;
+        visible: bind template.is-contact;
         icon-name: "trash-symbolic";
         tooltip-text: _("Remove Contact");
         clicked => $_remove_contact();
@@ -107,6 +107,20 @@ template $ProfileView: Adw.Bin {
                 "caption",
                 "away-label",
               ]
+            }
+          }
+          
+          Adw.PreferencesGroup {
+            visible: bind template.is_contact;
+
+            Adw.SwitchRow {
+              title: _("Show Broadcasts");
+              active: bind template.broadcasts bidirectional;
+
+              [prefix]
+              Image {
+                icon-name: "broadcasts-symbolic";
+              }
             }
           }
         };

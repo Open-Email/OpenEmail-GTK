@@ -308,8 +308,11 @@ async def delete_profile_image() -> None:
     raise WriteError
 
 
-async def fetch_contacts() -> set[Address]:
-    """Fetch `client.user`'s contact list."""
+async def fetch_contacts() -> set[tuple[Address, bool]]:
+    """Fetch `client.user`'s contacts.
+
+    Returns their addresses and whether broadcasts should be received from them.
+    """
     logging.debug("Fetching contact list…")
     addresses = []
 
@@ -337,15 +340,19 @@ async def fetch_contacts() -> set[Address]:
 
             # For backwards-compatibility with contacts added before 1.0
             try:
-                addresses.append(Address(contact))
+                addresses.append((Address(contact), True))
+                continue
             except (ValueError, UnicodeDecodeError):
                 pass
-            else:
-                continue
 
             try:
-                addresses.append(Address(model.parse_headers(contact)["address"]))
-            except KeyError:
+                addresses.append(
+                    (
+                        Address((entry := model.parse_headers(contact))["address"]),
+                        entry.get("broadcasts", "yes").lower() != "no",
+                    )
+                )
+            except (KeyError, ValueError):
                 continue
 
         break
@@ -354,7 +361,7 @@ async def fetch_contacts() -> set[Address]:
     return set(addresses)
 
 
-async def new_contact(address: Address) -> Profile:
+async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> Profile:
     """Add `address` to `client.user`'s address book.
 
     Returns `address`'s profile on success.
@@ -364,7 +371,12 @@ async def new_contact(address: Address) -> Profile:
     try:
         data = b64encode(
             crypto.encrypt_anonymous(
-                f"address={address};broadcasts=yes".encode("utf-8"),
+                ";".join(
+                    (
+                        f"address={address}",
+                        f"broadcasts={'Yes' if receive_broadcasts else 'No'}",
+                    )
+                ).encode("utf-8"),
                 user.encryption_keys.public,
             )
         )
