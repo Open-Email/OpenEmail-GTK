@@ -2,7 +2,7 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MessagesPage: Adw.NavigationPage {
-  $ContentPage content {
+  child: $ContentPage content {
     title: bind template.title;
 
     details: $MessageView message_view {};
@@ -27,7 +27,7 @@ template $MessagesPage: Adw.NavigationPage {
       description: _("Select another folder or start a conversation");
       icon-name: "mailbox-symbolic";
 
-      Button {
+      child: Button {
         halign: center;
         label: _("New Message");
         clicked => $_new_message();
@@ -35,9 +35,9 @@ template $MessagesPage: Adw.NavigationPage {
         styles [
           "pill",
         ]
-      }
+      };
     };
-  }
+  };
 }
 
 Adw.AlertDialog confirm_empty_dialog {

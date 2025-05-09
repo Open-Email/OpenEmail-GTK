@@ -13,14 +13,14 @@ template $ContentView: Adw.BreakpointBin {
     }
   }
 
-  Adw.OverlaySplitView split_view {
+  child: Adw.OverlaySplitView split_view {
     min-sidebar-width: 260;
     sidebar-width-fraction: 0.2;
 
     sidebar: Adw.NavigationPage {
       title: _("OpenEmail");
 
-      Adw.ToolbarView {
+      child: Adw.ToolbarView {
         [top]
         Adw.HeaderBar {
           [start]
@@ -28,12 +28,12 @@ template $ContentView: Adw.BreakpointBin {
             tooltip-text: _("Profile");
             clicked => $_on_profile_button_clciked();
 
-            Adw.Avatar {
+            child: Adw.Avatar {
               size: 24;
               custom-image: bind template.profile-image;
               icon-name: bind template.app-icon-name;
               text: "e"; // For a blue color
-            }
+            };
 
             styles [
               "circular",
@@ -100,13 +100,13 @@ template $ContentView: Adw.BreakpointBin {
             ]
           }
         };
-      }
+      };
     };
 
     content: Adw.NavigationPage {
       title: _("Content");
 
-      Stack content {
+      child: Stack content {
         transition-type: crossfade;
         visible-child-name: bind template.content-child-name;
 
@@ -159,9 +159,9 @@ template $ContentView: Adw.BreakpointBin {
 
           child: $ContactsPage contacts_page {};
         }
-      }
+      };
     };
-  }
+  };
 }
 
 $ProfileSettings profile_settings {}

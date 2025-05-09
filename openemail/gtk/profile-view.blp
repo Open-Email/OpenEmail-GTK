@@ -2,7 +2,7 @@ using Gtk 4.0;
 using Adw 1;
 
 template $ProfileView: Adw.Bin {
-  Adw.ToolbarView {
+  child: Adw.ToolbarView {
     [top]
     Adw.HeaderBar {
       show-title: false;
@@ -63,7 +63,7 @@ template $ProfileView: Adw.Bin {
             Button {
               halign: center;
 
-              Adw.Avatar {
+              child: Adw.Avatar {
                 margin-top: 9;
                 margin-bottom: 9;
                 margin-start: 9;
@@ -72,7 +72,7 @@ template $ProfileView: Adw.Bin {
                 text: bind template.name;
                 custom-image: bind template.profile as <$Profile>.image;
                 show-initials: true;
-              }
+              };
 
               clicked => $_show_image_dialog();
 
@@ -126,11 +126,11 @@ template $ProfileView: Adw.Bin {
         };
       }
     };
-  }
+  };
 }
 
 Adw.Dialog image_dialog {
-  Overlay {
+  child: Overlay {
     [overlay]
     Adw.HeaderBar {
       valign: start;
@@ -140,12 +140,12 @@ Adw.Dialog image_dialog {
       ]
     }
 
-    Gtk.Image {
+    child: Gtk.Image {
       paintable: bind template.profile as <$Profile>.image;
       height-request: 360;
       width-request: 360;
-    }
-  }
+    };
+  };
 }
 
 Adw.AlertDialog confirm_remove_dialog {

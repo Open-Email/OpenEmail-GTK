@@ -13,7 +13,7 @@ template $ContentPage: Adw.BreakpointBin {
     }
   }
 
-  Adw.MultiLayoutView {
+  child: Adw.MultiLayoutView {
     layout-name: bind template.layout-name;
 
     Adw.Layout {
@@ -26,9 +26,9 @@ template $ContentPage: Adw.BreakpointBin {
         sidebar: Adw.NavigationPage {
           title: bind template.title;
 
-          Adw.LayoutSlot {
+          child: Adw.LayoutSlot {
             id: "sidebar";
-          }
+          };
         };
 
         content: Adw.NavigationPage {
@@ -44,9 +44,9 @@ template $ContentPage: Adw.BreakpointBin {
       content: Adw.NavigationPage {
         title: bind template.title;
 
-        Adw.LayoutSlot {
+        child: Adw.LayoutSlot {
           id: "sidebar";
-        }
+        };
       };
     }
 
@@ -103,11 +103,11 @@ template $ContentPage: Adw.BreakpointBin {
         search-mode-enabled: bind search_button.active bidirectional;
         key-capture-widget: bind template.root;
 
-        SearchEntry {
+        child: SearchEntry {
           hexpand: true;
           placeholder-text: _("Search");
           text: bind template.search-text bidirectional;
-        }
+        };
       }
 
       content: Stack {
@@ -126,7 +126,7 @@ template $ContentPage: Adw.BreakpointBin {
           name: "content";
 
           child: ScrolledWindow {
-            ListView {
+            child: ListView {
               vexpand: true;
               factory: bind template.factory;
               model: bind template.model;
@@ -134,7 +134,7 @@ template $ContentPage: Adw.BreakpointBin {
               styles [
                 "navigation-sidebar",
               ]
-            }
+            };
           };
         }
 
@@ -159,5 +159,5 @@ template $ContentPage: Adw.BreakpointBin {
         }
       };
     }
-  }
+  };
 }

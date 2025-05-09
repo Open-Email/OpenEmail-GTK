@@ -7,7 +7,7 @@ template $Window: Adw.ApplicationWindow {
   default-height: 600;
 
   content: Adw.ToastOverlay toast_overlay {
-    Stack {
+    child: Stack {
       transition-type: crossfade;
       visible-child-name: bind template.visible-child-name;
 
@@ -24,6 +24,6 @@ template $Window: Adw.ApplicationWindow {
 
         child: $ContentView content_view {};
       }
-    }
+    };
   };
 }

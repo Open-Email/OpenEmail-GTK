@@ -7,7 +7,7 @@ template $ComposeDialog: Adw.Dialog {
   content-height: 500;
   closed => $_closed();
 
-  Adw.ToolbarView {
+  child: Adw.ToolbarView {
     [top]
     Adw.HeaderBar {
       show-start-title-buttons: false;
@@ -23,10 +23,10 @@ template $ComposeDialog: Adw.Dialog {
       Button send_button {
         clicked => $_send_message();
 
-        Adw.ButtonContent {
+        child: Adw.ButtonContent {
           label: _("Send");
           icon-name: "send-symbolic";
-        }
+        };
 
         styles [
           "suggested-action",
@@ -54,22 +54,22 @@ template $ComposeDialog: Adw.Dialog {
               reveal-child: bind broadcast_switch.active;
               transition-type: crossfade;
 
-              Label {
+              child: Label {
                 halign: start;
                 label: _("Public Message");
 
                 styles [
                   "dim-label",
                 ]
-              }
+              };
             }
 
-            Revealer {
+            child: Revealer {
               reveal-child: bind broadcast_switch.active inverted;
               transition-type: crossfade;
               notify::reveal-child => $_reveal_readers();
 
-              Box {
+              child: Box {
                 Label readers_label {
                   margin-end: 6;
                   label: _("Readers:");
@@ -87,8 +87,8 @@ template $ComposeDialog: Adw.Dialog {
                     labelled-by: readers_label;
                   }
                 }
-              }
-            }
+              };
+            };
           }
 
           Label broadcast_label {
@@ -138,7 +138,7 @@ template $ComposeDialog: Adw.Dialog {
     }
 
     content: ScrolledWindow {
-      Box {
+      child: Box {
         orientation: vertical;
 
         Separator {
@@ -171,7 +171,7 @@ template $ComposeDialog: Adw.Dialog {
             "boxed-list-separate",
           ]
         }
-      }
+      };
     };
 
     [bottom]
@@ -243,7 +243,7 @@ template $ComposeDialog: Adw.Dialog {
         clicked => $_insert_emoji();
       }
     }
-  }
+  };
 }
 
 $Form compose_form {
