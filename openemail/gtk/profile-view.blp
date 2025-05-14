@@ -62,6 +62,7 @@ template $ProfileView: Adw.Bin {
           Adw.PreferencesGroup {
             Button {
               halign: center;
+              can-target: bind template.profile as <$Profile>.has-image;
 
               child: Adw.Avatar {
                 margin-top: 9;

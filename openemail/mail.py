@@ -385,10 +385,10 @@ class Profile(GObject.Object):
     __gtype_name__ = "Profile"
 
     updating = GObject.Property(type=bool, default=False)
+
     contact_request = GObject.Property(type=bool, default=False)
     has_name = GObject.Property(type=bool, default=False)
-
-    image = GObject.Property(type=Gdk.Paintable)
+    has_image = GObject.Property(type=bool, default=False)
 
     Category = namedtuple("Category", ("ident", "name"))
     categories: dict[Category, dict[str, str]] = {
@@ -437,6 +437,7 @@ class Profile(GObject.Object):
     _broadcasts: bool = True
     _address: str | None = None
     _name: str | None = None
+    _image: Gdk.Paintable | None = None
 
     def set_from_profile(self, profile: model.Profile | None) -> None:
         """Set the properties of `self` from `profile`."""
@@ -493,6 +494,16 @@ class Profile(GObject.Object):
     def name(self, name: str) -> None:
         self._name = name
         self.has_name = name != self.address
+
+    @GObject.Property(type=Gdk.Paintable)
+    def image(self) -> Gdk.Paintable | None:
+        """Get the profile owner's profile image."""
+        return self._image
+
+    @image.setter
+    def image(self, image: Gdk.Paintable | None) -> None:
+        self._image = image
+        self.has_image = bool(image)
 
     @staticmethod
     def of(address: Address) -> "Profile":
