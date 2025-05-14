@@ -8,7 +8,7 @@ import asyncio
 from asyncio import Task
 from collections.abc import Callable, Coroutine
 from pathlib import Path
-from typing import Any, Type
+from typing import Any
 
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Gio, GLib, GObject
@@ -38,12 +38,12 @@ class Notifier[T: Notifier](GObject.Object):
     _default: T | None = None
 
     @classmethod
-    def send(cls: Type[T], title: str) -> None:
+    def send(cls: type[T], title: str) -> None:
         """Emit the `Notifier::send` signal with `title`."""
         cls.get_default().emit("send", title)
 
     @classmethod
-    def get_default(cls: Type[T]) -> T:
+    def get_default(cls: type[T]) -> T:
         if not cls._default:
             cls._default = cls()
 
@@ -61,7 +61,8 @@ def run_task(
 ) -> None:
     """Run a coroutine in a task.
 
-    Calls `callback on finish with `True` if no exceptions were raised and `False` otherwise.
+    Calls `callback on finish with `True` if no exceptions were raised
+    and `False` otherwise.
     """
     _tasks.add(task := _loop.create_task(coro))
 

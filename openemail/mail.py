@@ -5,13 +5,13 @@
 import asyncio
 import operator
 from abc import abstractmethod
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Iterable
 from dataclasses import fields
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import chain
 from shutil import rmtree
-from typing import Any, cast
+from typing import Any, ClassVar, NamedTuple, cast
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
@@ -19,11 +19,12 @@ from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
 from openemail import Notifier, run_task, secret_service, settings
 
 from .core import client, model
-from .core.client import WriteError as WriteError
-from .core.client import user as user
-from .core.crypto import KeyPair as KeyPair
-from .core.model import Address as Address
+from .core.client import WriteError, user
+from .core.crypto import KeyPair  # noqa: F401
+from .core.model import Address
 from .dict_store import DictStore
+
+MAX_PROFILE_IMAGE_DIMENSIONS = 800
 
 
 def try_auth(
@@ -118,9 +119,9 @@ async def update_profile(values: dict[str, str]) -> None:
     """Update the user's public profile with `values`."""
     try:
         await client.update_profile(values)
-    except WriteError as error:
+    except WriteError:
         Notifier.send(_("Failed to update profile"))
-        raise error
+        raise
 
     await update_user_profile()
 
@@ -128,11 +129,11 @@ async def update_profile(values: dict[str, str]) -> None:
 async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
     """Upload `pixbuf` to be used as the user's profile image."""
     if (width := pixbuf.props.width) > (height := pixbuf.props.height):
-        if width > 800:
+        if width > MAX_PROFILE_IMAGE_DIMENSIONS:
             pixbuf = (
                 pixbuf.scale_simple(
-                    dest_width=int(width * (800 / height)),
-                    dest_height=800,
+                    dest_width=int(width * (MAX_PROFILE_IMAGE_DIMENSIONS / height)),
+                    dest_height=MAX_PROFILE_IMAGE_DIMENSIONS,
                     interp_type=GdkPixbuf.InterpType.BILINEAR,
                 )
                 or pixbuf
@@ -148,11 +149,11 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
             height=height,
         )
     else:
-        if height > 800:
+        if height > MAX_PROFILE_IMAGE_DIMENSIONS:
             pixbuf = (
                 pixbuf.scale_simple(
-                    dest_width=800,
-                    dest_height=int(height * (800 / width)),
+                    dest_width=MAX_PROFILE_IMAGE_DIMENSIONS,
+                    dest_height=int(height * (MAX_PROFILE_IMAGE_DIMENSIONS / width)),
                     interp_type=GdkPixbuf.InterpType.BILINEAR,
                 )
                 or pixbuf
@@ -185,9 +186,9 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
 
     try:
         await client.update_profile_image(data)
-    except WriteError as error:
+    except WriteError:
         Notifier.send(_("Failed to update profile image"))
-        raise error
+        raise
 
     await update_user_profile()
 
@@ -219,9 +220,9 @@ async def delete_profile_image() -> None:
     """Delete the user's profile image."""
     try:
         await client.delete_profile_image()
-    except WriteError as error:
+    except WriteError:
         Notifier.send(_("Failed to delete profile image"))
-        raise error
+        raise
 
     await update_user_profile()
 
@@ -231,7 +232,7 @@ async def send_message(
     subject: str,
     body: str,
     reply: str | None = None,
-    attachments: dict[Gio.File, str] = {},
+    attachments: dict[Gio.File, str] | None = None,
 ) -> None:
     """Send `message` to `readers`.
 
@@ -244,10 +245,11 @@ async def send_message(
     Notifier.send(_("Sending message…"))
 
     files = {}
+    attachments = attachments or {}
     for gfile, name in attachments.items():
         try:
             _success, data, _etag = await cast(
-                Awaitable[tuple[bool, bytes, str]], gfile.load_contents_async()
+                "Awaitable[tuple[bool, bytes, str]]", gfile.load_contents_async()
             )
         except GLib.Error as error:
             raise WriteError from error
@@ -256,9 +258,9 @@ async def send_message(
 
     try:
         await client.send_message(readers, subject, body, reply, attachments=files)
-    except WriteError as error:
+    except WriteError:
         Notifier.send(_("Failed to send message"))
-        raise error
+        raise
 
     await outbox.update()
 
@@ -319,8 +321,13 @@ class Profile(GObject.Object):
     has_name = GObject.Property(type=bool, default=False)
     has_image = GObject.Property(type=bool, default=False)
 
-    Category = namedtuple("Category", ("ident", "name"))
-    categories: dict[Category, dict[str, str]] = {
+    class Category(NamedTuple):
+        """A category of profile fields."""
+
+        ident: str
+        name: str
+
+    categories: ClassVar[dict[Category, dict[str, str]]] = {
         Category("general", _("General")): {
             "status": _("Status"),
             "about": _("About"),
@@ -524,13 +531,13 @@ class AddressBook(ProfileStore):
 
         try:
             await client.new_contact(address, receive_broadcasts=receive_broadcasts)
-        except WriteError as error:
+        except WriteError:
             self.remove(address)
             run_task(broadcasts.update())
             run_task(inbox.update())
 
             Notifier.send(_("Failed to add contact"))
-            raise error
+            raise
 
     async def delete(self, address: Address) -> None:
         """Delete `address` from the user's address book."""
@@ -540,13 +547,13 @@ class AddressBook(ProfileStore):
 
         try:
             await client.delete_contact(address)
-        except WriteError as error:
+        except WriteError:
             self.add(address)
             run_task(broadcasts.update())
             run_task(inbox.update())
 
             Notifier.send(_("Failed to remove contact"))
-            raise error
+            raise
 
     async def _update(self) -> None:
         """Update `self` from remote data asynchronously."""
@@ -556,7 +563,7 @@ class AddressBook(ProfileStore):
             contacts.add(contact)
             self.add(contact, receives_broadcasts=receives_broadcasts)
 
-        for index, address in enumerate(self._items.copy()):
+        for address in self._items.copy():
             if address not in contacts:
                 self.remove(address)
 
@@ -691,7 +698,10 @@ class Message(GObject.Object):
         self.date = message.date.strftime("%x")
         # Localized date format, time in H:M
         self.datetime = _("{} at {}").format(
-            self.date, message.date.astimezone(datetime.now().tzinfo).strftime("%H:%M")
+            self.date,
+            message.date.astimezone(
+                datetime.now(timezone.utc).tzinfo,
+            ).strftime("%H:%M"),
         )
 
         self.subject = message.subject
@@ -702,13 +712,13 @@ class Message(GObject.Object):
 
         self._update_trashed_state()
 
-        self.original_author = f"{_('Original Author:')} {str(message.original_author)}"
+        self.original_author = f"{_('Original Author:')} {message.original_author}"
         self.different_author = message.author != message.original_author
 
         if message.is_broadcast:
             self.readers = _("Broadcast")
         else:
-            self.readers = f"{_('Readers:')} {str(user_profile.name)}"
+            self.readers = f"{_('Readers:')} {user_profile.name}"
             for reader in message.readers:
                 if reader == user.address:
                     continue
@@ -717,7 +727,7 @@ class Message(GObject.Object):
 
         self.reader_addresses = ", ".join(
             str(reader)
-            for reader in list(dict.fromkeys(message.readers + [message.author]))
+            for reader in list(dict.fromkeys((*message.readers, message.author)))
             if (reader != user.address)
         )
 
@@ -790,7 +800,7 @@ class Message(GObject.Object):
             envelopes_dir /= "broadcasts"
             messages_dir /= "broadcasts"
 
-        for child in [self._message] + self._message.children:
+        for child in (self._message, *self._message.children):
             (envelopes_dir / f"{child.ident}.json").unlink(missing_ok=True)
             (messages_dir / child.ident).unlink(missing_ok=True)
 
@@ -808,7 +818,7 @@ class Message(GObject.Object):
         outbox.remove(_ident(self._message))
 
         failed = False
-        for msg in [self._message] + self._message.children:
+        for msg in (self._message, *self._message.children):
             try:
                 await client.delete_message(msg.ident)
             except WriteError:
@@ -940,7 +950,8 @@ class MailDraftStore(DictStore[int, Message]):
     ) -> None:
         """Save a draft to disk for future use.
 
-        `draft_id` can be used to update a specific draft, by default, a new ID is generated.
+        `draft_id` can be used to update a specific draft,
+        by default, a new ID is generated.
         """
         client.save_draft(readers, subject, body, reply, broadcast, draft_id)
         run_task(self.update())
@@ -1025,7 +1036,7 @@ class _InboxStore(MessageStore):
             if str(notifier) in (current := settings.get_strv("contact-requests")):
                 continue
 
-            settings.set_strv("contact-requests", current + [str(notifier)])
+            settings.set_strv("contact-requests", [*current, str(notifier)])
 
         deleted = settings.get_strv("deleted-messages")
         async for message in self._process_messages(

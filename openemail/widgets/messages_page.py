@@ -34,7 +34,7 @@ class _MessagesPage(Adw.NavigationPage):
                     Gtk.FilterListModel.new(
                         model,
                         (
-                            filter := Gtk.CustomFilter.new(
+                            search_filter := Gtk.CustomFilter.new(
                                 lambda item: (
                                     (lowered := self.content.search_text.lower())
                                     in item.name.lower()
@@ -56,7 +56,7 @@ class _MessagesPage(Adw.NavigationPage):
 
         self.content.connect(
             "notify::search-text",
-            lambda *_: filter.changed(Gtk.FilterChange.DIFFERENT),
+            lambda *_: search_filter.changed(Gtk.FilterChange.DIFFERENT),
         )
 
         self.props.child = self.content
@@ -82,13 +82,13 @@ class _FolderPage(_SplitPage):
     def __init__(self, folder: DictStore, **kwargs: Any) -> None:
         super().__init__(
             Gtk.FilterListModel.new(
-                folder, filter := Gtk.CustomFilter.new(lambda item: not item.trashed)
+                folder, trashed := Gtk.CustomFilter.new(lambda item: not item.trashed)
             ),
             **kwargs,
         )
 
         def on_trash_changed(*_args: Any) -> None:
-            filter.changed(Gtk.FilterChange.DIFFERENT)
+            trashed.changed(Gtk.FilterChange.DIFFERENT)
             self.content.model.props.selected = 0
 
         settings.connect("changed::trashed-messages", on_trash_changed)
@@ -209,7 +209,7 @@ class TrashPage(_SplitPage):
         super().__init__(
             Gtk.FilterListModel.new(
                 Gtk.FlattenListModel.new(folders := Gio.ListStore.new(Gio.ListModel)),
-                filter := Gtk.CustomFilter.new(lambda item: item.trashed),
+                trashed := Gtk.CustomFilter.new(lambda item: item.trashed),
             ),
             title=_("Trash"),
             **kwargs,
@@ -219,7 +219,7 @@ class TrashPage(_SplitPage):
         folders.append(mail.inbox)
 
         def on_trash_changed(*_args: Any) -> None:
-            filter.changed(Gtk.FilterChange.DIFFERENT)
+            trashed.changed(Gtk.FilterChange.DIFFERENT)
             self.content.model.props.selected = 0
 
         settings.connect("changed::trashed-messages", on_trash_changed)

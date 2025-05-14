@@ -3,6 +3,7 @@
 # SPDX-FileContributor: kramo
 
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from typing import Any, cast
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
@@ -156,7 +157,7 @@ class ProfileSettings(Adw.PreferencesDialog):
 
         try:
             gfile = await cast(
-                Awaitable[Gio.File],
+                "Awaitable[Gio.File]",
                 Gtk.FileDialog(initial_name=_("Select an Image"), filters=filters).open(
                     win if isinstance(win := self.props.root, Gtk.Window) else None
                 ),
@@ -177,9 +178,7 @@ class ProfileSettings(Adw.PreferencesDialog):
 
         self.pending = True
 
-        try:
+        with suppress(WriteError):
             await mail.update_profile_image(pixbuf)
-        except WriteError:
-            pass
 
         self.pending = False

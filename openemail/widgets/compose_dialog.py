@@ -82,7 +82,7 @@ class ComposeDialog(Adw.Dialog):
                 # Date and time, author
                 _("On {}, {} wrote:").format(message.datetime, message.name)
                 + "\n"
-                + re.sub(r"^(?!>)", r"> ", body, flags=re.M)
+                + re.sub(r"^(?!>)", r"> ", body, flags=re.MULTILINE)
                 + "\n\n"
             )
 
@@ -216,7 +216,7 @@ class ComposeDialog(Adw.Dialog):
     async def _attach_files_task(self) -> None:
         try:
             gfiles = await cast(
-                Awaitable[Gio.ListModel],
+                "Awaitable[Gio.ListModel]",
                 Gtk.FileDialog().open_multiple(
                     win if isinstance(win := self.props.root, Gtk.Window) else None
                 ),
@@ -228,8 +228,8 @@ class ComposeDialog(Adw.Dialog):
             try:
                 display_name = (
                     await cast(
-                        Awaitable[Gio.FileInfo],
-                        (gfile := cast(Gio.File, gfile)).query_info_async(
+                        "Awaitable[Gio.FileInfo]",
+                        (gfile := cast("Gio.File", gfile)).query_info_async(
                             Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
                             Gio.FileQueryInfoFlags.NONE,
                             GLib.PRIORITY_DEFAULT,

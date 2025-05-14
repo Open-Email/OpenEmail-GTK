@@ -7,9 +7,12 @@ from typing import Any
 
 from gi.repository import GLib, GObject, Gtk, Pango
 
+MAX_LINES = 5
+MAX_CHARS = 100
+
 
 class MessageBody(Gtk.TextView):
-    """A widget for displaying a message's (optionally editable) body with Markdown support."""
+    """A widget for displaying a message's body with Markdown support."""
 
     __gtype_name__ = "MessageBody"
 
@@ -27,7 +30,8 @@ class MessageBody(Gtk.TextView):
         if self.summary:
             text = (
                 "\n".join(lines)
-                if len(lines := tuple(line for line in text.split("\n") if line)) <= 5
+                if len(lines := tuple(line for line in text.split("\n") if line))
+                <= MAX_LINES
                 else "\n".join(lines[:5]) + "…"
             )
 
@@ -41,7 +45,7 @@ class MessageBody(Gtk.TextView):
                 text
                 if not self.summary
                 else summary
-                if len(summary := text.replace("\n", " ")) <= 100
+                if len(summary := text.replace("\n", " ")) <= MAX_CHARS
                 else summary[:100] + "…"
             )
 
@@ -131,7 +135,7 @@ class MessageBody(Gtk.TextView):
         editable_changed()
 
         # HACK: Fix for a nasty GTK bug I haven't been able to diagnose... In the future
-        # if after removing this the layout of the sidebar doesn't break, it's safe to remove.
+        # if after removing this, the layout doesn't break, it's safe to remove.
         #
         # PS: It probably won't be, "Nobody wants to work on TextView."
         self.connect("map", lambda *_: GLib.timeout_add(25, self.queue_resize))

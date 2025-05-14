@@ -116,7 +116,7 @@ def main() -> int:
     """Run the application."""
     logging.basicConfig(
         level=logging.DEBUG,
-        format="%(levelname)s: %(name)s %(module)s:%(lineno)d %(message)s",
+        format="%(levelname)s: %(name)s:%(lineno)d %(message)s",
         handlers=(
             (
                 logging.StreamHandler(),

@@ -5,9 +5,8 @@
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
 from hashlib import sha256
-from random import choice
-from secrets import token_bytes
-from typing import NamedTuple, Type
+from secrets import choice, token_bytes
+from typing import NamedTuple
 
 from nacl.bindings import (
     crypto_aead_xchacha20poly1305_ietf_decrypt,
@@ -27,7 +26,10 @@ SYMMETRIC_CIPHER = "xchacha20poly1305"
 
 
 class Key(NamedTuple):
-    """A cryptographic key using `algorithm` with the value of `data`, and an optional `id`."""
+    """A cryptographic key.
+
+    Using `algorithm` with the value of `data`, and an optional `id`.
+    """
 
     data: bytes
     algorithm: str = SIGNING_ALGORITHM
@@ -48,19 +50,20 @@ class KeyPair[T: KeyPair]:
     public: Key
 
     @classmethod
-    def from_b64(cls: Type[T], b64: str) -> T:
+    def from_b64(cls: type[T], b64: str) -> T:
         """Get the keypair for a given Base64-encoded string."""
-        bytes = b64decode(b64.encode("utf-8"))
-        match len(bytes):
+        data = b64decode(b64.encode("utf-8"))
+        match len(data):
             case 32:
-                return cls(Key(bytes), Key(crypto_scalarmult_base(bytes)))
+                return cls(Key(data), Key(crypto_scalarmult_base(data)))
             case 64:
-                return cls(Key(bytes[:32]), Key(bytes[32:]))
+                return cls(Key(data[:32]), Key(data[32:]))
             case length:
-                raise ValueError(f"Invalid key length of {length}")
+                msg = f"Invalid key length of {length}"
+                raise ValueError(msg)
 
     @classmethod
-    def for_encryption(cls: Type[T]) -> T:
+    def for_encryption(cls: type[T]) -> T:
         """Generate a new keypair used for encryption."""
         return cls(
             Key(bytes(key := PrivateKey.generate())),
@@ -68,7 +71,7 @@ class KeyPair[T: KeyPair]:
         )
 
     @classmethod
-    def for_signing(cls: Type[T]) -> T:
+    def for_signing(cls: type[T]) -> T:
         """Generate a new keypair used for signing."""
         return cls(Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key)))
 
@@ -80,13 +83,17 @@ class KeyPair[T: KeyPair]:
 
 
 def sign_data(private_key: Key, data: bytes) -> str:
-    """Get a Base64-encoded version of given `data` signed using the provided `private_key`."""
+    """Get a Base64-encoded version of given `data`.
+
+    Signed using the provided `private_key`.
+    """
     try:
         return b64encode(
             SigningKey(bytes(private_key)).sign(data).signature,
         ).decode("utf-8")
     except CryptoError as error:
-        raise ValueError("Unable to sign data") from error
+        msg = "Unable to sign data"
+        raise ValueError(msg) from error
 
 
 def random_bytes(length: int) -> bytes:
@@ -95,7 +102,10 @@ def random_bytes(length: int) -> bytes:
 
 
 def random_string(length: int) -> str:
-    """Generate a random string of a given `length` from characters 0..9, A..Z, and a..z."""
+    """Generate a random string of a given `length`.
+
+    Generated from characters 0..9, A..Z, and a..z.
+    """
     return "".join(
         choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
         for _ in range(length)
@@ -105,17 +115,23 @@ def random_string(length: int) -> str:
 def get_nonce(agent: str, keys: KeyPair) -> str:
     """Get an authentication nonce for the given `agent` and `keys`."""
     try:
-        return "SOTN " + "; ".join(
-            (
-                f"value={(value := random_string(30))}",
-                f"host={agent}",
-                f"algorithm={SIGNING_ALGORITHM}",
-                f"signature={sign_data(keys.private, f'{agent}{value}'.encode('utf-8'))}",
-                f"key={keys.public}",
-            )
+        signature = sign_data(
+            keys.private,
+            f"{agent}{(value := random_string(30))}".encode("utf-8"),  # noqa: UP012
         )
     except ValueError as error:
-        raise ValueError("Unable to get authentication nonce") from error
+        msg = "Unable to get authentication nonce"
+        raise ValueError(msg) from error
+
+    return "SOTN " + "; ".join(
+        (
+            f"value={value}",
+            f"host={agent}",
+            f"algorithm={SIGNING_ALGORITHM}",
+            f"signature={signature}",
+            f"key={keys.public}",
+        )
+    )
 
 
 def decrypt_anonymous(cipher_text: str, private_key: Key) -> bytes:
@@ -123,12 +139,14 @@ def decrypt_anonymous(cipher_text: str, private_key: Key) -> bytes:
     try:
         data = b64decode(cipher_text)
     except ValueError as error:
-        raise ValueError("Invalid cipher text") from error
+        msg = "Invalid cipher text"
+        raise ValueError(msg) from error
 
     try:
         return SealedBox(PrivateKey(bytes(private_key))).decrypt(data)
     except CryptoError as error:
-        raise ValueError("Unable to decrypt cipher text") from error
+        msg = "Unable to decrypt cipher text"
+        raise ValueError(msg) from error
 
 
 def encrypt_anonymous(data: bytes, public_key: Key) -> bytes:
@@ -136,7 +154,8 @@ def encrypt_anonymous(data: bytes, public_key: Key) -> bytes:
     try:
         return SealedBox(PublicKey(bytes(public_key))).encrypt(data)
     except CryptoError as error:
-        raise ValueError("Unable to encrypt data") from error
+        msg = "Unable to encrypt data"
+        raise ValueError(msg) from error
 
 
 def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
@@ -149,7 +168,8 @@ def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
             access_key,
         )
     except CryptoError as error:
-        raise ValueError("Unable to decrypt data") from error
+        msg = "Unable to decrypt data"
+        raise ValueError(msg) from error
 
 
 def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
@@ -160,7 +180,8 @@ def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
             data, None, nonce, access_key
         )
     except CryptoError as error:
-        raise ValueError("Unable to encrypt data") from error
+        msg = "Unable to encrypt data"
+        raise ValueError(msg) from error
 
 
 def fingerprint(public_key: Key) -> str:

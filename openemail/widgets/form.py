@@ -3,6 +3,7 @@
 # SPDX-FileContributor: kramo
 
 import re
+from contextlib import suppress
 from enum import Enum
 from typing import Any
 
@@ -74,8 +75,8 @@ class Form(GObject.Object):
                 except AttributeError:
                     continue
 
-    def _assign_fields(self, type: FormField, fields: Gtk.StringList) -> None:
-        self._fields[type] = fields
+    def _assign_fields(self, form_field: FormField, fields: Gtk.StringList) -> None:
+        self._fields[form_field] = fields
 
         if self.form.get_realized():
             self._setup()
@@ -84,33 +85,31 @@ class Form(GObject.Object):
         self.form.connect("realize", self._setup)
 
     def _setup(self, *_args: Any) -> None:
-        try:
+        with suppress(TypeError):
             self.form.disconnect_by_func(self._setup)
-        except TypeError:
-            pass
 
         self.invalid = set()
 
-        for type, fields in self._fields.items():
+        for form_field, fields in self._fields.items():
             for field in fields:
                 try:
-                    field = getattr(self.form, field.props.string)
+                    widget = getattr(self.form, field.props.string)
                 except AttributeError:
                     continue
 
-                field.connect("changed", self._validate, type)
-                self._validate(field, type)
+                widget.connect("changed", self._validate, form_field)
+                self._validate(widget, form_field)
 
         self._verify()
 
     def _validate(
         self,
         field: Gtk.Editable | Gtk.TextBuffer,
-        type: FormField,
+        form_field: FormField,
     ) -> None:
         text = field.props.text
 
-        match type:
+        match form_field:
             case FormField.PLAIN:
                 (self._valid if text else self._invalid)(field)
 

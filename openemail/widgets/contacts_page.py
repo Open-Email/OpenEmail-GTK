@@ -42,7 +42,7 @@ class ContactsPage(Adw.NavigationPage):
                 Gtk.FilterListModel.new(
                     Gtk.FlattenListModel.new(models),
                     (
-                        filter := Gtk.CustomFilter.new(
+                        search_filter := Gtk.CustomFilter.new(
                             lambda item: (
                                 (lowered := self.content.search_text.lower())
                                 in item.address.lower()
@@ -69,7 +69,7 @@ class ContactsPage(Adw.NavigationPage):
 
         self.content.connect(
             "notify::search-text",
-            lambda *_: filter.changed(Gtk.FilterChange.DIFFERENT),
+            lambda *_: search_filter.changed(Gtk.FilterChange.DIFFERENT),
         )
 
         self.content.model.bind_property("selected-item", self.profile_view, "profile")

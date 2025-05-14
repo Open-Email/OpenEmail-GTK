@@ -21,10 +21,14 @@ from urllib.request import Request, urlopen
 from . import crypto, model
 from .model import Address, Message, Notification, Profile, User
 
+MAX_AGENTS = 3
 MAX_MESSAGE_SIZE = 64_000_000
 MAX_PROFILE_SIZE = 64_000
 MAX_PROFILE_IMAGE_SIZE = 640_000
 
+_SHORT = 8
+
+logger = logging.getLogger(__name__)
 data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
 user = User()
 
@@ -78,16 +82,21 @@ async def request(
     *,
     auth: bool = False,
     method: str | None = None,
-    headers: dict[str, str] = {},
+    headers: dict[str, str] | None = None,
     data: bytes | None = None,
     max_length: int | None = None,
 ) -> HTTPResponse | None:
     """Make an HTTPS request, handling errors and authentication."""
+    headers = headers or {}
     headers["User-Agent"] = "Mozilla/5.0"
 
     try:
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            return None
+
         if auth:
-            if not (agent := urlparse(url).hostname):
+            if not (agent := parsed.hostname):
                 return None
 
             headers.update(
@@ -98,7 +107,7 @@ async def request(
             urlopen, Request(url, method=method, headers=headers, data=data)
         )
     except (InvalidURL, URLError, HTTPError, TimeoutError, ValueError) as error:
-        logging.debug(
+        logger.debug(
             "%s, URL: %s, Method: %s, Authorization: %s",
             error,
             url,
@@ -114,7 +123,7 @@ async def request(
             return response
 
         if length > max_length:
-            logging.debug("Content-Length for %s exceeds max_length", url)
+            logger.debug("Content-Length for %s exceeds max_length", url)
             return None
 
     return response
@@ -142,18 +151,18 @@ async def get_agents(address: Address) -> tuple[str, ...]:
             except UnicodeError:
                 continue
 
-        index = 0
+        index = 1
         async for agent in (
             stripped
             for line in contents.split("\n")
             if (stripped := line.strip()) and (not stripped.startswith("#"))
             if await request(_Mail(stripped, address).host, method="HEAD")
         ):
-            if index > 2:
+            if index > MAX_AGENTS:
                 break
 
+            _agents[address.host_part] = (*_agents.get(address.host_part, ()), agent)
             index += 1
-            _agents[address.host_part] = _agents.get(address.host_part, ()) + (agent,)
 
         break
 
@@ -161,63 +170,79 @@ async def get_agents(address: Address) -> tuple[str, ...]:
 
 
 async def try_auth() -> bool:
-    """Try authenticating with `client.user` and return whether the attempt was successful."""
-    logging.info("Authenticating…")
+    """Try authenticating with `client.user`.
+
+    Returns whether the attempt was successful.
+    """
+    logger.info("Authenticating…")
     for agent in await get_agents(user.address):
         if await request(_Home(agent, user.address).home, auth=True, method="HEAD"):
-            logging.info("Authentication successful")
+            logger.info("Authentication successful")
             return True
 
-    logging.error("Authentication failed")
+    logger.error("Authentication failed")
     return False
 
 
 async def register() -> bool:
     """Try registering `client.user` and return whether the attempt was successful."""
-    logging.info("Registering…")
+    logger.info("Registering…")
 
     data = "\n".join(
         (
             f"Name: {user.address.local_part}",
-            f"Encryption-Key: id={user.encryption_keys.public.key_id}; algorithm={crypto.ANONYMOUS_ENCRYPTION_CIPHER}; value={str(user.encryption_keys.public)}",
-            f"Signing-Key: algorithm={crypto.SIGNING_ALGORITHM}; value={str(user.signing_keys.public)}",
+            "Encryption-Key: "
+            + ";".join(
+                (
+                    f"id={user.encryption_keys.public.key_id}",
+                    f"algorithm={crypto.ANONYMOUS_ENCRYPTION_CIPHER}",
+                    f"value={user.encryption_keys.public}",
+                )
+            ),
+            "Signing-Key: "
+            + ";".join(
+                (
+                    f"algorithm={crypto.SIGNING_ALGORITHM}",
+                    f"value={user.signing_keys.public}",
+                )
+            ),
             f"Updated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
         )
     ).encode("utf-8")
 
     for agent in await get_agents(user.address):
         if await request(_Account(agent, user.address).account, auth=True, data=data):
-            logging.info("Authentication successful")
+            logger.info("Authentication successful")
             return True
 
     # TODO: More descriptive errors
-    logging.error("Registration failed")
+    logger.error("Registration failed")
     return False
 
 
 async def fetch_profile(address: Address) -> Profile | None:
     """Fetch the remote profile associated with a given `address`."""
-    logging.debug("Fetching profile for %s…", address)
+    logger.debug("Fetching profile for %s…", address)
     for agent in await get_agents(address):
         if not (response := await request(_Mail(agent, address).profile)):
             continue
 
         with response:
             try:
-                logging.debug("Profile fetched for %s", address)
+                logger.debug("Profile fetched for %s", address)
                 return Profile(address, response.read(MAX_PROFILE_SIZE).decode("utf-8"))
             except UnicodeError:
                 continue
 
             break
 
-    logging.error("Could not fetch profile for %s", address)
+    logger.error("Could not fetch profile for %s", address)
     return None
 
 
 async def update_profile(values: dict[str, str]) -> None:
     """Update `client.user`'s public profile with `values`."""
-    logging.debug("Updating user profile…")
+    logger.debug("Updating user profile…")
 
     values.update(
         {
@@ -240,7 +265,7 @@ async def update_profile(values: dict[str, str]) -> None:
 
     data = (
         f"## Profile of {user.address}\n"
-        + "\n".join((": ".join((k.title(), v))) for k, v in values.items() if v)
+        + "\n".join((f"{k.title()}: {v}") for k, v in values.items() if v)
         + "\n##End of profile"
     ).encode("utf-8")
 
@@ -251,16 +276,16 @@ async def update_profile(values: dict[str, str]) -> None:
             method="PUT",
             data=data,
         ):
-            logging.info("Profile updated")
+            logger.info("Profile updated")
             return
 
-    logging.error("Failed to update profile with values %s", values)
+    logger.error("Failed to update profile with values %s", values)
     raise WriteError
 
 
 async def fetch_profile_image(address: Address) -> bytes | None:
     """Fetch the remote profile image associated with a given `address`."""
-    logging.debug("Fetching profile image for %s…", address)
+    logger.debug("Fetching profile image for %s…", address)
     for agent in await get_agents(address):
         if not (
             response := await request(
@@ -271,17 +296,17 @@ async def fetch_profile_image(address: Address) -> bytes | None:
             continue
 
         with response:
-            logging.debug("Profile image fetched for %s", address)
+            logger.debug("Profile image fetched for %s", address)
             return response.read()
             break
 
-    logging.warning("Could not fetch profile image for %s", address)
+    logger.warning("Could not fetch profile image for %s", address)
     return None
 
 
 async def update_profile_image(image: bytes) -> None:
     """Upload `image` to be used as `client.user`'s profile image."""
-    logging.debug("Updating profile image…")
+    logger.debug("Updating profile image…")
     for agent in await get_agents(user.address):
         if await request(
             _Home(agent, user.address).image,
@@ -289,22 +314,22 @@ async def update_profile_image(image: bytes) -> None:
             method="PUT",
             data=image,
         ):
-            logging.info("Updated profile image.")
+            logger.info("Updated profile image.")
             return
 
-    logging.error("Updating profile image failed.")
+    logger.error("Updating profile image failed.")
     raise WriteError
 
 
 async def delete_profile_image() -> None:
     """Delete `client.user`'s profile image."""
-    logging.debug("Deleting profile image…")
+    logger.debug("Deleting profile image…")
     for agent in await get_agents(user.address):
         if await request(_Home(agent, user.address).image, auth=True, method="DELETE"):
-            logging.info("Deleted profile image.")
+            logger.info("Deleted profile image.")
             return
 
-    logging.error("Deleting profile image failed.")
+    logger.error("Deleting profile image failed.")
     raise WriteError
 
 
@@ -313,7 +338,7 @@ async def fetch_contacts() -> set[tuple[Address, bool]]:
 
     Returns their addresses and whether broadcasts should be received from them.
     """
-    logging.debug("Fetching contact list…")
+    logger.debug("Fetching contact list…")
     addresses = []
 
     for agent in await get_agents(user.address):
@@ -327,15 +352,12 @@ async def fetch_contacts() -> set[tuple[Address, bool]]:
                 continue
 
         for line in contents.split("\n"):
-            if len(parts := line.strip().split(",")) != 2:
-                continue
-
             try:
                 contact = crypto.decrypt_anonymous(
-                    parts[1].strip(),
+                    line.strip().split(",")[1].strip(),
                     user.encryption_keys.private,
                 ).decode("utf-8")
-            except ValueError:
+            except (KeyError, ValueError):
                 continue
 
             # For backwards-compatibility with contacts added before 1.0
@@ -357,7 +379,7 @@ async def fetch_contacts() -> set[tuple[Address, bool]]:
 
         break
 
-    logging.debug("Contact list fetched")
+    logger.debug("Contact list fetched")
     return set(addresses)
 
 
@@ -366,7 +388,7 @@ async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> P
 
     Returns `address`'s profile on success.
     """
-    logging.debug("Adding %s to address book…", address)
+    logger.debug("Adding %s to address book…", address)
 
     try:
         data = b64encode(
@@ -380,16 +402,12 @@ async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> P
                 user.encryption_keys.public,
             )
         )
-    except ValueError as error:
-        logging.error(
-            "Error adding %s to address book: Failed to encrypt address: %s",
-            address,
-            error,
-        )
-        raise WriteError
+    except ValueError:
+        logger.exception("Error adding %s to address book: Failed to encrypt", address)
+        raise
 
     if not (profile := await fetch_profile(address)):
-        logging.error("Failed adding %s to address book: No profile found")
+        logger.error("Failed adding %s to address book: No profile found")
         raise WriteError
 
     link = model.generate_link(address, user.address)
@@ -400,16 +418,16 @@ async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> P
             method="PUT",
             data=data,
         ):
-            logging.info("Added %s to address book", address)
+            logger.info("Added %s to address book", address)
             return profile
 
-    logging.error("Failed adding %s to address book", address)
+    logger.error("Failed adding %s to address book", address)
     raise WriteError
 
 
 async def delete_contact(address: Address) -> None:
     """Delete `address` from `client.user`'s address book."""
-    logging.debug("Deleting contact %s…", address)
+    logger.debug("Deleting contact %s…", address)
     link = model.generate_link(address, user.address)
     for agent in await get_agents(address):
         if await request(
@@ -417,10 +435,10 @@ async def delete_contact(address: Address) -> None:
             auth=True,
             method="DELETE",
         ):
-            logging.info("Deleted contact %s", address)
+            logger.info("Deleted contact %s", address)
             return
 
-    logging.error("Deleting contact %s failed", address)
+    logger.error("Deleting contact %s failed", address)
     raise WriteError
 
 
@@ -428,21 +446,24 @@ async def fetch_broadcasts(
     author: Address, *, exclude: Iterable[str] = ()
 ) -> tuple[Message, ...]:
     """Fetch broadcasts by `author`, without messages with IDs in `exclude`."""
-    logging.debug("Fetching broadcasts from %s…", author)
+    logger.debug("Fetching broadcasts from %s…", author)
     return await _fetch_messages(author, broadcasts=True, exclude=exclude)
 
 
 async def fetch_link_messages(
     author: Address, *, exclude: Iterable[str] = ()
 ) -> tuple[Message, ...]:
-    """Fetch messages by `author`, addressed to `client.user`, without messages with IDs in `exclude`."""
-    logging.debug("Fetching link messages messages from %s…", author)
+    """Fetch messages by `author`, addressed to `client.user`.
+
+    `exclude` are Message-Ids to ignore.
+    """
+    logger.debug("Fetching link messages messages from %s…", author)
     return await _fetch_messages(author, exclude=exclude)
 
 
 async def fetch_outbox() -> tuple[Message, ...]:
     """Fetch messages by `client.user`."""
-    logging.debug("Fetching outbox…")
+    logger.debug("Fetching outbox…")
     return await _fetch_messages(user.address)
 
 
@@ -493,7 +514,7 @@ async def send_message(
     subject: str,
     body: str,
     subject_id: str | None = None,
-    attachments: dict[str, bytes] = {},
+    attachments: dict[str, bytes] | None = None,
 ) -> None:
     """Send a message to `readers`.
 
@@ -501,9 +522,11 @@ async def send_message(
 
     `subject_id` is an optional ID of a thread that the message should be part of.
     """
-    logging.debug("Sending message…")
+    logger.debug("Sending message…")
+    attachments = attachments or {}
+
     if not body:
-        logging.warning("Failed sending message: Empty body")
+        logger.warning("Failed sending message: Empty body")
         raise WriteError
 
     messages: list[tuple[dict[str, str], bytes]] = []
@@ -533,9 +556,9 @@ async def send_message(
             )
             messages.append((h, c))
 
-    except WriteError as error:
-        logging.error("Error sending message: %s", error)
-        raise error
+    except WriteError:
+        logger.exception("Error sending message")
+        raise
 
     sent = 0
     for message in messages:
@@ -551,21 +574,21 @@ async def send_message(
                 break
 
     if sent >= len(messages):
-        logging.info("Message sent successfully")
+        logger.info("Message sent successfully")
         return
 
-    logging.error("Failed sending message")
+    logger.error("Failed sending message")
     raise WriteError
 
 
 async def notify_readers(readers: Iterable[Address]) -> None:
     """Notify `readers` of a new message."""
-    logging.debug("Notifying readers…")
+    logger.debug("Notifying readers…")
     for reader in readers:
         if not (
             (profile := await fetch_profile(reader)) and (key := profile.encryption_key)
         ):
-            logging.warning(
+            logger.warning(
                 "Failed notifying %s: Could not fetch profile",
                 reader,
             )
@@ -576,7 +599,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
                 crypto.encrypt_anonymous(str(user.address).encode("utf-8"), key)
             )
         except ValueError as error:
-            logging.warning(
+            logger.warning(
                 "Error notifying %s: Failed to encrypt address: %s",
                 reader,
                 error,
@@ -594,22 +617,22 @@ async def notify_readers(readers: Iterable[Address]) -> None:
                 data=address,
             ):
                 one_notified = True
-                logging.debug("Notified %s", reader)
+                logger.debug("Notified %s", reader)
 
         if one_notified:
             return
 
-        logging.warning("Failed notifying %s", reader)
+        logger.warning("Failed notifying %s", reader)
 
 
 async def fetch_notifications() -> AsyncGenerator[Notification, None]:
     """Fetch all of `client.user`'s new notifications.
 
-    Note that this generator assumes that you process all notifications yielded by it
-    and that a subsequent iteration will not yield "old" notifications that were already processed.
+    Note that this generator assumes that you process all notifications yielded by it.
+    A subsequent iteration will not yield old notifications that were already processed.
     """
     contents = None
-    logging.debug("Fetching notifications…")
+    logger.debug("Fetching notifications…")
     for agent in await get_agents(user.address):
         if not (
             response := await request(
@@ -640,7 +663,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
                     part.strip() for part in stripped.split(",", 4)
                 )
             except IndexError:
-                logging.debug("Invalid notification: %s", notification)
+                logger.debug("Invalid notification: %s", notification)
                 continue
 
             if ident in notifications:
@@ -654,11 +677,11 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
                     ).decode("utf-8")
                 )
             except ValueError:
-                logging.debug("Unable to decrypt notification: %s", notification)
+                logger.debug("Unable to decrypt notification: %s", notification)
                 continue
 
             if not (profile := await fetch_profile(notifier)):
-                logging.error(
+                logger.error(
                     "Failed to fetch notification: Could not fetch profile for %s",
                     notifier,
                 )
@@ -670,7 +693,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
                 if profile.last_signing_key
                 else None,
             }:
-                logging.debug("Fingerprint mismatch for notification: %s", notification)
+                logger.debug("Fingerprint mismatch for notification: %s", notification)
                 continue
 
             yield Notification(
@@ -686,22 +709,22 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
         with notifications_path.open("w") as file:
             json.dump(tuple(notifications), file)
 
-    logging.debug("Notifications fetched")
+    logger.debug("Notifications fetched")
 
 
 async def delete_message(ident: str) -> None:
     """Delete the message with `ident`."""
-    logging.debug("Deleting message %s…", ident[:8])
+    logger.debug("Deleting message %s…", ident[:_SHORT])
     for agent in await get_agents(user.address):
         if await request(
             _Message(agent, user.address, ident).message,
             auth=True,
             method="DELETE",
         ):
-            logging.info("Deleted message %s", ident[:8])
+            logger.info("Deleted message %s", ident[:_SHORT])
             return
 
-    logging.error("Deleting message %s failed", ident[:8])
+    logger.error("Deleting message %s failed", ident[:_SHORT])
     raise WriteError
 
 
@@ -720,7 +743,7 @@ def save_draft(
 
     See `send_message()` for other parameters, `load_drafts()` on how to retrieve it.
     """
-    logging.debug("Saving draft…")
+    logger.debug("Saving draft…")
     messages_path = data_dir / "drafts"
 
     n = (
@@ -743,7 +766,7 @@ def save_draft(
     message_path.parent.mkdir(parents=True, exist_ok=True)
 
     json.dump((readers, subject, body, reply, broadcast), (message_path).open("w"))
-    logging.debug("Draft saved as %i.json", n)
+    logger.debug("Draft saved as %i.json", n)
 
 
 def load_drafts() -> Generator[
@@ -753,19 +776,19 @@ def load_drafts() -> Generator[
 
     See `save_draft()`.
     """
-    logging.debug("Loading drafts…")
+    logger.debug("Loading drafts…")
     if not (messages_path := data_dir / "drafts").is_dir():
-        logging.debug("No drafts")
+        logger.debug("No drafts")
         return
 
     for path in messages_path.iterdir():
         try:
             message = tuple(json.load(path.open("r")))
-            yield (int(path.stem),) + message
+            yield (int(path.stem), *message)
         except (JSONDecodeError, ValueError):
             continue
 
-    logging.debug("Loaded all drafts")
+    logger.debug("Loaded all drafts")
 
 
 def delete_draft(ident: int) -> None:
@@ -773,38 +796,38 @@ def delete_draft(ident: int) -> None:
 
     See `save_draft()`, `load_drafts()`.
     """
-    logging.debug("Deleting draft %i…", ident)
+    logger.debug("Deleting draft %i…", ident)
 
     try:
         (data_dir / "drafts" / f"{ident}.json").unlink()
     except FileNotFoundError as error:
-        logging.debug("Failed to delete draft %i: %s", ident, error)
+        logger.debug("Failed to delete draft %i: %s", ident, error)
         return
 
-    logging.debug("Deleted draft %i", ident)
+    logger.debug("Deleted draft %i", ident)
 
 
 def delete_all_saved_messages() -> None:
     """Delete all drafts saved using `save_draft()`."""
-    logging.debug("Deleting all drafts…")
+    logger.debug("Deleting all drafts…")
     rmtree(data_dir / "drafts", ignore_errors=True)
-    logging.debug("Deleted all drafts")
+    logger.debug("Deleted all drafts")
 
 
 async def delete_account() -> None:
     """Permanently deletes `client.user`'s account."""
-    logging.debug("Deleting account…")
+    logger.debug("Deleting account…")
     for agent in await get_agents(user.address):
         if await request(
             _Account(agent, user.address).account,
             auth=True,
             method="DELETE",
         ):
-            logging.info("Account deleted")
+            logger.info("Account deleted")
             return
 
     raise WriteError
-    logging.error("Failed to delete account")
+    logger.error("Failed to delete account")
 
 
 def _sign_headers(fields: Sequence[str]) -> ...:
@@ -813,7 +836,8 @@ def _sign_headers(fields: Sequence[str]) -> ...:
     try:
         signature = crypto.sign_data(user.signing_keys.private, checksum.digest())
     except ValueError as error:
-        raise ValueError(f"Can't sign message: {error}")
+        msg = f"Can't sign message: {error}"
+        raise ValueError(msg) from error
 
     return checksum, signature
 
@@ -825,7 +849,7 @@ async def _fetch_envelope(
     *,
     broadcast: bool = False,
 ) -> tuple[dict[str, str] | None, bool]:
-    logging.debug("Fetching envelope %s…", ident[:8])
+    logger.debug("Fetching envelope %s…", ident[:_SHORT])
 
     envelopes_dir = data_dir / "envelopes" / author.host_part / author.local_part
     if broadcast:
@@ -838,7 +862,7 @@ async def _fetch_envelope(
 
     except (FileNotFoundError, JSONDecodeError, ValueError):
         if not (response := await request(url, auth=not broadcast, method="HEAD")):
-            logging.error("Fetching envelope %s failed", ident[:8])
+            logger.exception("Fetching envelope %s failed", ident[:_SHORT])
             return None, False
 
         new = True
@@ -850,17 +874,14 @@ async def _fetch_envelope(
     else:
         new = False
 
-    logging.debug("Fetched envelope %s", ident[:8])
+    logger.debug("Fetched envelope %s", ident[:_SHORT])
     return headers, new
 
 
 async def _fetch_message_from_agent(
-    url: str,
-    author: Address,
-    ident: str,
-    broadcast: bool = False,
+    url: str, author: Address, ident: str, broadcast: bool = False
 ) -> Message | None:
-    logging.debug("Fetching message %s…", ident[:8])
+    logger.debug("Fetching message %s…", ident[:_SHORT])
 
     envelope, new = await _fetch_envelope(url, ident, author, broadcast=broadcast)
     if not envelope:
@@ -868,14 +889,14 @@ async def _fetch_message_from_agent(
 
     try:
         message = Message(ident, envelope, author, user.encryption_keys.private, new)
-    except ValueError as error:
-        logging.error("Constructing message %s failed: %s", ident[:8], error)
+    except ValueError:
+        logger.exception("Constructing message %s failed", ident[:_SHORT])
         return None
 
     if message.is_child:
         message.attachment_url = url
 
-        logging.debug("Fetched message %s", ident[:8])
+        logger.debug("Fetched message %s", ident[:_SHORT])
         return message
 
     messages_dir = data_dir / "messages" / author.host_part / author.local_part
@@ -888,9 +909,9 @@ async def _fetch_message_from_agent(
         contents = message_path.read_bytes()
     except FileNotFoundError:
         if not (response := await request(url, auth=not broadcast)):
-            logging.error(
+            logger.exception(
                 "Fetching message %s failed: Failed fetching body",
-                ident[:8],
+                ident[:_SHORT],
             )
             return None
 
@@ -903,42 +924,39 @@ async def _fetch_message_from_agent(
     if (not message.is_broadcast) and message.access_key:
         try:
             contents = crypto.decrypt_xchacha20poly1305(contents, message.access_key)
-        except ValueError as error:
-            logging.error(
-                "Fetching message %s failed: Failed to decrypt body: %s",
-                ident[:8],
-                error,
+        except ValueError:
+            logger.exception(
+                "Fetching message %s failed: Failed to decrypt body",
+                ident[:_SHORT],
             )
             return None
 
     try:
         message.body = contents.decode("utf-8")
-
-        logging.debug("Fetched message %s", ident[:8])
-        return message
-
-    except UnicodeError as error:
-        logging.error(
-            "Fetching message %s failed: Failed to decode body: %s",
-            ident[:8],
-            error,
+    except UnicodeError:
+        logger.exception(
+            "Fetching message %s failed: Failed to decode body",
+            ident[:_SHORT],
         )
         return None
+
+    logger.debug("Fetched message %s", ident[:_SHORT])
+    return message
 
 
 async def _fetch_message_ids(author: Address, broadcasts: bool = False) -> set[str]:
     """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
-    logging.debug("Fetching message IDs from %s…", author)
+    logger.debug("Fetching message IDs from %s…", author)
 
-    dir = data_dir / "envelopes" / author.host_part / author.local_part
+    path = data_dir / "envelopes" / author.host_part / author.local_part
     if broadcasts:
-        dir /= "broadcasts"
+        path /= "broadcasts"
 
     if author == user.address:
         local_ids = set()
     else:
         try:
-            local_ids = {path.stem for path in dir.iterdir() if path.suffix == ".json"}
+            local_ids = {p.stem for p in path.iterdir() if p.suffix == ".json"}
         except FileNotFoundError:
             local_ids = set()
 
@@ -963,12 +981,12 @@ async def _fetch_message_ids(author: Address, broadcasts: bool = False) -> set[s
             except UnicodeError:
                 continue
 
-        logging.debug("Fetched message IDs from %s", author)
+        logger.debug("Fetched message IDs from %s", author)
         return local_ids | {
             stripped for line in contents.split("\n") if (stripped := line.strip())
         }
 
-    logging.warning("Could not fetch message IDs from %s", author)
+    logger.warning("Could not fetch message IDs from %s", author)
     return local_ids
 
 
@@ -1001,14 +1019,13 @@ async def _fetch_messages(
                 break
 
     for ident, message in messages.copy().items():
-        if message.parent_id:
-            if parent := messages.get(message.parent_id):
-                parent.add_child(messages.pop(ident))
+        if message.parent_id and (parent := messages.get(message.parent_id)):
+            parent.add_child(messages.pop(ident))
 
     for message in messages.values():
         message.reconstruct_from_children()
 
-    logging.debug("Fetched messages from %s", author)
+    logger.debug("Fetched messages from %s", author)
     return tuple(messages.values())
 
 
@@ -1023,12 +1040,14 @@ async def _build_message_access(
             and (key := profile.encryption_key)
             and (key_id := key.key_id)
         ):
-            raise ValueError("Failed fetching reader profiles")
+            msg = "Failed fetching reader profiles"
+            raise ValueError(msg)
 
         try:
             encrypted = crypto.encrypt_anonymous(access_key, key)
         except ValueError as error:
-            raise ValueError("Failed to encrypt access key") from error
+            msg = "Failed to encrypt access key"
+            raise ValueError(msg) from error
 
         access.append(
             ";".join(
@@ -1050,11 +1069,14 @@ async def _build_message(
     content: bytes,
     subject_id: str | None = None,
     *,
-    attachment: dict[str, str] = {},
+    attachment: dict[str, str] | None = None,
     parent_id: str | None = None,
     date: str | None = None,
-    attachments: dict[str, bytes] = {},
+    attachments: dict[str, bytes] | None = None,
 ) -> tuple[str, dict[str, str], bytes, dict[str, tuple[dict[str, str], bytes]]]:
+    attachment = attachment or {}
+    attachments = attachments or {}
+
     date = date or datetime.now(timezone.utc).isoformat(timespec="seconds")
     headers: dict[str, str] = {
         "Message-Id": generate_message_id(),
@@ -1080,7 +1102,7 @@ async def _build_message(
 
     headers_bytes = "\n".join(
         (
-            ":".join((key, value))
+            f"{key}:{value}"
             for key, value in (
                 {
                     "Id": headers["Message-Id"],
@@ -1098,7 +1120,7 @@ async def _build_message(
                     "Category": "personal",
                 }
                 | (
-                    {"Readers": ",".join((str(reader) for reader in readers))}
+                    {"Readers": ",".join(str(reader) for reader in readers)}
                     if readers
                     else {}
                 )

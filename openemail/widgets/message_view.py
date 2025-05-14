@@ -3,6 +3,7 @@
 # SPDX-FileContributor: kramo
 
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from typing import Any, cast
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
@@ -57,7 +58,7 @@ class MessageView(Adw.Bin):
         self.attachments = {}
         for a in message.attachments:
             row = Adw.ActionRow(
-                title=(a := cast(Attachment, a)).name,
+                title=(a := cast("Attachment", a)).name,
                 activatable=True,
                 use_markup=False,
             )
@@ -95,10 +96,8 @@ class MessageView(Adw.Bin):
     def _show_profile_dialog(self, *_args: Any) -> None:
         profile = None
         if self.message:
-            try:
+            with suppress(ValueError):
                 profile = Profile.of(self.message.author)
-            except ValueError:
-                pass
 
         self.profile_view.profile = profile
         self.profile_dialog.present(self)
@@ -111,7 +110,7 @@ class MessageView(Adw.Bin):
         async def save() -> None:
             try:
                 gfile = await cast(
-                    Awaitable[Gio.File],
+                    "Awaitable[Gio.File]",
                     Gtk.FileDialog(
                         initial_name=row.props.title,
                         initial_folder=Gio.File.new_for_path(downloads)
@@ -136,13 +135,13 @@ class MessageView(Adw.Bin):
                     None, True, Gio.FileCreateFlags.REPLACE_DESTINATION
                 )
                 await cast(
-                    Awaitable,
+                    "Awaitable",
                     stream.write_bytes_async(
                         GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT
                     ),
                 )
                 await cast(
-                    Awaitable,
+                    "Awaitable",
                     stream.close_async(GLib.PRIORITY_DEFAULT),
                 )
             except GLib.Error:

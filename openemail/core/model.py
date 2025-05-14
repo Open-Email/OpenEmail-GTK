@@ -4,6 +4,7 @@
 
 import re
 from base64 import b64decode
+from contextlib import suppress
 from dataclasses import dataclass, field, fields
 from datetime import date, datetime, timezone
 from hashlib import sha256
@@ -14,6 +15,7 @@ from . import crypto
 from .crypto import Key, KeyPair
 
 MAX_HEADERS_SIZE = 512_000
+MESSAGE_LIFETIME = 7
 
 
 class Address:
@@ -27,14 +29,14 @@ class Address:
             r"^[a-z0-9][a-z0-9\.\-_\+]{2,}@[a-z0-9.-]+\.[a-z]{2,}|xn--[a-z0-9]{2,}$",
             address := address.lower(),
         ):
-            raise ValueError(f'Email address "{address}" is invalid')
+            msg = f'Email address "{address}" is invalid'
+            raise ValueError(msg)
 
         try:
             self.local_part, self.host_part = address.split("@")
         except ValueError as error:
-            raise ValueError(
-                f'Email address "{address}" contains more than a single @ character'
-            ) from error
+            msg = f'Email address "{address}" contains more than a single @ character'
+            raise ValueError(msg) from error
 
     def __repr__(self) -> str:
         return str(self)
@@ -83,11 +85,7 @@ class User:
     @property
     def logged_in(self) -> bool:
         """Whether or not the user has valid credentials."""
-        for f in fields(User):
-            if not hasattr(self, f.name):
-                return False
-
-        return True
+        return all(hasattr(self, f.name) for f in fields(User))
 
     def __init__(self) -> None: ...
 
@@ -176,16 +174,19 @@ class Message:
                     self.checksum = value
 
         if not message_headers:
-            raise ValueError("Empty message headers")
+            msg = "Empty message headers"
+            raise ValueError(msg)
 
         if not self.checksum:
-            raise ValueError("Missing checksum")
+            msg = "Missing checksum"
+            raise ValueError(msg)
 
         checksum = parse_headers(self.checksum)
 
         try:
             if checksum["algorithm"] != crypto.CHECKSUM_ALGORITHM:
-                raise ValueError("Unsupported checksum algorithm")
+                msg = "Unsupported checksum algorithm"
+                raise ValueError(msg)
 
             if (
                 checksum["value"]
@@ -203,10 +204,12 @@ class Message:
                     ).encode("utf-8")
                 ).hexdigest()
             ):
-                raise ValueError("Invalid checksum")
+                msg = "Invalid checksum"
+                raise ValueError(msg)
 
         except KeyError as error:
-            raise ValueError("Bad checksum format") from error
+            msg = "Bad checksum format"
+            raise ValueError(msg) from error
 
         try:
             header_bytes = b64decode(parse_headers(message_headers)["value"])
@@ -222,13 +225,16 @@ class Message:
                     for header in header_bytes.decode("utf-8").split("\n")
                 }
             except UnicodeDecodeError as error:
-                raise ValueError("Unable to decode headers") from error
+                msg = "Unable to decode headers"
+                raise ValueError(msg) from error
 
         except (IndexError, KeyError, ValueError) as error:
-            raise ValueError("Could not parse headers") from error
+            msg = "Could not parse headers"
+            raise ValueError(msg) from error
 
         if sum(len(k) + len(v) for k, v in headers.items()) > MAX_HEADERS_SIZE:
-            raise ValueError("Envelope size exceeds MAX_HEADERS_SIZE")
+            msg = "Envelope size exceeds MAX_HEADERS_SIZE"
+            raise ValueError(msg)
 
         try:
             self.ident = headers["id"]
@@ -236,7 +242,8 @@ class Message:
             self.subject = headers["subject"]
             self.original_author = Address(headers["author"])
         except KeyError as error:
-            raise ValueError("Incomplete header contents") from error
+            msg = "Incomplete header contents"
+            raise ValueError(msg) from error
 
         self.subject_id = headers.get("subject.id", self.ident)
         self.parent_id = headers.get("parent-id")
@@ -253,14 +260,11 @@ class Message:
                     continue
 
         elif (file := headers.get("file")) and (file_headers := parse_headers(file)):
-            # The macOS client does not seem to implement this header and relies only on Files
             self.file_name = file_headers.get("name")
 
             if part := file_headers.get("part"):
-                try:
+                with suppress(ValueError):
                     self.part = int(part.split("/")[0].strip())
-                except ValueError:
-                    pass
 
         if readers := headers.get("readers"):
             for reader in readers.split(","):
@@ -282,10 +286,8 @@ class Message:
 
         child.file_name = props.name
         if props.part:
-            try:
+            with suppress(ValueError):
                 child.part = int(props.part.split("/")[0].strip())
-            except ValueError:
-                pass
 
     def reconstruct_from_children(self) -> None:
         """Reconstruct the entire contents of this message from all of its children.
@@ -313,7 +315,7 @@ class Message:
         for part in parts:
             self.body = f"{self.body or ''}{part.body or ''}"
 
-        for name, attachment in self.attachments.items():
+        for attachment in self.attachments.values():
             attachment.sort(key=lambda part: part.part)
 
 
@@ -330,7 +332,7 @@ class Notification:
     @property
     def is_expired(self) -> bool:
         """Whether or not the notification has already expired."""
-        return (self.received_on - datetime.now(timezone.utc)).days >= 7
+        return (self.received_on - datetime.now(timezone.utc)).days >= MESSAGE_LIFETIME
 
 
 def parse_headers(data: str) -> dict[str, str]:
@@ -407,7 +409,8 @@ class Profile:
                     continue
 
                 if required:
-                    raise ValueError(f'Required field "{f.name}" does not exist')
+                    msg = f'Required field "{f.name}" does not exist'
+                    raise ValueError(msg)
 
                 setattr(self, f.name, None)
                 continue
@@ -443,7 +446,8 @@ class Profile:
                     value = None
 
             if required and (value is None):
-                raise ValueError(f'Required field "{f.name}" contains invalid data')
+                msg = f'Required field "{f.name}" contains invalid data'
+                raise ValueError(msg)
 
             setattr(self, f.name, value)
 

@@ -64,7 +64,8 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
         """Remove all items from `self`.
 
         Note that this will not remove items from the underlying data store,
-        only the client's version. Cleared items may be added back after `update()` is called.
+        only the client's version.
+        Cleared items may be added back after `update()` is called.
         """
         n = len(self._items)
         self._items.clear()

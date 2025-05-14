@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
+from contextlib import suppress
 from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
@@ -47,12 +48,10 @@ class Preferences(Adw.PreferencesDialog):
         self.public_signing_key = str(mail.user.signing_keys.public)
         self.public_encryption_key = str(mail.user.encryption_keys.public)
 
-        try:
+        with suppress(ValueError):
             self.sync_interval_combo_row.props.selected = self._intervals.index(
                 settings.get_uint("sync-interval")
             )
-        except ValueError:
-            pass
 
     @Gtk.Template.Callback()
     def _sync_interval_selected(self, row: Adw.ComboRow, *_args: Any) -> None:
@@ -102,7 +101,7 @@ class Preferences(Adw.PreferencesDialog):
         ):
             return
 
-        settings.set_strv("trusted-domains", [domain] + current)
+        settings.set_strv("trusted-domains", (domain, *current))
         self._build_domains()
 
     def _remove_domain(self, domain: str) -> None:
@@ -131,6 +130,6 @@ class Preferences(Adw.PreferencesDialog):
                 domain,
             )
 
-            self.domains.add((row := Adw.ActionRow(title=domain)))
+            self.domains.add(row := Adw.ActionRow(title=domain))
             row.add_suffix(remove_button)
             self._domain_rows.append(row)
