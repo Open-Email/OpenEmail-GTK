@@ -50,6 +50,7 @@ install_data([
       output: '__init__.py',
       configuration: conf
     ),
+    'dict_store.py',
     'mail.py',
     'main.py',
   ],

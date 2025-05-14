@@ -7,7 +7,8 @@ from typing import Any
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import PREFIX, mail, settings
-from openemail.mail import DictStore, Message, empty_trash
+from openemail.dict_store import DictStore
+from openemail.mail import Message, empty_trash
 
 from .compose_dialog import ComposeDialog
 from .content_page import ContentPage
