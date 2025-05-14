@@ -12,7 +12,7 @@ template $MessageView: Adw.Bin {
         Button {
           visible: bind template.message as <$Message>.can-trash;
           icon-name: "trash-symbolic";
-          tooltip-text: _("Trash Message");
+          tooltip-text: _("Trash");
           clicked => $_trash();
 
           ShortcutController {
@@ -53,7 +53,7 @@ template $MessageView: Adw.Bin {
         Button {
           visible: bind template.message as <$Message>.author-is-self;
           icon-name: "trash-symbolic";
-          tooltip-text: _("Discard Message");
+          tooltip-text: _("Discard");
           clicked => $_discard();
 
           ShortcutController {
