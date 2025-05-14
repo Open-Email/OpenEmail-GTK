@@ -13,151 +13,126 @@ template $ContentPage: Adw.BreakpointBin {
     }
   }
 
-  child: Adw.MultiLayoutView {
-    layout-name: bind template.layout-name;
+  Adw.NavigationSplitView split_view {
+    max-sidebar-width: 500;
+    sidebar-width-fraction: 0.4;
 
-    Adw.Layout {
-      name: "split";
+    sidebar: Adw.NavigationPage {
+      title: bind template.title;
 
-      content: Adw.NavigationSplitView split_view {
-        max-sidebar-width: 500;
-        sidebar-width-fraction: 0.4;
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          [start]
+          Button {
+            icon-name: "sidebar-show-symbolic";
+            tooltip-text: _("Toggle Sidebar");
+            clicked => $_show_sidebar();
+          }
 
-        sidebar: Adw.NavigationPage {
-          title: bind template.title;
+          [start]
+          Button sync_button {
+            icon-name: "sync-symbolic";
+            tooltip-text: _("Sync");
+            clicked => $_sync();
 
-          child: Adw.LayoutSlot {
-            id: "sidebar";
-          };
-        };
+            ShortcutController {
+              scope: managed;
 
-        content: Adw.NavigationPage {
-          title: _("Details");
-          child: bind template.details;
-        };
-      };
-    }
-
-    Adw.Layout {
-      name: "single";
-
-      content: Adw.NavigationPage {
-        title: bind template.title;
-
-        child: Adw.LayoutSlot {
-          id: "sidebar";
-        };
-      };
-    }
-
-    [sidebar]
-    Adw.ToolbarView {
-      [top]
-      Adw.HeaderBar {
-        [start]
-        Button {
-          icon-name: "sidebar-show-symbolic";
-          tooltip-text: _("Toggle Sidebar");
-          clicked => $_show_sidebar();
-        }
-
-        [start]
-        Button sync_button {
-          icon-name: "sync-symbolic";
-          tooltip-text: _("Sync");
-          clicked => $_sync();
-
-          ShortcutController {
-            scope: managed;
-
-            Shortcut {
-              trigger: "<primary>r|F5";
-              action: "activate";
+              Shortcut {
+                trigger: "<primary>r|F5";
+                action: "activate";
+              }
             }
+          }
+
+          [end]
+          ToggleButton search_button {
+            icon-name: "search-symbolic";
+            tooltip-text: _("Search");
+
+            ShortcutController {
+              scope: managed;
+
+              Shortcut {
+                trigger: "<primary>f";
+                action: "activate";
+              }
+            }
+          }
+
+          [end]
+          Adw.Bin {
+            child: bind template.toolbar-button;
           }
         }
 
-        [end]
-        ToggleButton search_button {
-          icon-name: "search-symbolic";
-          tooltip-text: _("Search");
+        [top]
+        SearchBar {
+          search-mode-enabled: bind search_button.active bidirectional;
+          key-capture-widget: bind template.root;
 
-          ShortcutController {
-            scope: managed;
-
-            Shortcut {
-              trigger: "<primary>f";
-              action: "activate";
-            }
-          }
-        }
-
-        [end]
-        Adw.Bin {
-          child: bind template.toolbar-button;
-        }
-      }
-
-      [top]
-      SearchBar {
-        search-mode-enabled: bind search_button.active bidirectional;
-        key-capture-widget: bind template.root;
-
-        child: SearchEntry {
-          hexpand: true;
-          placeholder-text: _("Search");
-          text: bind template.search-text bidirectional;
-        };
-      }
-
-      content: Stack {
-        transition-type: crossfade;
-        visible-child-name: bind template.sidebar-child-name;
-
-        StackPage {
-          name: "empty";
-
-          child: Adw.Bin {
-            child: bind template.empty-page;
+          child: SearchEntry {
+            hexpand: true;
+            placeholder-text: _("Search");
+            text: bind template.search-text bidirectional;
           };
         }
 
-        StackPage {
-          name: "content";
+        content: Stack {
+          transition-type: crossfade;
+          visible-child-name: bind template.sidebar-child-name;
 
-          child: ScrolledWindow {
-            child: ListView {
-              vexpand: true;
-              factory: bind template.factory;
-              model: bind template.model;
+          StackPage {
+            name: "empty";
+
+            child: Adw.Bin {
+              child: bind template.empty-page;
+            };
+          }
+
+          StackPage {
+            name: "content";
+
+            child: ScrolledWindow {
+              child: ListView {
+                vexpand: true;
+                factory: bind template.factory;
+                model: bind template.model;
+
+                styles [
+                  "navigation-sidebar",
+                ]
+              };
+            };
+          }
+
+          StackPage {
+            name: "loading";
+
+            child: Adw.Spinner {};
+          }
+
+          StackPage {
+            name: "no-results";
+
+            child: Adw.StatusPage {
+              icon-name: "search-symbolic";
+              title: _("No Results Found");
+              description: _("Try a different search");
 
               styles [
-                "navigation-sidebar",
+                "compact",
               ]
             };
-          };
-        }
-
-        StackPage {
-          name: "loading";
-
-          child: Adw.Spinner {};
-        }
-
-        StackPage {
-          name: "no-results";
-
-          child: Adw.StatusPage {
-            icon-name: "search-symbolic";
-            title: _("No Results Found");
-            description: _("Try a different search");
-
-            styles [
-              "compact",
-            ]
-          };
-        }
+          }
+        };
       };
-    }
-  };
+    };
+
+    content: Adw.NavigationPage {
+      title: _("Details");
+      child: bind template.details;
+    };
+  }
 }

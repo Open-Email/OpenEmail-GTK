@@ -180,8 +180,6 @@ class DraftsPage(_MessagesPage):
 
         self.content.model.connect("notify::selected", on_selected)
 
-        self.content.layout_name = "single"
-
         self.content.toolbar_button = Gtk.Button(
             icon_name="trash-symbolic",
             tooltip_text=_("Delete All"),
