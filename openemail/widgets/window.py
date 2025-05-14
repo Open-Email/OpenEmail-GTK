@@ -8,7 +8,7 @@ from typing import Any
 import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, mail, notifier, run_task, settings, state_settings
+from openemail import APP_ID, PREFIX, Notifier, mail, run_task, settings, state_settings
 
 from .auth_view import AuthView
 from .content_view import ContentView
@@ -51,7 +51,7 @@ class Window(Adw.ApplicationWindow):
             Gio.SettingsBindFlags.DEFAULT,
         )
 
-        notifier.connect("send", self._on_send_notification)
+        Notifier.get_default().connect("send", self._on_send_notification)
 
         if not mail.user.logged_in:
             return

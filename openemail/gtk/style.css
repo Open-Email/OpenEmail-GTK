@@ -21,3 +21,13 @@ headerbar.overlaid {
 headerbar.overlaid windowcontrols {
   filter: drop-shadow(0 0 4px black);
 }
+
+@keyframes spinning {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+button.spinning > image {
+  animation: spinning 1s linear infinite;
+}

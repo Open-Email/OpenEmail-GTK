@@ -23,7 +23,7 @@ from typing import Any, cast
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
 
-from openemail import notifier, run_task, secret_service, settings
+from openemail import Notifier, run_task, secret_service, settings
 
 from .core import client, model
 from .core.client import WriteError as WriteError
@@ -48,7 +48,7 @@ def try_auth(
                 on_success()
             return
 
-        notifier.send(_("Authentication failed"))
+        Notifier.send(_("Authentication failed"))
 
         if on_failure:
             on_failure()
@@ -72,7 +72,7 @@ def register(
                 on_success()
             return
 
-        notifier.send(_("Registration failed, try another address"))
+        Notifier.send(_("Registration failed, try another address"))
 
         if on_failure:
             on_failure()
@@ -80,14 +80,10 @@ def register(
     run_task(auth(), done)
 
 
-syncing = False
-_first_sync = True
-
-
 async def sync(periodic: bool = False) -> None:
     """Populate the app's content by fetching the user's data."""
-    global syncing
-    global _first_sync
+    notifier = Notifier.get_default()
+    notifier.emit("sync-started")
 
     if periodic and (interval := settings.get_uint("sync-interval")):
         GLib.timeout_add_seconds(interval or 60, sync, True)
@@ -99,16 +95,6 @@ async def sync(periodic: bool = False) -> None:
         # Assume that nobody is logged in, skip sync for now
         if not settings.get_string("address"):
             return
-
-    if not _first_sync:
-        if syncing:
-            notifier.send(_("Sync already running"))
-            return
-
-        notifier.send(_("Syncing…"))
-
-    syncing = True
-    _first_sync = False
 
     broadcasts.updating = True
     inbox.updating = True
@@ -126,10 +112,9 @@ async def sync(periodic: bool = False) -> None:
     }
 
     def done(task: Coroutine[Any, Any, Any]) -> None:
-        global syncing
-
         tasks.discard(task)
-        syncing = bool(tasks)
+        if not tasks:
+            notifier.emit("sync-finished")
 
     for task in tasks:
         run_task(task, lambda _, t=task: done(t))
@@ -140,7 +125,7 @@ async def update_profile(values: dict[str, str]) -> None:
     try:
         await client.update_profile(values)
     except WriteError as error:
-        notifier.send(_("Failed to update profile"))
+        Notifier.send(_("Failed to update profile"))
         raise error
 
     await update_user_profile()
@@ -197,17 +182,17 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
             option_values=("80",),
         )
     except GLib.Error as error:
-        notifier.send(_("Failed to update profile image"))
+        Notifier.send(_("Failed to update profile image"))
         raise WriteError from error
 
     if not success:
-        notifier.send(_("Failed to update profile image"))
+        Notifier.send(_("Failed to update profile image"))
         raise WriteError
 
     try:
         await client.update_profile_image(data)
     except WriteError as error:
-        notifier.send(_("Failed to update profile image"))
+        Notifier.send(_("Failed to update profile image"))
         raise error
 
     await update_user_profile()
@@ -241,7 +226,7 @@ async def delete_profile_image() -> None:
     try:
         await client.delete_profile_image()
     except WriteError as error:
-        notifier.send(_("Failed to delete profile image"))
+        Notifier.send(_("Failed to delete profile image"))
         raise error
 
     await update_user_profile()
@@ -262,7 +247,7 @@ async def send_message(
 
     `attachments` is a dictionary of `Gio.File`s and filenames.
     """
-    notifier.send(_("Sending message…"))
+    Notifier.send(_("Sending message…"))
 
     files = {}
     for gfile, name in attachments.items():
@@ -278,7 +263,7 @@ async def send_message(
     try:
         await client.send_message(readers, subject, body, reply, attachments=files)
     except WriteError as error:
-        notifier.send(_("Failed to send message"))
+        Notifier.send(_("Failed to send message"))
         raise error
 
     await outbox.update()
@@ -323,7 +308,7 @@ async def delete_account() -> None:
     try:
         await client.delete_account()
     except WriteError:
-        notifier.send(_("Failed to delete account"))
+        Notifier.send(_("Failed to delete account"))
         return
 
     log_out()
@@ -604,7 +589,7 @@ class AddressBook(ProfileStore):
             run_task(broadcasts.update())
             run_task(inbox.update())
 
-            notifier.send(_("Failed to add contact"))
+            Notifier.send(_("Failed to add contact"))
             raise error
 
     async def delete(self, address: Address) -> None:
@@ -620,7 +605,7 @@ class AddressBook(ProfileStore):
             run_task(broadcasts.update())
             run_task(inbox.update())
 
-            notifier.send(_("Failed to remove contact"))
+            Notifier.send(_("Failed to remove contact"))
             raise error
 
     async def _update(self) -> None:
@@ -688,7 +673,7 @@ class Attachment(GObject.Object):
     async def download(self) -> bytes | None:
         """Download and reconstruct `self` from its parts."""
         if not (data := await client.download_attachment(self._parts)):
-            notifier.send(_("Failed to download attachment"))
+            Notifier.send(_("Failed to download attachment"))
             return None
 
         return data
@@ -888,7 +873,7 @@ class Message(GObject.Object):
                 await client.delete_message(msg.ident)
             except WriteError:
                 if not failed:
-                    notifier.send(_("Failed to discard message"))
+                    Notifier.send(_("Failed to discard message"))
 
                 failed = True
                 continue

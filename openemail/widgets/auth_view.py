@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, mail, notifier
+from openemail import APP_ID, PREFIX, Notifier, mail
 from openemail.mail import Address, KeyPair
 
 from .form import Form
@@ -57,7 +57,7 @@ class AuthView(Adw.Bin):
         try:
             mail.user.address = Address(self.user_name_entry.props.text + "@open.email")
         except ValueError:
-            notifier.send(_("Invalid name, try another one"))
+            Notifier.send(_("Invalid name, try another one"))
             return
 
         mail.user.encryption_keys = KeyPair.for_encryption()
@@ -100,7 +100,7 @@ class AuthView(Adw.Bin):
             )
 
         except ValueError:
-            notifier.send(_("Incorrect key format"))
+            Notifier.send(_("Incorrect key format"))
             return
 
         def success() -> None:

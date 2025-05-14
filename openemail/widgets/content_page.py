@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import PREFIX, mail, run_task
+from openemail import PREFIX, Notifier, mail, run_task
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/content-page.ui")
@@ -16,6 +16,7 @@ class ContentPage(Adw.BreakpointBin):
     __gtype_name__ = "ContentPage"
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
+    sync_button: Gtk.Button = Gtk.Template.Child()
 
     factory = GObject.Property(type=Gtk.ListItemFactory)
 
@@ -55,6 +56,21 @@ class ContentPage(Adw.BreakpointBin):
 
         model.connect("items-changed", self._update_stack)
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        def sync_started(*_args: Any) -> None:
+            self.sync_button.props.sensitive = False
+            self.sync_button.add_css_class("spinning")
+
+        def sync_finished(*_args: Any) -> None:
+            self.sync_button.remove_css_class("spinning")
+            self.sync_button.props.sensitive = True
+
+        notifier = Notifier.get_default()
+        notifier.connect("sync-started", sync_started)
+        notifier.connect("sync-finished", sync_finished)
+
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:
         if not isinstance(
@@ -72,9 +88,6 @@ class ContentPage(Adw.BreakpointBin):
     @Gtk.Template.Callback()
     def _sync(self, *_args: Any) -> None:
         run_task(mail.sync())
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
 
     def _update_stack(self, *_args: Any) -> None:
         self.sidebar_child_name = (

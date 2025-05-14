@@ -8,12 +8,12 @@ import asyncio
 from asyncio import Task
 from collections.abc import Callable, Coroutine
 from pathlib import Path
-from typing import Any
+from typing import Any, Type
 
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Gio, GLib, GObject
 
-from .core import client
+from openemail.core import client
 
 APP_ID = "@APP_ID@"
 VERSION = "@VERSION@"
@@ -23,21 +23,32 @@ PROFILE = "@PROFILE@"
 settings = Gio.Settings.new(APP_ID)
 state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
-log_file = Path(GLib.get_user_state_dir()) / "openemail.log"
-client.data_dir = Path(GLib.get_user_data_dir()) / "openemail"
+log_file = Path(GLib.get_user_state_dir(), "openemail.log")
+client.data_dir = Path(GLib.get_user_data_dir(), "openemail")
 
 
-class Notifier(GObject.Object):
-    """Used for sending user-facing notifications throughout the application."""
+class Notifier[T: Notifier](GObject.Object):
+    """Used for sending user-facing information throughout the application."""
+
+    sync_started = GObject.Signal()
+    sync_finished = GObject.Signal()
 
     send_notification = GObject.Signal(name="send", arg_types=(str,))
 
-    def send(self, title: str) -> None:
+    _default: T | None = None
+
+    @classmethod
+    def send(cls: Type[T], title: str) -> None:
         """Emit the `Notifier::send` signal with `title`."""
-        self.emit("send", title)
+        cls.get_default().emit("send", title)
 
+    @classmethod
+    def get_default(cls: Type[T]) -> T:
+        if not cls._default:
+            cls._default = cls()
 
-notifier = Notifier()
+        return cls._default
+
 
 asyncio.set_event_loop_policy(_policy := GLibEventLoopPolicy())
 _loop: asyncio.AbstractEventLoop = _policy.get_event_loop()
