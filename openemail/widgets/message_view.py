@@ -93,11 +93,14 @@ class MessageView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:
-        self.profile_view.profile = (
-            Profile.of(message.author)
-            if (self.message and (message := self.message.message))
-            else None
-        )
+        profile = None
+        if self.message:
+            try:
+                profile = Profile.of(self.message.author)
+            except ValueError:
+                pass
+
+        self.profile_view.profile = profile
         self.profile_dialog.present(self)
 
     @Gtk.Template.Callback()

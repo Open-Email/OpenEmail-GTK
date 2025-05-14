@@ -47,12 +47,6 @@ class KeyPair[T: KeyPair]:
     private: Key
     public: Key
 
-    def __bytes__(self) -> bytes:
-        return bytes(self.private) + bytes(self.public)
-
-    def __str__(self) -> str:
-        return b64encode(bytes(self)).decode("utf-8")
-
     @classmethod
     def from_b64(cls: Type[T], b64: str) -> T:
         """Get the keypair for a given Base64-encoded string."""
@@ -77,6 +71,12 @@ class KeyPair[T: KeyPair]:
     def for_signing(cls: Type[T]) -> T:
         """Generate a new keypair used for signing."""
         return cls(Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key)))
+
+    def __bytes__(self) -> bytes:
+        return bytes(self.private) + bytes(self.public)
+
+    def __str__(self) -> str:
+        return b64encode(bytes(self)).decode("utf-8")
 
 
 def sign_data(private_key: Key, data: bytes) -> str:

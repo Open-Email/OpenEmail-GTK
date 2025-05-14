@@ -3,6 +3,7 @@
 # SPDX-FileContributor: kramo
 
 import asyncio
+import operator
 from abc import abstractmethod
 from collections import defaultdict, namedtuple
 from collections.abc import (
@@ -29,7 +30,6 @@ from .core.client import WriteError as WriteError
 from .core.client import user as user
 from .core.crypto import KeyPair as KeyPair
 from .core.model import Address as Address
-from .core.model import User as User
 
 
 def try_auth(
@@ -216,13 +216,13 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
 async def update_user_profile() -> None:
     """Update the profile of the user by fetching new data remotely."""
     user_profile.updating = True
+    user_profile.set_from_profile(profile := await client.fetch_profile(user.address))
 
-    user_profile.profile = await client.fetch_profile(user.address)
-    if user_profile.profile:
-        user.signing_keys.public = user_profile.profile.signing_key
+    if profile:
+        user.signing_keys.public = profile.signing_key
 
-        if user_profile.profile.encryption_key:
-            user.encryption_keys.public = user_profile.profile.encryption_key
+        if profile.encryption_key:
+            user.encryption_keys.public = profile.encryption_key
 
     try:
         user_profile.image = Gdk.Texture.new_from_bytes(
@@ -232,7 +232,7 @@ async def update_user_profile() -> None:
         user_profile.image = None
 
     Profile.of(user.address).image = user_profile.image
-    Profile.of(user.address).profile = user_profile.profile
+    Profile.of(user.address).set_from_profile(profile)
     user_profile.updating = False
 
 
@@ -291,14 +291,14 @@ def empty_trash() -> None:
             if not isinstance(message, Message):
                 continue
 
-            if message.message and message.trashed:
-                store.delete(message.message.ident)
+            if message.trashed:
+                message.delete()
 
 
 def log_out() -> None:
     """Remove the user's local account."""
     for profile in _profiles.values():
-        profile.profile = None
+        profile.set_from_profile(None)
 
     _profiles.clear()
     address_book.clear()
@@ -319,7 +319,7 @@ def log_out() -> None:
 
     rmtree(client.data_dir, ignore_errors=True)
 
-    for field in fields(User):
+    for field in fields(model.User):
         delattr(user, field.name)
 
 
@@ -458,13 +458,8 @@ class Profile(GObject.Object):
     _address: str | None = None
     _name: str | None = None
 
-    @property
-    def profile(self) -> model.Profile | None:
-        """Get the `model.Profile` that `self` represents."""
-        return self._profile
-
-    @profile.setter
-    def profile(self, profile: model.Profile | None) -> None:
+    def set_from_profile(self, profile: model.Profile | None) -> None:
+        """Set the properties of `self` from `profile`."""
         self._profile = profile
 
         if not profile:
@@ -484,7 +479,7 @@ class Profile(GObject.Object):
 
     @receive_broadcasts.setter
     def receive_broadcasts(self, receive_broadcasts: bool) -> None:
-        if self._broadcasts == receive_broadcasts or (not self.profile):
+        if self._broadcasts == receive_broadcasts or (not self._profile):
             return
 
         self._broadcasts = receive_broadcasts
@@ -492,7 +487,7 @@ class Profile(GObject.Object):
         run_task(broadcasts.update())
         run_task(
             client.new_contact(
-                self.profile.address,
+                self._profile.address,
                 receive_broadcasts=receive_broadcasts,
             )
         )
@@ -528,7 +523,7 @@ class Profile(GObject.Object):
     def value_of(self, ident: str) -> Any:
         """Get the value of the field identified by `ident` in `self`."""
         try:
-            return getattr(self.profile, ident.replace("-", "_"))
+            return getattr(self._profile, ident.replace("-", "_"))
         except AttributeError:
             return None
 
@@ -581,7 +576,7 @@ class ProfileStore(DictStore[Address, Profile]):
 
     @staticmethod
     async def _update_profile(address: Address) -> None:
-        Profile.of(address).profile = await client.fetch_profile(address)
+        Profile.of(address).set_from_profile(await client.fetch_profile(address))
 
     @staticmethod
     async def _update_profile_image(address: Address) -> None:
@@ -687,16 +682,17 @@ class Attachment(GObject.Object):
     __gtype_name__ = "Attachment"
 
     name = GObject.Property(type=str)
-    parts: list[model.Message]
+
+    _parts: list[model.Message]
 
     def __init__(self, name: str, parts: list[model.Message], **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.name, self.parts = name, parts
+        self.name, self._parts = name, parts
 
     async def download(self) -> bytes | None:
         """Download and reconstruct `self` from its parts."""
-        if not (data := await client.download_attachment(self.parts)):
+        if not (data := await client.download_attachment(self._parts)):
             notifier.send(_("Failed to download attachment"))
             return None
 
@@ -740,20 +736,26 @@ class Message(GObject.Object):
     _message: model.Message | None = None
 
     @property
-    def trashed(self) -> bool:
-        """Whether the item is in the trash."""
-        if not self.message:
-            return False
-
-        return self.message.ident in settings.get_strv("trashed-messages")
+    def author(self) -> Address | None:
+        """The author of `self`."""
+        return self._message.author if self._message else None
 
     @property
-    def message(self) -> model.Message | None:
-        """Get the `model.Message` that `self` represents."""
-        return self._message
+    def trashed(self) -> bool:
+        """Whether the item is in the trash."""
+        if not self._message:
+            return False
 
-    @message.setter
-    def message(self, message: model.Message | None) -> None:
+        return self._message.ident in settings.get_strv("trashed-messages")
+
+    def __init__(self, message: model.Message | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        self.attachments = Gio.ListStore.new(Attachment)
+        self.set_from_message(message)
+
+    def set_from_message(self, message: model.Message | None) -> None:
+        """Set the properties of `self` from `message`."""
         self._message = message
 
         if not message:
@@ -817,12 +819,6 @@ class Message(GObject.Object):
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
-    def __init__(self, message: model.Message | None = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-
-        self.attachments = Gio.ListStore.new(Attachment)
-        self.message = message
-
     def trash(self) -> None:
         """Move `self` to the trash."""
         if not self._message:
@@ -846,6 +842,43 @@ class Message(GObject.Object):
         )
 
         self._update_trashed_state()
+
+    def delete(self) -> None:
+        """Remove `self` from the trash."""
+        if not self._message:
+            return
+
+        settings.set_strv(
+            "deleted-messages",
+            tuple(set(settings.get_strv("deleted-messages")) | {self._message.ident}),
+        )
+
+        envelopes_dir = (
+            client.data_dir
+            / "envelopes"
+            / self._message.author.host_part
+            / self._message.author.local_part
+        )
+        messages_dir = (
+            client.data_dir
+            / "messages"
+            / self._message.author.host_part
+            / self._message.author.local_part
+        )
+
+        if self._message.is_broadcast:
+            envelopes_dir /= "broadcasts"
+            messages_dir /= "broadcasts"
+
+        for child in [self._message] + self._message.children:
+            (envelopes_dir / f"{child.ident}.json").unlink(missing_ok=True)
+            (messages_dir / child.ident).unlink(missing_ok=True)
+
+        (broadcasts if self._message.is_broadcast else inbox).remove(
+            self._message.ident
+        )
+        self.restore()
+        self.set_from_message(None)
 
     async def discard(self) -> None:
         """Discard `self` and its children."""
@@ -877,13 +910,13 @@ class Message(GObject.Object):
 
         self.unread = False
 
-        if not self.message:
+        if not self._message:
             return
 
-        self.message.new = False
+        self._message.new = False
         settings.set_strv(
             "unread-messages",
-            tuple(set(settings.get_strv("unread-messages")) - {self.message.ident}),
+            tuple(set(settings.get_strv("unread-messages")) - {self._message.ident}),
         )
 
     def _update_trashed_state(self) -> None:
@@ -891,48 +924,35 @@ class Message(GObject.Object):
         self.can_restore = self.trashed
         self.can_reply = not self.can_restore
 
+    def _compare(self, other: object, func: Callable[[Any, Any], bool]) -> bool:
+        if not (self._message and isinstance(other, Message) and other._message):  # noqa: SLF001 https://github.com/astral-sh/ruff/issues/3933
+            return func(True, True)
+
+        return func(self.date, other.date)
+
+    def __eq__(self, other: object) -> bool:
+        return self._compare(other, operator.eq)
+
+    def __ne__(self, other: object) -> bool:
+        return self._compare(other, operator.ne)
+
+    def __lt__(self, other: object) -> bool:
+        return self._compare(other, operator.lt)
+
+    def __gt__(self, other: object) -> bool:
+        return self._compare(other, operator.gt)
+
+    def __le__(self, other: object) -> bool:
+        return self._compare(other, operator.le)
+
+    def __ge__(self, other: object) -> bool:
+        return self._compare(other, operator.ge)
+
 
 class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
     item_type = Message
-
-    def delete(self, ident: str) -> None:
-        """Delete the message with `ident`.
-
-        From the user's perspective, this means removing an item from the trash.
-        """
-        settings.set_strv(
-            "deleted-messages",
-            tuple(set(settings.get_strv("deleted-messages")) | {ident}),
-        )
-
-        if not ((message := self._items.get(ident)) and (parent := message.message)):
-            return
-
-        envelopes_dir = (
-            client.data_dir
-            / "envelopes"
-            / parent.author.host_part
-            / parent.author.local_part
-        )
-        messages_dir = (
-            client.data_dir
-            / "messages"
-            / parent.author.host_part
-            / parent.author.local_part
-        )
-
-        if parent.is_broadcast:
-            envelopes_dir /= "broadcasts"
-            messages_dir /= "broadcasts"
-
-        for child in [parent] + parent.children:
-            (envelopes_dir / f"{child.ident}.json").unlink(missing_ok=True)
-            (messages_dir / child.ident).unlink(missing_ok=True)
-
-        self.remove(ident)
-        message.restore()
 
     async def _update(self) -> None:
         """Update `self` asynchronously using `self._fetch()`."""

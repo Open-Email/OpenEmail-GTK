@@ -45,12 +45,7 @@ class _MessagesPage(Adw.NavigationPage):
                             )
                         ),
                     ),
-                    Gtk.CustomSorter.new(
-                        lambda a, b, _: int(
-                            b.message.date.timestamp() > a.message.date.timestamp()
-                        )
-                        - int(b.message.date.timestamp() < a.message.date.timestamp())
-                    ),
+                    Gtk.CustomSorter.new(lambda a, b, _: int(b > a) - int(b < a)),
                 ),
             ),
             factory=Gtk.BuilderListItemFactory.new_from_resource(
