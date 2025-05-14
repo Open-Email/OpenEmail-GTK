@@ -737,7 +737,7 @@ class Message(GObject.Object):
         if not self._message:
             return False
 
-        return self._message.ident in settings.get_strv("trashed-messages")
+        return _ident(self._message) in settings.get_strv("trashed-messages")
 
     def __init__(self, message: model.Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -817,7 +817,7 @@ class Message(GObject.Object):
 
         settings.set_strv(
             "trashed-messages",
-            tuple(set(settings.get_strv("trashed-messages")) | {self._message.ident}),
+            tuple(set(settings.get_strv("trashed-messages")) | {_ident(self._message)}),
         )
 
         self._update_trashed_state()
@@ -829,7 +829,7 @@ class Message(GObject.Object):
 
         settings.set_strv(
             "trashed-messages",
-            tuple(set(settings.get_strv("trashed-messages")) - {self._message.ident}),
+            tuple(set(settings.get_strv("trashed-messages")) - {_ident(self._message)}),
         )
 
         self._update_trashed_state()
@@ -841,7 +841,7 @@ class Message(GObject.Object):
 
         settings.set_strv(
             "deleted-messages",
-            tuple(set(settings.get_strv("deleted-messages")) | {self._message.ident}),
+            tuple(set(settings.get_strv("deleted-messages")) | {_ident(self._message)}),
         )
 
         envelopes_dir = (
@@ -866,7 +866,7 @@ class Message(GObject.Object):
             (messages_dir / child.ident).unlink(missing_ok=True)
 
         (broadcasts if self._message.is_broadcast else inbox).remove(
-            self._message.ident
+            _ident(self._message)
         )
         self.restore()
         self.set_from_message(None)
@@ -876,7 +876,7 @@ class Message(GObject.Object):
         if not self._message:
             return
 
-        outbox.remove(self._message.ident)
+        outbox.remove(_ident(self._message))
 
         failed = False
         for msg in [self._message] + self._message.children:
@@ -907,7 +907,7 @@ class Message(GObject.Object):
         self._message.new = False
         settings.set_strv(
             "unread-messages",
-            tuple(set(settings.get_strv("unread-messages")) - {self._message.ident}),
+            tuple(set(settings.get_strv("unread-messages")) - {_ident(self._message)}),
         )
 
     def _update_trashed_state(self) -> None:
@@ -950,11 +950,13 @@ class MessageStore(DictStore[str, Message]):
         idents: set[str] = set()
 
         async for message in self._fetch():  # type: ignore
-            idents.add(message.ident)
-            if message.ident in self._items:
+            ident = _ident(message)
+
+            idents.add(ident)
+            if ident in self._items:
                 continue
 
-            self._items[message.ident] = Message(message)
+            self._items[ident] = Message(message)
             self.items_changed(len(self._items) - 1, 0, 1)
 
         removed = 0
@@ -980,9 +982,9 @@ class MessageStore(DictStore[str, Message]):
 
             for message in await messages:
                 if message.new:
-                    unread.add(message.ident)
+                    unread.add(_ident(message))
 
-                elif message.ident in current_unread:
+                elif _ident(message) in current_unread:
                     message.new = True
 
                 yield message
@@ -1059,8 +1061,12 @@ class _BroadcastStore(MessageStore):
     async def _fetch(self) -> ...:
         async for message in self._process_messages(
             client.fetch_broadcasts(
-                Address(contact.address),
-                exclude=settings.get_strv("deleted-messages"),
+                address := Address(contact.address),
+                exclude=(
+                    split[1]
+                    for ident in settings.get_strv("deleted-messages")
+                    if (split := ident.split(" "))[0] == address.host_part
+                ),
             )
             for contact in address_book
             if contact.receive_broadcasts
@@ -1095,7 +1101,14 @@ class _InboxStore(MessageStore):
         deleted = settings.get_strv("deleted-messages")
         async for message in self._process_messages(
             (
-                client.fetch_link_messages(contact, exclude=deleted)
+                client.fetch_link_messages(
+                    contact,
+                    exclude=(
+                        split[1]
+                        for ident in deleted
+                        if (split := ident.split(" "))[0] == contact.host_part
+                    ),
+                )
                 for contact in chain(known_notifiers, other_contacts)
             ),
         ):
@@ -1119,5 +1132,10 @@ broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
 drafts = MailDraftStore()
+
+
+def _ident(message: model.Message) -> str:
+    return f"{message.author.host_part} {message.ident}"
+
 
 run_task(sync(periodic=True))
