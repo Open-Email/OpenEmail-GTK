@@ -858,7 +858,7 @@ class Message(GObject.Object):
         if not (self._message and isinstance(other, Message) and other._message):  # noqa: SLF001 https://github.com/astral-sh/ruff/issues/3933
             return func(True, True)
 
-        return func(self.date, other.date)
+        return func(self.datetime, other.datetime)
 
     def __eq__(self, other: object) -> bool:
         return self._compare(other, operator.eq)
