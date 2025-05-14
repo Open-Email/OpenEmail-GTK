@@ -286,13 +286,8 @@ async def send_message(
 
 def empty_trash() -> None:
     """Empty the user's trash."""
-    for store in inbox, broadcasts:
-        for message in store:
-            if not isinstance(message, Message):
-                continue
-
-            if message.trashed:
-                message.delete()
+    for message in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
+        message.delete()
 
 
 def log_out() -> None:
