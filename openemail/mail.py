@@ -517,7 +517,7 @@ class ProfileStore(DictStore[Address, Profile]):
             Profile.of(address).image = None
 
 
-class AddressBook(ProfileStore):
+class _AddressBook(ProfileStore):
     """An implementation of `Gio.ListModel` for storing contacts."""
 
     async def new(self, address: Address, *, receive_broadcasts: bool = False) -> None:
@@ -568,7 +568,7 @@ class AddressBook(ProfileStore):
                 self.remove(address)
 
 
-class MailContactRequests(ProfileStore):
+class _ContactRequests(ProfileStore):
     """An implementation of `Gio.ListModel` for storing contact requests."""
 
     def __init__(self, **kwargs: Any) -> None:
@@ -934,7 +934,7 @@ class MessageStore(DictStore[str, Message]):
         )
 
 
-class MailDraftStore(DictStore[int, Message]):
+class _DraftStore(DictStore[int, Message]):
     """An implementation of `Gio.ListModel` for storing drafts."""
 
     item_type = Message
@@ -1064,14 +1064,14 @@ class _OutboxStore(MessageStore):
 
 
 _profiles: defaultdict[Address, Profile] = defaultdict(Profile)
-address_book = AddressBook()
-contact_requests = MailContactRequests()
+address_book = _AddressBook()
+contact_requests = _ContactRequests()
 user_profile = Profile()
 
 broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
-drafts = MailDraftStore()
+drafts = _DraftStore()
 
 
 def _ident(message: model.Message) -> str:
