@@ -25,6 +25,15 @@ template $AuthView: Adw.Bin {
                 halign: center;
                 spacing: 12;
 
+                Button sign_up_button {
+                  label: _("Create Account");
+                  clicked => $_sign_up();
+
+                  styles [
+                    "pill",
+                  ]
+                }
+
                 Button log_in_button {
                   label: _("Log In");
                   clicked => $_log_in();
@@ -32,15 +41,6 @@ template $AuthView: Adw.Bin {
                   styles [
                     "pill",
                     "suggested-action",
-                  ]
-                }
-
-                Button sign_up_button {
-                  label: _("Create Account");
-                  clicked => $_sign_up();
-
-                  styles [
-                    "pill",
                   ]
                 }
               }
