@@ -84,7 +84,7 @@ class User:
 
     @property
     def logged_in(self) -> bool:
-        """Whether or not the user has valid credentials."""
+        """Whether the user has valid credentials."""
         return all(hasattr(self, f.name) for f in fields(User))
 
     def __init__(self) -> None: ...
@@ -133,12 +133,12 @@ class Message:
 
     @property
     def is_broadcast(self) -> bool:
-        """Whether or not the message is a broadcast."""
+        """Whether the message is a broadcast."""
         return not bool(self.access_links)
 
     @property
     def is_child(self) -> bool:
-        """Whether or not the message is a child."""
+        """Whether the message is a child."""
         return bool(self.parent_id)
 
     def __post_init__(self) -> None:
@@ -331,7 +331,7 @@ class Notification:
 
     @property
     def is_expired(self) -> bool:
-        """Whether or not the notification has already expired."""
+        """Whether the notification has already expired."""
         return (self.received_on - datetime.now(timezone.utc)).days >= MESSAGE_LIFETIME
 
 

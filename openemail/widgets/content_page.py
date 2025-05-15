@@ -33,7 +33,7 @@ class ContentPage(Adw.BreakpointBin):
 
     @GObject.Property(type=bool, default=False)
     def loading(self) -> bool:
-        """Whether or not to display a loading indicator in case the page is empty."""
+        """Whether to display a loading indicator in case the page is empty."""
         return self._loading
 
     @loading.setter
