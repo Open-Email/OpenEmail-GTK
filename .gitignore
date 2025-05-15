@@ -1,2 +1,3 @@
 .prettierignore
 .DS_Store
+.flatpak-builder
