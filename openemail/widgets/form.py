@@ -131,14 +131,12 @@ class Form(GObject.Object):
                     self._invalid(field)
                     return
 
-                for address in addresses:
-                    try:
-                        Address(address)
-                    except ValueError:
-                        self._invalid(field)
-                        return
-
-                self._valid(field)
+                try:
+                    tuple(map(Address, addresses))
+                except ValueError:
+                    self._invalid(field)
+                else:
+                    self._valid(field)
 
     def _verify(self) -> None:
         if isinstance(self.submit, Adw.AlertDialog):

@@ -84,5 +84,5 @@ class ContentView(Adw.BreakpointBin):
             self.split_view.props.show_sidebar = False
 
     @Gtk.Template.Callback()
-    def _on_profile_button_clciked(self, *_args: Any) -> None:
+    def _on_profile_button_clicked(self, *_args: Any) -> None:
         self.profile_settings.present(self)
