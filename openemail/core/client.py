@@ -1086,8 +1086,10 @@ async def _build_message(
     files = {}
     modified = date  # TODO
     for name, data in attachments.items():
-        for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
-            part = data[start : start + MAX_MESSAGE_SIZE]
+        max_size = MAX_MESSAGE_SIZE if readers else len(data)  # Don't split broadcasts
+
+        for index, start in enumerate(range(0, len(data), max_size)):
+            part = data[start : start + max_size]
             files[name] = (
                 {
                     "name": name,
