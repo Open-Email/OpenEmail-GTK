@@ -8,7 +8,7 @@ from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Iterable
 from dataclasses import fields
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from itertools import chain
 from shutil import rmtree
 from typing import Any, ClassVar, NamedTuple, cast
@@ -700,7 +700,7 @@ class Message(GObject.Object):
         self.datetime = _("{} at {}").format(
             self.date,
             message.date.astimezone(
-                datetime.now(timezone.utc).tzinfo,
+                datetime.now(UTC).tzinfo,
             ).strftime("%H:%M"),
         )
 

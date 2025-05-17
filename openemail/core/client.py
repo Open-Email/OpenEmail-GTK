@@ -7,7 +7,7 @@ import json
 import logging
 from base64 import b64encode
 from collections.abc import AsyncGenerator, Generator, Iterable, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
 from json import JSONDecodeError
@@ -206,7 +206,7 @@ async def register() -> bool:
                     f"value={user.signing_keys.public}",
                 )
             ),
-            f"Updated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
+            f"Updated: {datetime.now(UTC).isoformat(timespec='seconds')}",
         )
     ).encode("utf-8")
 
@@ -246,7 +246,7 @@ async def update_profile(values: dict[str, str]) -> None:
 
     values.update(
         {
-            "Updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "Updated": datetime.now(UTC).isoformat(timespec="seconds"),
             "Encryption-Key": "; ".join(
                 (
                     f"id={user.encryption_keys.public.key_id or 0}",
@@ -530,7 +530,7 @@ async def send_message(
         raise WriteError
 
     messages: list[tuple[dict[str, str], bytes]] = []
-    date = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    date = datetime.now(UTC).isoformat(timespec="seconds")
 
     try:
         ident, headers, content, parts = await _build_message(
@@ -698,7 +698,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
 
             yield Notification(
                 ident,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
                 link,
                 notifier,
                 signing_key_fp,
@@ -1077,7 +1077,7 @@ async def _build_message(
     attachment = attachment or {}
     attachments = attachments or {}
 
-    date = date or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    date = date or datetime.now(UTC).isoformat(timespec="seconds")
     headers: dict[str, str] = {
         "Message-Id": generate_message_id(),
         "Content-Type": "application/octet-stream",
