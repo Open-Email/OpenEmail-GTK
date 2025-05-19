@@ -6,7 +6,7 @@ import re
 from collections.abc import Awaitable, Iterable
 from typing import Any, cast
 
-from gi.repository import Adw, Gio, GLib, Gtk
+from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
 from openemail.mail import Address, Message, Profile
@@ -21,13 +21,14 @@ class ComposeDialog(Adw.Dialog):
 
     __gtype_name__ = "ComposeDialog"
 
-    broadcast_switch: Gtk.Switch = Gtk.Template.Child()
     readers: Gtk.Text = Gtk.Template.Child()
     subject: Gtk.Text = Gtk.Template.Child()
     body_view: MessageBody = Gtk.Template.Child()
     compose_form: Form = Gtk.Template.Child()
 
     attachments: Gtk.ListBox = Gtk.Template.Child()
+
+    privacy = GObject.Property(type=str, default="private")
 
     body: Gtk.TextBuffer
     subject_id: str | None = None
@@ -46,7 +47,7 @@ class ComposeDialog(Adw.Dialog):
         """Present `self` with empty contents."""
         self.subject_id = None
         self.draft_id = None
-        self.broadcast_switch.props.active = False
+        self.privacy = "private"
         self.attached_files.clear()
         self.attachments.remove_all()
         self.compose_form.reset()
@@ -58,7 +59,7 @@ class ComposeDialog(Adw.Dialog):
         """Present `self`, displaying the contents of `message`."""
         self.attached_files.clear()
         self.attachments.remove_all()
-        self.broadcast_switch.props.active = message.broadcast
+        self.privacy = "public" if message.broadcast else "private"
         self.subject_id = message.subject_id
         self.draft_id = message.draft_id
         self.readers.props.text = message.name
@@ -72,8 +73,8 @@ class ComposeDialog(Adw.Dialog):
         self.attached_files.clear()
         self.attachments.remove_all()
         self.compose_form.reset()
-        self.broadcast_switch.props.active = (
-            message.broadcast and message.author_is_self
+        self.privacy = (
+            "public" if (message.broadcast and message.author_is_self) else "private"
         )
         self.readers.props.text = message.reader_addresses
 
@@ -97,7 +98,7 @@ class ComposeDialog(Adw.Dialog):
     def _send_message(self, *_args: Any) -> None:
         readers: list[Address] = []
         warnings: dict[Address, str | None] = {}
-        if not self.broadcast_switch.props.active:
+        if not self._is_public(None, self.privacy):
             for reader in re.split(",|;| ", self.readers.props.text):
                 if not reader:
                     continue
@@ -187,27 +188,6 @@ class ComposeDialog(Adw.Dialog):
     @Gtk.Template.Callback()
     def _format_quote(self, *_args: Any) -> None:
         self._format_line(">", toggle=True)
-
-    @Gtk.Template.Callback()
-    def _closed(self, *_args: Any) -> None:
-        if not self._save:
-            self._save = True
-            return
-
-        subject = self.subject.props.text
-        body = self.body.props.text
-
-        if not (subject or body):
-            return
-
-        mail.drafts.save(
-            self.readers.props.text,
-            subject,
-            body,
-            self.subject_id,
-            self.broadcast_switch.props.active,
-            self.draft_id,
-        )
 
     @Gtk.Template.Callback()
     def _insert_emoji(self, *_args: Any) -> None:
@@ -303,3 +283,32 @@ class ComposeDialog(Adw.Dialog):
 
         self.body.end_user_action()
         self.body_view.grab_focus()
+
+    @Gtk.Template.Callback()
+    def _is_private(self, _obj: Any, privacy: str) -> bool:
+        return privacy == "private"
+
+    @Gtk.Template.Callback()
+    def _is_public(self, _obj: Any, privacy: str) -> bool:
+        return privacy == "public"
+
+    @Gtk.Template.Callback()
+    def _closed(self, *_args: Any) -> None:
+        if not self._save:
+            self._save = True
+            return
+
+        subject = self.subject.props.text
+        body = self.body.props.text
+
+        if not (subject or body):
+            return
+
+        mail.drafts.save(
+            self.readers.props.text,
+            subject,
+            body,
+            self.subject_id,
+            self._is_public(None, self.privacy),
+            self.draft_id,
+        )

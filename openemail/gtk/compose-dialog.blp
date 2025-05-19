@@ -13,6 +13,21 @@ template $ComposeDialog: Adw.Dialog {
       show-start-title-buttons: false;
       show-end-title-buttons: false;
 
+      title-widget: Adw.ToggleGroup {
+        valign: center;
+        active-name: bind template.privacy bidirectional;
+
+        Adw.Toggle {
+          name: "private";
+          label: _("Private");
+        }
+
+        Adw.Toggle {
+          name: "public";
+          label: _("Public");
+        }
+      };
+
       [start]
       Button {
         label: _("Cancel");
@@ -44,70 +59,50 @@ template $ComposeDialog: Adw.Dialog {
 
         Separator {}
 
-        Box {
+        Overlay {
           hexpand: true;
 
-          Overlay {
-            [overlay]
-            Revealer {
-              can-target: false;
-              reveal-child: bind broadcast_switch.active;
-              transition-type: crossfade;
+          [overlay]
+          Revealer {
+            can-target: false;
+            reveal-child: bind $_is_public(template.privacy) as <bool>;
+            transition-type: crossfade;
 
-              child: Label {
-                halign: start;
-                label: _("Public Message");
+            child: Label {
+              halign: start;
+              label: _("Readers: Everyone");
+
+              styles [
+                "dim-label",
+              ]
+            };
+          }
+
+          child: Revealer {
+            reveal-child: bind $_is_private(template.privacy) as <bool>;
+            transition-type: crossfade;
+            notify::reveal-child => $_reveal_readers();
+
+            child: Box {
+              Label readers_label {
+                margin-end: 6;
+                label: _("Readers:");
 
                 styles [
                   "dim-label",
                 ]
-              };
-            }
+              }
 
-            child: Revealer {
-              reveal-child: bind broadcast_switch.active inverted;
-              transition-type: crossfade;
-              notify::reveal-child => $_reveal_readers();
+              Text readers {
+                height-request: 42;
+                hexpand: true;
 
-              child: Box {
-                Label readers_label {
-                  margin-end: 6;
-                  label: _("Readers:");
-
-                  styles [
-                    "dim-label",
-                  ]
+                accessibility {
+                  labelled-by: readers_label;
                 }
-
-                Text readers {
-                  height-request: 42;
-                  hexpand: true;
-
-                  accessibility {
-                    labelled-by: readers_label;
-                  }
-                }
-              };
+              }
             };
-          }
-
-          Label broadcast_label {
-            margin-start: 6;
-            margin-end: 6;
-            label: _("Broadcast");
-
-            styles [
-              "dim-label",
-            ]
-          }
-
-          Switch broadcast_switch {
-            valign: center;
-
-            accessibility {
-              labelled-by: broadcast_label;
-            }
-          }
+          };
         }
 
         Separator {}

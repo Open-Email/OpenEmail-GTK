@@ -716,7 +716,7 @@ class Message(GObject.Object):
         self.different_author = message.author != message.original_author
 
         if message.is_broadcast:
-            self.readers = _("Broadcast")
+            self.readers = _("Public Message")
         else:
             self.readers = f"{_('Readers:')} {user_profile.name}"
             for reader in message.readers:

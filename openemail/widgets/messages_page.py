@@ -267,4 +267,4 @@ class BroadcastsPage(_FolderPage):
     __gtype_name__ = "BroadcastsPage"
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(mail.broadcasts, title=_("Broadcasts"), **kwargs)
+        super().__init__(mail.broadcasts, title=_("Public"), **kwargs)
