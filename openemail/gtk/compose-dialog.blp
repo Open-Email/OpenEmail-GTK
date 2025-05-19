@@ -59,29 +59,12 @@ template $ComposeDialog: Adw.Dialog {
 
         Separator {}
 
-        Overlay {
-          hexpand: true;
+        Adw.ViewStack {
+          enable-transitions: true;
+          visible-child-name: bind template.privacy;
 
-          [overlay]
-          Revealer {
-            can-target: false;
-            reveal-child: bind $_is_public(template.privacy) as <bool>;
-            transition-type: crossfade;
-
-            child: Label {
-              halign: start;
-              label: _("Readers: Everyone");
-
-              styles [
-                "dim-label",
-              ]
-            };
-          }
-
-          child: Revealer {
-            reveal-child: bind $_is_private(template.privacy) as <bool>;
-            transition-type: crossfade;
-            notify::reveal-child => $_reveal_readers();
+          Adw.ViewStackPage {
+            name: "private";
 
             child: Box {
               Label readers_label {
@@ -102,7 +85,20 @@ template $ComposeDialog: Adw.Dialog {
                 }
               }
             };
-          };
+          }
+
+          Adw.ViewStackPage {
+            name: "public";
+
+            child: Label {
+              halign: start;
+              label: _("Readers: Everyone");
+
+              styles [
+                "dim-label",
+              ]
+            };
+          }
         }
 
         Separator {}

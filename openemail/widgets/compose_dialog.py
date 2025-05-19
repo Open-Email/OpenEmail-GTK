@@ -28,19 +28,31 @@ class ComposeDialog(Adw.Dialog):
 
     attachments: Gtk.ListBox = Gtk.Template.Child()
 
-    privacy = GObject.Property(type=str, default="private")
-
     body: Gtk.TextBuffer
     subject_id: str | None = None
     draft_id: int | None = None
 
-    attached_files: dict[Gio.File, str]
+    _attached_files: dict[Gio.File, str]
+    _privacy: str = "private"
     _save: bool = True
+
+    @GObject.Property(type=str)
+    def privacy(self) -> str:
+        """Return "public" for broadcasts, "private" otherwise."""
+        return self._privacy
+
+    @privacy.setter
+    def privacy(self, privacy: str) -> None:
+        self._privacy = privacy
+
+        self.compose_form.address_lists = Gtk.StringList.new(
+            ("readers",) if self.privacy == "private" else ()
+        )
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.attached_files = {}
+        self._attached_files = {}
         self.body = self.body_view.props.buffer
 
     def present_new(self, parent: Gtk.Widget) -> None:
@@ -48,7 +60,7 @@ class ComposeDialog(Adw.Dialog):
         self.subject_id = None
         self.draft_id = None
         self.privacy = "private"
-        self.attached_files.clear()
+        self._attached_files.clear()
         self.attachments.remove_all()
         self.compose_form.reset()
 
@@ -57,7 +69,7 @@ class ComposeDialog(Adw.Dialog):
 
     def present_message(self, message: Message, parent: Gtk.Widget) -> None:
         """Present `self`, displaying the contents of `message`."""
-        self.attached_files.clear()
+        self._attached_files.clear()
         self.attachments.remove_all()
         self.privacy = "public" if message.broadcast else "private"
         self.subject_id = message.subject_id
@@ -70,7 +82,7 @@ class ComposeDialog(Adw.Dialog):
 
     def present_reply(self, message: Message, parent: Gtk.Widget) -> None:
         """Present `self`, replying to `message`."""
-        self.attached_files.clear()
+        self._attached_files.clear()
         self.attachments.remove_all()
         self.compose_form.reset()
         self.privacy = (
@@ -98,7 +110,7 @@ class ComposeDialog(Adw.Dialog):
     def _send_message(self, *_args: Any) -> None:
         readers: list[Address] = []
         warnings: dict[Address, str | None] = {}
-        if not self._is_public(None, self.privacy):
+        if self.privacy == "private":
             for reader in re.split(",|;| ", self.readers.props.text):
                 if not reader:
                     continue
@@ -151,7 +163,7 @@ class ComposeDialog(Adw.Dialog):
                 self.subject.props.text,
                 self.body.props.text,
                 self.subject_id,
-                attachments=self.attached_files,
+                attachments=self._attached_files,
             )
         )
 
@@ -162,12 +174,6 @@ class ComposeDialog(Adw.Dialog):
     @Gtk.Template.Callback()
     def _attach_files(self, *_args: Any) -> None:
         run_task(self._attach_files_task())
-
-    @Gtk.Template.Callback()
-    def _reveal_readers(self, revealer: Gtk.Revealer, *_args: Any) -> None:
-        self.compose_form.address_lists = Gtk.StringList.new(
-            ("readers",) if revealer.props.reveal_child else ()
-        )
 
     @Gtk.Template.Callback()
     def _format_bold(self, *_args: Any) -> None:
@@ -219,7 +225,7 @@ class ComposeDialog(Adw.Dialog):
             except GLib.Error:
                 continue
 
-            self.attached_files[gfile] = display_name
+            self._attached_files[gfile] = display_name
             row = Adw.ActionRow(title=display_name, use_markup=False)
             row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
             self.attachments.append(row)
@@ -285,14 +291,6 @@ class ComposeDialog(Adw.Dialog):
         self.body_view.grab_focus()
 
     @Gtk.Template.Callback()
-    def _is_private(self, _obj: Any, privacy: str) -> bool:
-        return privacy == "private"
-
-    @Gtk.Template.Callback()
-    def _is_public(self, _obj: Any, privacy: str) -> bool:
-        return privacy == "public"
-
-    @Gtk.Template.Callback()
     def _closed(self, *_args: Any) -> None:
         if not self._save:
             self._save = True
@@ -309,6 +307,6 @@ class ComposeDialog(Adw.Dialog):
             subject,
             body,
             self.subject_id,
-            self._is_public(None, self.privacy),
+            self.privacy == "public",
             self.draft_id,
         )
