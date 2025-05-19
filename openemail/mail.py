@@ -78,7 +78,7 @@ def register(
 async def sync(periodic: bool = False) -> None:
     """Populate the app's content by fetching the user's data."""
     notifier = Notifier.get_default()
-    notifier.emit("sync-started")
+    notifier.syncing = True
 
     if periodic and (interval := settings.get_uint("sync-interval")):
         GLib.timeout_add_seconds(interval or 60, sync, True)
@@ -109,7 +109,7 @@ async def sync(periodic: bool = False) -> None:
     def done(task: Coroutine[Any, Any, Any]) -> None:
         tasks.discard(task)
         if not tasks:
-            notifier.emit("sync-finished")
+            notifier.syncing = False
 
     for task in tasks:
         run_task(task, lambda _, t=task: done(t))
@@ -242,7 +242,9 @@ async def send_message(
 
     `attachments` is a dictionary of `Gio.File`s and filenames.
     """
-    Notifier.send(_("Sending message…"))
+    notifier = Notifier.get_default()
+
+    notifier.sending = True
 
     files = {}
     attachments = attachments or {}
@@ -252,6 +254,8 @@ async def send_message(
                 "Awaitable[tuple[bool, bytes, str]]", gfile.load_contents_async()
             )
         except GLib.Error as error:
+            Notifier.send(_("Failed to send message"))
+            notifier.sending = False
             raise WriteError from error
 
         files[name] = data
@@ -260,9 +264,11 @@ async def send_message(
         await client.send_message(readers, subject, body, reply, attachments=files)
     except WriteError:
         Notifier.send(_("Failed to send message"))
+        notifier.sending = False
         raise
 
     await outbox.update()
+    notifier.sending = False
 
 
 def empty_trash() -> None:

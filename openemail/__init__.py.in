@@ -30,8 +30,8 @@ client.data_dir = Path(GLib.get_user_data_dir(), "openemail")
 class Notifier[T: Notifier](GObject.Object):
     """Used for sending user-facing information throughout the application."""
 
-    sync_started = GObject.Signal()
-    sync_finished = GObject.Signal()
+    sending = GObject.Property(type=bool, default=False)
+    syncing = GObject.Property(type=bool, default=False)
 
     send_notification = GObject.Signal(name="send", arg_types=(str,))
 

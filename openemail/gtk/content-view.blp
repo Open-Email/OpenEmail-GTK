@@ -20,7 +20,7 @@ template $ContentView: Adw.BreakpointBin {
     sidebar: Adw.NavigationPage {
       title: _("OpenEmail");
 
-      child: Adw.ToolbarView {
+      child: Adw.ToolbarView sidebar_toolbar_view {
         [top]
         Adw.HeaderBar {
           [start]
@@ -48,6 +48,32 @@ template $ContentView: Adw.BreakpointBin {
             tooltip-text: _("Main Menu");
             menu-model: primary_menu;
           }
+        }
+
+        [bottom]
+        ListBox {
+          selection-mode: none;
+
+          ListBoxRow {
+            activatable: false;
+
+            child: Box {
+              margin-top: 6;
+              margin-bottom: 6;
+              margin-start: 6;
+              spacing: 12;
+
+              Adw.Spinner {}
+
+              Label {
+                label: _("Sending");
+              }
+            };
+          }
+
+          styles [
+            "navigation-sidebar",
+          ]
         }
 
         content: ScrolledWindow {
@@ -91,7 +117,7 @@ template $ContentView: Adw.BreakpointBin {
               row-selected => $_on_bottom_row_selected();
 
               $NavigationRow {
-                label: _("Broadcasts");
+                label: _("Public");
                 icon-name: _("broadcasts-symbolic");
               }
 

@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, mail
+from openemail import APP_ID, PREFIX, Notifier, mail
 
 from .contacts_page import ContactsPage
 from .messages_page import BroadcastsPage, DraftsPage, InboxPage, OutboxPage, TrashPage
@@ -22,6 +22,7 @@ class ContentView(Adw.BreakpointBin):
 
     split_view: Adw.OverlaySplitView = Gtk.Template.Child()
 
+    sidebar_toolbar_view: Adw.ToolbarView = Gtk.Template.Child()
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     bottom_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_settings: ProfileSettings = Gtk.Template.Child()
@@ -41,6 +42,13 @@ class ContentView(Adw.BreakpointBin):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
+
+        Notifier.get_default().bind_property(
+            "sending",
+            self.sidebar_toolbar_view,
+            "reveal-bottom-bars",
+            GObject.BindingFlags.SYNC_CREATE,
+        )
 
         mail.user_profile.bind_property(
             "image",

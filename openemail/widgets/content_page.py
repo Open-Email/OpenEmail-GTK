@@ -58,17 +58,16 @@ class ContentPage(Adw.BreakpointBin):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        def sync_started(*_args: Any) -> None:
-            self.sync_button.props.sensitive = False
-            self.sync_button.add_css_class("spinning")
+        def on_syncing_changed(*_args: Any) -> None:
+            if Notifier.get_default().syncing:
+                self.sync_button.props.sensitive = False
+                self.sync_button.add_css_class("spinning")
+                return
 
-        def sync_finished(*_args: Any) -> None:
             self.sync_button.remove_css_class("spinning")
             self.sync_button.props.sensitive = True
 
-        notifier = Notifier.get_default()
-        notifier.connect("sync-started", sync_started)
-        notifier.connect("sync-finished", sync_finished)
+        Notifier.get_default().connect("notify::syncing", on_syncing_changed)
 
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args: Any) -> None:
