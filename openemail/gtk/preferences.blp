@@ -163,12 +163,12 @@ Adw.AlertDialog add_domain_dialog {
   focus-widget: domain_entry;
   response => $_add_domain();
 
-  Adw.PreferencesGroup {
+  extra-child: Adw.PreferencesGroup {
     Adw.EntryRow domain_entry {
       title: _("Domain");
       activates-default: true;
     }
-  }
+  };
 
   responses [
     abort: _("Cancel"),
