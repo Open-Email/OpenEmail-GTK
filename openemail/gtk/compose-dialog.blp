@@ -13,19 +13,10 @@ template $ComposeDialog: Adw.Dialog {
       show-start-title-buttons: false;
       show-end-title-buttons: false;
 
-      title-widget: Adw.ToggleGroup {
+      title-widget: Adw.InlineViewSwitcher privacy_switcher {
         valign: center;
-        active-name: bind template.privacy bidirectional;
-
-        Adw.Toggle {
-          name: "private";
-          label: _("Private");
-        }
-
-        Adw.Toggle {
-          name: "public";
-          label: _("Public");
-        }
+        stack: privacy_stack;
+        display-mode: both;
       };
 
       [start]
@@ -36,12 +27,8 @@ template $ComposeDialog: Adw.Dialog {
 
       [end]
       Button send_button {
+        label: _("Send");
         clicked => $_send_message();
-
-        child: Adw.ButtonContent {
-          label: _("Send");
-          icon-name: "send-symbolic";
-        };
 
         styles [
           "suggested-action",
@@ -59,12 +46,14 @@ template $ComposeDialog: Adw.Dialog {
 
         Separator {}
 
-        Adw.ViewStack {
+        Adw.ViewStack privacy_stack {
           enable-transitions: true;
-          visible-child-name: bind template.privacy;
+          visible-child-name: bind template.privacy bidirectional;
 
           Adw.ViewStackPage {
             name: "private";
+            title: _("Private");
+            icon-name: "private-message-symbolic";
 
             child: Box {
               Label readers_label {
@@ -89,6 +78,8 @@ template $ComposeDialog: Adw.Dialog {
 
           Adw.ViewStackPage {
             name: "public";
+            title: _("Public");
+            icon-name: "broadcasts-symbolic";
 
             child: Label {
               halign: start;
@@ -235,6 +226,14 @@ template $ComposeDialog: Adw.Dialog {
       }
     }
   };
+
+  Adw.Breakpoint {
+    condition ("max-width: 450px")
+
+    setters {
+      privacy_switcher.display-mode: icons;
+    }
+  }
 }
 
 $Form compose_form {
