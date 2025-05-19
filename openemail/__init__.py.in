@@ -4,6 +4,12 @@
 
 """A Mail/HTTPS client."""
 
+import gi
+
+gi.require_version("Gdk", "4.0")
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+
 import asyncio
 from asyncio import Task
 from collections.abc import Callable, Coroutine
@@ -11,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from gi.events import GLibEventLoopPolicy
-from gi.repository import Gio, GLib, GObject
+from gi.repository import Adw, Gio, GLib, GObject
 
 from openemail.core import client
 
@@ -33,21 +39,34 @@ class Notifier[T: Notifier](GObject.Object):
     sending = GObject.Property(type=bool, default=False)
     syncing = GObject.Property(type=bool, default=False)
 
-    send_notification = GObject.Signal(name="send", arg_types=(str,))
+    send_notification = GObject.Signal(name="send", arg_types=(Adw.Toast,))
 
-    _default: T | None = None
+    _default = None
 
-    @classmethod
-    def send(cls: type[T], title: str) -> None:
-        """Emit the `Notifier::send` signal with `title`."""
-        cls.get_default().emit("send", title)
-
-    @classmethod
-    def get_default(cls: type[T]) -> T:
+    def __new__(cls):  # noqa: ANN204
         if not cls._default:
-            cls._default = cls()
+            cls._default = super().__new__(cls)
 
         return cls._default
+
+    @classmethod
+    def send(
+        cls: type[T],
+        title: str,
+        undo: Callable[[Adw.Toast, Any], Any] | None = None,
+    ) -> Adw.Toast:
+        """Emit the `Notifier::send` signal with a toast from `title` and `undo`.
+
+        `undo` is called on `Adw.Toast::button-clicked`.
+        """
+        toast = Adw.Toast(title=title, priority=Adw.ToastPriority.HIGH)
+
+        if undo:
+            toast.props.button_label = _("Undo")
+            toast.connect("button-clicked", undo)
+
+        cls().emit("send", toast)
+        return toast
 
 
 asyncio.set_event_loop_policy(_policy := GLibEventLoopPolicy())

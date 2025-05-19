@@ -43,7 +43,7 @@ class ContentView(Adw.BreakpointBin):
         super().__init__(**kwargs)
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
-        Notifier.get_default().bind_property(
+        Notifier().bind_property(
             "sending",
             self.sidebar_toolbar_view,
             "reveal-bottom-bars",

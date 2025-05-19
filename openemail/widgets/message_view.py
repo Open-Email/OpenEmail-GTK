@@ -8,7 +8,7 @@ from typing import Any, cast
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, run_task
+from openemail import APP_ID, PREFIX, Notifier, run_task
 from openemail.mail import Attachment, Message, Profile
 
 from .message_body import MessageBody
@@ -20,8 +20,6 @@ class MessageView(Adw.Bin):
     """A view displaying metadata about, and the contents of a message."""
 
     __gtype_name__ = "MessageView"
-
-    toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
 
     reply_button: Gtk.Button = Gtk.Template.Child()
     message_body: MessageBody = Gtk.Template.Child()
@@ -177,15 +175,5 @@ class MessageView(Adw.Bin):
         run_task(self.message.discard())
 
     def _add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
-        toast = Adw.Toast(
-            title=title,
-            priority=Adw.ToastPriority.HIGH,
-            button_label=_("Undo"),
-        )
-        toast.connect(
-            "button-clicked",
-            lambda *_: self.undo.pop(toast, lambda: None)(),
-        )
-
+        toast = Notifier.send(title, lambda *_: self.undo.pop(toast, lambda: None)())
         self.undo[toast] = undo
-        self.toast_overlay.add_toast(toast)

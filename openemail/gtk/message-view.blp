@@ -2,229 +2,227 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MessageView: Adw.Bin {
-  child: Adw.ToastOverlay toast_overlay {
-    child: Adw.ToolbarView {
-      [top]
-      Adw.HeaderBar {
-        show-title: false;
+  child: Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      show-title: false;
 
-        [end]
-        Button {
-          visible: bind template.message as <$Message>.can-trash;
-          icon-name: "trash-symbolic";
-          tooltip-text: _("Trash");
-          clicked => $_trash();
+      [end]
+      Button {
+        visible: bind template.message as <$Message>.can-trash;
+        icon-name: "trash-symbolic";
+        tooltip-text: _("Trash");
+        clicked => $_trash();
 
-          ShortcutController {
-            scope: managed;
+        ShortcutController {
+          scope: managed;
 
-            Shortcut {
-              trigger: "Delete|KP_Delete";
-              action: "activate";
-            }
+          Shortcut {
+            trigger: "Delete|KP_Delete";
+            action: "activate";
           }
-
-          styles [
-            "flat",
-          ]
         }
 
-        [end]
-        Button {
-          visible: bind template.message as <$Message>.can-restore;
-          label: _("Restore");
-          clicked => $_restore();
-
-          ShortcutController {
-            scope: managed;
-
-            Shortcut {
-              trigger: "Delete|KP_Delete";
-              action: "activate";
-            }
-          }
-
-          styles [
-            "flat",
-          ]
-        }
-
-        [end]
-        Button {
-          visible: bind template.message as <$Message>.author-is-self;
-          icon-name: "trash-symbolic";
-          tooltip-text: _("Discard");
-          clicked => $_discard();
-
-          ShortcutController {
-            scope: managed;
-
-            Shortcut {
-              trigger: "Delete|KP_Delete";
-              action: "activate";
-            }
-          }
-
-          styles [
-            "flat",
-          ]
-        }
-
-        [end]
-        Button reply_button {
-          visible: bind template.message as <$Message>.can-reply;
-          icon-name: "mail-reply-sender-symbolic";
-          tooltip-text: _("Reply");
-
-          styles [
-            "flat",
-          ]
-        }
+        styles [
+          "flat",
+        ]
       }
 
-      content: Stack {
-        visible-child-name: bind template.visible-child-name;
+      [end]
+      Button {
+        visible: bind template.message as <$Message>.can-restore;
+        label: _("Restore");
+        clicked => $_restore();
 
-        StackPage {
-          name: "empty";
+        ShortcutController {
+          scope: managed;
 
-          child: Adw.StatusPage {
-            icon-name: bind template.app-icon-name;
-
-            styles [
-              "compact",
-              "dim-label",
-            ]
-          };
+          Shortcut {
+            trigger: "Delete|KP_Delete";
+            action: "activate";
+          }
         }
 
-        StackPage {
-          name: "message";
+        styles [
+          "flat",
+        ]
+      }
 
-          child: ScrolledWindow {
-            child: Box {
-              margin-top: 12;
-              margin-bottom: 32;
-              margin-start: 24;
-              margin-end: 24;
-              orientation: vertical;
-              spacing: 18;
+      [end]
+      Button {
+        visible: bind template.message as <$Message>.author-is-self;
+        icon-name: "trash-symbolic";
+        tooltip-text: _("Discard");
+        clicked => $_discard();
+
+        ShortcutController {
+          scope: managed;
+
+          Shortcut {
+            trigger: "Delete|KP_Delete";
+            action: "activate";
+          }
+        }
+
+        styles [
+          "flat",
+        ]
+      }
+
+      [end]
+      Button reply_button {
+        visible: bind template.message as <$Message>.can-reply;
+        icon-name: "mail-reply-sender-symbolic";
+        tooltip-text: _("Reply");
+
+        styles [
+          "flat",
+        ]
+      }
+    }
+
+    content: Stack {
+      visible-child-name: bind template.visible-child-name;
+
+      StackPage {
+        name: "empty";
+
+        child: Adw.StatusPage {
+          icon-name: bind template.app-icon-name;
+
+          styles [
+            "compact",
+            "dim-label",
+          ]
+        };
+      }
+
+      StackPage {
+        name: "message";
+
+        child: ScrolledWindow {
+          child: Box {
+            margin-top: 12;
+            margin-bottom: 32;
+            margin-start: 24;
+            margin-end: 24;
+            orientation: vertical;
+            spacing: 18;
+
+            Box {
+              valign: start;
+              spacing: 12;
+
+              Button {
+                valign: start;
+                tooltip-text: _("Profile");
+                clicked => $_show_profile_dialog();
+
+                child: Adw.Avatar {
+                  margin-top: 6;
+                  margin-bottom: 6;
+                  margin-start: 6;
+                  margin-end: 6;
+                  size: 48;
+                  text: bind template.message as <$Message>.name;
+                  custom-image: bind template.message as <$Message>.profile-image;
+                  show-initials: true;
+                };
+
+                styles [
+                  "circular",
+                  "flat",
+                ]
+              }
 
               Box {
-                valign: start;
-                spacing: 12;
+                orientation: vertical;
+                spacing: 3;
 
-                Button {
-                  valign: start;
-                  tooltip-text: _("Profile");
-                  clicked => $_show_profile_dialog();
+                Box {
+                  spacing: 6;
 
-                  child: Adw.Avatar {
-                    margin-top: 6;
-                    margin-bottom: 6;
-                    margin-start: 6;
-                    margin-end: 6;
-                    size: 48;
-                    text: bind template.message as <$Message>.name;
-                    custom-image: bind template.message as <$Message>.profile-image;
-                    show-initials: true;
-                  };
+                  Label {
+                    hexpand: true;
+                    halign: start;
+                    label: bind template.message as <$Message>.name;
+                    wrap: true;
+                    wrap-mode: word_char;
+
+                    styles [
+                      "title-4",
+                    ]
+                  }
+
+                  Label {
+                    halign: end;
+                    label: bind template.message as <$Message>.datetime;
+                    wrap: true;
+                    wrap-mode: word;
+                    justify: right;
+
+                    styles [
+                      "numeric",
+                      "caption",
+                    ]
+                  }
+                }
+
+                Label {
+                  halign: start;
+                  label: bind template.message as <$Message>.subject;
+                  wrap: true;
+                  wrap-mode: word_char;
+                  selectable: true;
 
                   styles [
-                    "circular",
-                    "flat",
+                    "heading",
                   ]
                 }
 
-                Box {
-                  orientation: vertical;
-                  spacing: 3;
+                Label {
+                  halign: start;
+                  label: bind template.message as <$Message>.original_author;
+                  visible: bind template.message as <$Message>.different-author;
+                  wrap: true;
+                  wrap-mode: word_char;
+                  selectable: true;
 
-                  Box {
-                    spacing: 6;
+                  styles [
+                    "caption",
+                  ]
+                }
 
-                    Label {
-                      hexpand: true;
-                      halign: start;
-                      label: bind template.message as <$Message>.name;
-                      wrap: true;
-                      wrap-mode: word_char;
+                Label {
+                  halign: start;
+                  label: bind template.message as <$Message>.readers;
+                  wrap: true;
+                  wrap-mode: word_char;
+                  selectable: true;
 
-                      styles [
-                        "title-4",
-                      ]
-                    }
-
-                    Label {
-                      halign: end;
-                      label: bind template.message as <$Message>.datetime;
-                      wrap: true;
-                      wrap-mode: word;
-                      justify: right;
-
-                      styles [
-                        "numeric",
-                        "caption",
-                      ]
-                    }
-                  }
-
-                  Label {
-                    halign: start;
-                    label: bind template.message as <$Message>.subject;
-                    wrap: true;
-                    wrap-mode: word_char;
-                    selectable: true;
-
-                    styles [
-                      "heading",
-                    ]
-                  }
-
-                  Label {
-                    halign: start;
-                    label: bind template.message as <$Message>.original_author;
-                    visible: bind template.message as <$Message>.different-author;
-                    wrap: true;
-                    wrap-mode: word_char;
-                    selectable: true;
-
-                    styles [
-                      "caption",
-                    ]
-                  }
-
-                  Label {
-                    halign: start;
-                    label: bind template.message as <$Message>.readers;
-                    wrap: true;
-                    wrap-mode: word_char;
-                    selectable: true;
-
-                    styles [
-                      "caption",
-                    ]
-                  }
+                  styles [
+                    "caption",
+                  ]
                 }
               }
+            }
 
-              $MessageBody message_body {
-                editable: false;
-                text: bind template.message as <$Message>.body;
-              }
+            $MessageBody message_body {
+              editable: false;
+              text: bind template.message as <$Message>.body;
+            }
 
-              ListBox attachments_list {
-                selection-mode: none;
-                row-activated => $_open_attachment();
+            ListBox attachments_list {
+              selection-mode: none;
+              row-activated => $_open_attachment();
 
-                styles [
-                  "boxed-list-separate",
-                ]
-              }
-            };
+              styles [
+                "boxed-list-separate",
+              ]
+            }
           };
-        }
-      };
+        };
+      }
     };
   };
 }

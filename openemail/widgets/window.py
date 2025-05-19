@@ -51,7 +51,7 @@ class Window(Adw.ApplicationWindow):
             Gio.SettingsBindFlags.DEFAULT,
         )
 
-        Notifier.get_default().connect("send", self._on_send_notification)
+        Notifier().connect("send", self._on_send_notification)
 
         if not mail.user.logged_in:
             return
@@ -76,12 +76,9 @@ class Window(Adw.ApplicationWindow):
         run_task(mail.sync())
         self.visible_child_name = "content"
 
-    def _on_send_notification(self, _obj: Any, title: str) -> None:
-        toast = Adw.Toast(title=title, priority=Adw.ToastPriority.HIGH)
-
+    def _on_send_notification(self, _obj: Any, toast: Adw.Toast) -> None:
         if isinstance(dialog := self.props.visible_dialog, Adw.PreferencesDialog):
             dialog.add_toast(toast)
             return
 
-        self.toast_overlay.dismiss_all()  # type: ignore
         self.toast_overlay.add_toast(toast)
