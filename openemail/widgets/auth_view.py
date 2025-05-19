@@ -24,12 +24,10 @@ class AuthView(Adw.Bin):
     email_entry: Adw.EntryRow = Gtk.Template.Child()
     email_form: Form = Gtk.Template.Child()
 
-    sign_up_page: Adw.NavigationPage = Gtk.Template.Child()
     user_name_entry: Adw.EntryRow = Gtk.Template.Child()
     register_form: Form = Gtk.Template.Child()
 
     keys_status_page: Adw.StatusPage = Gtk.Template.Child()
-    keys_page: Adw.NavigationPage = Gtk.Template.Child()
     signing_key_entry: Adw.EntryRow = Gtk.Template.Child()
     encryption_key_entry: Adw.EntryRow = Gtk.Template.Child()
     auth_form: Form = Gtk.Template.Child()
@@ -44,13 +42,16 @@ class AuthView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _log_in(self, *_args: Any) -> None:
+        if self.email_form.invalid:
+            return
+
         self.keys_status_page.props.title = self.email_entry.props.text
-        self.navigation_view.push(self.keys_page)
+        self.navigation_view.push_by_tag("keys")
         self.signing_key_entry.grab_focus()
 
     @Gtk.Template.Callback()
     def _sign_up(self, *_args: Any) -> None:
-        self.navigation_view.push(self.sign_up_page)
+        self.navigation_view.push_by_tag("sign-up")
 
     @Gtk.Template.Callback()
     def _register(self, *_args: Any) -> None:
@@ -70,7 +71,7 @@ class AuthView(Adw.Bin):
             def reset() -> None:
                 self.email_form.reset()
                 self.register_form.reset()
-                self.navigation_view.pop()
+                self.navigation_view.pop_to_tag("landing")
                 self.auth_form.reset()
 
             GLib.timeout_add_seconds(1, reset)
@@ -90,6 +91,9 @@ class AuthView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _authenticate(self, *_args: Any) -> None:
+        if self.auth_form.invalid:
+            return
+
         try:
             mail.user.address = Address(self.email_entry.props.text)
             mail.user.encryption_keys = KeyPair.from_b64(
@@ -110,7 +114,7 @@ class AuthView(Adw.Bin):
             def reset() -> None:
                 self.email_form.reset()
                 self.register_form.reset()
-                self.navigation_view.pop()
+                self.navigation_view.pop_to_tag("landing")
                 self.auth_form.reset()
 
             GLib.timeout_add_seconds(1, reset)
