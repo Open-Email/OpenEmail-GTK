@@ -146,19 +146,17 @@ Adw.AlertDialog confirm_remove_dialog {
 Adw.AlertDialog confirm_delete_dialog {
   heading: _("Delete Account?");
   body: _("All remote data on the server will be permanently deleted");
-  close-response: "cancel";
   default-response: "cancel";
   response::delete => $_confirm_delete();
 
   responses [
-    cancel: _("Cancel"),
+    close: _("Cancel"),
     delete: _("Delete") destructive,
   ]
 }
 
 Adw.AlertDialog add_domain_dialog {
   heading: _("New Domain");
-  close-response: "abort";
   default-response: "add";
   focus-widget: domain_entry;
   response::add => $_add_domain();
@@ -171,7 +169,7 @@ Adw.AlertDialog add_domain_dialog {
   };
 
   responses [
-    abort: _("Cancel"),
+    close: _("Cancel"),
     add: _("Add") suggested,
   ]
 }
