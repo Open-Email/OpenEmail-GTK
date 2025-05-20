@@ -66,18 +66,12 @@ class Preferences(Adw.PreferencesDialog):
         self.confirm_delete_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _confirm_delete(self, _obj: Any, response: str) -> None:
-        if response != "delete":
-            return
-
+    def _confirm_delete(self, *_args: Any) -> None:
         self.force_close()
         run_task(mail.delete_account())
 
     @Gtk.Template.Callback()
-    def _confirm_remove(self, _obj: Any, response: str) -> None:
-        if response != "remove":
-            return
-
+    def _confirm_remove(self, *_args: Any) -> None:
         self.force_close()
         mail.log_out()
 
@@ -92,10 +86,7 @@ class Preferences(Adw.PreferencesDialog):
         self.add_domain_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _add_domain(self, _obj: Any, response: str) -> None:
-        if response != "add":
-            return
-
+    def _add_domain(self, *_args: Any) -> None:
         if (domain := self.domain_entry.props.text) in (
             current := settings.get_strv("trusted-domains")
         ):

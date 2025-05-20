@@ -241,9 +241,7 @@ class TrashPage(_SplitPage):
             "empty", Adw.ResponseAppearance.DESTRUCTIVE
         )
 
-        empty_dialog.connect(
-            "response", lambda _, res: empty_trash() if res == "empty" else None
-        )
+        empty_dialog.connect("response::empty", lambda *_: empty_trash())
 
         self.content.toolbar_button = Gtk.Button(
             icon_name="trash-symbolic",

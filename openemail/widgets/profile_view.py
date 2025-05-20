@@ -121,8 +121,8 @@ class ProfileView(Adw.Bin):
         self.confirm_remove_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _confirm_remove(self, _obj: Any, response: str) -> None:
-        if (response != "remove") or (not self.profile):
+    def _confirm_remove(self, *_args: Any) -> None:
+        if not self.profile:
             return
 
         try:
