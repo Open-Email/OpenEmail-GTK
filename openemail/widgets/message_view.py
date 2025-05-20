@@ -168,11 +168,9 @@ class MessageView(Adw.Bin):
         self.confirm_discard_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _confirm_discard(self, _obj: Any, response: str) -> None:
-        if (response != "discard") or (not self.message):
-            return
-
-        run_task(self.message.discard())
+    def _confirm_discard(self, *_args: Any) -> None:
+        if self.message:
+            run_task(self.message.discard())
 
     def _add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
         toast = Notifier.send(title, lambda *_: self.undo.pop(toast, lambda: None)())

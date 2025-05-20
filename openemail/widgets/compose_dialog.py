@@ -132,10 +132,7 @@ class ComposeDialog(Adw.Dialog):
         alert.set_response_appearance("send", Adw.ResponseAppearance.SUGGESTED)
         alert.set_default_response("send")
 
-        alert.connect(
-            "response",
-            lambda _obj, response: self._send(readers) if response == "send" else None,
-        )
+        alert.connect("response::send", lambda *_: self._send(readers))
 
         alert.present(self)
 

@@ -85,10 +85,7 @@ class ContactsPage(Adw.NavigationPage):
         self.add_contact_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _add_contact(self, _obj: Any, response: str) -> None:
-        if response != "add":
-            return
-
+    def _add_contact(self, *_args: Any) -> None:
         try:
             run_task(mail.address_book.new(Address(self.address.props.text)))
         except ValueError:

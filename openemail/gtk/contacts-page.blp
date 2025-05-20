@@ -38,7 +38,7 @@ template $ContactsPage: Adw.NavigationPage {
 Adw.AlertDialog add_contact_dialog {
   heading: _("New Contact");
   default-response: "add";
-  response => $_add_contact();
+  response::add => $_add_contact();
 
   extra-child: Adw.PreferencesGroup {
     Adw.EntryRow address {
