@@ -13,6 +13,12 @@ template $ComposeDialog: Adw.Dialog {
       show-start-title-buttons: false;
       show-end-title-buttons: false;
 
+      title-widget: Adw.InlineViewSwitcher privacy_switcher {
+        valign: center;
+        stack: privacy_stack;
+        display-mode: both;
+      };
+
       [start]
       Button {
         label: _("Cancel");
@@ -21,12 +27,8 @@ template $ComposeDialog: Adw.Dialog {
 
       [end]
       Button send_button {
+        label: _("Send");
         clicked => $_send_message();
-
-        child: Adw.ButtonContent {
-          label: _("Send");
-          icon-name: "send-symbolic";
-        };
 
         styles [
           "suggested-action",
@@ -44,69 +46,49 @@ template $ComposeDialog: Adw.Dialog {
 
         Separator {}
 
-        Box {
-          hexpand: true;
+        Adw.ViewStack privacy_stack {
+          enable-transitions: true;
+          visible-child-name: bind template.privacy bidirectional;
 
-          Overlay {
-            [overlay]
-            Revealer {
-              can-target: false;
-              reveal-child: bind broadcast_switch.active;
-              transition-type: crossfade;
+          Adw.ViewStackPage {
+            name: "private";
+            title: _("Private");
+            icon-name: "private-message-symbolic";
 
-              child: Label {
-                halign: start;
-                label: _("Public Message");
+            child: Box {
+              Label readers_label {
+                margin-end: 6;
+                label: _("Readers:");
 
                 styles [
                   "dim-label",
                 ]
-              };
-            }
+              }
 
-            child: Revealer {
-              reveal-child: bind broadcast_switch.active inverted;
-              transition-type: crossfade;
-              notify::reveal-child => $_reveal_readers();
+              Text readers {
+                height-request: 42;
+                hexpand: true;
 
-              child: Box {
-                Label readers_label {
-                  margin-end: 6;
-                  label: _("Readers:");
-
-                  styles [
-                    "dim-label",
-                  ]
+                accessibility {
+                  labelled-by: readers_label;
                 }
-
-                Text readers {
-                  height-request: 42;
-                  hexpand: true;
-
-                  accessibility {
-                    labelled-by: readers_label;
-                  }
-                }
-              };
+              }
             };
           }
 
-          Label broadcast_label {
-            margin-start: 6;
-            margin-end: 6;
-            label: _("Broadcast");
+          Adw.ViewStackPage {
+            name: "public";
+            title: _("Public");
+            icon-name: "broadcasts-symbolic";
 
-            styles [
-              "dim-label",
-            ]
-          }
+            child: Label {
+              halign: start;
+              label: _("Readers: Everyone");
 
-          Switch broadcast_switch {
-            valign: center;
-
-            accessibility {
-              labelled-by: broadcast_label;
-            }
+              styles [
+                "dim-label",
+              ]
+            };
           }
         }
 
@@ -244,6 +226,14 @@ template $ComposeDialog: Adw.Dialog {
       }
     }
   };
+
+  Adw.Breakpoint {
+    condition ("max-width: 450px")
+
+    setters {
+      privacy_switcher.display-mode: icons;
+    }
+  }
 }
 
 $Form compose_form {

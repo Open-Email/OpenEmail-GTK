@@ -4,24 +4,32 @@ using Adw 1;
 template $AuthView: Adw.Bin {
   child: Adw.NavigationView navigation_view {
     Adw.NavigationPage {
+      tag: "landing";
       title: _("Log In");
 
       child: Adw.ToolbarView {
         [top]
-        Adw.HeaderBar {}
+        Adw.HeaderBar {
+          show-title: false;
+        }
 
         content: Adw.StatusPage email_status_page {
           title: _("Email of the Future, Today");
           description: _("Spam-free, phishing-free, private &amp; secure by design");
 
           child: Adw.Clamp {
-            child: Adw.PreferencesGroup {
-              Adw.EntryRow email_entry {
-                title: _("Email");
+            child: Box {
+              orientation: vertical;
+
+              Adw.PreferencesGroup {
+                Adw.EntryRow email_entry {
+                  title: _("Email");
+                  entry-activated => $_log_in();
+                }
               }
 
               Box {
-                margin-top: 24;
+                margin-top: 12;
                 halign: center;
                 spacing: 12;
 
@@ -50,33 +58,40 @@ template $AuthView: Adw.Bin {
       };
     }
 
-    Adw.NavigationPage keys_page {
+    Adw.NavigationPage {
+      tag: "keys";
       title: _("Private Keys");
 
       child: Adw.ToolbarView {
         [top]
-        Adw.HeaderBar {}
+        Adw.HeaderBar {
+          show-title: false;
+        }
 
         content: Adw.StatusPage keys_status_page {
           description: _("Enter your private keys");
           icon-name: "key-symbolic";
 
           child: Adw.Clamp {
-            child: Adw.PreferencesGroup {
-              separate-rows: true;
+            child: Box {
+              orientation: vertical;
 
-              Adw.PasswordEntryRow signing_key_entry {
-                title: _("Private Signing Key");
-                entry-activated => $_focus_encryption_key_entry();
-              }
+              Adw.PreferencesGroup {
+                separate-rows: true;
 
-              Adw.PasswordEntryRow encryption_key_entry {
-                title: _("Private Encryption Key");
-                entry-activated => $_authenticate();
+                Adw.PasswordEntryRow signing_key_entry {
+                  title: _("Private Signing Key");
+                  entry-activated => $_focus_encryption_key_entry();
+                }
+
+                Adw.PasswordEntryRow encryption_key_entry {
+                  title: _("Private Encryption Key");
+                  entry-activated => $_authenticate();
+                }
               }
 
               Button auth_button {
-                margin-top: 24;
+                margin-top: 12;
                 halign: center;
                 clicked => $_authenticate();
 
@@ -111,36 +126,82 @@ template $AuthView: Adw.Bin {
       };
     }
 
-    Adw.NavigationPage sign_up_page {
+    Adw.NavigationPage {
+      tag: "sign-up";
       title: _("Create Account");
 
       child: Adw.ToolbarView {
         [top]
-        Adw.HeaderBar {}
+        Adw.HeaderBar {
+          show-title: false;
+        }
 
         content: Adw.StatusPage {
           title: _("Up & Running in Seconds");
           description: _("Get a free email address on the network");
 
           child: Adw.Clamp {
-            child: Adw.PreferencesGroup {
-              Adw.EntryRow user_name_entry {
-                title: _("User Name");
-                text: bind email_entry.text bidirectional;
-                entry-activated => $_register();
+            child: Box {
+              orientation: vertical;
 
-                [suffix]
+              Box {
+                margin-start: 6;
+                margin-end: 6;
+                margin-bottom: 24;
+                orientation: vertical;
+                spacing: 6;
+
                 Label {
-                  label: "@open.email";
+                  label: _("• Attachments without size limits");
+                  wrap: true;
+                  halign: start;
+                }
 
-                  styles [
-                    "dim-label",
-                  ]
+                Label {
+                  label: _("• End-to-end encrypted private messages");
+                  wrap: true;
+                  halign: start;
+                }
+
+                Label {
+                  label: _("• Public messages anyone can read, even without an account");
+                  wrap: true;
+                  halign: start;
+                }
+
+                Label {
+                  label: _("• People can only message you after your approval");
+                  wrap: true;
+                  halign: start;
+                }
+
+                Label {
+                  label: _("• Using the open <a href=\"https://www.open.email\">Mail/HTTPS protocol</a>");
+                  wrap: true;
+                  halign: start;
+                  use-markup: true;
+                }
+              }
+
+              Adw.PreferencesGroup {
+                Adw.EntryRow user_name_entry {
+                  title: _("User Name");
+                  text: bind email_entry.text bidirectional;
+                  entry-activated => $_register();
+
+                  [suffix]
+                  Label {
+                    label: "@open.email";
+
+                    styles [
+                      "dim-label",
+                    ]
+                  }
                 }
               }
 
               Button register_button {
-                margin-top: 24;
+                margin-top: 12;
                 halign: center;
                 clicked => $_register();
 
