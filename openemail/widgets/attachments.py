@@ -48,4 +48,4 @@ class Attachments(Adw.Bin):
         if not (attachment := self.model.get_item(pos)):
             return
 
-        attachment.open()
+        attachment.open(self)
