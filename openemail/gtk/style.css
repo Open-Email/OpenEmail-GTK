@@ -1,3 +1,7 @@
+:root {
+  --toast-bg-color: #505053;
+}
+
 /* https://gitlab.gnome.org/GNOME/gnome-control-center/-/blob/d3946ec05b4431dde45974749db720decbe9ae0d/panels/system/users/users.css#L2 */
 .cutout-button {
   background-color: var(--window-bg-color);
@@ -8,7 +12,7 @@
 .away-label {
   padding: 6px 12px;
   color: var(--warning-color);
-  background-color: rgb(from var(--warning-bg-color) r g b / 0.2);
+  background-color: rgb(from var(--warning-bg-color) r g b / 20%);
   border-radius: 9999px;
 }
 
@@ -18,8 +22,16 @@ headerbar.overlaid {
   box-shadow: none;
 }
 
-headerbar.overlaid windowcontrols {
-  filter: drop-shadow(0 0 4px black);
+headerbar.overlaid windowcontrols button image {
+  background-color: var(--toast-bg-color);
+}
+
+headerbar.overlaid windowcontrols button:hover image {
+  background-color: color-mix(in srgb, var(--toast-bg-color), white 15%);
+}
+
+headerbar.overlaid windowcontrols button:active image {
+  background-color: color-mix(in srgb, var(--toast-bg-color), white 30%);
 }
 
 @keyframes spinning {
