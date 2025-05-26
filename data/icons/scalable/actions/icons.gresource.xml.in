@@ -14,6 +14,8 @@
     <file preprocess="xml-stripblanks">mail-reply-sender-symbolic.svg</file>
     <file preprocess="xml-stripblanks">mailbox-symbolic.svg</file>
     <file preprocess="xml-stripblanks">open-menu-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">private-message-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">remove-symbolic.svg</file>
     <file preprocess="xml-stripblanks">search-symbolic.svg</file>
     <file preprocess="xml-stripblanks">settings-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic-rtl.svg</file>
@@ -56,7 +58,6 @@
     <file preprocess="xml-stripblanks">personal-symbolic.svg</file>
     <file preprocess="xml-stripblanks">phone-symbolic.svg</file>
     <file preprocess="xml-stripblanks">places-lived-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">private-message-symbolic.svg</file>
     <file preprocess="xml-stripblanks">public-access-symbolic.svg</file>
     <file preprocess="xml-stripblanks">public-links-symbolic.svg</file>
     <file preprocess="xml-stripblanks">relationship-status-symbolic.svg</file>

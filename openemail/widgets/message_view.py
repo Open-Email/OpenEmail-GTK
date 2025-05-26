@@ -51,7 +51,7 @@ class MessageView(Adw.Bin):
             return
 
         self.visible_child_name = "message"
-        self.attachments.model = Gtk.NoSelection.new(message.attachments)
+        self.attachments.model = message.attachments
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

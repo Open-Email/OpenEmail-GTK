@@ -326,6 +326,7 @@ class Attachment(GObject.Object):
     __gtype_name__ = "Attachment"
 
     name = GObject.Property(type=str)
+    can_remove = GObject.Property(type=bool, default=False)
 
     @abstractmethod
     def open(self) -> None:
@@ -344,6 +345,9 @@ class OutgoingAttachment[T: OutgoingAttachment](Attachment):
     """An attachment that has not yet been sent."""
 
     gfile = GObject.Property(type=Gio.File)
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(can_remove=True, **kwargs)
 
     def open(self) -> None:
         """Open `self` for viewing."""

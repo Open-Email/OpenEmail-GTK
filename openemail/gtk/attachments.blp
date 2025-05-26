@@ -2,45 +2,63 @@ using Gtk 4.0;
 using Adw 1;
 
 template $Attachments: Adw.Bin {
-  child: GridView {
+  child: GridView idk_view {
     overflow: visible;
     min-columns: 4;
     max-columns: 4;
     single-click-activate: true;
-    model: bind template.model;
     activate => $_open();
+
+    model: NoSelection {
+      model: bind template.model;
+    };
 
     factory: BuilderListItemFactory {
       template ListItem {
-        child: Box {
-          margin-top: 12;
-          margin-bottom: 12;
-          margin-start: 6;
-          margin-end: 6;
-          spacing: 12;
-          orientation: vertical;
-
-          Image {
-            icon-name: "mail-attachment-symbolic";
-            pixel-size: 24;
+        child: Overlay {
+          [overlay]
+          $RemoveAttachmentButton {
+            visible: bind template.item as <$Attachment>.can-remove;
+            halign: end;
+            valign: start;
+            item: bind template;
 
             styles [
-              "dimmed",
+              "circular",
+              "flat",
             ]
           }
 
-          Label {
-            label: bind template.item as <$Attachment>.name;
-            ellipsize: middle;
-            wrap: true;
-            wrap-mode: word_char;
-            lines: 3;
-            justify: center;
+          child: Box {
+            margin-top: 12;
+            margin-bottom: 12;
+            spacing: 6;
+            orientation: vertical;
 
-            styles [
-              "caption",
-            ]
-          }
+            Image {
+              icon-name: "application-x-generic";
+              icon-size: large;
+
+              styles [
+                "lowres-icon",
+              ]
+            }
+
+            Label {
+              margin-start: 6;
+              margin-end: 6;
+              label: bind template.item as <$Attachment>.name;
+              ellipsize: middle;
+              wrap: true;
+              wrap-mode: word_char;
+              lines: 3;
+              justify: center;
+
+              styles [
+                "caption",
+              ]
+            }
+          };
         };
       }
     };

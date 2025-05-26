@@ -33,7 +33,6 @@ class ComposeDialog(Adw.Dialog):
     subject_id: str | None = None
     draft_id: int | None = None
 
-    _attachments: Gio.ListStore
     _privacy: str = "private"
     _save: bool = True
 
@@ -53,9 +52,7 @@ class ComposeDialog(Adw.Dialog):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self._attachments = Gio.ListStore.new(OutgoingAttachment)
-        self.attachments.model = Gtk.NoSelection.new(self._attachments)
-
+        self.attachments.model = Gio.ListStore.new(OutgoingAttachment)
         self.body = self.body_view.props.buffer
 
     def present_new(self, parent: Gtk.Widget) -> None:
@@ -63,7 +60,7 @@ class ComposeDialog(Adw.Dialog):
         self.subject_id = None
         self.draft_id = None
         self.privacy = "private"
-        self._attachments.remove_all()
+        self.attachments.model.remove_all()
         self.compose_form.reset()
 
         self.present(parent)
@@ -71,7 +68,7 @@ class ComposeDialog(Adw.Dialog):
 
     def present_message(self, message: Message, parent: Gtk.Widget) -> None:
         """Present `self`, displaying the contents of `message`."""
-        self._attachments.remove_all()
+        self.attachments.model.remove_all()
         self.privacy = "public" if message.broadcast else "private"
         self.subject_id = message.subject_id
         self.draft_id = message.draft_id
@@ -83,7 +80,7 @@ class ComposeDialog(Adw.Dialog):
 
     def present_reply(self, message: Message, parent: Gtk.Widget) -> None:
         """Present `self`, replying to `message`."""
-        self._attachments.remove_all()
+        self.attachments.model.remove_all()
         self.compose_form.reset()
         self.privacy = (
             "public" if (message.broadcast and message.author_is_self) else "private"
@@ -161,7 +158,9 @@ class ComposeDialog(Adw.Dialog):
                 self.body.props.text,
                 self.subject_id,
                 attachments=tuple(
-                    a for a in self._attachments if isinstance(a, OutgoingAttachment)
+                    a
+                    for a in self.attachments.model
+                    if isinstance(a, OutgoingAttachment)
                 ),
             )
         )
@@ -200,7 +199,7 @@ class ComposeDialog(Adw.Dialog):
 
     async def _attach_files_task(self) -> None:
         async for attachment in OutgoingAttachment.choose(self):
-            self._attachments.append(attachment)
+            self.attachments.model.append(attachment)
 
     def _format_line(self, syntax: str, toggle: bool = False) -> None:
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)

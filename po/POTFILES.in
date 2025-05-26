@@ -5,7 +5,7 @@ data/desktop.in
 data/metainfo.xml.in
 data/gschema.xml.in
 
-openemail/gtk/attachment-now.blp
+openemail/gtk/attachments.blp
 openemail/gtk/auth-view.blp
 openemail/gtk/compose-dialog.blp
 openemail/gtk/contact-row.blp
