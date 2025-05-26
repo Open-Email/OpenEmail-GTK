@@ -7,6 +7,7 @@ import json
 import logging
 from base64 import b64encode
 from collections.abc import AsyncGenerator, Generator, Iterable, Sequence
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
@@ -525,60 +526,17 @@ async def send_message(
     logger.debug("Sending message…")
     attachments = attachments or {}
 
-    if not body:
-        logger.warning("Failed sending message: Empty body")
-        raise WriteError
-
-    messages: list[tuple[dict[str, str], bytes]] = []
-    date = datetime.now(UTC).isoformat(timespec="seconds")
-
     try:
-        ident, headers, content, parts = await _build_message(
+        await _OutgoingMessage(
             readers,
             subject,
             body.encode("utf-8"),
             subject_id,
-            date=date,
-            attachments=attachments,
-        )
-        messages.append((headers, content))
-
-        for part in parts.values():
-            fields, data = part
-            _id, h, c, _p = await _build_message(
-                readers,
-                subject,
-                data,
-                subject_id,
-                attachment=fields,
-                parent_id=ident,
-                date=date,
-            )
-            messages.append((h, c))
-
+            attachments,
+        ).send()
     except WriteError:
         logger.exception("Error sending message")
         raise
-
-    sent = 0
-    for message in messages:
-        for agent in await get_agents(user.address):
-            if await request(
-                _Home(agent, user.address).messages,
-                auth=True,
-                headers=message[0],
-                data=message[1],
-            ):
-                await notify_readers(readers)
-                sent += 1
-                break
-
-    if sent >= len(messages):
-        logger.info("Message sent successfully")
-        return
-
-    logger.error("Failed sending message")
-    raise WriteError
 
 
 async def notify_readers(readers: Iterable[Address]) -> None:
@@ -1029,179 +987,234 @@ async def _fetch_messages(
     return tuple(messages.values())
 
 
-async def _build_message_access(
-    readers: Iterable[Address],
-    access_key: bytes,
-) -> tuple[str, ...]:
-    access: list[str] = []
-    for reader in (*readers, user.address):
-        if not (
-            (profile := await fetch_profile(reader))
-            and (key := profile.encryption_key)
-            and (key_id := key.key_id)
-        ):
-            msg = "Failed fetching reader profiles"
-            raise ValueError(msg)
+@dataclass(slots=True)
+class _OutgoingMessage[T: _OutgoingMessage]:
+    readers: Iterable[Address]
+    subject: str
+    content: bytes
+    subject_id: str | None = None
+    attachments: dict[str, bytes] = field(default_factory=dict)
+
+    _date: str | None = None
+    _attachment: dict[str, str] = field(default_factory=dict)
+    _parent_id: str | None = None
+
+    _ident: str = field(default_factory=generate_message_id, init=False)
+    _headers: dict[str, str] = field(default_factory=dict, init=False)
+    _parts: dict[str, tuple[dict[str, str], bytes]] = field(
+        default_factory=dict, init=False
+    )
+
+    _built: bool = field(default=False, init=False)
+
+    async def send(self) -> None:
+        try:
+            await self._build()
+
+            for agent in await get_agents(user.address):
+                if not await request(
+                    _Home(agent, user.address).messages,
+                    auth=True,
+                    headers=self._headers,
+                    data=self.content,
+                ):
+                    logger.error("Failed sending message")
+                    raise WriteError
+
+                await notify_readers(self.readers)
+                break
+
+            for part in self._parts.values():
+                await _OutgoingMessage(
+                    self.readers,
+                    self.subject,
+                    part[1],
+                    self.subject_id,
+                    _attachment=part[0],
+                    _parent_id=self._ident,
+                    _date=self._date,
+                ).send()
+
+        except ValueError as error:
+            logger.exception("Error sending message")
+            raise WriteError from error
+
+    async def _build(self) -> None:
+        if self._built:
+            return
+
+        self._date = self._date or datetime.now(UTC).isoformat(timespec="seconds")
+        self._headers: dict[str, str] = {
+            "Message-Id": self._ident,
+            "Content-Type": "application/octet-stream",
+        }
+
+        modified = self._date  # TODO
+        for name, data in self.attachments.items():
+            for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
+                part = data[start : start + MAX_MESSAGE_SIZE]
+                self._parts[name] = (
+                    {
+                        "name": name,
+                        "id": generate_message_id(),
+                        "type": "application/octet-stream",  # TODO
+                        "size": str(len(data)),
+                        "part": f"{index + 1}/{len(self.attachments)}",
+                        "modified": modified,
+                    },
+                    part,
+                )
+
+        headers_bytes = "\n".join(
+            (
+                f"{key}:{value}"
+                for key, value in (
+                    {
+                        "Id": self._headers["Message-Id"],
+                        "Author": str(user.address),
+                        "Date": self._date,
+                        "Size": str(len(self.content)),
+                        "Checksum": ";".join(
+                            (
+                                f"algorithm={crypto.CHECKSUM_ALGORITHM}",
+                                f"value={sha256(self.content).hexdigest()}",
+                            )
+                        ),
+                        "Subject": self.subject,
+                        "Subject-Id": self.subject_id or self._headers["Message-Id"],
+                        "Category": "personal",
+                    }
+                    | (
+                        {"Readers": ",".join(str(reader) for reader in self.readers)}
+                        if self.readers
+                        else {}
+                    )
+                    | (
+                        {
+                            "File": ";".join(
+                                f"{key}={value}"
+                                for key, value in self._attachment.items()
+                            )
+                        }
+                        if self._attachment
+                        else {}
+                    )
+                    | ({"Parent-Id": self._parent_id} if self._parent_id else {})
+                    | (
+                        {
+                            "Files": ",".join(
+                                (
+                                    ";".join(
+                                        f"{key}={value}" for key, value in a[0].items()
+                                    )
+                                )
+                                for a in self._parts.values()
+                            )
+                        }
+                        if self._parts
+                        else {}
+                    )
+                ).items()
+            )
+        ).encode("utf-8")
+
+        if self.readers:
+            access_key = crypto.random_bytes(32)
+
+            try:
+                message_access = await self._build_access(self.readers, access_key)
+            except ValueError as error:
+                msg = "Error building message: Building access failed"
+                raise ValueError(msg) from error
+
+            try:
+                self.content = crypto.encrypt_xchacha20poly1305(
+                    self.content, access_key
+                )
+                headers_bytes = crypto.encrypt_xchacha20poly1305(
+                    headers_bytes, access_key
+                )
+            except ValueError as error:
+                msg = "Error building message: Encryption failed"
+                raise ValueError(msg) from error
+
+            self._headers.update(
+                {
+                    "Message-Access": ",".join(message_access),
+                    "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
+                }
+            )
+
+        self._headers["Message-Headers"] = (
+            self._headers.get("Message-Headers", "")
+            + f"value={b64encode(headers_bytes).decode('utf-8')}"
+        )
+
+        checksum_fields = sorted(
+            ("Message-Id", "Message-Headers")
+            + (("Message-Encryption", "Message-Access") if self.readers else ())
+        )
 
         try:
-            encrypted = crypto.encrypt_anonymous(access_key, key)
+            checksum, signature = _sign_headers(
+                tuple(self._headers[f] for f in checksum_fields)
+            )
         except ValueError as error:
-            msg = "Failed to encrypt access key"
+            msg = "Error building message: Signing headers failed"
             raise ValueError(msg) from error
 
-        access.append(
-            ";".join(
-                (
-                    f"link={model.generate_link(user.address, reader)}",
-                    f"fingerprint={crypto.fingerprint(profile.signing_key)}",
-                    f"value={b64encode(encrypted).decode('utf-8')}",
-                    f"id={key_id}",
-                )
-            )
-        )
-
-    return tuple(access)
-
-
-async def _build_message(
-    readers: Iterable[Address],
-    subject: str,
-    content: bytes,
-    subject_id: str | None = None,
-    *,
-    attachment: dict[str, str] | None = None,
-    parent_id: str | None = None,
-    date: str | None = None,
-    attachments: dict[str, bytes] | None = None,
-) -> tuple[str, dict[str, str], bytes, dict[str, tuple[dict[str, str], bytes]]]:
-    attachment = attachment or {}
-    attachments = attachments or {}
-
-    date = date or datetime.now(UTC).isoformat(timespec="seconds")
-    headers: dict[str, str] = {
-        "Message-Id": generate_message_id(),
-        "Content-Type": "application/octet-stream",
-    }
-
-    files = {}
-    modified = date  # TODO
-    for name, data in attachments.items():
-        for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
-            part = data[start : start + MAX_MESSAGE_SIZE]
-            files[name] = (
-                {
-                    "name": name,
-                    "id": generate_message_id(),
-                    "type": "application/octet-stream",  # TODO
-                    "size": str(len(data)),
-                    "part": f"{index + 1}/{len(attachments)}",
-                    "modified": modified,
-                },
-                part,
-            )
-
-    headers_bytes = "\n".join(
-        (
-            f"{key}:{value}"
-            for key, value in (
-                {
-                    "Id": headers["Message-Id"],
-                    "Author": str(user.address),
-                    "Date": date,
-                    "Size": str(len(content)),
-                    "Checksum": ";".join(
-                        (
-                            f"algorithm={crypto.CHECKSUM_ALGORITHM}",
-                            f"value={sha256(content).hexdigest()}",
-                        )
-                    ),
-                    "Subject": subject,
-                    "Subject-Id": subject_id or headers["Message-Id"],
-                    "Category": "personal",
-                }
-                | (
-                    {"Readers": ",".join(str(reader) for reader in readers)}
-                    if readers
-                    else {}
-                )
-                | (
-                    {
-                        "File": ";".join(
-                            f"{key}={value}" for key, value in attachment.items()
-                        )
-                    }
-                    if attachment
-                    else {}
-                )
-                | ({"Parent-Id": parent_id} if parent_id else {})
-                | (
-                    {
-                        "Files": ",".join(
-                            (";".join(f"{key}={value}" for key, value in a[0].items()))
-                            for a in files.values()
-                        )
-                    }
-                    if files
-                    else {}
-                )
-            ).items()
-        )
-    ).encode("utf-8")
-
-    if readers:
-        access_key = crypto.random_bytes(32)
-
-        try:
-            message_access = await _build_message_access(readers, access_key)
-        except ValueError as error:
-            raise WriteError from error
-
-        try:
-            content = crypto.encrypt_xchacha20poly1305(content, access_key)
-            headers_bytes = crypto.encrypt_xchacha20poly1305(headers_bytes, access_key)
-        except ValueError as error:
-            raise WriteError from error
-
-        headers.update(
+        self._headers.update(
             {
-                "Message-Access": ",".join(message_access),
-                "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
+                "Content-Length": str(len(self.content)),
+                "Message-Checksum": ";".join(
+                    (
+                        f"algorithm={crypto.CHECKSUM_ALGORITHM}",
+                        f"order={':'.join(checksum_fields)}",
+                        f"value={checksum.hexdigest()}",
+                    )
+                ),
+                "Message-Signature": ";".join(
+                    (
+                        f"id={user.encryption_keys.public.key_id or 0}",
+                        f"algorithm={crypto.SIGNING_ALGORITHM}",
+                        f"value={signature}",
+                    )
+                ),
             }
         )
 
-    headers["Message-Headers"] = (
-        headers.get("Message-Headers", "")
-        + f"value={b64encode(headers_bytes).decode('utf-8')}"
-    )
+        self._built = True
 
-    checksum_fields = sorted(
-        ("Message-Id", "Message-Headers")
-        + (("Message-Encryption", "Message-Access") if readers else ())
-    )
+    @staticmethod
+    async def _build_access(
+        readers: Iterable[Address],
+        access_key: bytes,
+    ) -> tuple[str, ...]:
+        access: list[str] = []
+        for reader in (*readers, user.address):
+            if not (
+                (profile := await fetch_profile(reader))
+                and (key := profile.encryption_key)
+                and (key_id := key.key_id)
+            ):
+                msg = "Failed fetching reader profiles"
+                raise ValueError(msg)
 
-    try:
-        checksum, signature = _sign_headers(tuple(headers[f] for f in checksum_fields))
-    except ValueError as error:
-        raise WriteError from error
+            try:
+                encrypted = crypto.encrypt_anonymous(access_key, key)
+            except ValueError as error:
+                msg = "Failed to encrypt access key"
+                raise ValueError(msg) from error
 
-    headers.update(
-        {
-            "Content-Length": str(len(content)),
-            "Message-Checksum": ";".join(
-                (
-                    f"algorithm={crypto.CHECKSUM_ALGORITHM}",
-                    f"order={':'.join(checksum_fields)}",
-                    f"value={checksum.hexdigest()}",
+            access.append(
+                ";".join(
+                    (
+                        f"link={model.generate_link(user.address, reader)}",
+                        f"fingerprint={crypto.fingerprint(profile.signing_key)}",
+                        f"value={b64encode(encrypted).decode('utf-8')}",
+                        f"id={key_id}",
+                    )
                 )
-            ),
-            "Message-Signature": ";".join(
-                (
-                    f"id={user.encryption_keys.public.key_id or 0}",
-                    f"algorithm={crypto.SIGNING_ALGORITHM}",
-                    f"value={signature}",
-                )
-            ),
-        }
-    )
+            )
 
-    return headers["Message-Id"], headers, content, files
+        return tuple(access)
