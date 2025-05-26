@@ -1,46 +1,63 @@
 using Gtk 4.0;
 using Adw 1;
 
-template ListItem {
-  child: Box {
-    margin-top: 12;
-    margin-bottom: 12;
-    spacing: 12;
+template $ContactRow: Box {
+  margin-top: 12;
+  margin-bottom: 12;
+  spacing: 12;
 
-    Adw.Avatar {
-      size: 32;
-      text: bind template.item as <$Profile>.name;
-      custom-image: bind template.item as <$Profile>.image;
-      show-initials: true;
+  Adw.Avatar {
+    size: 32;
+    text: bind template.profile as <$Profile>.name;
+    custom-image: bind template.profile as <$Profile>.image;
+    show-initials: true;
+  }
+
+  Box {
+    orientation: vertical;
+    valign: center;
+
+    Label {
+      halign: start;
+      label: bind template.profile as <$Profile>.name;
+      ellipsize: end;
     }
 
-    Box {
-      orientation: vertical;
-      valign: center;
+    Label {
+      visible: bind template.profile as <$Profile>.has-name;
+      halign: start;
+      label: bind template.profile as <$Profile>.address;
+      ellipsize: end;
 
-      Label {
-        halign: start;
-        label: bind template.item as <$Profile>.name;
-        ellipsize: end;
-      }
+      styles [
+        "caption",
+      ]
+    }
+  }
 
-      Label {
-        visible: bind template.item as <$Profile>.has-name;
-        halign: start;
-        label: bind template.item as <$Profile>.address;
-        ellipsize: end;
+  Box {
+    visible: bind template.profile as <$Profile>.contact-request;
+    hexpand: true;
+    halign: end;
 
-        styles [
-          "caption",
-        ]
-      }
+    Button {
+      icon-name: "accept-symbolic";
+      tooltip-text: _("Accept");
+      clicked => $_accept();
+
+      styles [
+        "flat",
+      ]
     }
 
-    $RequestButtons {
-      visible: bind template.item as <$Profile>.contact-request;
-      hexpand: true;
-      halign: end;
-      address: bind template.item as <$Profile>.address;
+    Button {
+      icon-name: "decline-symbolic";
+      tooltip-text: _("Decline");
+      clicked => $_decline();
+
+      styles [
+        "flat",
+      ]
     }
-  };
+  }
 }

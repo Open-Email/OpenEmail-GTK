@@ -2,15 +2,16 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from contextlib import suppress
-from typing import Any, cast
+from typing import Any
 
-from gi.repository import Adw, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, Notifier, run_task
-from openemail.mail import Attachment, Message, Profile
+from openemail.mail import Message, Profile
 
+from .attachments import Attachments
 from .message_body import MessageBody
 from .profile_view import ProfileView
 
@@ -23,7 +24,7 @@ class MessageView(Adw.Bin):
 
     reply_button: Gtk.Button = Gtk.Template.Child()
     message_body: MessageBody = Gtk.Template.Child()
-    attachments_list: Gtk.ListBox = Gtk.Template.Child()
+    attachments: Attachments = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()
     profile_view: ProfileView = Gtk.Template.Child()
@@ -32,7 +33,6 @@ class MessageView(Adw.Bin):
     visible_child_name = GObject.Property(type=str, default="empty")
     app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
 
-    attachments: dict[Adw.ActionRow, Attachment]
     undo: dict[Adw.Toast, Callable[[], Any]]
 
     _message: Message | None = None
@@ -51,23 +51,11 @@ class MessageView(Adw.Bin):
             return
 
         self.visible_child_name = "message"
-
-        self.attachments_list.remove_all()
-        self.attachments = {}
-        for a in message.attachments:
-            row = Adw.ActionRow(
-                title=(a := cast("Attachment", a)).name,
-                activatable=True,
-                use_markup=False,
-            )
-            row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
-            self.attachments[row] = a
-            self.attachments_list.append(row)
+        self.attachments.model = Gtk.NoSelection.new(message.attachments)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.attachments = {}
         self.undo = {}
 
         def undo(*_args: Any) -> bool:
@@ -99,53 +87,6 @@ class MessageView(Adw.Bin):
 
         self.profile_view.profile = profile
         self.profile_dialog.present(self)
-
-    @Gtk.Template.Callback()
-    def _open_attachment(self, _obj: Any, row: Adw.ActionRow) -> None:
-        if not (attachment := self.attachments.get(row)):
-            return
-
-        async def save() -> None:
-            try:
-                gfile = await cast(
-                    "Awaitable[Gio.File]",
-                    Gtk.FileDialog(
-                        initial_name=row.props.title,
-                        initial_folder=Gio.File.new_for_path(downloads)
-                        if (
-                            downloads := GLib.get_user_special_dir(
-                                GLib.UserDirectory.DIRECTORY_DOWNLOAD
-                            )
-                        )
-                        else None,
-                    ).save(
-                        win if isinstance(win := self.props.root, Gtk.Window) else None
-                    ),
-                )
-            except GLib.Error:
-                return
-
-            if not (data := await attachment.download()):
-                return
-
-            try:
-                stream = gfile.replace(
-                    None, True, Gio.FileCreateFlags.REPLACE_DESTINATION
-                )
-                await cast(
-                    "Awaitable",
-                    stream.write_bytes_async(
-                        GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT
-                    ),
-                )
-                await cast(
-                    "Awaitable",
-                    stream.close_async(GLib.PRIORITY_DEFAULT),
-                )
-            except GLib.Error:
-                return
-
-        run_task(save())
 
     @Gtk.Template.Callback()
     def _trash(self, *_args: Any) -> None:

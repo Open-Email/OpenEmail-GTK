@@ -29,7 +29,7 @@ MAX_PROFILE_IMAGE_SIZE = 640_000
 _SHORT = 8
 
 logger = logging.getLogger(__name__)
-data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share")) / "openemail"
+data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share"), "openemail")
 user = User()
 
 

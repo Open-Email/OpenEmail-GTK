@@ -2,9 +2,11 @@ using Gtk 4.0;
 using Adw 1;
 
 template $ComposeDialog: Adw.Dialog {
-  title: _("New Message");
+  width-request: 360;
+  height-request: 294;
   content-width: 650;
   content-height: 500;
+  title: _("New Message");
   closed => $_closed();
 
   child: Adw.ToolbarView {
@@ -61,7 +63,7 @@ template $ComposeDialog: Adw.Dialog {
                 label: _("Readers:");
 
                 styles [
-                  "dim-label",
+                  "dimmed",
                 ]
               }
 
@@ -86,7 +88,7 @@ template $ComposeDialog: Adw.Dialog {
               label: _("Readers: Everyone");
 
               styles [
-                "dim-label",
+                "dimmed",
               ]
             };
           }
@@ -103,7 +105,7 @@ template $ComposeDialog: Adw.Dialog {
             label: _("Subject:");
 
             styles [
-              "dim-label",
+              "dimmed",
             ]
           }
 
@@ -129,7 +131,7 @@ template $ComposeDialog: Adw.Dialog {
         }
 
         $MessageBody body_view {
-          top-margin: 6;
+          top-margin: 12;
           left-margin: 12;
           right-margin: 12;
           bottom-margin: 220;
@@ -137,21 +139,11 @@ template $ComposeDialog: Adw.Dialog {
           accessibility {
             label: _("Message");
           }
-
-          styles [
-            "inline",
-          ]
         }
 
-        ListBox attachments {
-          selection-mode: none;
-          margin-bottom: 12;
+        $Attachments attachments {
           margin-start: 12;
           margin-end: 12;
-
-          styles [
-            "boxed-list-separate",
-          ]
         }
       };
     };
@@ -234,6 +226,10 @@ template $ComposeDialog: Adw.Dialog {
       privacy_switcher.display-mode: icons;
     }
   }
+
+  styles [
+    "view",
+  ]
 }
 
 $Form compose_form {

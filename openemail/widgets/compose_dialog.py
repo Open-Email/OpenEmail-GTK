@@ -3,14 +3,15 @@
 # SPDX-FileContributor: kramo
 
 import re
-from collections.abc import Awaitable, Iterable
-from typing import Any, cast
+from collections.abc import Iterable
+from typing import Any
 
-from gi.repository import Adw, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import Address, Message, Profile
+from openemail.mail import Address, Message, OutgoingAttachment, Profile
 
+from .attachments import Attachments
 from .form import Form
 from .message_body import MessageBody
 
@@ -26,13 +27,13 @@ class ComposeDialog(Adw.Dialog):
     body_view: MessageBody = Gtk.Template.Child()
     compose_form: Form = Gtk.Template.Child()
 
-    attachments: Gtk.ListBox = Gtk.Template.Child()
+    attachments: Attachments = Gtk.Template.Child()
 
     body: Gtk.TextBuffer
     subject_id: str | None = None
     draft_id: int | None = None
 
-    _attached_files: dict[Gio.File, str]
+    _attachments: Gio.ListStore
     _privacy: str = "private"
     _save: bool = True
 
@@ -52,7 +53,9 @@ class ComposeDialog(Adw.Dialog):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self._attached_files = {}
+        self._attachments = Gio.ListStore.new(OutgoingAttachment)
+        self.attachments.model = Gtk.NoSelection.new(self._attachments)
+
         self.body = self.body_view.props.buffer
 
     def present_new(self, parent: Gtk.Widget) -> None:
@@ -60,8 +63,7 @@ class ComposeDialog(Adw.Dialog):
         self.subject_id = None
         self.draft_id = None
         self.privacy = "private"
-        self._attached_files.clear()
-        self.attachments.remove_all()
+        self._attachments.remove_all()
         self.compose_form.reset()
 
         self.present(parent)
@@ -69,8 +71,7 @@ class ComposeDialog(Adw.Dialog):
 
     def present_message(self, message: Message, parent: Gtk.Widget) -> None:
         """Present `self`, displaying the contents of `message`."""
-        self._attached_files.clear()
-        self.attachments.remove_all()
+        self._attachments.remove_all()
         self.privacy = "public" if message.broadcast else "private"
         self.subject_id = message.subject_id
         self.draft_id = message.draft_id
@@ -82,8 +83,7 @@ class ComposeDialog(Adw.Dialog):
 
     def present_reply(self, message: Message, parent: Gtk.Widget) -> None:
         """Present `self`, replying to `message`."""
-        self._attached_files.clear()
-        self.attachments.remove_all()
+        self._attachments.remove_all()
         self.compose_form.reset()
         self.privacy = (
             "public" if (message.broadcast and message.author_is_self) else "private"
@@ -160,7 +160,9 @@ class ComposeDialog(Adw.Dialog):
                 self.subject.props.text,
                 self.body.props.text,
                 self.subject_id,
-                attachments=self._attached_files,
+                attachments=tuple(
+                    a for a in self._attachments if isinstance(a, OutgoingAttachment)
+                ),
             )
         )
 
@@ -197,35 +199,8 @@ class ComposeDialog(Adw.Dialog):
         Gtk.TextView.do_insert_emoji(self.body_view)
 
     async def _attach_files_task(self) -> None:
-        try:
-            gfiles = await cast(
-                "Awaitable[Gio.ListModel]",
-                Gtk.FileDialog().open_multiple(
-                    win if isinstance(win := self.props.root, Gtk.Window) else None
-                ),
-            )
-        except GLib.Error:
-            return
-
-        for gfile in gfiles:
-            try:
-                display_name = (
-                    await cast(
-                        "Awaitable[Gio.FileInfo]",
-                        (gfile := cast("Gio.File", gfile)).query_info_async(
-                            Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
-                            Gio.FileQueryInfoFlags.NONE,
-                            GLib.PRIORITY_DEFAULT,
-                        ),
-                    )
-                ).get_display_name()
-            except GLib.Error:
-                continue
-
-            self._attached_files[gfile] = display_name
-            row = Adw.ActionRow(title=display_name, use_markup=False)
-            row.add_prefix(Gtk.Image.new_from_icon_name("mail-attachment-symbolic"))
-            self.attachments.append(row)
+        async for attachment in OutgoingAttachment.choose(self):
+            self._attachments.append(attachment)
 
     def _format_line(self, syntax: str, toggle: bool = False) -> None:
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)

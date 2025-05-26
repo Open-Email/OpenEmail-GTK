@@ -62,7 +62,7 @@ class Notifier[T: Notifier](GObject.Object):
         toast = Adw.Toast(title=title, priority=Adw.ToastPriority.HIGH)
 
         if undo:
-            toast.props.button_label = _("Undo")
+            toast.props.button_label = _("Undo")  # pyright: ignore[reportUndefinedVariable]
             toast.connect("button-clicked", undo)
 
         cls().emit("send", toast)
@@ -80,7 +80,7 @@ def run_task(
 ) -> None:
     """Run a coroutine in a task.
 
-    Calls `callback on finish with `True` if no exceptions were raised
+    Calls `callback` on finish with `True` if no exceptions were raised
     and `False` otherwise.
     """
     _tasks.add(task := _loop.create_task(coro))

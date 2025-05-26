@@ -5,6 +5,7 @@ data/desktop.in
 data/metainfo.xml.in
 data/gschema.xml.in
 
+openemail/gtk/attachment-now.blp
 openemail/gtk/auth-view.blp
 openemail/gtk/compose-dialog.blp
 openemail/gtk/contact-row.blp
@@ -18,7 +19,6 @@ openemail/gtk/navigation-row.blp
 openemail/gtk/preferences.blp
 openemail/gtk/profile-settings.blp
 openemail/gtk/profile-view.blp
-openemail/gtk/request-buttons.blp
 openemail/gtk/window.blp
 
 openemail/widgets/auth_view.py

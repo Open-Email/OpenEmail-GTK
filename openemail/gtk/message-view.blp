@@ -2,105 +2,105 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MessageView: Adw.Bin {
-  child: Adw.ToolbarView {
-    [top]
-    Adw.HeaderBar {
-      show-title: false;
+  child: Stack {
+    visible-child-name: bind template.visible-child-name;
 
-      [end]
-      Button {
-        visible: bind template.message as <$Message>.can-trash;
-        icon-name: "trash-symbolic";
-        tooltip-text: _("Trash");
-        clicked => $_trash();
+    StackPage {
+      name: "empty";
 
-        ShortcutController {
-          scope: managed;
-
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
-          }
-        }
+      child: Adw.StatusPage {
+        icon-name: bind template.app-icon-name;
 
         styles [
-          "flat",
+          "compact",
+          "dimmed",
         ]
-      }
-
-      [end]
-      Button {
-        visible: bind template.message as <$Message>.can-restore;
-        label: _("Restore");
-        clicked => $_restore();
-
-        ShortcutController {
-          scope: managed;
-
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
-          }
-        }
-
-        styles [
-          "flat",
-        ]
-      }
-
-      [end]
-      Button {
-        visible: bind template.message as <$Message>.author-is-self;
-        icon-name: "trash-symbolic";
-        tooltip-text: _("Discard");
-        clicked => $_discard();
-
-        ShortcutController {
-          scope: managed;
-
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
-          }
-        }
-
-        styles [
-          "flat",
-        ]
-      }
-
-      [end]
-      Button reply_button {
-        visible: bind template.message as <$Message>.can-reply;
-        icon-name: "mail-reply-sender-symbolic";
-        tooltip-text: _("Reply");
-
-        styles [
-          "flat",
-        ]
-      }
+      };
     }
 
-    content: Stack {
-      visible-child-name: bind template.visible-child-name;
+    StackPage {
+      name: "message";
 
-      StackPage {
-        name: "empty";
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          show-title: false;
 
-        child: Adw.StatusPage {
-          icon-name: bind template.app-icon-name;
+          [end]
+          Button {
+            visible: bind template.message as <$Message>.can-trash;
+            icon-name: "trash-symbolic";
+            tooltip-text: _("Trash");
+            clicked => $_trash();
 
-          styles [
-            "compact",
-            "dim-label",
-          ]
-        };
-      }
+            ShortcutController {
+              scope: managed;
 
-      StackPage {
-        name: "message";
+              Shortcut {
+                trigger: "Delete|KP_Delete";
+                action: "activate";
+              }
+            }
 
-        child: ScrolledWindow {
+            styles [
+              "flat",
+            ]
+          }
+
+          [end]
+          Button {
+            visible: bind template.message as <$Message>.can-restore;
+            label: _("Restore");
+            clicked => $_restore();
+
+            ShortcutController {
+              scope: managed;
+
+              Shortcut {
+                trigger: "Delete|KP_Delete";
+                action: "activate";
+              }
+            }
+
+            styles [
+              "flat",
+            ]
+          }
+
+          [end]
+          Button {
+            visible: bind template.message as <$Message>.author-is-self;
+            icon-name: "trash-symbolic";
+            tooltip-text: _("Discard");
+            clicked => $_discard();
+
+            ShortcutController {
+              scope: managed;
+
+              Shortcut {
+                trigger: "Delete|KP_Delete";
+                action: "activate";
+              }
+            }
+
+            styles [
+              "flat",
+            ]
+          }
+
+          [end]
+          Button reply_button {
+            visible: bind template.message as <$Message>.can-reply;
+            icon-name: "mail-reply-sender-symbolic";
+            tooltip-text: _("Reply");
+
+            styles [
+              "flat",
+            ]
+          }
+        }
+
+        content: ScrolledWindow {
           child: Box {
             margin-top: 12;
             margin-bottom: 32;
@@ -212,18 +212,15 @@ template $MessageView: Adw.Bin {
               text: bind template.message as <$Message>.body;
             }
 
-            ListBox attachments_list {
-              selection-mode: none;
-              row-activated => $_open_attachment();
-
-              styles [
-                "boxed-list-separate",
-              ]
-            }
+            $Attachments attachments {}
           };
         };
-      }
-    };
+
+        styles [
+          "view",
+        ]
+      };
+    }
   };
 }
 

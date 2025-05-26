@@ -7,6 +7,14 @@ template $ContactsPage: Adw.NavigationPage {
   child: $ContentPage content {
     title: bind template.title;
 
+    factory: BuilderListItemFactory {
+      template ListItem {
+        child: $ContactRow {
+          profile: bind template.item as <$Profile>;
+        };
+      }
+    };
+
     details: $ProfileView profile_view {};
 
     toolbar-button: Button {

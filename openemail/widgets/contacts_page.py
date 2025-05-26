@@ -10,10 +10,10 @@ from gi.repository import Adw, Gio, GObject, Gtk
 from openemail import PREFIX, mail, run_task
 from openemail.mail import Address
 
+from .contact_row import ContactRow  # noqa: F401
 from .content_page import ContentPage
 from .form import Form
 from .profile_view import ProfileView
-from .request_buttons import RequestButtons  # noqa: F401
 
 
 @Gtk.Template(resource_path=f"{PREFIX}/gtk/contacts-page.ui")
@@ -74,10 +74,6 @@ class ContactsPage(Adw.NavigationPage):
 
         self.content.model.bind_property("selected-item", self.profile_view, "profile")
         self.content.model.connect("notify::selected", self._on_selected)
-
-        self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
-            None, f"{PREFIX}/gtk/contact-row.ui"
-        )
 
     @Gtk.Template.Callback()
     def _new_contact(self, *_args: Any) -> None:

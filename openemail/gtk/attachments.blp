@@ -1,0 +1,48 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $Attachments: Adw.Bin {
+  child: GridView {
+    overflow: visible;
+    min-columns: 4;
+    max-columns: 4;
+    single-click-activate: true;
+    model: bind template.model;
+    activate => $_open();
+
+    factory: BuilderListItemFactory {
+      template ListItem {
+        child: Box {
+          margin-top: 12;
+          margin-bottom: 12;
+          margin-start: 6;
+          margin-end: 6;
+          spacing: 12;
+          orientation: vertical;
+
+          Image {
+            icon-name: "mail-attachment-symbolic";
+            pixel-size: 24;
+
+            styles [
+              "dimmed",
+            ]
+          }
+
+          Label {
+            label: bind template.item as <$Attachment>.name;
+            ellipsize: middle;
+            wrap: true;
+            wrap-mode: word_char;
+            lines: 3;
+            justify: center;
+
+            styles [
+              "caption",
+            ]
+          }
+        };
+      }
+    };
+  };
+}

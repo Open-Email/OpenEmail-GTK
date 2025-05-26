@@ -25,6 +25,7 @@ class _MessagesPage(Adw.NavigationPage):
 
         self.compose_dialog = ComposeDialog()
         self.message_view = MessageView()
+
         self.content = ContentPage(
             title=title,
             details=self.message_view,

@@ -7,23 +7,23 @@ from typing import Any
 from gi.repository import GObject, Gtk
 
 from openemail import PREFIX, mail, run_task, settings
-from openemail.mail import Address
+from openemail.mail import Profile
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/request-buttons.ui")
-class RequestButtons(Gtk.Box):
-    """Buttons to accept or decline a contact request."""
+@Gtk.Template(resource_path=f"{PREFIX}/gtk/contact-row.ui")
+class ContactRow(Gtk.Box):
+    """A row to display a contact or contact request."""
 
-    __gtype_name__ = "RequestButtons"
+    __gtype_name__ = "ContactRow"
 
-    address = GObject.Property(type=str)
+    profile = GObject.Property(type=Profile)
 
     @Gtk.Template.Callback()
     def _accept(self, *_args: Any) -> None:
         self._remove_address()
 
         try:
-            run_task(mail.address_book.new(Address(self.address)))
+            run_task(mail.address_book.new(self.profile.value_of("address")))
         except ValueError:
             return
 
@@ -33,7 +33,9 @@ class RequestButtons(Gtk.Box):
 
     def _remove_address(self) -> None:
         try:
-            (requests := settings.get_strv("contact-requests")).remove(self.address)
+            (requests := settings.get_strv("contact-requests")).remove(
+                self.profile.value_of("address")
+            )
         except ValueError:
             return
 

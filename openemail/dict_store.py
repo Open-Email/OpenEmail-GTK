@@ -9,7 +9,7 @@ from typing import Any
 from gi.repository import Gio, GObject
 
 
-class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
+class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
 
     item_type: type
@@ -23,8 +23,8 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # type: ignore
 
         self._items = {}
 
-    def __iter__(self) -> Iterator[V]:  # type: ignore
-        return super().__iter__()  # type: ignore
+    def __iter__(self) -> Iterator[V]:  # pyright: ignore[reportIncompatibleMethodOverride]
+        return super().__iter__()  # pyright: ignore[reportReturnType]
 
     def do_get_item(self, position: int) -> V | None:
         """Get the item at `position`.

@@ -2,6 +2,7 @@ moduledir = pkgdatadir / 'openemail'
 
 blueprints = custom_target('blueprints',
   input: files(
+    'gtk/attachments.blp',
     'gtk/auth-view.blp',
     'gtk/compose-dialog.blp',
     'gtk/contact-row.blp',
@@ -15,7 +16,6 @@ blueprints = custom_target('blueprints',
     'gtk/preferences.blp',
     'gtk/profile-settings.blp',
     'gtk/profile-view.blp',
-    'gtk/request-buttons.blp',
     'gtk/window.blp',
   ),
   output: '.',

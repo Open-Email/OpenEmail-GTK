@@ -14,7 +14,7 @@ from shutil import rmtree
 from typing import Any, ClassVar, NamedTuple, cast
 
 import keyring
-from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail import Notifier, run_task, secret_service, settings
 
@@ -25,292 +25,6 @@ from .core.model import Address
 from .dict_store import DictStore
 
 MAX_PROFILE_IMAGE_DIMENSIONS = 800
-
-
-def try_auth(
-    on_success: Callable[[], Any] | None = None,
-    on_failure: Callable[[], Any] | None = None,
-) -> None:
-    """Try authenticating and call `on_success` or `on_failure` based on the result."""
-
-    async def auth() -> None:
-        if not await client.try_auth():
-            raise ValueError
-
-    def done(success: bool) -> None:
-        if success:
-            if on_success:
-                on_success()
-            return
-
-        Notifier.send(_("Authentication failed"))
-
-        if on_failure:
-            on_failure()
-
-    run_task(auth(), done)
-
-
-def register(
-    on_success: Callable[[], Any] | None = None,
-    on_failure: Callable[[], Any] | None = None,
-) -> None:
-    """Try authenticating and call `on_success` or `on_failure` based on the result."""
-
-    async def auth() -> None:
-        if not await client.register():
-            raise ValueError
-
-    def done(success: bool) -> None:
-        if success:
-            if on_success:
-                on_success()
-            return
-
-        Notifier.send(_("Registration failed, try another address"))
-
-        if on_failure:
-            on_failure()
-
-    run_task(auth(), done)
-
-
-async def sync(periodic: bool = False) -> None:
-    """Populate the app's content by fetching the user's data."""
-    Notifier().syncing = True
-
-    if periodic and (interval := settings.get_uint("sync-interval")):
-        GLib.timeout_add_seconds(interval or 60, sync, True)
-
-        # The user chose manual sync, check again in a minute
-        if not interval:
-            return
-
-        # Assume that nobody is logged in, skip sync for now
-        if not settings.get_string("address"):
-            return
-
-    broadcasts.updating = True
-    inbox.updating = True
-    outbox.updating = True
-
-    await address_book.update()
-
-    tasks: set[Coroutine[Any, Any, Any]] = {
-        update_user_profile(),
-        address_book.update_profiles(),
-        broadcasts.update(),
-        inbox.update(),
-        outbox.update(),
-        drafts.update(),
-    }
-
-    def done(task: Coroutine[Any, Any, Any]) -> None:
-        tasks.discard(task)
-        if not tasks:
-            Notifier().syncing = False
-
-    for task in tasks:
-        run_task(task, lambda _, t=task: done(t))
-
-
-async def update_profile(values: dict[str, str]) -> None:
-    """Update the user's public profile with `values`."""
-    try:
-        await client.update_profile(values)
-    except WriteError:
-        Notifier.send(_("Failed to update profile"))
-        raise
-
-    await update_user_profile()
-
-
-async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
-    """Upload `pixbuf` to be used as the user's profile image."""
-    if (width := pixbuf.props.width) > (height := pixbuf.props.height):
-        if width > MAX_PROFILE_IMAGE_DIMENSIONS:
-            pixbuf = (
-                pixbuf.scale_simple(
-                    dest_width=int(width * (MAX_PROFILE_IMAGE_DIMENSIONS / height)),
-                    dest_height=MAX_PROFILE_IMAGE_DIMENSIONS,
-                    interp_type=GdkPixbuf.InterpType.BILINEAR,
-                )
-                or pixbuf
-            )
-
-            width = pixbuf.props.width
-            height = pixbuf.props.height
-
-        pixbuf = pixbuf.new_subpixbuf(
-            src_x=int((width - height) / 2),
-            src_y=0,
-            width=height,
-            height=height,
-        )
-    else:
-        if height > MAX_PROFILE_IMAGE_DIMENSIONS:
-            pixbuf = (
-                pixbuf.scale_simple(
-                    dest_width=MAX_PROFILE_IMAGE_DIMENSIONS,
-                    dest_height=int(height * (MAX_PROFILE_IMAGE_DIMENSIONS / width)),
-                    interp_type=GdkPixbuf.InterpType.BILINEAR,
-                )
-                or pixbuf
-            )
-
-            width = pixbuf.props.width
-            height = pixbuf.props.height
-
-        if height > width:
-            pixbuf = pixbuf.new_subpixbuf(
-                src_x=0,
-                src_y=int((height - width) / 2),
-                height=width,
-                width=width,
-            )
-
-    try:
-        success, data = pixbuf.save_to_bufferv(
-            type="jpeg",
-            option_keys=("quality",),
-            option_values=("80",),
-        )
-    except GLib.Error as error:
-        Notifier.send(_("Failed to update profile image"))
-        raise WriteError from error
-
-    if not success:
-        Notifier.send(_("Failed to update profile image"))
-        raise WriteError
-
-    try:
-        await client.update_profile_image(data)
-    except WriteError:
-        Notifier.send(_("Failed to update profile image"))
-        raise
-
-    await update_user_profile()
-
-
-async def update_user_profile() -> None:
-    """Update the profile of the user by fetching new data remotely."""
-    user_profile.updating = True
-    user_profile.set_from_profile(profile := await client.fetch_profile(user.address))
-
-    if profile:
-        user.signing_keys.public = profile.signing_key
-
-        if profile.encryption_key:
-            user.encryption_keys.public = profile.encryption_key
-
-    try:
-        user_profile.image = Gdk.Texture.new_from_bytes(
-            GLib.Bytes.new(await client.fetch_profile_image(user.address))
-        )
-    except GLib.Error:
-        user_profile.image = None
-
-    Profile.of(user.address).image = user_profile.image
-    Profile.of(user.address).set_from_profile(profile)
-    user_profile.updating = False
-
-
-async def delete_profile_image() -> None:
-    """Delete the user's profile image."""
-    try:
-        await client.delete_profile_image()
-    except WriteError:
-        Notifier.send(_("Failed to delete profile image"))
-        raise
-
-    await update_user_profile()
-
-
-async def send_message(
-    readers: Iterable[Address],
-    subject: str,
-    body: str,
-    reply: str | None = None,
-    attachments: dict[Gio.File, str] | None = None,
-) -> None:
-    """Send `message` to `readers`.
-
-    If `readers` is empty, send a broadcast.
-
-    `reply` is an optional `Subject-ID` of a thread that the message should be part of.
-
-    `attachments` is a dictionary of `Gio.File`s and filenames.
-    """
-    Notifier().sending = True
-
-    files = {}
-    attachments = attachments or {}
-    for gfile, name in attachments.items():
-        try:
-            _success, data, _etag = await cast(
-                "Awaitable[tuple[bool, bytes, str]]", gfile.load_contents_async()
-            )
-        except GLib.Error as error:
-            Notifier.send(_("Failed to send message"))
-            Notifier().sending = False
-            raise WriteError from error
-
-        files[name] = data
-
-    try:
-        await client.send_message(readers, subject, body, reply, attachments=files)
-    except WriteError:
-        Notifier.send(_("Failed to send message"))
-        Notifier().sending = False
-        raise
-
-    await outbox.update()
-    Notifier().sending = False
-
-
-def empty_trash() -> None:
-    """Empty the user's trash."""
-    for message in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
-        message.delete()
-
-
-def log_out() -> None:
-    """Remove the user's local account."""
-    for profile in _profiles.values():
-        profile.set_from_profile(None)
-
-    _profiles.clear()
-    address_book.clear()
-    contact_requests.clear()
-    broadcasts.clear()
-    inbox.clear()
-    outbox.clear()
-
-    settings.reset("address")
-    settings.reset("sync-interval")
-    settings.reset("trusted-domains")
-    settings.reset("contact-requests")
-    settings.reset("unread-messages")
-    settings.reset("trashed-messages")
-    settings.reset("deleted-messages")
-
-    keyring.delete_password(secret_service, str(user.address))
-
-    rmtree(client.data_dir, ignore_errors=True)
-
-    for field in fields(model.User):
-        delattr(user, field.name)
-
-
-async def delete_account() -> None:
-    """Permanently delete the user's account."""
-    try:
-        await client.delete_account()
-    except WriteError:
-        Notifier.send(_("Failed to delete account"))
-        return
-
-    log_out()
 
 
 class Profile(GObject.Object):
@@ -613,6 +327,81 @@ class Attachment(GObject.Object):
 
     name = GObject.Property(type=str)
 
+    @abstractmethod
+    def open(self) -> None:
+        """Open `self` for viewing or saving."""
+
+    @staticmethod
+    def _get_window(parent: Gtk.Widget | None) -> Gtk.Window | None:
+        return (
+            parent.props.root
+            if parent and isinstance(parent.props.root, Gtk.Window)
+            else None
+        )
+
+
+class OutgoingAttachment[T: OutgoingAttachment](Attachment):
+    """An attachment that has not yet been sent."""
+
+    gfile = GObject.Property(type=Gio.File)
+
+    def open(self) -> None:
+        """Open `self` for viewing."""
+        if not self.gfile:
+            return
+
+        Gio.AppInfo.launch_default_for_uri(self.gfile.get_uri())
+
+    @classmethod
+    async def from_file(cls: type[T], gfile: Gio.File) -> T:
+        """Create an outgoing attachment from `gfile`.
+
+        Raises ValueError if `gfile` doesn't have all required attributes.
+        """
+        try:
+            return cls(
+                gfile=gfile,
+                name=(
+                    await cast(
+                        "Awaitable[Gio.FileInfo]",
+                        gfile.query_info_async(
+                            Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
+                            Gio.FileQueryInfoFlags.NONE,
+                            GLib.PRIORITY_DEFAULT,
+                        ),
+                    )
+                ).get_display_name(),
+            )
+        except GLib.Error as error:
+            msg = "Could not create attachment: File missing required attributes"
+            raise ValueError(msg) from error
+
+    @classmethod
+    async def choose(
+        cls: type[T], parent: Gtk.Widget | None = None
+    ) -> AsyncGenerator[T, None]:
+        """Prompt the user to choose a attachments using the file picker."""
+        try:
+            gfiles = await cast(
+                "Awaitable[Gio.ListModel]",
+                Gtk.FileDialog().open_multiple(cls._get_window(parent)),
+            )
+        except GLib.Error:
+            return
+
+        for gfile in gfiles:
+            if not isinstance(gfile, Gio.File):
+                return
+
+            try:
+                yield await cls.from_file(gfile)
+            except ValueError:
+                continue
+
+
+class IncomingAttachment(Attachment):
+    """An attachment received by the user."""
+
     _parts: list[model.Message]
 
     def __init__(self, name: str, parts: list[model.Message], **kwargs: Any) -> None:
@@ -620,13 +409,49 @@ class Attachment(GObject.Object):
 
         self.name, self._parts = name, parts
 
-    async def download(self) -> bytes | None:
-        """Download and reconstruct `self` from its parts."""
-        if not (data := await client.download_attachment(self._parts)):
-            Notifier.send(_("Failed to download attachment"))
-            return None
+    def open(self, parent: Gtk.Widget | None = None) -> None:
+        """Download and reconstruct `self` from its parts, then open for saving."""
+        run_task(self._save(parent))
 
-        return data
+    async def _save(self, parent: Gtk.Widget | None) -> None:
+        msg = _("Failed to download attachment")
+
+        try:
+            gfile = await cast(
+                "Awaitable[Gio.File]",
+                Gtk.FileDialog(
+                    initial_name=self.name,
+                    initial_folder=Gio.File.new_for_path(downloads)
+                    if (
+                        downloads := GLib.get_user_special_dir(
+                            GLib.UserDirectory.DIRECTORY_DOWNLOAD
+                        )
+                    )
+                    else None,
+                ).save(self._get_window(parent)),
+            )
+        except GLib.Error:
+            return
+
+        if not (data := await client.download_attachment(self._parts)):
+            Notifier.send(msg)
+            return
+
+        try:
+            stream = gfile.replace(None, True, Gio.FileCreateFlags.REPLACE_DESTINATION)
+            await cast(
+                "Awaitable",
+                stream.write_bytes_async(GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT),
+            )
+            await cast(
+                "Awaitable",
+                stream.close_async(GLib.PRIORITY_DEFAULT),
+            )
+        except GLib.Error:
+            Notifier.send(msg)
+            return
+
+        Gio.AppInfo.launch_default_for_uri(gfile.get_uri())
 
 
 class Message(GObject.Object):
@@ -689,13 +514,6 @@ class Message(GObject.Object):
         self._message = message
 
         if not message:
-            self.unread = False
-            self.broadcast = False
-            self.can_reply = False
-            self.author_is_self = False
-            self.can_trash = False
-            self.can_restore = False
-            self.different_author = False
             return
 
         self.date = message.date.strftime("%x")
@@ -736,7 +554,7 @@ class Message(GObject.Object):
 
         self.attachments.remove_all()
         for name, parts in message.attachments.items():
-            self.attachments.append(Attachment(name, parts))
+            self.attachments.append(IncomingAttachment(name, parts))
 
         if self._name_binding:
             self._name_binding.unbind()
@@ -891,7 +709,7 @@ class MessageStore(DictStore[str, Message]):
         """Update `self` asynchronously using `self._fetch()`."""
         idents: set[str] = set()
 
-        async for message in self._fetch():  # type: ignore
+        async for message in self._fetch():  # pyright: ignore[reportGeneralTypeIssues]
             ident = _ident(message)
 
             idents.add(ident)
@@ -1075,6 +893,292 @@ broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
 drafts = _DraftStore()
+
+
+def try_auth(
+    on_success: Callable[[], Any] | None = None,
+    on_failure: Callable[[], Any] | None = None,
+) -> None:
+    """Try authenticating and call `on_success` or `on_failure` based on the result."""
+
+    async def auth() -> None:
+        if not await client.try_auth():
+            raise ValueError
+
+    def done(success: bool) -> None:
+        if success:
+            if on_success:
+                on_success()
+            return
+
+        Notifier.send(_("Authentication failed"))
+
+        if on_failure:
+            on_failure()
+
+    run_task(auth(), done)
+
+
+def register(
+    on_success: Callable[[], Any] | None = None,
+    on_failure: Callable[[], Any] | None = None,
+) -> None:
+    """Try authenticating and call `on_success` or `on_failure` based on the result."""
+
+    async def auth() -> None:
+        if not await client.register():
+            raise ValueError
+
+    def done(success: bool) -> None:
+        if success:
+            if on_success:
+                on_success()
+            return
+
+        Notifier.send(_("Registration failed, try another address"))
+
+        if on_failure:
+            on_failure()
+
+    run_task(auth(), done)
+
+
+async def sync(periodic: bool = False) -> None:
+    """Populate the app's content by fetching the user's data."""
+    Notifier().syncing = True
+
+    if periodic and (interval := settings.get_uint("sync-interval")):
+        GLib.timeout_add_seconds(interval or 60, sync, True)
+
+        # The user chose manual sync, check again in a minute
+        if not interval:
+            return
+
+        # Assume that nobody is logged in, skip sync for now
+        if not settings.get_string("address"):
+            return
+
+    broadcasts.updating = True
+    inbox.updating = True
+    outbox.updating = True
+
+    await address_book.update()
+
+    tasks: set[Coroutine[Any, Any, Any]] = {
+        update_user_profile(),
+        address_book.update_profiles(),
+        broadcasts.update(),
+        inbox.update(),
+        outbox.update(),
+        drafts.update(),
+    }
+
+    def done(task: Coroutine[Any, Any, Any]) -> None:
+        tasks.discard(task)
+        if not tasks:
+            Notifier().syncing = False
+
+    for task in tasks:
+        run_task(task, lambda _, t=task: done(t))
+
+
+async def update_profile(values: dict[str, str]) -> None:
+    """Update the user's public profile with `values`."""
+    try:
+        await client.update_profile(values)
+    except WriteError:
+        Notifier.send(_("Failed to update profile"))
+        raise
+
+    await update_user_profile()
+
+
+async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
+    """Upload `pixbuf` to be used as the user's profile image."""
+    if (width := pixbuf.props.width) > (height := pixbuf.props.height):
+        if width > MAX_PROFILE_IMAGE_DIMENSIONS:
+            pixbuf = (
+                pixbuf.scale_simple(
+                    dest_width=int(width * (MAX_PROFILE_IMAGE_DIMENSIONS / height)),
+                    dest_height=MAX_PROFILE_IMAGE_DIMENSIONS,
+                    interp_type=GdkPixbuf.InterpType.BILINEAR,
+                )
+                or pixbuf
+            )
+
+            width = pixbuf.props.width
+            height = pixbuf.props.height
+
+        pixbuf = pixbuf.new_subpixbuf(
+            src_x=int((width - height) / 2),
+            src_y=0,
+            width=height,
+            height=height,
+        )
+    else:
+        if height > MAX_PROFILE_IMAGE_DIMENSIONS:
+            pixbuf = (
+                pixbuf.scale_simple(
+                    dest_width=MAX_PROFILE_IMAGE_DIMENSIONS,
+                    dest_height=int(height * (MAX_PROFILE_IMAGE_DIMENSIONS / width)),
+                    interp_type=GdkPixbuf.InterpType.BILINEAR,
+                )
+                or pixbuf
+            )
+
+            width = pixbuf.props.width
+            height = pixbuf.props.height
+
+        if height > width:
+            pixbuf = pixbuf.new_subpixbuf(
+                src_x=0,
+                src_y=int((height - width) / 2),
+                height=width,
+                width=width,
+            )
+
+    try:
+        success, data = pixbuf.save_to_bufferv(
+            type="jpeg",
+            option_keys=("quality",),
+            option_values=("80",),
+        )
+    except GLib.Error as error:
+        Notifier.send(_("Failed to update profile image"))
+        raise WriteError from error
+
+    if not success:
+        Notifier.send(_("Failed to update profile image"))
+        raise WriteError
+
+    try:
+        await client.update_profile_image(data)
+    except WriteError:
+        Notifier.send(_("Failed to update profile image"))
+        raise
+
+    await update_user_profile()
+
+
+async def update_user_profile() -> None:
+    """Update the profile of the user by fetching new data remotely."""
+    user_profile.updating = True
+    user_profile.set_from_profile(profile := await client.fetch_profile(user.address))
+
+    if profile:
+        user.signing_keys.public = profile.signing_key
+
+        if profile.encryption_key:
+            user.encryption_keys.public = profile.encryption_key
+
+    try:
+        user_profile.image = Gdk.Texture.new_from_bytes(
+            GLib.Bytes.new(await client.fetch_profile_image(user.address))
+        )
+    except GLib.Error:
+        user_profile.image = None
+
+    Profile.of(user.address).image = user_profile.image
+    Profile.of(user.address).set_from_profile(profile)
+    user_profile.updating = False
+
+
+async def delete_profile_image() -> None:
+    """Delete the user's profile image."""
+    try:
+        await client.delete_profile_image()
+    except WriteError:
+        Notifier.send(_("Failed to delete profile image"))
+        raise
+
+    await update_user_profile()
+
+
+async def send_message(
+    readers: Iterable[Address],
+    subject: str,
+    body: str,
+    reply: str | None = None,
+    attachments: Iterable[OutgoingAttachment] = (),
+) -> None:
+    """Send `message` to `readers`.
+
+    If `readers` is empty, send a broadcast.
+
+    `reply` is an optional `Subject-ID` of a thread that the message should be part of.
+
+    `attachments` is a dictionary of `Gio.File`s and filenames.
+    """
+    Notifier().sending = True
+
+    files = {}
+    for attachment in attachments:
+        try:
+            _success, data, _etag = await cast(
+                "Awaitable[tuple[bool, bytes, str]]",
+                attachment.gfile.load_contents_async(),
+            )
+        except GLib.Error as error:
+            Notifier.send(_("Failed to send message"))
+            Notifier().sending = False
+            raise WriteError from error
+
+        files[attachment.name] = data
+
+    try:
+        await client.send_message(readers, subject, body, reply, attachments=files)
+    except WriteError:
+        Notifier.send(_("Failed to send message"))
+        Notifier().sending = False
+        raise
+
+    await outbox.update()
+    Notifier().sending = False
+
+
+def empty_trash() -> None:
+    """Empty the user's trash."""
+    for message in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
+        message.delete()
+
+
+def log_out() -> None:
+    """Remove the user's local account."""
+    for profile in _profiles.values():
+        profile.set_from_profile(None)
+
+    _profiles.clear()
+    address_book.clear()
+    contact_requests.clear()
+    broadcasts.clear()
+    inbox.clear()
+    outbox.clear()
+
+    settings.reset("address")
+    settings.reset("sync-interval")
+    settings.reset("trusted-domains")
+    settings.reset("contact-requests")
+    settings.reset("unread-messages")
+    settings.reset("trashed-messages")
+    settings.reset("deleted-messages")
+
+    keyring.delete_password(secret_service, str(user.address))
+
+    rmtree(client.data_dir, ignore_errors=True)
+
+    for field in fields(model.User):
+        delattr(user, field.name)
+
+
+async def delete_account() -> None:
+    """Permanently delete the user's account."""
+    try:
+        await client.delete_account()
+    except WriteError:
+        Notifier.send(_("Failed to delete account"))
+        return
+
+    log_out()
 
 
 def _ident(message: model.Message) -> str:
