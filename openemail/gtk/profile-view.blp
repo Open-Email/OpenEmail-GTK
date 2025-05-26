@@ -2,63 +2,81 @@ using Gtk 4.0;
 using Adw 1;
 
 template $ProfileView: Adw.Bin {
-  child: Adw.ToolbarView {
-    [top]
-    Adw.HeaderBar {
-      show-title: false;
+  child: Stack {
+    visible-child-name: bind template.visible-child-name;
 
-      [end]
-      Button {
-        visible: bind template.is-contact;
-        icon-name: "trash-symbolic";
-        tooltip-text: _("Remove Contact");
-        clicked => $_remove_contact();
+    StackPage {
+      name: "empty";
 
-        ShortcutController {
-          scope: managed;
+      child: WindowHandle {
+        child: Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {
+            show-title: false;
+          }
 
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
+          content: Adw.StatusPage {
+            icon-name: bind template.app-icon-name;
+
+            styles [
+              "compact",
+              "dimmed",
+            ]
+          };
+        };
+      };
+    }
+
+    StackPage {
+      name: "not-found";
+
+      child: WindowHandle {
+        child: Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {
+            show-title: false;
+          }
+
+          content: Adw.StatusPage {
+            icon-name: "about-symbolic";
+            title: _("Profile Not Found");
+            description: _("Couldn’t get information about the selected user");
+          };
+        };
+      };
+    }
+
+    StackPage {
+      name: "profile";
+
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+          show-title: false;
+
+          [end]
+          Button {
+            visible: bind template.is-contact;
+            icon-name: "trash-symbolic";
+            tooltip-text: _("Remove Contact");
+            clicked => $_remove_contact();
+
+            ShortcutController {
+              scope: managed;
+
+              Shortcut {
+                trigger: "Delete|KP_Delete";
+                action: "activate";
+              }
+            }
+
+            styles [
+              "flat",
+            ]
           }
         }
 
-        styles [
-          "flat",
-        ]
-      }
-    }
-
-    content: Stack {
-      visible-child-name: bind template.visible-child-name;
-
-      StackPage {
-        name: "empty";
-
-        child: Adw.StatusPage {
-          icon-name: bind template.app-icon-name;
-
-          styles [
-            "compact",
-            "dimmed",
-          ]
-        };
-      }
-
-      StackPage {
-        name: "not-found";
-
-        child: Adw.StatusPage {
-          title: _("Profile Not Found");
-          description: _("Couldn’t get information about the selected user");
-          icon-name: "about-symbolic";
-        };
-      }
-
-      StackPage {
-        name: "profile";
-
-        child: Adw.PreferencesPage page {
+        content: Adw.PreferencesPage page {
           Adw.PreferencesGroup {
             Button {
               halign: center;
@@ -125,8 +143,8 @@ template $ProfileView: Adw.Bin {
             }
           }
         };
-      }
-    };
+      };
+    }
   };
 }
 

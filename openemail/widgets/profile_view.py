@@ -47,7 +47,6 @@ class ProfileView(Adw.Bin):
 
         if not profile:
             self.visible_child_name = "empty"
-            self.is_contact = False
             return
 
         self.is_contact = profile in mail.address_book if profile.address else False

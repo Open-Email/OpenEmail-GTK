@@ -8,13 +8,22 @@ template $MessageView: Adw.Bin {
     StackPage {
       name: "empty";
 
-      child: Adw.StatusPage {
-        icon-name: bind template.app-icon-name;
+      child: WindowHandle {
+        child: Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {
+            show-title: false;
+          }
 
-        styles [
-          "compact",
-          "dimmed",
-        ]
+          content: Adw.StatusPage {
+            icon-name: bind template.app-icon-name;
+
+            styles [
+              "compact",
+              "dimmed",
+            ]
+          };
+        };
       };
     }
 

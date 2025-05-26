@@ -237,7 +237,7 @@ class ProfileStore(DictStore[Address, Profile]):
 class _AddressBook(ProfileStore):
     """An implementation of `Gio.ListModel` for storing contacts."""
 
-    async def new(self, address: Address, *, receive_broadcasts: bool = False) -> None:
+    async def new(self, address: Address, *, receive_broadcasts: bool = True) -> None:
         """Add `address` to the user's address book."""
         Profile.of(address).contact_request = False
         self.add(address)
