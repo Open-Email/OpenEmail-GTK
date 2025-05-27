@@ -10,7 +10,7 @@ from openemail import PREFIX, mail, run_task, settings
 from openemail.mail import Profile
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/contact-row.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/gtk/contact-row.ui")
 class ContactRow(Gtk.Box):
     """A row to display a contact or contact request."""
 

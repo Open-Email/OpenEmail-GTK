@@ -14,7 +14,7 @@ from .auth_view import AuthView
 from .content_view import ContentView
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/window.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/gtk/window.ui")
 class Window(Adw.ApplicationWindow):
     """The main application window."""
 

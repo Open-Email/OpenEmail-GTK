@@ -12,7 +12,7 @@ from openemail.mail import Address, KeyPair
 from .form import Form
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/auth-view.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/gtk/auth-view.ui")
 class AuthView(Adw.Bin):
     """A view prompting the user to log in."""
 
