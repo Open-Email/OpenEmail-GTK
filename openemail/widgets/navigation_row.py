@@ -7,7 +7,7 @@ from gi.repository import GObject, Gtk
 from openemail import PREFIX
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/navigation-row.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/gtk/navigation-row.ui")
 class NavigationRow(Gtk.ListBoxRow):
     """An item in the main sidebar."""
 

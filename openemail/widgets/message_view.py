@@ -16,7 +16,7 @@ from .message_body import MessageBody
 from .profile_view import ProfileView
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/message-view.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/gtk/message-view.ui")
 class MessageView(Adw.Bin):
     """A view displaying metadata about, and the contents of a message."""
 

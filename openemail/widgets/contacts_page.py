@@ -16,7 +16,7 @@ from .form import Form
 from .profile_view import ProfileView
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/contacts-page.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/gtk/contacts-page.ui")
 class ContactsPage(Adw.NavigationPage):
     """A page with the contents of the user's address book."""
 

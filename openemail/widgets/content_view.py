@@ -14,7 +14,7 @@ from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/content-view.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/gtk/content-view.ui")
 class ContentView(Adw.BreakpointBin):
     """The main content of the application."""
 

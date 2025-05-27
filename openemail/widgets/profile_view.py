@@ -11,7 +11,7 @@ from openemail.core.model import Address
 from openemail.mail import Profile
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/profile-view.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/gtk/profile-view.ui")
 class ProfileView(Adw.Bin):
     """A page presenting a user's profile."""
 

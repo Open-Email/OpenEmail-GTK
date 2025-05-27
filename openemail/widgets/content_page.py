@@ -9,7 +9,7 @@ from gi.repository import Adw, GObject, Gtk
 from openemail import PREFIX, Notifier, mail, run_task
 
 
-@Gtk.Template(resource_path=f"{PREFIX}/gtk/content-page.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/gtk/content-page.ui")
 class ContentPage(Adw.BreakpointBin):
     """A split view for content and details."""
 
