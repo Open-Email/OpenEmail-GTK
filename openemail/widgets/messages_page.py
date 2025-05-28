@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gio, GObject, Gtk
+from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, mail, settings
 from openemail.dict_store import DictStore
@@ -63,6 +63,15 @@ class _MessagesPage(Adw.NavigationPage):
         self.props.child = self.content
         self.props.title = title
 
+    def on_trash_changed(self, _obj: Any, _key: Any, trashed: Gtk.CustomFilter) -> None:
+        selection = self.content.model.props.selected
+
+        if selection != GLib.MAXUINT:
+            self.content.model.props.autoselect = True
+
+        trashed.changed(Gtk.FilterChange.DIFFERENT)
+        self.content.model.props.autoselect = False
+
 
 class _SplitPage(_MessagesPage):
     def __init__(self, model: Gio.ListModel, **kwargs: Any) -> None:
@@ -88,11 +97,7 @@ class _FolderPage(_SplitPage):
             **kwargs,
         )
 
-        def on_trash_changed(*_args: Any) -> None:
-            trashed.changed(Gtk.FilterChange.DIFFERENT)
-            self.content.model.props.selected = 0
-
-        settings.connect("changed::trashed-messages", on_trash_changed)
+        settings.connect("changed::trashed-messages", self.on_trash_changed, trashed)
 
         self.content.empty_page = Adw.StatusPage(
             icon_name="mailbox-symbolic",
@@ -217,11 +222,7 @@ class TrashPage(_SplitPage):
         folders.append(mail.broadcasts)
         folders.append(mail.inbox)
 
-        def on_trash_changed(*_args: Any) -> None:
-            trashed.changed(Gtk.FilterChange.DIFFERENT)
-            self.content.model.props.selected = 0
-
-        settings.connect("changed::trashed-messages", on_trash_changed)
+        settings.connect("changed::trashed-messages", self.on_trash_changed, trashed)
 
         self.content.empty_page = Adw.StatusPage(
             icon_name="trash-symbolic",
