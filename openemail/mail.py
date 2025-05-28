@@ -571,13 +571,15 @@ class Message(GObject.Object):
         if not message:
             return
 
-        self.date = message.date.strftime("%x")
+        local_date = message.date.astimezone(
+            datetime.now(UTC).astimezone().tzinfo,
+        )
+
+        self.date = local_date.strftime("%x")
         # Localized date format, time in H:M
         self.datetime = _("{} at {}").format(
             self.date,
-            message.date.astimezone(
-                datetime.now(UTC).tzinfo,
-            ).strftime("%H:%M"),
+            local_date.strftime("%H:%M"),
         )
 
         self.subject = message.subject
