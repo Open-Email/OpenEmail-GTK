@@ -36,7 +36,7 @@ template $Attachments: Adw.Bin {
             orientation: vertical;
 
             Image {
-              icon-name: "application-x-generic";
+              gicon: bind template.item as <$Attachment>.icon;
               icon-size: large;
 
               styles [

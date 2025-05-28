@@ -326,6 +326,14 @@ class Attachment(GObject.Object):
     __gtype_name__ = "Attachment"
 
     name = GObject.Property(type=str)
+    type = GObject.Property(type=str)
+    modified = GObject.Property(type=str)
+
+    icon = GObject.Property(
+        type=Gio.Icon,
+        default=Gio.ThemedIcon.new("application-x-generic"),
+    )
+
     can_remove = GObject.Property(type=bool, default=False)
 
     @abstractmethod
@@ -363,22 +371,36 @@ class OutgoingAttachment[T: OutgoingAttachment](Attachment):
         Raises ValueError if `gfile` doesn't have all required attributes.
         """
         try:
-            return cls(
-                gfile=gfile,
-                name=(
-                    await cast(
-                        "Awaitable[Gio.FileInfo]",
-                        gfile.query_info_async(
+            info = await cast(
+                "Awaitable[Gio.FileInfo]",
+                gfile.query_info_async(
+                    ",".join(
+                        (
                             Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
-                            Gio.FileQueryInfoFlags.NONE,
-                            GLib.PRIORITY_DEFAULT,
-                        ),
-                    )
-                ).get_display_name(),
+                            Gio.FILE_ATTRIBUTE_TIME_MODIFIED,
+                            Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
+                            Gio.FILE_ATTRIBUTE_STANDARD_ICON,
+                        )
+                    ),
+                    Gio.FileQueryInfoFlags.NONE,
+                    GLib.PRIORITY_DEFAULT,
+                ),
             )
         except GLib.Error as error:
             msg = "Could not create attachment: File missing required attributes"
             raise ValueError(msg) from error
+
+        return cls(
+            gfile=gfile,
+            name=info.get_display_name(),
+            type=Gio.content_type_get_mime_type(content_type)
+            if (content_type := info.get_content_type())
+            else None,
+            modified=datetime.format_iso8601()
+            if (datetime := info.get_modification_date_time())
+            else None,
+            icon=info.get_icon(),
+        )
 
     @classmethod
     async def choose(
@@ -412,6 +434,21 @@ class IncomingAttachment(Attachment):
         super().__init__(**kwargs)
 
         self.name, self._parts = name, parts
+
+        if not (parts and (props := parts[0].file)):
+            return
+
+        self.modified = props.modified
+
+        if not props.type:
+            return
+
+        self.type = props.type
+
+        if not (content_type := Gio.content_type_from_mime_type(props.type)):
+            return
+
+        self.icon = Gio.content_type_get_icon(content_type)
 
     def open(self, parent: Gtk.Widget | None = None) -> None:
         """Download and reconstruct `self` from its parts, then open for saving."""
@@ -455,9 +492,19 @@ class IncomingAttachment(Attachment):
                 "Awaitable",
                 stream.close_async(GLib.PRIORITY_DEFAULT),
             )
+
         except GLib.Error:
             Notifier.send(msg)
             return
+
+        if self.modified and (
+            datetime := GLib.DateTime.new_from_iso8601(self.modified)
+        ):
+            info = Gio.FileInfo()
+            info.set_modification_date_time(datetime)
+            gfile.set_attributes_from_info(
+                info, Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS
+            )
 
         Gio.AppInfo.launch_default_for_uri(gfile.get_uri())
 
@@ -1131,7 +1178,13 @@ async def send_message(
             Notifier().sending = False
             raise WriteError from error
 
-        files[attachment.name] = data
+        files[
+            model.AttachmentProperties(
+                name=attachment.name,
+                type=attachment.type,
+                modified=attachment.modified,
+            )
+        ] = data
 
     try:
         await client.send_message(readers, subject, body, reply, attachments=files)

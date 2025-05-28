@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from . import crypto, model
-from .model import Address, Message, Notification, Profile, User
+from .model import Address, AttachmentProperties, Message, Notification, Profile, User
 
 MAX_AGENTS = 3
 MAX_MESSAGE_SIZE = 64_000_000
@@ -515,7 +515,7 @@ async def send_message(
     subject: str,
     body: str,
     subject_id: str | None = None,
-    attachments: dict[str, bytes] | None = None,
+    attachments: dict[AttachmentProperties, bytes] | None = None,
 ) -> None:
     """Send a message to `readers`.
 
@@ -997,7 +997,7 @@ class _OutgoingMessage[T: _OutgoingMessage]:
     subject: str
     content: bytes
     subject_id: str | None = None
-    attachments: dict[str, bytes] = field(default_factory=dict)
+    attachments: dict[AttachmentProperties, bytes] = field(default_factory=dict)
 
     _date: str | None = None
     _attachment: dict[str, str] = field(default_factory=dict)
@@ -1053,18 +1053,17 @@ class _OutgoingMessage[T: _OutgoingMessage]:
             "Content-Type": "application/octet-stream",
         }
 
-        modified = self._date  # TODO
-        for name, data in self.attachments.items():
+        for props, data in self.attachments.items():
             for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
                 part = data[start : start + MAX_MESSAGE_SIZE]
-                self._parts[name] = (
+                self._parts[props.name] = (
                     {
-                        "name": name,
+                        "name": props.name,
                         "id": generate_message_id(),
-                        "type": "application/octet-stream",  # TODO
+                        "type": props.type or "application/octet-stream",
                         "size": str(len(data)),
                         "part": f"{index + 1}/{len(self.attachments)}",
-                        "modified": modified,
+                        "modified": props.modified or self._date,
                     },
                     part,
                 )

@@ -94,7 +94,9 @@ class AttachmentProperties(NamedTuple):
     """A file attached to a message."""
 
     name: str
-    part: str | None
+    type: str | None = None
+    part: str | None = None
+    modified: str | None = None
 
 
 @dataclass(slots=True)
@@ -120,7 +122,7 @@ class Message:
 
     parent_id: str | None = field(init=False, default=None)
     part: int = field(init=False, default=0)
-    file_name: str | None = field(init=False, default=None)
+    file: AttachmentProperties | None = field(init=False, default=None)
     files: dict[str, AttachmentProperties] = field(init=False, default_factory=dict)
 
     subject_id: str | None = field(init=False, default=None)
@@ -254,13 +256,21 @@ class Message:
                 try:
                     self.files[file_headers["id"]] = AttachmentProperties(
                         file_headers["name"],
+                        file_headers.get("type"),
                         file_headers.get("part"),
+                        file_headers.get("modified"),
                     )
                 except KeyError:
                     continue
 
         elif (file := headers.get("file")) and (file_headers := parse_headers(file)):
-            self.file_name = file_headers.get("name")
+            with suppress(KeyError):
+                self.file = AttachmentProperties(
+                    file_headers["name"],
+                    file_headers.get("type"),
+                    file_headers.get("part"),
+                    file_headers.get("modified"),
+                )
 
             if part := file_headers.get("part"):
                 with suppress(ValueError):
@@ -284,7 +294,7 @@ class Message:
         ):
             return
 
-        child.file_name = props.name
+        child.file = props
         if props.part:
             with suppress(ValueError):
                 child.part = int(props.part.split("/")[0].strip())
@@ -303,11 +313,11 @@ class Message:
             if child.ident not in self.files:
                 parts.append(child)
 
-            if not child.file_name:
+            if not child.file:
                 continue
 
-            if not (attachment := self.attachments.get(child.file_name)):
-                attachment = self.attachments[child.file_name] = []
+            if not (attachment := self.attachments.get(child.file.name)):
+                attachment = self.attachments[child.file.name] = []
 
             attachment.append(child)
 
