@@ -837,7 +837,11 @@ async def _fetch_envelope(
 
 
 async def _fetch_message_from_agent(
-    url: str, author: Address, ident: str, broadcast: bool = False
+    url: str,
+    author: Address,
+    ident: str,
+    *,
+    broadcast: bool = False,
 ) -> Message | None:
     logger.debug("Fetching message %s…", ident[:_SHORT])
 
@@ -902,7 +906,7 @@ async def _fetch_message_from_agent(
     return message
 
 
-async def _fetch_message_ids(author: Address, broadcasts: bool = False) -> set[str]:
+async def _fetch_message_ids(author: Address, *, broadcasts: bool = False) -> set[str]:
     """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
     logger.debug("Fetching message IDs from %s…", author)
 

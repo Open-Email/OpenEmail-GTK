@@ -201,7 +201,7 @@ class ProfileStore(DictStore[Address, Profile]):
         self._items[contact] = Profile.of(contact)
         self.items_changed(len(self._items) - 1, 0, 1)
 
-    async def update_profiles(self, trust_images: bool = True) -> None:
+    async def update_profiles(self, *, trust_images: bool = True) -> None:
         """Update the profiles of contacts in the user's address book.
 
         If `trust_images` is set to `False`, profile images will not be loaded.
@@ -442,7 +442,11 @@ class IncomingAttachment(Attachment):
             return
 
         try:
-            stream = gfile.replace(None, True, Gio.FileCreateFlags.REPLACE_DESTINATION)
+            stream = gfile.replace(
+                etag=None,
+                make_backup=False,
+                flags=Gio.FileCreateFlags.REPLACE_DESTINATION,
+            )
             await cast(
                 "Awaitable",
                 stream.write_bytes_async(GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT),
@@ -947,7 +951,7 @@ def register(
     run_task(auth(), done)
 
 
-async def sync(periodic: bool = False) -> None:
+async def sync(*, periodic: bool = False) -> None:
     """Populate the app's content by fetching the user's data."""
     Notifier().syncing = True
 

@@ -201,7 +201,7 @@ class ComposeDialog(Adw.Dialog):
         async for attachment in OutgoingAttachment.choose(self):
             self.attachments.model.append(attachment)
 
-    def _format_line(self, syntax: str, toggle: bool = False) -> None:
+    def _format_line(self, syntax: str, *, toggle: bool = False) -> None:
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)
         start.set_line_offset(0)
 
