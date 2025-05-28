@@ -2,10 +2,10 @@ using Gtk 4.0;
 using Adw 1;
 
 template $ProfileView: Adw.Bin {
-  child: Stack {
+  child: Adw.ViewStack {
     visible-child-name: bind template.visible-child-name;
 
-    StackPage {
+    Adw.ViewStackPage {
       name: "empty";
 
       child: WindowHandle {
@@ -27,7 +27,7 @@ template $ProfileView: Adw.Bin {
       };
     }
 
-    StackPage {
+    Adw.ViewStackPage {
       name: "not-found";
 
       child: WindowHandle {
@@ -46,7 +46,7 @@ template $ProfileView: Adw.Bin {
       };
     }
 
-    StackPage {
+    Adw.ViewStackPage {
       name: "profile";
 
       child: Adw.ToolbarView {

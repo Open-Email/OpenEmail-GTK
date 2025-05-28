@@ -522,7 +522,7 @@ class Message(GObject.Object):
     unread = GObject.Property(type=bool, default=False)
 
     subject_id = GObject.Property(type=str)
-    draft_id = GObject.Property(type=int)
+    draft_id = GObject.Property(type=int, default=-1)
     broadcast = GObject.Property(type=bool, default=False)
 
     can_reply = GObject.Property(type=bool, default=False)

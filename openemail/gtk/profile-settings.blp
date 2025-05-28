@@ -11,18 +11,18 @@ template $ProfileSettings: Adw.PreferencesDialog {
     icon-name: "general-symbolic";
 
     Adw.PreferencesGroup {
-      Stack {
+      Adw.ViewStack {
         vexpand: true;
         visible-child-name: bind template.visible-child-name;
-        transition-type: crossfade;
+        enable-transitions: true;
 
-        StackPage {
+        Adw.ViewStackPage {
           name: "loading";
 
           child: Adw.Spinner {};
         }
 
-        StackPage {
+        Adw.ViewStackPage {
           name: "profile";
 
           child: Box {

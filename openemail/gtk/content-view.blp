@@ -77,6 +77,8 @@ template $ContentView: Adw.BreakpointBin {
         }
 
         content: ScrolledWindow {
+          hscrollbar-policy: never;
+
           child: Box {
             orientation: vertical;
 
@@ -84,23 +86,19 @@ template $ContentView: Adw.BreakpointBin {
               row-selected => $_on_row_selected();
 
               $NavigationRow {
-                label: _("Inbox");
-                icon-name: _("inbox-symbolic");
+                page: bind inbox_stack_page;
               }
 
               $NavigationRow {
-                label: _("Outbox");
-                icon-name: _("outbox-symbolic");
+                page: bind outbox_stack_page;
               }
 
               $NavigationRow {
-                label: _("Drafts");
-                icon-name: _("drafts-symbolic");
+                page: bind drafts_stack_page;
               }
 
               $NavigationRow {
-                label: _("Trash");
-                icon-name: _("trash-symbolic");
+                page: bind trash_stack_page;
               }
 
               styles [
@@ -117,13 +115,11 @@ template $ContentView: Adw.BreakpointBin {
               row-selected => $_on_bottom_row_selected();
 
               $NavigationRow {
-                label: _("Public");
-                icon-name: _("broadcasts-symbolic");
+                page: bind broadcasts_stack_page;
               }
 
               $NavigationRow {
-                label: _("Contacts");
-                icon-name: _("contacts-symbolic");
+                page: bind contacts_stack_page;
               }
 
               styles [
@@ -138,42 +134,54 @@ template $ContentView: Adw.BreakpointBin {
     content: Adw.NavigationPage {
       title: _("Content");
 
-      child: Stack content {
-        transition-type: crossfade;
+      child: Adw.ViewStack content {
+        enable-transitions: true;
         visible-child-name: bind template.content-child-name;
 
-        StackPage {
+        Adw.ViewStackPage broadcasts_stack_page {
           name: "broadcasts";
+          icon-name: "broadcasts-symbolic";
+          title: bind broadcasts_page.title;
 
           child: $BroadcastsPage broadcasts_page {};
         }
 
-        StackPage {
+        Adw.ViewStackPage inbox_stack_page {
           name: "inbox";
+          icon-name: "inbox-symbolic";
+          title: bind inbox_page.title;
 
           child: $InboxPage inbox_page {};
         }
 
-        StackPage {
+        Adw.ViewStackPage outbox_stack_page {
           name: "outbox";
+          icon-name: "outbox-symbolic";
+          title: bind outbox_page.title;
 
           child: $OutboxPage outbox_page {};
         }
 
-        StackPage {
+        Adw.ViewStackPage drafts_stack_page {
           name: "drafts";
+          icon-name: "drafts-symbolic";
+          title: bind drafts_page.title;
 
           child: $DraftsPage drafts_page {};
         }
 
-        StackPage {
+        Adw.ViewStackPage trash_stack_page {
           name: "trash";
+          icon-name: "trash-symbolic";
+          title: bind trash_page.title;
 
           child: $TrashPage trash_page {};
         }
 
-        StackPage {
+        Adw.ViewStackPage contacts_stack_page {
           name: "contacts";
+          icon-name: "contacts-symbolic";
+          title: bind contacts_page.title;
 
           child: $ContactsPage contacts_page {};
         }

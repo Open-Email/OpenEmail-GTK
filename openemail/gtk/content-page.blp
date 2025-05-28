@@ -79,11 +79,11 @@ template $ContentPage: Adw.BreakpointBin {
           };
         }
 
-        content: Stack {
-          transition-type: crossfade;
+        content: Adw.ViewStack {
+          enable-transitions: true;
           visible-child-name: bind template.sidebar-child-name;
 
-          StackPage {
+          Adw.ViewStackPage {
             name: "empty";
 
             child: Adw.Bin {
@@ -91,7 +91,7 @@ template $ContentPage: Adw.BreakpointBin {
             };
           }
 
-          StackPage {
+          Adw.ViewStackPage {
             name: "content";
 
             child: ScrolledWindow {
@@ -107,13 +107,13 @@ template $ContentPage: Adw.BreakpointBin {
             };
           }
 
-          StackPage {
+          Adw.ViewStackPage {
             name: "loading";
 
             child: Adw.Spinner {};
           }
 
-          StackPage {
+          Adw.ViewStackPage {
             name: "no-results";
 
             child: Adw.StatusPage {

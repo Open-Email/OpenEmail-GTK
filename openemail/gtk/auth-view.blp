@@ -95,11 +95,11 @@ template $AuthView: Adw.Bin {
                 halign: center;
                 clicked => $_authenticate();
 
-                child: Stack {
-                  transition-type: crossfade;
+                child: Adw.ViewStack {
+                  enable-transitions: true;
                   visible-child-name: bind template.button-child-name;
 
-                  StackPage {
+                  Adw.ViewStackPage {
                     name: "label";
 
                     child: Label {
@@ -107,7 +107,7 @@ template $AuthView: Adw.Bin {
                     };
                   }
 
-                  StackPage {
+                  Adw.ViewStackPage {
                     name: "loading";
 
                     child: Adw.Spinner {};
@@ -205,11 +205,11 @@ template $AuthView: Adw.Bin {
                 halign: center;
                 clicked => $_register();
 
-                child: Stack {
-                  transition-type: crossfade;
+                child: Adw.ViewStack {
+                  enable-transitions: true;
                   visible-child-name: bind template.register-button-child-name;
 
-                  StackPage {
+                  Adw.ViewStackPage {
                     name: "label";
 
                     child: Label {
@@ -217,7 +217,7 @@ template $AuthView: Adw.Bin {
                     };
                   }
 
-                  StackPage {
+                  Adw.ViewStackPage {
                     name: "loading";
 
                     child: Adw.Spinner {};

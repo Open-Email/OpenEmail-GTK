@@ -1,19 +1,33 @@
 using Gtk 4.0;
+using Adw 1;
 
 template $NavigationRow: ListBoxRow {
   child: Box {
     margin-top: 6;
     margin-bottom: 6;
     margin-start: 6;
+    margin-end: 6;
     spacing: 12;
 
     Image {
-      icon-name: bind template.icon-name;
+      icon-name: bind template.page as <Adw.ViewStackPage>.icon-name;
     }
 
     Label {
-      label: bind template.label;
+      label: bind template.page as <Adw.ViewStackPage>.title;
       ellipsize: end;
+    }
+
+    Label {
+      hexpand: true;
+      halign: end;
+      justify: right;
+      label: bind template.counter;
+      ellipsize: end;
+
+      styles [
+        "dimmed",
+      ]
     }
   };
 }

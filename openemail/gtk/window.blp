@@ -7,11 +7,11 @@ template $Window: Adw.ApplicationWindow {
   default-height: 600;
 
   content: Adw.ToastOverlay toast_overlay {
-    child: Stack {
-      transition-type: crossfade;
+    child: Adw.ViewStack {
+      enable-transitions: true;
       visible-child-name: bind template.visible-child-name;
 
-      StackPage {
+      Adw.ViewStackPage {
         name: "auth";
 
         child: $AuthView auth_view {
@@ -19,7 +19,7 @@ template $Window: Adw.ApplicationWindow {
         };
       }
 
-      StackPage {
+      Adw.ViewStackPage {
         name: "content";
 
         child: $ContentView content_view {};

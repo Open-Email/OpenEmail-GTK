@@ -2,10 +2,10 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MessageView: Adw.Bin {
-  child: Stack {
+  child: Adw.ViewStack {
     visible-child-name: bind template.visible-child-name;
 
-    StackPage {
+    Adw.ViewStackPage {
       name: "empty";
 
       child: WindowHandle {
@@ -27,7 +27,7 @@ template $MessageView: Adw.Bin {
       };
     }
 
-    StackPage {
+    Adw.ViewStackPage {
       name: "message";
 
       child: Adw.ToolbarView {
