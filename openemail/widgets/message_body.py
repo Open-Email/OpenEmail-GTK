@@ -134,8 +134,10 @@ class MessageBody(Gtk.TextView):
         self.connect("notify::editable", editable_changed)
         editable_changed()
 
-        # HACK: Fix for a nasty GTK bug I haven't been able to diagnose... In the future
-        # if after removing this, the layout doesn't break, it's safe to remove.
-        #
-        # PS: It probably won't be, "Nobody wants to work on TextView."
-        self.connect("map", lambda *_: GLib.timeout_add(25, self.queue_resize))
+        # HACK: Fix for some nasty behavior TextView has with height calculations
+        def resize(*_args: Any) -> None:
+            GLib.timeout_add(10, self.queue_resize)
+            GLib.timeout_add(20, self.queue_resize)
+            GLib.timeout_add(30, self.queue_resize)
+
+        self.connect("map", resize)
