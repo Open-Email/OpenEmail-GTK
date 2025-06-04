@@ -881,12 +881,13 @@ class _DraftStore(DictStore[int, Message]):
 
 class _BroadcastStore(MessageStore):
     async def _fetch(self) -> ...:
+        deleted = settings.get_strv("deleted-messages")
         async for message in self._process_messages(
             client.fetch_broadcasts(
                 address := Address(contact.address),
-                exclude=(
+                exclude=tuple(
                     split[1]
-                    for ident in settings.get_strv("deleted-messages")
+                    for ident in deleted
                     if (split := ident.split(" "))[0] == address.host_part
                 ),
             )
@@ -925,7 +926,7 @@ class _InboxStore(MessageStore):
             (
                 client.fetch_link_messages(
                     contact,
-                    exclude=(
+                    exclude=tuple(
                         split[1]
                         for ident in deleted
                         if (split := ident.split(" "))[0] == contact.host_part
