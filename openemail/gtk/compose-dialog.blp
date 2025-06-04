@@ -70,6 +70,7 @@ template $ComposeDialog: Adw.Dialog {
               Text readers {
                 height-request: 42;
                 hexpand: true;
+                insert-text => $_readers_insert_text();
 
                 accessibility {
                   labelled-by: readers_label;

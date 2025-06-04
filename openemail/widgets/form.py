@@ -11,6 +11,8 @@ from gi.repository import Adw, GObject, Gtk
 
 from openemail.mail import Address
 
+ADDRESS_SPLIT_PATTERN = ",|;| "
+
 
 class FormField(Enum):
     """A type of field in a form."""
@@ -125,7 +127,9 @@ class Form(GObject.Object):
             case FormField.ADDRESS_LIST:
                 if not (
                     addresses := tuple(
-                        address for address in re.split(",|;| ", text) if address
+                        address
+                        for address in re.split(ADDRESS_SPLIT_PATTERN, text)
+                        if address
                     )
                 ):
                     self._invalid(field)

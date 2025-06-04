@@ -12,7 +12,7 @@ from openemail import PREFIX, mail, run_task
 from openemail.mail import Address, Message, OutgoingAttachment, Profile
 
 from .attachments import Attachments
-from .form import Form
+from .form import ADDRESS_SPLIT_PATTERN, Form
 from .message_body import MessageBody
 
 
@@ -35,6 +35,7 @@ class ComposeDialog(Adw.Dialog):
 
     _privacy: str = "private"
     _save: bool = True
+    _completion_running = False
 
     @GObject.Property(type=str)
     def privacy(self) -> str:
@@ -104,11 +105,40 @@ class ComposeDialog(Adw.Dialog):
         self.body_view.grab_focus()
 
     @Gtk.Template.Callback()
+    def _readers_insert_text(self, readers: Gtk.Text, *_args: Any) -> None:
+        if self._completion_running:
+            return
+
+        def complete(*_args: Any) -> None:
+            readers.disconnect_by_func(complete)
+
+            pos = readers.props.cursor_position
+            start = re.split(ADDRESS_SPLIT_PATTERN, readers.props.text[:pos])[-1]
+
+            if not start:
+                return
+
+            for contact in mail.address_book:
+                if not (contact.address and contact.address.startswith(start)):
+                    continue
+
+                end = contact.address[len(start) :]
+
+                self._completion_running = True
+                readers.insert_text(end, pos)
+                self._completion_running = False
+
+                readers.select_region(pos, pos + len(end))
+                break
+
+        readers.connect("changed", complete)
+
+    @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:
         readers: list[Address] = []
         warnings: dict[Address, str | None] = {}
         if self.privacy == "private":
-            for reader in re.split(",|;| ", self.readers.props.text):
+            for reader in re.split(ADDRESS_SPLIT_PATTERN, self.readers.props.text):
                 if not reader:
                     continue
 
