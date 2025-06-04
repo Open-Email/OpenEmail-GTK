@@ -186,13 +186,27 @@ class DraftsPage(_MessagesPage):
 
         self.content.model.connect("notify::selected", on_selected)
 
+        delete_dialog = Adw.AlertDialog(
+            heading=_("Delete Drafts?"),
+            body=_("All drafts will be permanently deleted"),
+            default_response="delete",
+        )
+
+        delete_dialog.add_response("close", _("Cancel"))
+        delete_dialog.add_response("delete", _("Delete All"))
+        delete_dialog.set_response_appearance(
+            "delete", Adw.ResponseAppearance.DESTRUCTIVE
+        )
+
+        delete_dialog.connect("response::delete", lambda *_: mail.drafts.delete_all())
+
         self.content.toolbar_button = Gtk.Button(
-            icon_name="trash-symbolic",
+            icon_name="fire-symbolic",
             tooltip_text=_("Delete All"),
         )
 
         self.content.toolbar_button.connect(
-            "clicked", lambda *_: mail.drafts.delete_all()
+            "clicked", lambda *_: delete_dialog.present(self)
         )
 
         self.content.empty_page = Adw.StatusPage(
@@ -233,7 +247,7 @@ class TrashPage(_SplitPage):
 
         empty_dialog = Adw.AlertDialog(
             heading=_("Empty Trash?"),
-            body=_("All items in the trash will be permanently deleted."),
+            body=_("All items in the trash will be permanently deleted"),
             default_response="empty",
         )
 
@@ -246,7 +260,7 @@ class TrashPage(_SplitPage):
         empty_dialog.connect("response::empty", lambda *_: empty_trash())
 
         self.content.toolbar_button = Gtk.Button(
-            icon_name="trash-symbolic",
+            icon_name="empty-trash-symbolic",
             tooltip_text=_("Empty Trash"),
         )
 

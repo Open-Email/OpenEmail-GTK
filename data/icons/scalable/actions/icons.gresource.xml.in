@@ -7,6 +7,8 @@
     <file preprocess="xml-stripblanks">edit-delete-symbolic.svg</file>
     <file preprocess="xml-stripblanks">edit-symbolic.svg</file>
     <file preprocess="xml-stripblanks">emoji-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">empty-trash-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">fire-symbolic.svg</file>
     <file preprocess="xml-stripblanks">key-symbolic.svg</file>
     <file preprocess="xml-stripblanks">list-add-symbolic.svg</file>
     <file preprocess="xml-stripblanks">mail-attachment-symbolic.svg</file>
