@@ -95,6 +95,7 @@ class AttachmentProperties(NamedTuple):
 
     name: str
     type: str | None = None
+    size: int = 0
     part: str | None = None
     modified: str | None = None
 
@@ -250,6 +251,9 @@ class Message:
         self.subject_id = headers.get("subject.id", self.ident)
         self.parent_id = headers.get("parent-id")
 
+        def str_to_int(string: str | None) -> int:
+            return int(string) if string and string.isdigit() else 0
+
         if files := headers.get("files"):
             for file in files.split(","):
                 file_headers = parse_headers(file.strip())
@@ -257,6 +261,7 @@ class Message:
                     self.files[file_headers["id"]] = AttachmentProperties(
                         file_headers["name"],
                         file_headers.get("type"),
+                        str_to_int(file_headers.get("size")),
                         file_headers.get("part"),
                         file_headers.get("modified"),
                     )
@@ -268,6 +273,8 @@ class Message:
                 self.file = AttachmentProperties(
                     file_headers["name"],
                     file_headers.get("type"),
+                    str_to_int(file_headers.get("size"))
+                    or str_to_int(self.headers.get("size")),
                     file_headers.get("part"),
                     file_headers.get("modified"),
                 )

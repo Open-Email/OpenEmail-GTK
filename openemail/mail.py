@@ -327,6 +327,7 @@ class Attachment(GObject.Object):
 
     name = GObject.Property(type=str)
     type = GObject.Property(type=str)
+    size = GObject.Property(type=str)
     modified = GObject.Property(type=str)
 
     icon = GObject.Property(
@@ -380,6 +381,7 @@ class OutgoingAttachment[T: OutgoingAttachment](Attachment):
                             Gio.FILE_ATTRIBUTE_TIME_MODIFIED,
                             Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
                             Gio.FILE_ATTRIBUTE_STANDARD_ICON,
+                            Gio.FILE_ATTRIBUTE_STANDARD_SIZE,
                         )
                     ),
                     Gio.FileQueryInfoFlags.NONE,
@@ -396,6 +398,7 @@ class OutgoingAttachment[T: OutgoingAttachment](Attachment):
             type=Gio.content_type_get_mime_type(content_type)
             if (content_type := info.get_content_type())
             else None,
+            size=GLib.format_size_for_display(info.get_size()),
             modified=datetime.format_iso8601()
             if (datetime := info.get_modification_date_time())
             else None,
@@ -439,6 +442,7 @@ class IncomingAttachment(Attachment):
             return
 
         self.modified = props.modified
+        self.size = GLib.format_size_for_display(props.size)
 
         if not props.type:
             return

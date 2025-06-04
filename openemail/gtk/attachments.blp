@@ -44,19 +44,35 @@ template $Attachments: Adw.Bin {
               ]
             }
 
-            Label {
+            Box {
               margin-start: 6;
               margin-end: 6;
-              label: bind template.item as <$Attachment>.name;
-              ellipsize: middle;
-              wrap: true;
-              wrap-mode: word_char;
-              lines: 3;
-              justify: center;
+              spacing: 3;
+              orientation: vertical;
 
-              styles [
-                "caption",
-              ]
+              Label {
+                label: bind template.item as <$Attachment>.name;
+                ellipsize: middle;
+                wrap: true;
+                wrap-mode: word_char;
+                lines: 3;
+                justify: center;
+
+                styles [
+                  "caption",
+                ]
+              }
+
+              Label {
+                label: bind template.item as <$Attachment>.size;
+                ellipsize: middle;
+                justify: center;
+
+                styles [
+                  "dimmed",
+                  "caption",
+                ]
+              }
             }
           };
         };
