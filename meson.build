@@ -1,7 +1,11 @@
-project('openemail',
-          version: '0.1.0',
-    meson_version: '>= 1.0.0',
-  default_options: [ 'warning_level=2', 'werror=false', ],
+project(
+  'openemail',
+  version: '0.1.0',
+  meson_version: '>= 1.0.0',
+  default_options: [
+    'warning_level=2',
+    'werror=false',
+  ],
 )
 
 dependency('gtk4', version: '>= 4.18.0')
@@ -22,23 +26,23 @@ prefix = '/com/mercata/OpenEmail'
 
 conf = configuration_data()
 
-conf.set('PYTHON',  python.find_installation('python3').full_path())
+conf.set('PYTHON', python.find_installation('python3').full_path())
 conf.set('VERSION', meson.project_version())
-conf.set('APP_ID',  app_id)
-conf.set('PREFIX',  prefix)
+conf.set('APP_ID', app_id)
+conf.set('PREFIX', prefix)
 conf.set('PROFILE', profile)
 
 conf.set('pkgdatadir', pkgdatadir)
-conf.set('localedir',  get_option('prefix') / get_option('localedir'))
-conf.set('bindir',     get_option('bindir'))
-conf.set('prefix',     get_option('prefix'))
+conf.set('localedir', get_option('prefix') / get_option('localedir'))
+conf.set('bindir', get_option('bindir'))
+conf.set('prefix', get_option('prefix'))
 
 subdir('data')
 subdir('openemail')
 subdir('po')
 
 gnome.post_install(
-     glib_compile_schemas: true,
-    gtk_update_icon_cache: true,
+  glib_compile_schemas: true,
+  gtk_update_icon_cache: true,
   update_desktop_database: true,
 )

@@ -1,6 +1,7 @@
 moduledir = pkgdatadir / 'openemail'
 
-blueprints = custom_target('blueprints',
+blueprints = custom_target(
+  'blueprints',
   input: files(
     'gtk/attachments.blp',
     'gtk/auth-view.blp',
@@ -19,13 +20,19 @@ blueprints = custom_target('blueprints',
     'gtk/window.blp',
   ),
   output: '.',
-  command: [find_program('blueprint-compiler'), 'batch-compile',
-            '@OUTPUT@', '@CURRENT_SOURCE_DIR@', '@INPUT@'],
+  command: [
+    find_program('blueprint-compiler'),
+    'batch-compile',
+    '@OUTPUT@',
+    '@CURRENT_SOURCE_DIR@',
+    '@INPUT@',
+  ],
 )
 
-gnome.compile_resources('openemail',
+gnome.compile_resources(
+  'openemail',
   configure_file(
-    input:  'gresource.xml.in',
+    input: 'gresource.xml.in',
     output: 'gresource.xml',
     configuration: conf,
   ),
@@ -36,25 +43,22 @@ gnome.compile_resources('openemail',
 )
 
 configure_file(
-  input:  'openemail.in',
+  input: 'openemail.in',
   output: 'openemail',
   configuration: conf,
   install: true,
   install_dir: get_option('bindir'),
-  install_mode: 'r-xr-xr-x'
+  install_mode: 'r-xr-xr-x',
 )
 
-install_data([
-    configure_file(
-      input:  '__init__.py.in',
-      output: '__init__.py',
-      configuration: conf
-    ),
+install_data(
+  [
+    configure_file(input: '__init__.py.in', output: '__init__.py', configuration: conf),
     'dict_store.py',
     'mail.py',
     'main.py',
   ],
-  install_dir: moduledir
+  install_dir: moduledir,
 )
 
 install_subdir('core', install_dir: moduledir)
