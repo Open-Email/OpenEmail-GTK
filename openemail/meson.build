@@ -44,7 +44,7 @@ gnome.compile_resources(
 
 configure_file(
   input: 'openemail.in',
-  output: 'openemail',
+  output: '@BASENAME@',
   configuration: conf,
   install: true,
   install_dir: get_option('bindir'),
@@ -53,7 +53,7 @@ configure_file(
 
 install_data(
   [
-    configure_file(input: '__init__.py.in', output: '__init__.py', configuration: conf),
+    configure_file(input: '__init__.py.in', output: '@BASENAME@', configuration: conf),
     'dict_store.py',
     'mail.py',
     'main.py',
