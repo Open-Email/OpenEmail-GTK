@@ -25,7 +25,7 @@ gettext.install("openemail", localedir)
 if __name__ == "__main__":
     from gi.repository import Gio
 
-    for resource in ("data", "openemail", "openemail-icons"):
+    for resource in ("data", "gtk", "openemail", "openemail-icons"):
         resource_path = Path(pkgdatadir, f"{resource}.gresource")
         Gio.resources_register(Gio.Resource.load(str(resource_path)))
 
