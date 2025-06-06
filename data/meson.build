@@ -1,10 +1,10 @@
 desktop_file = i18n.merge_file(
   input: configure_file(
-    input: 'desktop.in',
-    output: app_id + '.desktop.in',
+    input: 'com.mercata.OpenEmail.desktop.in',
+    output: '@PLAINNAME@',
     configuration: conf,
   ),
-  output: app_id + '.desktop',
+  output: f'@app_id@.desktop',
   type: 'desktop',
   po_dir: '../po',
   install: true,
@@ -18,11 +18,11 @@ endif
 
 appstream_file = i18n.merge_file(
   input: configure_file(
-    input: 'metainfo.xml.in',
-    output: app_id + '.metainfo.xml.in',
+    input: 'com.mercata.OpenEmail.metainfo.xml.in',
+    output: '@PLAINNAME@',
     configuration: conf,
   ),
-  output: app_id + '.metainfo.xml',
+  output: f'@app_id@.metainfo.xml',
   po_dir: '../po',
   install: true,
   install_dir: get_option('datadir') / 'metainfo',
@@ -37,8 +37,8 @@ test(
 
 install_data(
   configure_file(
-    input: 'gschema.xml.in',
-    output: app_id + '.gschema.xml',
+    input: 'com.mercata.OpenEmail.gschema.xml.in',
+    output: f'@app_id@.gschema.xml',
     configuration: conf,
   ),
   install_dir: get_option('datadir') / 'glib-2.0' / 'schemas',
