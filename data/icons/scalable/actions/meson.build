@@ -1,7 +1,8 @@
-gnome.compile_resources('openemail-icons',
+gnome.compile_resources(
+  'icons',
   configure_file(
-    input:  'icons.gresource.xml.in',
-    output: 'icons.gresource.xml',
+    input: 'icons.gresource.xml.in',
+    output: '@BASENAME@',
     configuration: conf,
   ),
   gresource_bundle: true,
