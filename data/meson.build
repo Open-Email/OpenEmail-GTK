@@ -51,4 +51,17 @@ test(
   args: ['--strict', '--dry-run', meson.current_source_dir()],
 )
 
+gnome.compile_resources(
+  'data',
+  configure_file(
+    input: 'data.gresource.xml.in',
+    output: '@BASENAME@',
+    configuration: conf,
+  ),
+  gresource_bundle: true,
+  install: true,
+  install_dir: pkgdatadir,
+  dependencies: appstream_file,
+)
+
 subdir('icons')
