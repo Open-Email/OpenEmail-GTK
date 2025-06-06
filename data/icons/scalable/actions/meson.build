@@ -1,5 +1,5 @@
 gnome.compile_resources(
-  'openemail-icons',
+  'icons',
   configure_file(
     input: 'icons.gresource.xml.in',
     output: '@BASENAME@',
