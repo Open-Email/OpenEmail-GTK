@@ -66,13 +66,7 @@ class AuthView(Adw.Bin):
             self.register_button_child_name = "label"
             self.emit("authenticated")
 
-            def reset() -> None:
-                self.email_form.reset()
-                self.register_form.reset()
-                self.navigation_view.pop_to_tag("landing")
-                self.auth_form.reset()
-
-            GLib.timeout_add_seconds(1, reset)
+            GLib.timeout_add_seconds(1, self._reset)
 
         self.register_button_child_name = "loading"
         mail.register(
@@ -109,13 +103,7 @@ class AuthView(Adw.Bin):
             self.button_child_name = "label"
             self.emit("authenticated")
 
-            def reset() -> None:
-                self.email_form.reset()
-                self.register_form.reset()
-                self.navigation_view.pop_to_tag("landing")
-                self.auth_form.reset()
-
-            GLib.timeout_add_seconds(1, reset)
+            GLib.timeout_add_seconds(1, self._reset)
 
         self.button_child_name = "loading"
         mail.try_auth(
@@ -125,3 +113,9 @@ class AuthView(Adw.Bin):
                 "label",
             ),
         )
+
+    def _reset(self) -> None:
+        self.email_form.reset()
+        self.register_form.reset()
+        self.navigation_view.pop_to_tag("landing")
+        self.auth_form.reset()
