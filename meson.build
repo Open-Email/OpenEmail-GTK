@@ -17,7 +17,6 @@ python = import('python')
 
 py_installation = python.find_installation('python3')
 
-python_dir = join_paths(get_option('prefix'), py_installation.get_install_dir())
 pkgdatadir = get_option('prefix') / get_option('datadir') / meson.project_name()
 
 profile = 'release'
