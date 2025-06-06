@@ -33,7 +33,7 @@ template $AuthView: Adw.Bin {
                 halign: center;
                 spacing: 12;
 
-                Button sign_up_button {
+                Button {
                   label: _("Create Account");
                   clicked => $_sign_up();
 
@@ -68,7 +68,8 @@ template $AuthView: Adw.Bin {
           show-title: false;
         }
 
-        content: Adw.StatusPage keys_status_page {
+        content: Adw.StatusPage {
+          title: bind email_entry.text;
           description: _("Enter your private keys");
           icon-name: "key-symbolic";
 
