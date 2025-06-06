@@ -27,7 +27,6 @@ class AuthView(Adw.Bin):
     user_name_entry: Adw.EntryRow = Gtk.Template.Child()
     register_form: Form = Gtk.Template.Child()
 
-    keys_status_page: Adw.StatusPage = Gtk.Template.Child()
     signing_key_entry: Adw.EntryRow = Gtk.Template.Child()
     encryption_key_entry: Adw.EntryRow = Gtk.Template.Child()
     auth_form: Form = Gtk.Template.Child()
@@ -45,7 +44,6 @@ class AuthView(Adw.Bin):
         if self.email_form.invalid:
             return
 
-        self.keys_status_page.props.title = self.email_entry.props.text
         self.navigation_view.push_by_tag("keys")
         self.signing_key_entry.grab_focus()
 
