@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from locale import strcoll
 from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
@@ -29,36 +28,13 @@ class ContactsPage(Adw.NavigationPage):
     address: Adw.EntryRow = Gtk.Template.Child()
     address_form: Form = Gtk.Template.Child()
 
+    models: Gio.ListStore = Gtk.Template.Child()
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        models = Gio.ListStore.new(Gio.ListModel)
-        models.append(mail.contact_requests)
-        models.append(mail.address_book)
-
-        self.content.model = Gtk.SingleSelection(
-            autoselect=False,
-            model=Gtk.SortListModel.new(
-                Gtk.FilterListModel.new(
-                    Gtk.FlattenListModel.new(models),
-                    (
-                        search_filter := Gtk.CustomFilter.new(
-                            lambda item: (
-                                (lowered := self.content.search_text.lower())
-                                in item.address.lower()
-                                or lowered in item.name.lower()
-                            )
-                            if self.content.search_text
-                            else True
-                        )
-                    ),
-                ),
-                Gtk.CustomSorter.new(
-                    lambda a, b, _: (b.contact_request - a.contact_request)
-                    or strcoll(a.name, b.name)
-                ),
-            ),
-        )
+        self.models.append(mail.contact_requests)
+        self.models.append(mail.address_book)
 
         mail.address_book.bind_property(
             "updating",
@@ -66,14 +42,6 @@ class ContactsPage(Adw.NavigationPage):
             "loading",
             GObject.BindingFlags.SYNC_CREATE,
         )
-
-        self.content.connect(
-            "notify::search-text",
-            lambda *_: search_filter.changed(Gtk.FilterChange.DIFFERENT),
-        )
-
-        self.content.model.bind_property("selected-item", self.profile_view, "profile")
-        self.content.model.connect("notify::selected", self._on_selected)
 
     @Gtk.Template.Callback()
     def _new_contact(self, *_args: Any) -> None:
@@ -87,5 +55,6 @@ class ContactsPage(Adw.NavigationPage):
         except ValueError:
             return
 
+    @Gtk.Template.Callback()
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
         self.content.split_view.props.show_content = bool(selection.props.selected_item)

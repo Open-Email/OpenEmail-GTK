@@ -1,11 +1,50 @@
 using Gtk 4.0;
 using Adw 1;
+using Gio 2.0;
 
 template $ContactsPage: Adw.NavigationPage {
   title: _("Contacts");
 
   child: $ContentPage content {
     title: bind template.title;
+
+    model: SingleSelection selection {
+      autoselect: false;
+      notify::selected => $_on_selected();
+
+      model: SortListModel {
+        sorter: MultiSorter {
+          NumericSorter {
+            expression: expr item as <$Profile>.contact-request;
+            sort-order: descending;
+          }
+
+          StringSorter {
+            expression: expr item as <$Profile>.name;
+          }
+        };
+
+        model: FilterListModel {
+          model: FlattenListModel {
+            model: Gio.ListStore models {
+              item-type: typeof<Gio.ListModel>;
+            };
+          };
+
+          filter: AnyFilter {
+            StringFilter {
+              expression: expr item as <$Profile>.address;
+              search: bind content.search-text;
+            }
+
+            StringFilter {
+              expression: expr item as <$Profile>.name;
+              search: bind content.search-text;
+            }
+          };
+        };
+      };
+    };
 
     factory: BuilderListItemFactory {
       template ListItem {
@@ -15,7 +54,9 @@ template $ContactsPage: Adw.NavigationPage {
       }
     };
 
-    details: $ProfileView profile_view {};
+    details: $ProfileView profile_view {
+      profile: bind selection.selected-item;
+    };
 
     toolbar-button: Button {
       icon-name: "contact-new-symbolic";
