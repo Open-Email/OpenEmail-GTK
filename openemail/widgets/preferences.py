@@ -22,6 +22,7 @@ class Preferences(Adw.PreferencesDialog):
     confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()
     confirm_delete_dialog: Adw.AlertDialog = Gtk.Template.Child()
     sync_interval_combo_row: Adw.ComboRow = Gtk.Template.Child()
+    empty_trash_combo_row: Adw.ComboRow = Gtk.Template.Child()
 
     domains: Adw.PreferencesGroup = Gtk.Template.Child()
     add_domain_dialog: Adw.AlertDialog = Gtk.Template.Child()
@@ -33,7 +34,8 @@ class Preferences(Adw.PreferencesDialog):
     public_signing_key = GObject.Property(type=str)
     public_encryption_key = GObject.Property(type=str)
 
-    _intervals = (0, 60, 300, 900, 1800, 3600)
+    _sync_intervals = (0, 60, 300, 900, 1800, 3600)
+    _trash_intervals = (0, 1, 7, 14, 30)
     _domain_rows: list[Adw.PreferencesRow]
 
     def __init__(self, **kwargs: Any) -> None:
@@ -49,13 +51,26 @@ class Preferences(Adw.PreferencesDialog):
         self.public_encryption_key = str(mail.user.encryption_keys.public)
 
         with suppress(ValueError):
-            self.sync_interval_combo_row.props.selected = self._intervals.index(
+            self.sync_interval_combo_row.props.selected = self._sync_intervals.index(
                 settings.get_uint("sync-interval")
+            )
+            self.empty_trash_combo_row.props.selected = self._trash_intervals.index(
+                settings.get_uint("empty-trash-interval")
             )
 
     @Gtk.Template.Callback()
     def _sync_interval_selected(self, row: Adw.ComboRow, *_args: Any) -> None:
-        settings.set_uint("sync-interval", self._intervals[row.props.selected])
+        settings.set_uint(
+            "sync-interval",
+            self._sync_intervals[row.props.selected],
+        )
+
+    @Gtk.Template.Callback()
+    def _trash_interval_selected(self, row: Adw.ComboRow, *_args: Any) -> None:
+        settings.set_uint(
+            "empty-trash-interval",
+            self._trash_intervals[row.props.selected],
+        )
 
     @Gtk.Template.Callback()
     def _remove_account(self, *_args: Any) -> None:

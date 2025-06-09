@@ -806,6 +806,7 @@ async def _fetch_envelope(
     author: Address,
     *,
     broadcast: bool = False,
+    exclude: Iterable[str] = (),
 ) -> tuple[dict[str, str] | None, bool]:
     logger.debug("Fetching envelope %s…", ident[:_SHORT])
 
@@ -814,6 +815,11 @@ async def _fetch_envelope(
         envelopes_dir /= "broadcasts"
 
     envelope_path = envelopes_dir / f"{ident}.json"
+
+    if ident in exclude:
+        logger.debug("Removing deleted envelope %s…", ident[:_SHORT])
+        envelope_path.unlink(missing_ok=True)
+        return None, False
 
     try:
         headers = dict(json.load(envelope_path.open("r")))
@@ -842,10 +848,27 @@ async def _fetch_message_from_agent(
     ident: str,
     *,
     broadcast: bool = False,
+    exclude: Iterable[str] = (),
 ) -> Message | None:
     logger.debug("Fetching message %s…", ident[:_SHORT])
 
-    envelope, new = await _fetch_envelope(url, ident, author, broadcast=broadcast)
+    messages_dir = data_dir / "messages" / author.host_part / author.local_part
+    if broadcast:
+        messages_dir /= "broadcasts"
+
+    message_path = messages_dir / ident
+
+    if ident in exclude:
+        logger.debug("Removing deleted message %s…", ident[:_SHORT])
+        message_path.unlink(missing_ok=True)
+
+    envelope, new = await _fetch_envelope(
+        url,
+        ident,
+        author,
+        broadcast=broadcast,
+        exclude=exclude,
+    )
     if not envelope:
         return None
 
@@ -860,13 +883,6 @@ async def _fetch_message_from_agent(
 
         logger.debug("Fetched message %s", ident[:_SHORT])
         return message
-
-    messages_dir = data_dir / "messages" / author.host_part / author.local_part
-    if broadcast:
-        messages_dir /= "broadcasts"
-
-    message_path = messages_dir / ident
-
     try:
         contents = message_path.read_bytes()
     except FileNotFoundError:
@@ -960,9 +976,6 @@ async def _fetch_messages(
 ) -> tuple[Message, ...]:
     messages: dict[str, Message] = {}
     for ident in await _fetch_message_ids(author, broadcasts=broadcasts):
-        if ident in exclude:
-            continue
-
         for agent in await get_agents(user.address):
             if message := await _fetch_message_from_agent(
                 (
@@ -976,6 +989,7 @@ async def _fetch_messages(
                 author,
                 ident,
                 broadcast=broadcasts,
+                exclude=exclude,
             ):
                 messages[message.ident] = message
                 break

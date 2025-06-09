@@ -7,6 +7,9 @@
 		<key name="sync-interval" type="u">
 			<default>900</default>
 		</key>
+		<key name="empty-trash-interval" type="u">
+			<default>0</default>
+		</key>
 		<key name="trusted-domains" type="as">
 			<default>[]</default>
 		</key>

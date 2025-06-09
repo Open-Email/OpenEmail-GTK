@@ -8,7 +8,7 @@ from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Iterable
 from dataclasses import fields
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from itertools import chain
 from shutil import rmtree
 from typing import Any, ClassVar, NamedTuple, cast
@@ -1234,6 +1234,7 @@ def log_out() -> None:
 
     settings.reset("address")
     settings.reset("sync-interval")
+    settings.reset("empty-trash-interval")
     settings.reset("trusted-domains")
     settings.reset("contact-requests")
     settings.reset("unread-messages")
@@ -1262,5 +1263,29 @@ async def delete_account() -> None:
 def _ident(message: model.Message) -> str:
     return f"{message.author.host_part} {message.ident}"
 
+
+if interval := settings.get_uint("empty-trash-interval"):
+    deleted = set()
+    new_trashed = []
+
+    today = datetime.now(UTC).date()
+    for message in settings.get_strv("trashed-messages"):
+        ident, timestamp = message.rsplit(maxsplit=1)
+
+        try:
+            trashed = date.fromisoformat(timestamp)
+        except ValueError:
+            continue
+
+        if today.day - trashed.day >= interval:
+            deleted.add(ident)
+        else:
+            new_trashed.append(message)
+
+    settings.set_strv("trashed-messages", new_trashed)
+    settings.set_strv(
+        "deleted-messages",
+        tuple(set(settings.get_strv("deleted-messages")) | deleted),
+    )
 
 run_task(sync(periodic=True))

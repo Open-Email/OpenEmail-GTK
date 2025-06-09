@@ -18,11 +18,30 @@ template $Preferences: Adw.PreferencesDialog {
         model: StringList {
           strings [
             _("Manual"),
-            _("1 minute"),
-            _("5 minutes"),
-            _("15 minutes"),
-            _("30 minutes"),
-            _("60 minutes"),
+            _("1 Minute"),
+            _("5 Minutes"),
+            _("15 Minutes"),
+            _("30 Minutes"),
+            _("60 Minutes"),
+          ]
+        };
+      }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("Messages");
+
+      Adw.ComboRow empty_trash_combo_row {
+        title: _("Empty Trash After");
+        notify::selected => $_trash_interval_selected();
+
+        model: StringList {
+          strings [
+            _("Never"),
+            _("1 Day"),
+            _("7 Days"),
+            _("14 Days"),
+            _("30 Days"),
           ]
         };
       }
