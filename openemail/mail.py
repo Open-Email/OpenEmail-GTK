@@ -713,7 +713,7 @@ class Message(GObject.Object):
         for msg in (self._message, *self._message.children):
             try:
                 await client.delete_message(msg.ident)
-            except WriteError:
+            except WriteError: # noqa: PERF203
                 if not failed:
                     Notifier.send(_("Failed to discard message"))
 

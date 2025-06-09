@@ -72,10 +72,10 @@ class Form(GObject.Object):
         """
         for fields in self._fields.values():
             for field in fields:
-                try:
-                    getattr(self.form, field.props.string).props.text = ""
-                except AttributeError:
+                if not hasattr(self.form, field.props.string):
                     continue
+
+                getattr(self.form, field.props.string).props.text = ""
 
     def _assign_fields(self, form_field: FormField, fields: Gtk.StringList) -> None:
         self._fields[form_field] = fields

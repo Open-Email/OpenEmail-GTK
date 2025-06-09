@@ -743,7 +743,7 @@ def load_drafts() -> Generator[
         try:
             message = tuple(json.load(path.open("r")))
             yield (int(path.stem), *message)
-        except (JSONDecodeError, ValueError):
+        except (JSONDecodeError, ValueError): # noqa: PERF203
             continue
 
     logger.debug("Loaded all drafts")
