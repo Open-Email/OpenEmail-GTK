@@ -560,7 +560,10 @@ class Message(GObject.Object):
         if not self._message:
             return False
 
-        return _ident(self._message) in settings.get_strv("trashed-messages")
+        return any(
+            msg.rsplit(maxsplit=1)[0] == _ident(self._message)
+            for msg in settings.get_strv("trashed-messages")
+        )
 
     def __init__(self, message: model.Message | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -638,7 +641,10 @@ class Message(GObject.Object):
 
         settings.set_strv(
             "trashed-messages",
-            tuple(set(settings.get_strv("trashed-messages")) | {_ident(self._message)}),
+            (
+                *settings.get_strv("trashed-messages"),
+                f"{_ident(self._message)} {datetime.now(UTC).date().isoformat()}",
+            ),
         )
 
         self._update_trashed_state()
@@ -650,7 +656,11 @@ class Message(GObject.Object):
 
         settings.set_strv(
             "trashed-messages",
-            tuple(set(settings.get_strv("trashed-messages")) - {_ident(self._message)}),
+            tuple(
+                msg
+                for msg in settings.get_strv("trashed-messages")
+                if msg.rsplit(maxsplit=1)[0] != _ident(self._message)
+            ),
         )
 
         self._update_trashed_state()
