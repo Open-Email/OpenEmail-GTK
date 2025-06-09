@@ -616,54 +616,10 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
             if not (stripped := notification.strip()):
                 continue
 
-            try:
-                ident, link, signing_key_fp, encrypted_notifier = (
-                    part.strip() for part in stripped.split(",", 4)
-                )
-            except IndexError:
-                logger.debug("Invalid notification: %s", notification)
-                continue
+            if processed := await _process_notification(stripped, notifications):
+                yield processed
 
-            if ident in notifications:
-                continue
-
-            try:
-                notifier = Address(
-                    crypto.decrypt_anonymous(
-                        encrypted_notifier,
-                        user.encryption_keys.private,
-                    ).decode("utf-8")
-                )
-            except ValueError:
-                logger.debug("Unable to decrypt notification: %s", notification)
-                continue
-
-            if not (profile := await fetch_profile(notifier)):
-                logger.error(
-                    "Failed to fetch notification: Could not fetch profile for %s",
-                    notifier,
-                )
-                continue
-
-            if signing_key_fp not in {
-                crypto.fingerprint(profile.signing_key),
-                crypto.fingerprint(profile.last_signing_key)
-                if profile.last_signing_key
-                else None,
-            }:
-                logger.debug("Fingerprint mismatch for notification: %s", notification)
-                continue
-
-            yield Notification(
-                ident,
-                datetime.now(UTC),
-                link,
-                notifier,
-                signing_key_fp,
-            )
-            notifications.add(ident)
-        if not notifications_path.parent.exists():
-            notifications_path.parent.mkdir(parents=True, exist_ok=True)
+        notifications_path.parent.mkdir(parents=True, exist_ok=True)
         with notifications_path.open("w") as file:
             json.dump(tuple(notifications), file)
 
@@ -743,7 +699,7 @@ def load_drafts() -> Generator[
         try:
             message = tuple(json.load(path.open("r")))
             yield (int(path.stem), *message)
-        except (JSONDecodeError, ValueError): # noqa: PERF203
+        except (JSONDecodeError, ValueError):  # noqa: PERF203
             continue
 
     logger.debug("Loaded all drafts")
@@ -786,6 +742,57 @@ async def delete_account() -> None:
 
     raise WriteError
     logger.error("Failed to delete account")
+
+
+async def _process_notification(
+    notification: str, notifications: set[str]
+) -> Notification | None:
+    try:
+        ident, link, signing_key_fp, encrypted_notifier = (
+            part.strip() for part in notification.split(",", 4)
+        )
+    except IndexError:
+        logger.debug("Invalid notification: %s", notification)
+        return None
+
+    if ident in notifications:
+        return None
+
+    try:
+        notifier = Address(
+            crypto.decrypt_anonymous(
+                encrypted_notifier,
+                user.encryption_keys.private,
+            ).decode("utf-8")
+        )
+    except ValueError:
+        logger.debug("Unable to decrypt notification: %s", notification)
+        return None
+
+    if not (profile := await fetch_profile(notifier)):
+        logger.error(
+            "Failed to fetch notification: Could not fetch profile for %s",
+            notifier,
+        )
+        return None
+
+    if signing_key_fp not in {
+        crypto.fingerprint(profile.signing_key),
+        crypto.fingerprint(profile.last_signing_key)
+        if profile.last_signing_key
+        else None,
+    }:
+        logger.debug("Fingerprint mismatch for notification: %s", notification)
+        return None
+
+    notifications.add(ident)
+    return Notification(
+        ident,
+        datetime.now(UTC),
+        link,
+        notifier,
+        signing_key_fp,
+    )
 
 
 def _sign_headers(fields: Sequence[str]) -> ...:
@@ -883,6 +890,7 @@ async def _fetch_message_from_agent(
 
         logger.debug("Fetched message %s", ident[:_SHORT])
         return message
+
     try:
         contents = message_path.read_bytes()
     except FileNotFoundError:
