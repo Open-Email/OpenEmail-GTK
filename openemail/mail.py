@@ -713,7 +713,7 @@ class Message(GObject.Object):
         for msg in (self._message, *self._message.children):
             try:
                 await client.delete_message(msg.ident)
-            except WriteError: # noqa: PERF203
+            except WriteError:  # noqa: PERF203
                 if not failed:
                     Notifier.send(_("Failed to discard message"))
 
@@ -1204,7 +1204,14 @@ async def send_message(
         ] = data
 
     try:
-        await client.send_message(readers, subject, body, reply, attachments=files)
+        await client.OutgoingMessage(
+            readers=readers,
+            subject=subject,
+            content=body.encode("utf-8"),
+            subject_id=reply,
+            attachments=files,
+        ).send()
+
     except WriteError:
         Notifier.send(_("Failed to send message"))
         Notifier().sending = False
