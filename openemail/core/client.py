@@ -24,6 +24,7 @@ from .model import (
     Address,
     AttachmentProperties,
     IncomingMessage,
+    Message,
     Notification,
     Profile,
     User,
@@ -475,7 +476,7 @@ async def fetch_outbox() -> tuple[IncomingMessage, ...]:
     return await _fetch_messages(user.address)
 
 
-async def download_attachment(parts: Iterable[IncomingMessage]) -> bytes | None:
+async def download_attachment(parts: Iterable[Message]) -> bytes | None:
     """Download and reconstruct an attachment from `parts`."""
     data = b""
     for part in parts:

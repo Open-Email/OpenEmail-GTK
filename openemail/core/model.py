@@ -9,7 +9,7 @@ from dataclasses import dataclass, field, fields
 from datetime import UTC, date, datetime
 from hashlib import sha256
 from types import NoneType, UnionType
-from typing import NamedTuple, Self, get_args, get_origin
+from typing import NamedTuple, Protocol, Self, get_args, get_origin
 
 from . import crypto
 from .crypto import Key, KeyPair
@@ -100,9 +100,38 @@ class AttachmentProperties(NamedTuple):
     modified: str | None = None
 
 
+class Message(Protocol):
+    """A Mail/HTTPS message."""
+
+    ident: str
+    author: Address
+
+    new: bool = False
+
+    date: datetime = field(init=False)
+    subject: str = field(init=False)
+    original_author: Address = field(init=False)
+    readers: list[Address] = field(init=False, default_factory=list)
+
+    access_key: bytes | None = field(init=False, default=None)
+
+    file: AttachmentProperties | None = field(init=False, default=None)
+
+    body: str | None = None
+    attachment_url: str | None = None
+
+    children: list[Self] = field(init=False, default_factory=list)
+    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
+
+    @property
+    def is_broadcast(self) -> bool:
+        """Whether `self` is a broadcast."""
+        raise NotImplementedError
+
+
 @dataclass(slots=True)
 class IncomingMessage:
-    """A Mail/HTTPS message."""
+    """A remote message."""
 
     ident: str
     headers: dict[str, str]
@@ -136,12 +165,12 @@ class IncomingMessage:
 
     @property
     def is_broadcast(self) -> bool:
-        """Whether the message is a broadcast."""
+        """Whether `self` is a broadcast."""
         return not bool(self.access_links)
 
     @property
     def is_child(self) -> bool:
-        """Whether the message is a child."""
+        """Whether `self` is a child."""
         return bool(self.parent_id)
 
     def __post_init__(self) -> None:
