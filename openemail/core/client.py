@@ -20,7 +20,14 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from . import crypto, model
-from .model import Address, AttachmentProperties, Message, Notification, Profile, User
+from .model import (
+    Address,
+    AttachmentProperties,
+    IncomingMessage,
+    Notification,
+    Profile,
+    User,
+)
 
 MAX_AGENTS = 3
 MAX_MESSAGE_SIZE = 64_000_000
@@ -445,7 +452,7 @@ async def delete_contact(address: Address) -> None:
 
 async def fetch_broadcasts(
     author: Address, *, exclude: Iterable[str] = ()
-) -> tuple[Message, ...]:
+) -> tuple[IncomingMessage, ...]:
     """Fetch broadcasts by `author`, without messages with IDs in `exclude`."""
     logger.debug("Fetching broadcasts from %s…", author)
     return await _fetch_messages(author, broadcasts=True, exclude=exclude)
@@ -453,7 +460,7 @@ async def fetch_broadcasts(
 
 async def fetch_link_messages(
     author: Address, *, exclude: Iterable[str] = ()
-) -> tuple[Message, ...]:
+) -> tuple[IncomingMessage, ...]:
     """Fetch messages by `author`, addressed to `client.user`.
 
     `exclude` are Message-Ids to ignore.
@@ -462,13 +469,13 @@ async def fetch_link_messages(
     return await _fetch_messages(author, exclude=exclude)
 
 
-async def fetch_outbox() -> tuple[Message, ...]:
+async def fetch_outbox() -> tuple[IncomingMessage, ...]:
     """Fetch messages by `client.user`."""
     logger.debug("Fetching outbox…")
     return await _fetch_messages(user.address)
 
 
-async def download_attachment(parts: Iterable[Message]) -> bytes | None:
+async def download_attachment(parts: Iterable[IncomingMessage]) -> bytes | None:
     """Download and reconstruct an attachment from `parts`."""
     data = b""
     for part in parts:
@@ -508,35 +515,6 @@ def generate_message_id() -> str:
             )
         ).encode("utf-8")
     ).hexdigest()
-
-
-async def send_message(
-    readers: Iterable[Address],
-    subject: str,
-    body: str,
-    subject_id: str | None = None,
-    attachments: dict[AttachmentProperties, bytes] | None = None,
-) -> None:
-    """Send a message to `readers`.
-
-    If `readers` is empty, send a broadcast.
-
-    `subject_id` is an optional ID of a thread that the message should be part of.
-    """
-    logger.debug("Sending message…")
-    attachments = attachments or {}
-
-    try:
-        await _OutgoingMessage(
-            readers,
-            subject,
-            body.encode("utf-8"),
-            subject_id,
-            attachments,
-        ).send()
-    except WriteError:
-        logger.exception("Error sending message")
-        raise
 
 
 async def notify_readers(readers: Iterable[Address]) -> None:
@@ -655,7 +633,8 @@ def save_draft(
     `ident` can be used to update a specific message loaded using `load_drafts()`,
     by default, a new ID is generated.
 
-    See `send_message()` for other parameters, `load_drafts()` on how to retrieve it.
+    See `OutgoingMessage.send()` for other parameters,
+    `load_drafts()` on how to retrieve it.
     """
     logger.debug("Saving draft…")
     messages_path = data_dir / "drafts"
@@ -856,7 +835,7 @@ async def _fetch_message_from_agent(
     *,
     broadcast: bool = False,
     exclude: Iterable[str] = (),
-) -> Message | None:
+) -> IncomingMessage | None:
     logger.debug("Fetching message %s…", ident[:_SHORT])
 
     messages_dir = data_dir / "messages" / author.host_part / author.local_part
@@ -880,7 +859,13 @@ async def _fetch_message_from_agent(
         return None
 
     try:
-        message = Message(ident, envelope, author, user.encryption_keys.private, new)
+        message = IncomingMessage(
+            ident,
+            envelope,
+            author,
+            user.encryption_keys.private,
+            new,
+        )
     except ValueError:
         logger.exception("Constructing message %s failed", ident[:_SHORT])
         return None
@@ -981,8 +966,8 @@ async def _fetch_messages(
     *,
     broadcasts: bool = False,
     exclude: Iterable[str] = (),
-) -> tuple[Message, ...]:
-    messages: dict[str, Message] = {}
+) -> tuple[IncomingMessage, ...]:
+    messages: dict[str, IncomingMessage] = {}
     for ident in await _fetch_message_ids(author, broadcasts=broadcasts):
         for agent in await get_agents(user.address):
             if message := await _fetch_message_from_agent(
@@ -1014,7 +999,9 @@ async def _fetch_messages(
 
 
 @dataclass(slots=True)
-class _OutgoingMessage[T: _OutgoingMessage]:
+class OutgoingMessage[T: OutgoingMessage]:
+    """A local message, to be sent."""
+
     readers: Iterable[Address]
     subject: str
     content: bytes
@@ -1034,6 +1021,9 @@ class _OutgoingMessage[T: _OutgoingMessage]:
     _built: bool = field(default=False, init=False)
 
     async def send(self) -> None:
+        """Send `self` to `self.readers`."""
+        logger.debug("Sending message…")
+
         try:
             await self._build()
 
@@ -1051,7 +1041,7 @@ class _OutgoingMessage[T: _OutgoingMessage]:
                 break
 
             for part in self._parts.values():
-                await _OutgoingMessage(
+                await OutgoingMessage(
                     self.readers,
                     self.subject,
                     part[1],

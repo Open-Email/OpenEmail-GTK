@@ -431,9 +431,11 @@ class OutgoingAttachment[T: OutgoingAttachment](Attachment):
 class IncomingAttachment(Attachment):
     """An attachment received by the user."""
 
-    _parts: list[model.Message]
+    _parts: list[model.IncomingMessage]
 
-    def __init__(self, name: str, parts: list[model.Message], **kwargs: Any) -> None:
+    def __init__(
+        self, name: str, parts: list[model.IncomingMessage], **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
 
         self.name, self._parts = name, parts
@@ -547,7 +549,7 @@ class Message(GObject.Object):
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
 
-    _message: model.Message | None = None
+    _message: model.IncomingMessage | None = None
 
     @property
     def author(self) -> Address | None:
@@ -565,13 +567,15 @@ class Message(GObject.Object):
             for msg in settings.get_strv("trashed-messages")
         )
 
-    def __init__(self, message: model.Message | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self, message: model.IncomingMessage | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
 
         self.attachments = Gio.ListStore.new(Attachment)
         self.set_from_message(message)
 
-    def set_from_message(self, message: model.Message | None) -> None:
+    def set_from_message(self, message: model.IncomingMessage | None) -> None:
         """Set the properties of `self` from `message`."""
         self._message = message
 
@@ -713,7 +717,7 @@ class Message(GObject.Object):
         for msg in (self._message, *self._message.children):
             try:
                 await client.delete_message(msg.ident)
-            except WriteError: # noqa: PERF203
+            except WriteError:  # noqa: PERF203
                 if not failed:
                     Notifier.send(_("Failed to discard message"))
 
@@ -803,8 +807,8 @@ class MessageStore(DictStore[str, Message]):
     async def _fetch(self) -> ...: ...
 
     async def _process_messages(
-        self, futures: Iterable[Awaitable[Iterable[model.Message]]]
-    ) -> AsyncGenerator[model.Message, None]:
+        self, futures: Iterable[Awaitable[Iterable[model.IncomingMessage]]]
+    ) -> AsyncGenerator[model.IncomingMessage, None]:
         unread = set()
         # TODO: Replace with async for in 3.13, not supported in 3.12
         for messages in asyncio.as_completed(futures):
@@ -1204,7 +1208,14 @@ async def send_message(
         ] = data
 
     try:
-        await client.send_message(readers, subject, body, reply, attachments=files)
+        await client.OutgoingMessage(
+            readers=readers,
+            subject=subject,
+            content=body.encode("utf-8"),
+            subject_id=reply,
+            attachments=files,
+        ).send()
+
     except WriteError:
         Notifier.send(_("Failed to send message"))
         Notifier().sending = False
@@ -1260,7 +1271,7 @@ async def delete_account() -> None:
     log_out()
 
 
-def _ident(message: model.Message) -> str:
+def _ident(message: model.IncomingMessage) -> str:
     return f"{message.author.host_part} {message.ident}"
 
 

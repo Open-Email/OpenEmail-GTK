@@ -101,7 +101,7 @@ class AttachmentProperties(NamedTuple):
 
 
 @dataclass(slots=True)
-class Message:
+class IncomingMessage:
     """A Mail/HTTPS message."""
 
     ident: str
@@ -287,7 +287,7 @@ class Message:
             for reader in readers.split(","):
                 try:
                     self.readers.append(Address(reader.strip()))
-                except ValueError: # noqa: PERF203
+                except ValueError:  # noqa: PERF203
                     continue
 
     def add_child(self, child: Self) -> None:
