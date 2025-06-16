@@ -1009,17 +1009,14 @@ class OutgoingMessage[T: OutgoingMessage]:
     new: bool = field(default=False, init=False)
 
     subject: str
-    original_author: Address = field(
-        default_factory=lambda: user.address,
-        init=False,
-    )  # TODO
+    original_author: Address = field(init=False)
     readers: list[Address]
 
-    access_key: bytes | None = field(init=False, default=b"")  # TODO
+    access_key: bytes | None = field(init=False, default=None)
 
     file: AttachmentProperties | None = field(init=False, default=None)  # TODO
 
-    body: str | None = field(init=False, default=None)  # TODO
+    body: str | None = field(default=None)
     attachment_url: str | None = field(init=False, default=None)  # TODO
 
     children: list[Message] = field(init=False, default_factory=list)  # TODO
@@ -1028,12 +1025,12 @@ class OutgoingMessage[T: OutgoingMessage]:
         default_factory=dict,
     )  # TODO
 
-    content: bytes
     subject_id: str | None = None
     files: dict[AttachmentProperties, bytes] = field(default_factory=dict)
 
     date: datetime = field(default_factory=lambda: datetime.now(UTC))
 
+    _content: bytes = b""
     _attachment: dict[str, str] = field(default_factory=dict)
     _parent_id: str | None = None
 
@@ -1049,6 +1046,14 @@ class OutgoingMessage[T: OutgoingMessage]:
         """Whether `self` is a broadcast."""
         return bool(self.readers)
 
+    def __post_init__(self) -> None:
+        self.original_author = self.author
+
+        if not self.body:
+            return
+
+        self._content = self.body.encode("utf-8")
+
     async def send(self) -> None:
         """Send `self` to `self.readers`."""
         logger.debug("Sending message…")
@@ -1061,7 +1066,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                     _Home(agent, user.address).messages,
                     auth=True,
                     headers=self._headers,
-                    data=self.content,
+                    data=self._content,
                 ):
                     logger.error("Failed sending message")
                     raise WriteError
@@ -1074,8 +1079,8 @@ class OutgoingMessage[T: OutgoingMessage]:
                     date=self.date,
                     readers=self.readers,
                     subject=self.subject,
-                    content=part[1],
                     subject_id=self.subject_id,
+                    _content=part[1],
                     _attachment=part[0],
                     _parent_id=self.ident,
                 ).send()
@@ -1117,11 +1122,11 @@ class OutgoingMessage[T: OutgoingMessage]:
                         "Id": self._headers["Message-Id"],
                         "Author": str(user.address),
                         "Date": self.date.isoformat(timespec="seconds"),
-                        "Size": str(len(self.content)),
+                        "Size": str(len(self._content)),
                         "Checksum": ";".join(
                             (
                                 f"algorithm={crypto.CHECKSUM_ALGORITHM}",
-                                f"value={sha256(self.content).hexdigest()}",
+                                f"value={sha256(self._content).hexdigest()}",
                             )
                         ),
                         "Subject": self.subject,
@@ -1163,20 +1168,20 @@ class OutgoingMessage[T: OutgoingMessage]:
         ).encode("utf-8")
 
         if self.readers:
-            access_key = crypto.random_bytes(32)
+            self.access_key = crypto.random_bytes(32)
 
             try:
-                message_access = await self._build_access(self.readers, access_key)
+                message_access = await self._build_access(self.readers, self.access_key)
             except ValueError as error:
                 msg = "Error building message: Building access failed"
                 raise ValueError(msg) from error
 
             try:
-                self.content = crypto.encrypt_xchacha20poly1305(
-                    self.content, access_key
+                self._content = crypto.encrypt_xchacha20poly1305(
+                    self._content, self.access_key
                 )
                 headers_bytes = crypto.encrypt_xchacha20poly1305(
-                    headers_bytes, access_key
+                    headers_bytes, self.access_key
                 )
             except ValueError as error:
                 msg = "Error building message: Encryption failed"
@@ -1209,7 +1214,7 @@ class OutgoingMessage[T: OutgoingMessage]:
 
         self._headers.update(
             {
-                "Content-Length": str(len(self.content)),
+                "Content-Length": str(len(self._content)),
                 "Message-Checksum": ";".join(
                     (
                         f"algorithm={crypto.CHECKSUM_ALGORITHM}",

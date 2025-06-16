@@ -1215,7 +1215,7 @@ async def send_message(
         message := client.OutgoingMessage(
             readers=list(readers),
             subject=subject,
-            content=body.encode("utf-8"),
+            body=body,
             subject_id=reply,
             files=files,
         )
