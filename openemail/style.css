@@ -41,5 +41,6 @@ headerbar.overlaid windowcontrols button:active image {
 }
 
 button.spinning > image {
+  transform-origin: 50% 53.125%; /* The icon is off-center by half a pixel */
   animation: spinning 1s linear infinite;
 }
