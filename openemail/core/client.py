@@ -1039,8 +1039,6 @@ class OutgoingMessage[T: OutgoingMessage]:
         default_factory=dict, init=False
     )
 
-    _built: bool = field(default=False, init=False)
-
     @property
     def is_broadcast(self) -> bool:
         """Whether `self` is a broadcast."""
@@ -1090,7 +1088,7 @@ class OutgoingMessage[T: OutgoingMessage]:
             raise WriteError from error
 
     async def _build(self) -> None:
-        if self._built:
+        if self._headers:
             return
 
         self._headers: dict[str, str] = {
@@ -1231,8 +1229,6 @@ class OutgoingMessage[T: OutgoingMessage]:
                 ),
             }
         )
-
-        self._built = True
 
     @staticmethod
     async def _build_access(
