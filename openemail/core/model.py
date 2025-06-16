@@ -108,20 +108,20 @@ class Message(Protocol):
 
     new: bool = False
 
-    date: datetime = field(init=False)
     subject: str = field(init=False)
     original_author: Address = field(init=False)
     readers: list[Address] = field(init=False, default_factory=list)
+    date: datetime = field(init=False)
 
-    access_key: bytes | None = field(init=False, default=None)
+    access_key: bytes | None = field(init=False, default=None)  # TODO
 
     file: AttachmentProperties | None = field(init=False, default=None)
 
     body: str | None = None
     attachment_url: str | None = None
 
-    children: list[Self] = field(init=False, default_factory=list)
-    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
+    children: list["Message"] = field(init=False, default_factory=list)
+    attachments: dict[str, list["Message"]] = field(init=False, default_factory=dict)
 
     @property
     def is_broadcast(self) -> bool:
@@ -166,7 +166,7 @@ class IncomingMessage:
     @property
     def is_broadcast(self) -> bool:
         """Whether `self` is a broadcast."""
-        return not bool(self.access_links)
+        return not self.access_links
 
     @property
     def is_child(self) -> bool:

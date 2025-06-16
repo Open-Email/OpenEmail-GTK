@@ -776,6 +776,14 @@ class MessageStore(DictStore[str, Message]):
 
     item_type = Message
 
+    def add(self, message: model.Message) -> None:
+        """Manually add `message` to `self`."""
+        if message.ident in self._items:
+            return
+
+        self._items[message.ident] = Message(message)
+        self.items_changed(len(self._items) - 1, 0, 1)
+
     async def _update(self) -> None:
         """Update `self` asynchronously using `self._fetch()`."""
         idents: set[str] = set()
@@ -893,7 +901,7 @@ class _BroadcastStore(MessageStore):
     async def _fetch(self) -> ...:
         deleted = settings.get_strv("deleted-messages")
         async for message in self._process_messages(
-            client.fetch_broadcasts(
+            client.fetch_broadcasts(  # pyright: ignore[reportArgumentType]
                 address := Address(contact.address),
                 exclude=tuple(
                     split[1]
@@ -933,7 +941,7 @@ class _InboxStore(MessageStore):
 
         deleted = settings.get_strv("deleted-messages")
         async for message in self._process_messages(
-            (
+            (  # pyright: ignore[reportArgumentType]
                 client.fetch_link_messages(
                     contact,
                     exclude=tuple(
@@ -1173,7 +1181,7 @@ async def send_message(
     reply: str | None = None,
     attachments: Iterable[OutgoingAttachment] = (),
 ) -> None:
-    """Send `message` to `readers`.
+    """Send a message to `readers`.
 
     If `readers` is empty, send a broadcast.
 
@@ -1203,21 +1211,24 @@ async def send_message(
             )
         ] = data
 
-    try:
-        await client.OutgoingMessage(
-            readers=readers,
+    outbox.add(
+        message := client.OutgoingMessage(
+            readers=list(readers),
             subject=subject,
             content=body.encode("utf-8"),
             subject_id=reply,
-            attachments=files,
-        ).send()
+            files=files,
+        )
+    )
 
+    try:
+        await message.send()
     except WriteError:
+        outbox.remove(message.ident)
         Notifier.send(_("Failed to send message"))
         Notifier().sending = False
         raise
 
-    await outbox.update()
     Notifier().sending = False
 
 

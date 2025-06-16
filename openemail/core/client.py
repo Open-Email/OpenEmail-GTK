@@ -1003,23 +1003,51 @@ async def _fetch_messages(
 class OutgoingMessage[T: OutgoingMessage]:
     """A local message, to be sent."""
 
-    readers: Iterable[Address]
+    ident: str = field(default_factory=generate_message_id, init=False)
+    author: Address = field(default_factory=lambda: user.address, init=False)
+
+    new: bool = field(default=False, init=False)
+
     subject: str
+    original_author: Address = field(
+        default_factory=lambda: user.address,
+        init=False,
+    )  # TODO
+    readers: list[Address]
+
+    access_key: bytes | None = field(init=False, default=b"")  # TODO
+
+    file: AttachmentProperties | None = field(init=False, default=None)  # TODO
+
+    body: str | None = field(init=False, default=None)  # TODO
+    attachment_url: str | None = field(init=False, default=None)  # TODO
+
+    children: list[Message] = field(init=False, default_factory=list)  # TODO
+    attachments: dict[str, list[Message]] = field(
+        init=False,
+        default_factory=dict,
+    )  # TODO
+
     content: bytes
     subject_id: str | None = None
-    attachments: dict[AttachmentProperties, bytes] = field(default_factory=dict)
+    files: dict[AttachmentProperties, bytes] = field(default_factory=dict)
 
-    _date: str | None = None
+    date: datetime = field(default_factory=lambda: datetime.now(UTC))
+
     _attachment: dict[str, str] = field(default_factory=dict)
     _parent_id: str | None = None
 
-    _ident: str = field(default_factory=generate_message_id, init=False)
     _headers: dict[str, str] = field(default_factory=dict, init=False)
     _parts: dict[str, tuple[dict[str, str], bytes]] = field(
         default_factory=dict, init=False
     )
 
     _built: bool = field(default=False, init=False)
+
+    @property
+    def is_broadcast(self) -> bool:
+        """Whether `self` is a broadcast."""
+        return bool(self.readers)
 
     async def send(self) -> None:
         """Send `self` to `self.readers`."""
@@ -1043,13 +1071,13 @@ class OutgoingMessage[T: OutgoingMessage]:
 
             for part in self._parts.values():
                 await OutgoingMessage(
-                    self.readers,
-                    self.subject,
-                    part[1],
-                    self.subject_id,
+                    date=self.date,
+                    readers=self.readers,
+                    subject=self.subject,
+                    content=part[1],
+                    subject_id=self.subject_id,
                     _attachment=part[0],
-                    _parent_id=self._ident,
-                    _date=self._date,
+                    _parent_id=self.ident,
                 ).send()
 
         except ValueError as error:
@@ -1060,13 +1088,12 @@ class OutgoingMessage[T: OutgoingMessage]:
         if self._built:
             return
 
-        self._date = self._date or datetime.now(UTC).isoformat(timespec="seconds")
         self._headers: dict[str, str] = {
-            "Message-Id": self._ident,
+            "Message-Id": self.ident,
             "Content-Type": "application/octet-stream",
         }
 
-        for props, data in self.attachments.items():
+        for props, data in self.files.items():
             for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
                 part = data[start : start + MAX_MESSAGE_SIZE]
                 self._parts[props.name] = (
@@ -1075,8 +1102,9 @@ class OutgoingMessage[T: OutgoingMessage]:
                         "id": generate_message_id(),
                         "type": props.type or "application/octet-stream",
                         "size": str(len(data)),
-                        "part": f"{index + 1}/{len(self.attachments)}",
-                        "modified": props.modified or self._date,
+                        "part": f"{index + 1}/{len(self.files)}",
+                        "modified": props.modified
+                        or self.date.isoformat(timespec="seconds"),
                     },
                     part,
                 )
@@ -1088,7 +1116,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                     {
                         "Id": self._headers["Message-Id"],
                         "Author": str(user.address),
-                        "Date": self._date,
+                        "Date": self.date.isoformat(timespec="seconds"),
                         "Size": str(len(self.content)),
                         "Checksum": ";".join(
                             (
