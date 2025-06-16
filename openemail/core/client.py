@@ -1017,9 +1017,9 @@ class OutgoingMessage[T: OutgoingMessage]:
     file: AttachmentProperties | None = field(init=False, default=None)  # TODO
 
     body: str | None = field(default=None)
-    attachment_url: str | None = field(init=False, default=None)  # TODO
+    attachment_url: str | None = field(init=False, default=None)
 
-    children: list[Message] = field(init=False, default_factory=list)  # TODO
+    children: list[Message] = field(init=False, default_factory=list)
     attachments: dict[str, list[Message]] = field(
         init=False,
         default_factory=dict,

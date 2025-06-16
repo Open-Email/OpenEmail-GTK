@@ -113,12 +113,12 @@ class Message(Protocol):
     readers: list[Address] = field(init=False, default_factory=list)
     date: datetime = field(init=False)
 
-    access_key: bytes | None = field(init=False, default=None)  # TODO
+    access_key: bytes | None = field(init=False, default=None)
 
     file: AttachmentProperties | None = field(init=False, default=None)
 
     body: str | None = None
-    attachment_url: str | None = None
+    attachment_url: str | None = None  # TODO
 
     children: list["Message"] = field(init=False, default_factory=list)
     attachments: dict[str, list["Message"]] = field(init=False, default_factory=dict)
