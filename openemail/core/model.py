@@ -106,25 +106,20 @@ class Message(Protocol):
 
     ident: str
     author: Address
+    original_author: Address
+    date: datetime
+    subject: str
 
-    new: bool = False
+    readers: list[Address]
+    access_key: bytes | None
 
-    subject: str = field(init=False)
-    original_author: Address = field(init=False)
-    readers: list[Address] = field(init=False, default_factory=list)
-    date: datetime = field(init=False)
+    attachments: dict[str, list["Message"]]
+    children: list["Message"]
+    file: AttachmentProperties | None
+    attachment_url: str | None
 
-    access_key: bytes | None = field(init=False, default=None)
-
-    file: AttachmentProperties | None = field(init=False, default=None)
-
-    subject_id: str | None
-
-    body: str | None = None
-    attachment_url: str | None = None  # TODO
-
-    children: list["Message"] = field(init=False, default_factory=list)
-    attachments: dict[str, list["Message"]] = field(init=False, default_factory=dict)
+    body: str | None
+    new: bool  # TODO
 
     @property
     def is_broadcast(self) -> bool:
@@ -137,34 +132,29 @@ class IncomingMessage:
     """A remote message."""
 
     ident: str
-    headers: dict[str, str]
     author: Address
-    private_key: Key
-
-    new: bool = False
-
-    date: datetime = field(init=False)
-    subject: str = field(init=False)
     original_author: Address = field(init=False)
-    readers: list[Address] = field(init=False, default_factory=list)
-
+    date: datetime = field(init=False)
     checksum: str | None = field(init=False, default=None)
+    subject: str = field(init=False)
+    subject_id: str | None = field(init=False, default=None)
+    headers: dict[str, str]
 
+    readers: list[Address] = field(init=False, default_factory=list)
     access_links: str | None = field(init=False, default=None)
     access_key: bytes | None = field(init=False, default=None)
+    private_key: Key
 
-    parent_id: str | None = field(init=False, default=None)
-    part: int = field(init=False, default=0)
-    file: AttachmentProperties | None = field(init=False, default=None)
     files: dict[str, AttachmentProperties] = field(init=False, default_factory=dict)
-
-    subject_id: str | None = field(init=False, default=None)
+    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
+    children: list[Self] = field(init=False, default_factory=list)
+    file: AttachmentProperties | None = field(init=False, default=None)
+    attachment_url: str | None = None
+    parent_id: str | None = field(init=False, default=None)
+    part: int = field(init=False, default=0)  # TODO: This seems redundant
 
     body: str | None = None
-    attachment_url: str | None = None
-
-    children: list[Self] = field(init=False, default_factory=list)
-    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
+    new: bool = False
 
     @property
     def is_broadcast(self) -> bool:

@@ -863,10 +863,10 @@ async def _fetch_message_from_agent(
     try:
         message = IncomingMessage(
             ident,
-            envelope,
             author,
+            envelope,
             user.encryption_keys.private,
-            new,
+            new=new,
         )
     except ValueError:
         logger.exception("Constructing message %s failed", ident[:_SHORT])
@@ -1006,31 +1006,26 @@ class OutgoingMessage[T: OutgoingMessage]:
 
     ident: str = field(default_factory=generate_message_id, init=False)
     author: Address = field(default_factory=lambda: user.address, init=False)
-
-    new: bool = field(default=False, init=False)
-
-    subject: str
     original_author: Address = field(init=False)
-    readers: list[Address]
     date: datetime = field(default_factory=lambda: datetime.now(UTC))
+    subject: str = ""
+    subject_id: str | None = None
+    headers: dict[str, str] = field(default_factory=dict, init=False)
 
+    readers: list[Address] = field(default_factory=list)
     access_key: bytes | None = field(init=False, default=None)
 
+    files: dict[AttachmentProperties, bytes] = field(default_factory=dict)
+    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
+    children: list[Message] = field(init=False, default_factory=list)
     file: AttachmentProperties | None = field(default=None)
-
-    subject_id: str | None = None
+    attachment_url: str | None = field(init=False, default=None)
+    parent_id: str | None = None
 
     body: str | None = field(default=None)
-    attachment_url: str | None = field(init=False, default=None)
-
-    children: list[Message] = field(init=False, default_factory=list)
-    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
-
-    files: dict[AttachmentProperties, bytes] = field(default_factory=dict)
+    new: bool = field(default=False, init=False)
 
     _content: bytes = b""
-    _parent_id: str | None = None
-    _headers: dict[str, str] = field(default_factory=dict, init=False)
 
     @property
     def is_broadcast(self) -> bool:
@@ -1045,10 +1040,10 @@ class OutgoingMessage[T: OutgoingMessage]:
             for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
                 self.attachments[props.name].append(
                     OutgoingMessage(
-                        date=self.date,
-                        readers=self.readers,
-                        subject=self.subject,
-                        subject_id=self.subject_id,
+                        self.date,
+                        self.subject,
+                        self.subject_id,
+                        self.readers,
                         file=AttachmentProperties(
                             name=props.name,
                             ident=props.ident,
@@ -1058,8 +1053,8 @@ class OutgoingMessage[T: OutgoingMessage]:
                             modified=props.modified
                             or self.date.isoformat(timespec="seconds"),
                         ),
+                        parent_id=self.ident,
                         _content=data[start : start + MAX_MESSAGE_SIZE],
-                        _parent_id=self.ident,
                     )
                 )
 
@@ -1079,7 +1074,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                 if not await request(
                     _Home(agent, user.address).messages,
                     auth=True,
-                    headers=self._headers,
+                    headers=self.headers,
                     data=self._content,
                 ):
                     logger.error("Failed sending message")
@@ -1100,10 +1095,10 @@ class OutgoingMessage[T: OutgoingMessage]:
             raise WriteError from error
 
     async def _build(self) -> None:
-        if self._headers:
+        if self.headers:
             return
 
-        self._headers: dict[str, str] = {
+        self.headers: dict[str, str] = {
             "Message-Id": self.ident,
             "Content-Type": "application/octet-stream",
         }
@@ -1113,7 +1108,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                 f"{key}:{value}"
                 for key, value in (
                     {
-                        "Id": self._headers["Message-Id"],
+                        "Id": self.headers["Message-Id"],
                         "Author": str(user.address),
                         "Date": self.date.isoformat(timespec="seconds"),
                         "Size": str(len(self._content)),
@@ -1124,7 +1119,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                             )
                         ),
                         "Subject": self.subject,
-                        "Subject-Id": self.subject_id or self._headers["Message-Id"],
+                        "Subject-Id": self.subject_id or self.headers["Message-Id"],
                         "Category": "personal",
                     }
                     | (
@@ -1150,7 +1145,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                         if self.file
                         else {}
                     )
-                    | ({"Parent-Id": self._parent_id} if self._parent_id else {})
+                    | ({"Parent-Id": self.parent_id} if self.parent_id else {})
                     | (
                         {
                             "Files": ",".join(
@@ -1199,15 +1194,15 @@ class OutgoingMessage[T: OutgoingMessage]:
                 msg = "Error building message: Encryption failed"
                 raise ValueError(msg) from error
 
-            self._headers.update(
+            self.headers.update(
                 {
                     "Message-Access": ",".join(message_access),
                     "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
                 }
             )
 
-        self._headers["Message-Headers"] = (
-            self._headers.get("Message-Headers", "")
+        self.headers["Message-Headers"] = (
+            self.headers.get("Message-Headers", "")
             + f"value={b64encode(headers_bytes).decode('utf-8')}"
         )
 
@@ -1218,13 +1213,13 @@ class OutgoingMessage[T: OutgoingMessage]:
 
         try:
             checksum, signature = _sign_headers(
-                tuple(self._headers[f] for f in checksum_fields)
+                tuple(self.headers[f] for f in checksum_fields)
             )
         except ValueError as error:
             msg = "Error building message: Signing headers failed"
             raise ValueError(msg) from error
 
-        self._headers.update(
+        self.headers.update(
             {
                 "Content-Length": str(len(self._content)),
                 "Message-Checksum": ";".join(
