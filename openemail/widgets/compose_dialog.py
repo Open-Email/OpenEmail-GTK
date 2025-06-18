@@ -9,10 +9,16 @@ from typing import Any
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import PREFIX, mail, run_task
-from openemail.mail import Address, Message, OutgoingAttachment, Profile
+from openemail.mail import (
+    ADDRESS_SPLIT_PATTERN,
+    Address,
+    Message,
+    OutgoingAttachment,
+    Profile,
+)
 
 from .attachments import Attachments
-from .form import ADDRESS_SPLIT_PATTERN, Form
+from .form import Form
 from .message_body import MessageBody
 
 
@@ -31,7 +37,7 @@ class ComposeDialog(Adw.Dialog):
 
     body: Gtk.TextBuffer
     subject_id: str | None = None
-    draft_id: int | None = None
+    ident: str | None = None
 
     _privacy: str = "private"
     _save: bool = True
@@ -59,7 +65,7 @@ class ComposeDialog(Adw.Dialog):
     def present_new(self, parent: Gtk.Widget) -> None:
         """Present `self` with empty contents."""
         self.subject_id = None
-        self.draft_id = None
+        self.ident = None
         self.privacy = "private"
         self.attachments.model.remove_all()
         self.compose_form.reset()
@@ -72,7 +78,7 @@ class ComposeDialog(Adw.Dialog):
         self.attachments.model.remove_all()
         self.privacy = "public" if message.broadcast else "private"
         self.subject_id = message.subject_id
-        self.draft_id = message.draft_id
+        self.ident = message.draft_id
         self.readers.props.text = message.name
         self.subject.props.text = message.subject
         self.body.props.text = message.body
@@ -99,7 +105,7 @@ class ComposeDialog(Adw.Dialog):
 
         self.subject.props.text = message.subject
         self.subject_id = message.subject_id
-        self.draft_id = None
+        self.ident = None
 
         self.present(parent)
         self.body_view.grab_focus()
@@ -177,9 +183,9 @@ class ComposeDialog(Adw.Dialog):
         alert.present(self)
 
     def _send(self, readers: Iterable[Address]) -> None:
-        if self.draft_id:
-            mail.drafts.delete(self.draft_id)
-            self.draft_id = None
+        if self.ident:
+            mail.drafts.delete(self.ident)
+            self.ident = None
 
         run_task(
             mail.send_message(
@@ -304,10 +310,9 @@ class ComposeDialog(Adw.Dialog):
             return
 
         mail.drafts.save(
+            self.ident,
             self.readers.props.text,
             subject,
             body,
             self.subject_id,
-            self.privacy == "public",
-            self.draft_id,
         )

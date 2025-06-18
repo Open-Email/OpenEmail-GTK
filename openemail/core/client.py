@@ -29,6 +29,7 @@ from .model import (
     Notification,
     Profile,
     User,
+    generate_ident,
 )
 
 MAX_AGENTS = 3
@@ -45,6 +46,306 @@ user = User()
 
 class WriteError(Exception):
     """Raised if writing to the server fails."""
+
+
+@dataclass(slots=True)
+class DraftMessage:
+    """A local message, saved as a draft."""
+
+    ident: str = field(default_factory=lambda: generate_ident(user.address))
+    author: Address = field(default_factory=lambda: user.address, init=False)
+    original_author: Address = field(default_factory=lambda: user.address, init=False)
+    date: datetime = field(default_factory=lambda: datetime.now(UTC))
+    subject: str = ""
+    subject_id: str | None = None
+
+    readers: list[Address] = field(default_factory=list)
+    access_key: bytes | None = field(init=False, default=None)
+
+    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
+    children: list[Message] = field(init=False, default_factory=list)
+    file: AttachmentProperties | None = field(default=None)
+    attachment_url: str | None = field(init=False, default=None)
+
+    body: str | None = field(default=None)
+    new: bool = field(default=False, init=False)
+
+    @property
+    def is_broadcast(self) -> bool:
+        """Whether `self` is a broadcast."""
+        return bool(self.readers)
+
+
+@dataclass(slots=True)
+class OutgoingMessage[T: OutgoingMessage]:
+    """A local message, to be sent."""
+
+    ident: str = field(default_factory=lambda: generate_ident(user.address), init=False)
+    author: Address = field(default_factory=lambda: user.address, init=False)
+    original_author: Address = field(default_factory=lambda: user.address, init=False)
+    date: datetime = field(default_factory=lambda: datetime.now(UTC))
+    subject: str = ""
+    subject_id: str | None = None
+    headers: dict[str, str] = field(default_factory=dict, init=False)
+
+    readers: list[Address] = field(default_factory=list)
+    access_key: bytes | None = field(init=False, default=None)
+
+    files: dict[AttachmentProperties, bytes] = field(default_factory=dict)
+    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
+    children: list[Message] = field(init=False, default_factory=list)
+    file: AttachmentProperties | None = field(default=None)
+    attachment_url: str | None = field(init=False, default=None)
+    parent_id: str | None = None
+
+    body: str | None = field(default=None)
+    new: bool = field(default=False, init=False)
+
+    _content: bytes = b""
+
+    @property
+    def is_broadcast(self) -> bool:
+        """Whether `self` is a broadcast."""
+        return bool(self.readers)
+
+    def __post_init__(self) -> None:
+        for props, data in self.files.items():
+            self.attachments[props.name] = []
+            for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
+                self.attachments[props.name].append(
+                    OutgoingMessage(
+                        self.date,
+                        self.subject,
+                        self.subject_id,
+                        self.readers,
+                        file=AttachmentProperties(
+                            name=props.name,
+                            ident=props.ident,
+                            type=props.type,
+                            size=len(data),
+                            part=f"{index + 1}/{len(self.files)}",
+                            modified=props.modified
+                            or self.date.isoformat(timespec="seconds"),
+                        ),
+                        parent_id=self.ident,
+                        _content=data[start : start + MAX_MESSAGE_SIZE],
+                    )
+                )
+
+        if not self.body:
+            return
+
+        self._content = self.body.encode("utf-8")
+
+    async def send(self) -> None:
+        """Send `self` to `self.readers`."""
+        logger.debug("Sending message…")
+
+        try:
+            await self._build()
+
+            for agent in await get_agents(user.address):
+                if not await request(
+                    _Home(agent, user.address).messages,
+                    auth=True,
+                    headers=self.headers,
+                    data=self._content,
+                ):
+                    logger.error("Failed sending message")
+                    raise WriteError
+
+                await notify_readers(self.readers)
+                break
+
+            # TODO: asyncio.gather()
+            for part in chain.from_iterable(self.attachments.values()):
+                if not isinstance(part, OutgoingMessage):
+                    return
+
+                await part.send()
+
+        except ValueError as error:
+            logger.exception("Error sending message")
+            raise WriteError from error
+
+    async def _build(self) -> None:
+        if self.headers:
+            return
+
+        self.headers: dict[str, str] = {
+            "Message-Id": self.ident,
+            "Content-Type": "application/octet-stream",
+        }
+
+        headers_bytes = "\n".join(
+            (
+                f"{key}:{value}"
+                for key, value in (
+                    {
+                        "Id": self.headers["Message-Id"],
+                        "Author": str(user.address),
+                        "Date": self.date.isoformat(timespec="seconds"),
+                        "Size": str(len(self._content)),
+                        "Checksum": ";".join(
+                            (
+                                f"algorithm={crypto.CHECKSUM_ALGORITHM}",
+                                f"value={sha256(self._content).hexdigest()}",
+                            )
+                        ),
+                        "Subject": self.subject,
+                        "Subject-Id": self.subject_id or self.headers["Message-Id"],
+                        "Category": "personal",
+                    }
+                    | (
+                        {"Readers": ",".join(str(reader) for reader in self.readers)}
+                        if self.readers
+                        else {}
+                    )
+                    | (
+                        {
+                            "File": ";".join(
+                                f"{key}={value}"
+                                for key, value in {
+                                    "name": self.file.name,
+                                    "id": self.file.ident,
+                                    "type": self.file.type,
+                                    "size": self.file.size,
+                                    "part": self.file.type,
+                                    "modified": self.file.modified,
+                                }.items()
+                                if value is not None  # TODO: Make this check redundant
+                            )
+                        }
+                        if self.file
+                        else {}
+                    )
+                    | ({"Parent-Id": self.parent_id} if self.parent_id else {})
+                    | (
+                        {
+                            "Files": ",".join(
+                                (
+                                    ";".join(
+                                        f"{key}={value}"
+                                        for key, value in {
+                                            "name": a.name,
+                                            "id": a.ident,
+                                            "type": a.type,
+                                            "size": a.size,
+                                            "part": a.type,
+                                            "modified": a.modified,
+                                        }.items()
+                                        if value
+                                        is not None  # TODO: Make this check redundant
+                                    )
+                                )
+                                for a in self.files
+                            )
+                        }
+                        if self.files
+                        else {}
+                    )
+                ).items()
+            )
+        ).encode("utf-8")
+
+        if self.readers:
+            self.access_key = crypto.random_bytes(32)
+
+            try:
+                message_access = await self._build_access(self.readers, self.access_key)
+            except ValueError as error:
+                msg = "Error building message: Building access failed"
+                raise ValueError(msg) from error
+
+            try:
+                self._content = crypto.encrypt_xchacha20poly1305(
+                    self._content, self.access_key
+                )
+                headers_bytes = crypto.encrypt_xchacha20poly1305(
+                    headers_bytes, self.access_key
+                )
+            except ValueError as error:
+                msg = "Error building message: Encryption failed"
+                raise ValueError(msg) from error
+
+            self.headers.update(
+                {
+                    "Message-Access": ",".join(message_access),
+                    "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
+                }
+            )
+
+        self.headers["Message-Headers"] = (
+            self.headers.get("Message-Headers", "")
+            + f"value={b64encode(headers_bytes).decode('utf-8')}"
+        )
+
+        checksum_fields = sorted(
+            ("Message-Id", "Message-Headers")
+            + (("Message-Encryption", "Message-Access") if self.readers else ())
+        )
+
+        try:
+            checksum, signature = _sign_headers(
+                tuple(self.headers[f] for f in checksum_fields)
+            )
+        except ValueError as error:
+            msg = "Error building message: Signing headers failed"
+            raise ValueError(msg) from error
+
+        self.headers.update(
+            {
+                "Content-Length": str(len(self._content)),
+                "Message-Checksum": ";".join(
+                    (
+                        f"algorithm={crypto.CHECKSUM_ALGORITHM}",
+                        f"order={':'.join(checksum_fields)}",
+                        f"value={checksum.hexdigest()}",
+                    )
+                ),
+                "Message-Signature": ";".join(
+                    (
+                        f"id={user.encryption_keys.public.key_id or 0}",
+                        f"algorithm={crypto.SIGNING_ALGORITHM}",
+                        f"value={signature}",
+                    )
+                ),
+            }
+        )
+
+    @staticmethod
+    async def _build_access(
+        readers: Iterable[Address],
+        access_key: bytes,
+    ) -> tuple[str, ...]:
+        access: list[str] = []
+        for reader in (*readers, user.address):
+            if not (
+                (profile := await fetch_profile(reader))
+                and (key := profile.encryption_key)
+                and (key_id := key.key_id)
+            ):
+                msg = "Failed fetching reader profiles"
+                raise ValueError(msg)
+
+            try:
+                encrypted = crypto.encrypt_anonymous(access_key, key)
+            except ValueError as error:
+                msg = "Failed to encrypt access key"
+                raise ValueError(msg) from error
+
+            access.append(
+                ";".join(
+                    (
+                        f"link={model.generate_link(user.address, reader)}",
+                        f"fingerprint={crypto.fingerprint(profile.signing_key)}",
+                        f"value={b64encode(encrypted).decode('utf-8')}",
+                        f"id={key_id}",
+                    )
+                )
+            )
+
+        return tuple(access)
 
 
 class _Home:
@@ -506,19 +807,6 @@ async def download_attachment(parts: Iterable[Message]) -> bytes | None:
     return data
 
 
-def generate_message_id() -> str:
-    """Generate a unique ID for a new message."""
-    return sha256(
-        "".join(
-            (
-                crypto.random_string(length=24),
-                user.address.host_part,
-                user.address.local_part,
-            )
-        ).encode("utf-8")
-    ).hexdigest()
-
-
 async def notify_readers(readers: Iterable[Address]) -> None:
     """Notify `readers` of a new message."""
     logger.debug("Notifying readers…")
@@ -622,18 +910,8 @@ async def delete_message(ident: str) -> None:
     raise WriteError
 
 
-def save_draft(
-    readers: str | None = None,
-    subject: str | None = None,
-    body: str | None = None,
-    reply: str | None = None,
-    broadcast: bool = False,
-    ident: int | None = None,
-) -> None:
+def save_draft(draft: DraftMessage) -> None:
     """Serialize and save a message to disk for future use.
-
-    `ident` can be used to update a specific message loaded using `load_drafts()`,
-    by default, a new ID is generated.
 
     See `OutgoingMessage.send()` for other parameters,
     `load_drafts()` on how to retrieve it.
@@ -641,32 +919,23 @@ def save_draft(
     logger.debug("Saving draft…")
     messages_path = data_dir / "drafts"
 
-    n = (
-        ident
-        if ident is not None
-        else 0
-        if not messages_path.is_dir()
-        else max(
-            *(
-                int(path.stem)
-                for path in messages_path.iterdir()
-                if path.stem.isdigit()
-            ),
-            0,
-        )
-        + 1
-    )
-
-    message_path = messages_path / f"{n}.json"
+    message_path = messages_path / f"{draft.ident}.json"
     message_path.parent.mkdir(parents=True, exist_ok=True)
 
-    json.dump((readers, subject, body, reply, broadcast), (message_path).open("w"))
-    logger.debug("Draft saved as %i.json", n)
+    json.dump(
+        (
+            draft.date.isoformat(timespec="seconds"),
+            draft.subject,
+            draft.subject_id,
+            [str(r) for r in draft.readers],
+            draft.body,
+        ),
+        (message_path).open("w"),
+    )
+    logger.debug("Draft saved as %i.json", draft.ident)
 
 
-def load_drafts() -> Generator[
-    tuple[int, str | None, str | None, str | None, str | None, bool], None, None
-]:
+def load_drafts() -> Generator[DraftMessage, None, None]:
     """Load all drafts saved to disk.
 
     See `save_draft()`.
@@ -678,15 +947,26 @@ def load_drafts() -> Generator[
 
     for path in messages_path.iterdir():
         try:
-            message = tuple(json.load(path.open("r")))
-            yield (int(path.stem), *message)
-        except (JSONDecodeError, ValueError):  # noqa: PERF203
+            fields = tuple(json.load(path.open("r")))
+        except (JSONDecodeError, ValueError):
+            continue
+
+        try:
+            yield DraftMessage(
+                ident=path.stem,
+                date=datetime.fromisoformat(fields[0]),
+                subject=fields[1],
+                subject_id=fields[2],
+                readers=[Address(r) for r in fields[3]],
+                body=fields[4],
+            )
+        except (KeyError, ValueError):
             continue
 
     logger.debug("Loaded all drafts")
 
 
-def delete_draft(ident: int) -> None:
+def delete_draft(ident: str) -> None:
     """Delete the draft saved using `ident`.
 
     See `save_draft()`, `load_drafts()`.
@@ -702,7 +982,7 @@ def delete_draft(ident: int) -> None:
     logger.debug("Deleted draft %i", ident)
 
 
-def delete_all_saved_messages() -> None:
+def delete_all_drafts() -> None:
     """Delete all drafts saved using `save_draft()`."""
     logger.debug("Deleting all drafts…")
     rmtree(data_dir / "drafts", ignore_errors=True)
@@ -917,7 +1197,7 @@ async def _fetch_message_from_agent(
     return message
 
 
-async def _fetch_message_ids(author: Address, *, broadcasts: bool = False) -> set[str]:
+async def _fetch_idents(author: Address, *, broadcasts: bool = False) -> set[str]:
     """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
     logger.debug("Fetching message IDs from %s…", author)
 
@@ -970,7 +1250,7 @@ async def _fetch_messages(
     exclude: Iterable[str] = (),
 ) -> tuple[IncomingMessage, ...]:
     messages: dict[str, IncomingMessage] = {}
-    for ident in await _fetch_message_ids(author, broadcasts=broadcasts):
+    for ident in await _fetch_idents(author, broadcasts=broadcasts):
         for agent in await get_agents(user.address):
             if message := await _fetch_message_from_agent(
                 (
@@ -998,277 +1278,3 @@ async def _fetch_messages(
 
     logger.debug("Fetched messages from %s", author)
     return tuple(messages.values())
-
-
-@dataclass(slots=True)
-class OutgoingMessage[T: OutgoingMessage]:
-    """A local message, to be sent."""
-
-    ident: str = field(default_factory=generate_message_id, init=False)
-    author: Address = field(default_factory=lambda: user.address, init=False)
-    original_author: Address = field(init=False)
-    date: datetime = field(default_factory=lambda: datetime.now(UTC))
-    subject: str = ""
-    subject_id: str | None = None
-    headers: dict[str, str] = field(default_factory=dict, init=False)
-
-    readers: list[Address] = field(default_factory=list)
-    access_key: bytes | None = field(init=False, default=None)
-
-    files: dict[AttachmentProperties, bytes] = field(default_factory=dict)
-    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
-    children: list[Message] = field(init=False, default_factory=list)
-    file: AttachmentProperties | None = field(default=None)
-    attachment_url: str | None = field(init=False, default=None)
-    parent_id: str | None = None
-
-    body: str | None = field(default=None)
-    new: bool = field(default=False, init=False)
-
-    _content: bytes = b""
-
-    @property
-    def is_broadcast(self) -> bool:
-        """Whether `self` is a broadcast."""
-        return bool(self.readers)
-
-    def __post_init__(self) -> None:
-        self.original_author = self.author
-
-        for props, data in self.files.items():
-            self.attachments[props.name] = []
-            for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
-                self.attachments[props.name].append(
-                    OutgoingMessage(
-                        self.date,
-                        self.subject,
-                        self.subject_id,
-                        self.readers,
-                        file=AttachmentProperties(
-                            name=props.name,
-                            ident=props.ident,
-                            type=props.type,
-                            size=len(data),
-                            part=f"{index + 1}/{len(self.files)}",
-                            modified=props.modified
-                            or self.date.isoformat(timespec="seconds"),
-                        ),
-                        parent_id=self.ident,
-                        _content=data[start : start + MAX_MESSAGE_SIZE],
-                    )
-                )
-
-        if not self.body:
-            return
-
-        self._content = self.body.encode("utf-8")
-
-    async def send(self) -> None:
-        """Send `self` to `self.readers`."""
-        logger.debug("Sending message…")
-
-        try:
-            await self._build()
-
-            for agent in await get_agents(user.address):
-                if not await request(
-                    _Home(agent, user.address).messages,
-                    auth=True,
-                    headers=self.headers,
-                    data=self._content,
-                ):
-                    logger.error("Failed sending message")
-                    raise WriteError
-
-                await notify_readers(self.readers)
-                break
-
-            # TODO: asyncio.gather()
-            for part in chain.from_iterable(self.attachments.values()):
-                if not isinstance(part, OutgoingMessage):
-                    return
-
-                await part.send()
-
-        except ValueError as error:
-            logger.exception("Error sending message")
-            raise WriteError from error
-
-    async def _build(self) -> None:
-        if self.headers:
-            return
-
-        self.headers: dict[str, str] = {
-            "Message-Id": self.ident,
-            "Content-Type": "application/octet-stream",
-        }
-
-        headers_bytes = "\n".join(
-            (
-                f"{key}:{value}"
-                for key, value in (
-                    {
-                        "Id": self.headers["Message-Id"],
-                        "Author": str(user.address),
-                        "Date": self.date.isoformat(timespec="seconds"),
-                        "Size": str(len(self._content)),
-                        "Checksum": ";".join(
-                            (
-                                f"algorithm={crypto.CHECKSUM_ALGORITHM}",
-                                f"value={sha256(self._content).hexdigest()}",
-                            )
-                        ),
-                        "Subject": self.subject,
-                        "Subject-Id": self.subject_id or self.headers["Message-Id"],
-                        "Category": "personal",
-                    }
-                    | (
-                        {"Readers": ",".join(str(reader) for reader in self.readers)}
-                        if self.readers
-                        else {}
-                    )
-                    | (
-                        {
-                            "File": ";".join(
-                                f"{key}={value}"
-                                for key, value in {
-                                    "name": self.file.name,
-                                    "id": self.file.ident,
-                                    "type": self.file.type,
-                                    "size": self.file.size,
-                                    "part": self.file.type,
-                                    "modified": self.file.modified,
-                                }.items()
-                                if value is not None  # TODO: Make this check redundant
-                            )
-                        }
-                        if self.file
-                        else {}
-                    )
-                    | ({"Parent-Id": self.parent_id} if self.parent_id else {})
-                    | (
-                        {
-                            "Files": ",".join(
-                                (
-                                    ";".join(
-                                        f"{key}={value}"
-                                        for key, value in {
-                                            "name": a.name,
-                                            "id": a.ident,
-                                            "type": a.type,
-                                            "size": a.size,
-                                            "part": a.type,
-                                            "modified": a.modified,
-                                        }.items()
-                                        if value
-                                        is not None  # TODO: Make this check redundant
-                                    )
-                                )
-                                for a in self.files
-                            )
-                        }
-                        if self.files
-                        else {}
-                    )
-                ).items()
-            )
-        ).encode("utf-8")
-
-        if self.readers:
-            self.access_key = crypto.random_bytes(32)
-
-            try:
-                message_access = await self._build_access(self.readers, self.access_key)
-            except ValueError as error:
-                msg = "Error building message: Building access failed"
-                raise ValueError(msg) from error
-
-            try:
-                self._content = crypto.encrypt_xchacha20poly1305(
-                    self._content, self.access_key
-                )
-                headers_bytes = crypto.encrypt_xchacha20poly1305(
-                    headers_bytes, self.access_key
-                )
-            except ValueError as error:
-                msg = "Error building message: Encryption failed"
-                raise ValueError(msg) from error
-
-            self.headers.update(
-                {
-                    "Message-Access": ",".join(message_access),
-                    "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
-                }
-            )
-
-        self.headers["Message-Headers"] = (
-            self.headers.get("Message-Headers", "")
-            + f"value={b64encode(headers_bytes).decode('utf-8')}"
-        )
-
-        checksum_fields = sorted(
-            ("Message-Id", "Message-Headers")
-            + (("Message-Encryption", "Message-Access") if self.readers else ())
-        )
-
-        try:
-            checksum, signature = _sign_headers(
-                tuple(self.headers[f] for f in checksum_fields)
-            )
-        except ValueError as error:
-            msg = "Error building message: Signing headers failed"
-            raise ValueError(msg) from error
-
-        self.headers.update(
-            {
-                "Content-Length": str(len(self._content)),
-                "Message-Checksum": ";".join(
-                    (
-                        f"algorithm={crypto.CHECKSUM_ALGORITHM}",
-                        f"order={':'.join(checksum_fields)}",
-                        f"value={checksum.hexdigest()}",
-                    )
-                ),
-                "Message-Signature": ";".join(
-                    (
-                        f"id={user.encryption_keys.public.key_id or 0}",
-                        f"algorithm={crypto.SIGNING_ALGORITHM}",
-                        f"value={signature}",
-                    )
-                ),
-            }
-        )
-
-    @staticmethod
-    async def _build_access(
-        readers: Iterable[Address],
-        access_key: bytes,
-    ) -> tuple[str, ...]:
-        access: list[str] = []
-        for reader in (*readers, user.address):
-            if not (
-                (profile := await fetch_profile(reader))
-                and (key := profile.encryption_key)
-                and (key_id := key.key_id)
-            ):
-                msg = "Failed fetching reader profiles"
-                raise ValueError(msg)
-
-            try:
-                encrypted = crypto.encrypt_anonymous(access_key, key)
-            except ValueError as error:
-                msg = "Failed to encrypt access key"
-                raise ValueError(msg) from error
-
-            access.append(
-                ";".join(
-                    (
-                        f"link={model.generate_link(user.address, reader)}",
-                        f"fingerprint={crypto.fingerprint(profile.signing_key)}",
-                        f"value={b64encode(encrypted).decode('utf-8')}",
-                        f"id={key_id}",
-                    )
-                )
-            )
-
-        return tuple(access)
