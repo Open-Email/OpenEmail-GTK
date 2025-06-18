@@ -94,7 +94,8 @@ class AttachmentProperties(NamedTuple):
     """A file attached to a message."""
 
     name: str
-    type: str | None = None
+    ident: str
+    type: str = "application/octet-stream"
     size: int = 0
     part: str | None = None
     modified: str | None = None
@@ -116,6 +117,8 @@ class Message(Protocol):
     access_key: bytes | None = field(init=False, default=None)
 
     file: AttachmentProperties | None = field(init=False, default=None)
+
+    subject_id: str | None
 
     body: str | None = None
     attachment_url: str | None = None  # TODO
@@ -289,7 +292,8 @@ class IncomingMessage:
                 try:
                     self.files[file_headers["id"]] = AttachmentProperties(
                         file_headers["name"],
-                        file_headers.get("type"),
+                        file_headers["id"],
+                        file_headers.get("type") or "application/octet-stream",
                         str_to_int(file_headers.get("size")),
                         file_headers.get("part"),
                         file_headers.get("modified"),
@@ -301,7 +305,8 @@ class IncomingMessage:
             with suppress(KeyError):
                 self.file = AttachmentProperties(
                     file_headers["name"],
-                    file_headers.get("type"),
+                    self.ident,
+                    file_headers.get("type") or "application/octet-stream",
                     str_to_int(file_headers.get("size"))
                     or str_to_int(self.headers.get("size")),
                     file_headers.get("part"),

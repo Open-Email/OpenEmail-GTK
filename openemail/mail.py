@@ -442,12 +442,8 @@ class IncomingAttachment(Attachment):
             return
 
         self.modified = props.modified
-        self.size = GLib.format_size_for_display(props.size)
-
-        if not props.type:
-            return
-
         self.type = props.type
+        self.size = GLib.format_size_for_display(props.size)
 
         if not (content_type := Gio.content_type_from_mime_type(props.type)):
             return
@@ -1206,6 +1202,7 @@ async def send_message(
         files[
             model.AttachmentProperties(
                 name=attachment.name,
+                ident=client.generate_message_id(),  # TODO: This is bad API
                 type=attachment.type,
                 modified=attachment.modified,
             )

@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
+from itertools import chain
 from json import JSONDecodeError
 from os import getenv
 from pathlib import Path
@@ -1011,33 +1012,25 @@ class OutgoingMessage[T: OutgoingMessage]:
     subject: str
     original_author: Address = field(init=False)
     readers: list[Address]
+    date: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     access_key: bytes | None = field(init=False, default=None)
 
-    file: AttachmentProperties | None = field(init=False, default=None)  # TODO
+    file: AttachmentProperties | None = field(default=None)
+
+    subject_id: str | None = None
 
     body: str | None = field(default=None)
     attachment_url: str | None = field(init=False, default=None)
 
     children: list[Message] = field(init=False, default_factory=list)
-    attachments: dict[str, list[Message]] = field(
-        init=False,
-        default_factory=dict,
-    )  # TODO
+    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
 
-    subject_id: str | None = None
     files: dict[AttachmentProperties, bytes] = field(default_factory=dict)
 
-    date: datetime = field(default_factory=lambda: datetime.now(UTC))
-
     _content: bytes = b""
-    _attachment: dict[str, str] = field(default_factory=dict)
     _parent_id: str | None = None
-
     _headers: dict[str, str] = field(default_factory=dict, init=False)
-    _parts: dict[str, tuple[dict[str, str], bytes]] = field(
-        default_factory=dict, init=False
-    )
 
     @property
     def is_broadcast(self) -> bool:
@@ -1046,6 +1039,29 @@ class OutgoingMessage[T: OutgoingMessage]:
 
     def __post_init__(self) -> None:
         self.original_author = self.author
+
+        for props, data in self.files.items():
+            self.attachments[props.name] = []
+            for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
+                self.attachments[props.name].append(
+                    OutgoingMessage(
+                        date=self.date,
+                        readers=self.readers,
+                        subject=self.subject,
+                        subject_id=self.subject_id,
+                        file=AttachmentProperties(
+                            name=props.name,
+                            ident=props.ident,
+                            type=props.type,
+                            size=len(data),
+                            part=f"{index + 1}/{len(self.files)}",
+                            modified=props.modified
+                            or self.date.isoformat(timespec="seconds"),
+                        ),
+                        _content=data[start : start + MAX_MESSAGE_SIZE],
+                        _parent_id=self.ident,
+                    )
+                )
 
         if not self.body:
             return
@@ -1072,16 +1088,12 @@ class OutgoingMessage[T: OutgoingMessage]:
                 await notify_readers(self.readers)
                 break
 
-            for part in self._parts.values():
-                await OutgoingMessage(
-                    date=self.date,
-                    readers=self.readers,
-                    subject=self.subject,
-                    subject_id=self.subject_id,
-                    _content=part[1],
-                    _attachment=part[0],
-                    _parent_id=self.ident,
-                ).send()
+            # TODO: asyncio.gather()
+            for part in chain.from_iterable(self.attachments.values()):
+                if not isinstance(part, OutgoingMessage):
+                    return
+
+                await part.send()
 
         except ValueError as error:
             logger.exception("Error sending message")
@@ -1095,22 +1107,6 @@ class OutgoingMessage[T: OutgoingMessage]:
             "Message-Id": self.ident,
             "Content-Type": "application/octet-stream",
         }
-
-        for props, data in self.files.items():
-            for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
-                part = data[start : start + MAX_MESSAGE_SIZE]
-                self._parts[props.name] = (
-                    {
-                        "name": props.name,
-                        "id": generate_message_id(),
-                        "type": props.type or "application/octet-stream",
-                        "size": str(len(data)),
-                        "part": f"{index + 1}/{len(self.files)}",
-                        "modified": props.modified
-                        or self.date.isoformat(timespec="seconds"),
-                    },
-                    part,
-                )
 
         headers_bytes = "\n".join(
             (
@@ -1140,10 +1136,18 @@ class OutgoingMessage[T: OutgoingMessage]:
                         {
                             "File": ";".join(
                                 f"{key}={value}"
-                                for key, value in self._attachment.items()
+                                for key, value in {
+                                    "name": self.file.name,
+                                    "id": self.file.ident,
+                                    "type": self.file.type,
+                                    "size": self.file.size,
+                                    "part": self.file.type,
+                                    "modified": self.file.modified,
+                                }.items()
+                                if value is not None  # TODO: Make this check redundant
                             )
                         }
-                        if self._attachment
+                        if self.file
                         else {}
                     )
                     | ({"Parent-Id": self._parent_id} if self._parent_id else {})
@@ -1152,13 +1156,23 @@ class OutgoingMessage[T: OutgoingMessage]:
                             "Files": ",".join(
                                 (
                                     ";".join(
-                                        f"{key}={value}" for key, value in a[0].items()
+                                        f"{key}={value}"
+                                        for key, value in {
+                                            "name": a.name,
+                                            "id": a.ident,
+                                            "type": a.type,
+                                            "size": a.size,
+                                            "part": a.type,
+                                            "modified": a.modified,
+                                        }.items()
+                                        if value
+                                        is not None  # TODO: Make this check redundant
                                     )
                                 )
-                                for a in self._parts.values()
+                                for a in self.files
                             )
                         }
-                        if self._parts
+                        if self.files
                         else {}
                     )
                 ).items()
