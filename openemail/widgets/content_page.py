@@ -28,32 +28,8 @@ class ContentPage(Adw.BreakpointBin):
     toolbar_button = GObject.Property(type=Gtk.Widget)
     empty_page = GObject.Property(type=Gtk.Widget)
 
-    _model: Gtk.SelectionModel | None = None
-    _loading: bool = False
-
-    @GObject.Property(type=bool, default=False)
-    def loading(self) -> bool:
-        """Whether to display a loading indicator in case the page is empty."""
-        return self._loading
-
-    @loading.setter
-    def loading(self, loading: bool) -> None:
-        self._loading = loading
-        self._update_stack()
-
-    @GObject.Property(type=Gtk.SelectionModel)
-    def model(self) -> Gtk.SelectionModel | None:
-        """Get the selection model."""
-        return self._model
-
-    @model.setter
-    def model(self, model: Gtk.SelectionModel) -> None:
-        if self._model:
-            self._model.disconnect_by_func(self._update_stack)
-
-        self._model = model
-
-        model.connect("items-changed", self._update_stack)
+    model = GObject.Property(type=Gtk.SingleSelection)
+    loading = GObject.Property(type=bool, default=False)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -87,13 +63,16 @@ class ContentPage(Adw.BreakpointBin):
     def _sync(self, *_args: Any) -> None:
         run_task(mail.sync())
 
-    def _update_stack(self, *_args: Any) -> None:
-        self.sidebar_child_name = (
+    @Gtk.Template.Callback()
+    def _get_sidebar_child_name(
+        self, _obj: Any, items: int, loading: bool, search_text: str
+    ) -> str:
+        return (
             "content"
-            if self.model.get_n_items()
+            if items
             else "loading"
-            if self._loading
+            if loading
             else "no-results"
-            if self.search_text
+            if search_text
             else "empty"
         )
