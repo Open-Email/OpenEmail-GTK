@@ -81,7 +81,7 @@ template $ContentPage: Adw.BreakpointBin {
 
         content: Adw.ViewStack {
           enable-transitions: true;
-          visible-child-name: bind template.sidebar-child-name;
+          visible-child-name: bind $_get_sidebar_child_name(template.model as <SingleSelection>.n-items, template.loading, template.search_text) as <string>;
 
           Adw.ViewStackPage {
             name: "empty";
