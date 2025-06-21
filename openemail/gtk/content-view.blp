@@ -46,7 +46,12 @@ template $ContentView: Adw.BreakpointBin {
             primary: true;
             icon-name: "open-menu-symbolic";
             tooltip-text: _("Main Menu");
-            menu-model: primary_menu;
+
+            menu-model: menu {
+              item (_("_Preferences"), "app.preferences")
+              item (_("_Keyboard Shortcuts"), "win.show-help-overlay")
+              item (_("_About OpenEmail"), "app.about")
+            };
           }
         }
 
@@ -191,11 +196,3 @@ template $ContentView: Adw.BreakpointBin {
 }
 
 $ProfileSettings profile_settings {}
-
-menu primary_menu {
-  section {
-    item (_("_Preferences"), "app.preferences")
-    item (_("_Keyboard Shortcuts"), "win.show-help-overlay")
-    item (_("_About OpenEmail"), "app.about")
-  }
-}
