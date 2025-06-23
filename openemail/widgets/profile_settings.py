@@ -144,23 +144,20 @@ class ProfileSettings(Adw.PreferencesDialog):
         run_task(mail.update_profile({key: f() for key, f in self._fields.items()}))
 
     async def _replace_image_task(self) -> None:
-        (filters := Gio.ListStore.new(Gtk.FileFilter)).append(
-            Gtk.FileFilter(
-                name=_("Images"),
-                mime_types=tuple(
-                    mime_type
-                    for pixbuf_format in GdkPixbuf.Pixbuf.get_formats()
-                    for mime_type in (pixbuf_format.get_mime_types() or ())
-                ),
-            )
-        )
-
         try:
             gfile = await cast(
                 "Awaitable[Gio.File]",
-                Gtk.FileDialog(initial_name=_("Select an Image"), filters=filters).open(
-                    win if isinstance(win := self.props.root, Gtk.Window) else None
-                ),
+                Gtk.FileDialog(
+                    initial_name=_("Select an Image"),
+                    default_filter=Gtk.FileFilter(
+                        name=_("Images"),
+                        mime_types=tuple(
+                            mime_type
+                            for pixbuf_format in GdkPixbuf.Pixbuf.get_formats()
+                            for mime_type in (pixbuf_format.get_mime_types() or ())
+                        ),
+                    ),
+                ).open(win if isinstance(win := self.props.root, Gtk.Window) else None),
             )
         except GLib.Error:
             return
