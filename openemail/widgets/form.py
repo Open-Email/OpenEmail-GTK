@@ -9,9 +9,7 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail.mail import Address
-
-ADDRESS_SPLIT_PATTERN = ",|;| "
+from openemail.mail import ADDRESS_SPLIT_PATTERN, Address
 
 
 class FormField(Enum):

@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
+from itertools import chain
 from json import JSONDecodeError
 from os import getenv
 from pathlib import Path
@@ -20,7 +21,18 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from . import crypto, model
-from .model import Address, AttachmentProperties, Message, Notification, Profile, User
+from .model import (
+    Address,
+    AttachmentProperties,
+    IncomingMessage,
+    Message,
+    Notification,
+    Profile,
+    User,
+    generate_ident,
+    to_attrs,
+    to_fields,
+)
 
 MAX_AGENTS = 3
 MAX_MESSAGE_SIZE = 64_000_000
@@ -36,6 +48,268 @@ user = User()
 
 class WriteError(Exception):
     """Raised if writing to the server fails."""
+
+
+@dataclass(slots=True)
+class DraftMessage:
+    """A local message, saved as a draft."""
+
+    ident: str = field(default_factory=lambda: generate_ident(user.address))
+    author: Address = field(default_factory=lambda: user.address, init=False)
+    original_author: Address = field(default_factory=lambda: user.address, init=False)
+    date: datetime = field(default_factory=lambda: datetime.now(UTC))
+    subject: str = ""
+    subject_id: str | None = None
+
+    readers: list[Address] = field(default_factory=list)
+    access_key: bytes | None = field(init=False, default=None)
+
+    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
+    children: list[Message] = field(init=False, default_factory=list)
+    file: AttachmentProperties | None = field(default=None)
+    attachment_url: str | None = field(init=False, default=None)
+
+    body: str | None = field(default=None)
+    new: bool = field(default=False, init=False)
+
+    @property
+    def is_broadcast(self) -> bool:
+        """Whether `self` is a broadcast."""
+        return bool(self.readers)
+
+
+@dataclass(slots=True)
+class OutgoingMessage[T: OutgoingMessage]:
+    """A local message, to be sent."""
+
+    ident: str = field(default_factory=lambda: generate_ident(user.address), init=False)
+    author: Address = field(default_factory=lambda: user.address, init=False)
+    original_author: Address = field(default_factory=lambda: user.address, init=False)
+    date: datetime = field(default_factory=lambda: datetime.now(UTC))
+    subject: str = ""
+    subject_id: str | None = None
+    headers: dict[str, str] = field(default_factory=dict, init=False)
+
+    readers: list[Address] = field(default_factory=list)
+    access_key: bytes | None = field(init=False, default=None)
+
+    files: dict[AttachmentProperties, bytes] = field(default_factory=dict)
+    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
+    children: list[Message] = field(init=False, default_factory=list)
+    file: AttachmentProperties | None = field(default=None)
+    attachment_url: str | None = field(init=False, default=None)
+    parent_id: str | None = None
+
+    body: str | None = field(default=None)
+    new: bool = field(default=False, init=False)
+    sending: bool = field(default=False, init=False)
+
+    _content: bytes = b""
+
+    @property
+    def is_broadcast(self) -> bool:
+        """Whether `self` is a broadcast."""
+        return bool(self.readers)
+
+    def __post_init__(self) -> None:
+        for props, data in self.files.items():
+            self.attachments[props.name] = []
+            for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
+                self.attachments[props.name].append(
+                    OutgoingMessage(
+                        self.date,
+                        self.subject,
+                        self.subject_id,
+                        self.readers,
+                        file=AttachmentProperties(
+                            name=props.name,
+                            ident=props.ident,
+                            type=props.type,
+                            size=len(data),
+                            part=(index + 1, len(self.files)),
+                            modified=props.modified
+                            or self.date.isoformat(timespec="seconds"),
+                        ),
+                        parent_id=self.ident,
+                        _content=data[start : start + MAX_MESSAGE_SIZE],
+                    )
+                )
+
+        if not self.body:
+            return
+
+        self._content = self.body.encode("utf-8")
+
+    async def send(self) -> None:
+        """Send `self` to `self.readers`."""
+        logger.debug("Sending message…")
+        self.sending = True
+
+        try:
+            await self._build()
+
+            for agent in await get_agents(user.address):
+                if not await request(
+                    _Home(agent, user.address).messages,
+                    auth=True,
+                    headers=self.headers,
+                    data=self._content,
+                ):
+                    logger.error("Failed sending message")
+                    self.sending = False
+                    raise WriteError
+
+                await notify_readers(self.readers)
+                break
+
+            await asyncio.gather(
+                *(
+                    part.send()
+                    for part in chain.from_iterable(self.attachments.values())
+                    if isinstance(part, OutgoingMessage)
+                )
+            )
+
+        except ValueError as error:
+            logger.exception("Error sending message")
+            self.sending = False
+            raise WriteError from error
+
+        self.sending = False
+
+    async def _build(self) -> None:
+        if self.headers:
+            return
+
+        self.headers: dict[str, str] = {
+            "Message-Id": self.ident,
+            "Content-Type": "application/octet-stream",
+        }
+
+        headers_bytes = to_fields(
+            {
+                "Id": self.headers["Message-Id"],
+                "Author": str(user.address),
+                "Date": self.date.isoformat(timespec="seconds"),
+                "Size": str(len(self._content)),
+                "Checksum": to_attrs(
+                    {
+                        "algorithm": crypto.CHECKSUM_ALGORITHM,
+                        "value": sha256(self._content).hexdigest(),
+                    }
+                ),
+                "Subject": self.subject,
+                "Subject-Id": self.subject_id or self.headers["Message-Id"],
+                "Category": "personal",
+            }
+            | ({"Readers": ",".join(map(str, self.readers))} if self.readers else {})
+            | ({"File": to_attrs(self.file.dict)} if self.file else {})
+            | ({"Parent-Id": self.parent_id} if self.parent_id else {})
+            | (
+                {"Files": ",".join((to_attrs(a.dict)) for a in self.files)}
+                if self.files
+                else {}
+            )
+        ).encode("utf-8")
+
+        if self.readers:
+            self.access_key = crypto.random_bytes(32)
+
+            try:
+                message_access = await self._build_access(self.readers, self.access_key)
+            except ValueError as error:
+                msg = "Error building message: Building access failed"
+                raise ValueError(msg) from error
+
+            try:
+                self._content = crypto.encrypt_xchacha20poly1305(
+                    self._content, self.access_key
+                )
+                headers_bytes = crypto.encrypt_xchacha20poly1305(
+                    headers_bytes, self.access_key
+                )
+            except ValueError as error:
+                msg = "Error building message: Encryption failed"
+                raise ValueError(msg) from error
+
+            self.headers.update(
+                {
+                    "Message-Access": ",".join(message_access),
+                    "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
+                }
+            )
+
+        self.headers["Message-Headers"] = (
+            self.headers.get("Message-Headers", "")
+            + f"value={b64encode(headers_bytes).decode('utf-8')}"
+        )
+
+        checksum_fields = sorted(
+            ("Message-Id", "Message-Headers")
+            + (("Message-Encryption", "Message-Access") if self.readers else ())
+        )
+
+        try:
+            checksum, signature = _sign_headers(
+                tuple(self.headers[f] for f in checksum_fields)
+            )
+        except ValueError as error:
+            msg = "Error building message: Signing headers failed"
+            raise ValueError(msg) from error
+
+        self.headers.update(
+            {
+                "Content-Length": str(len(self._content)),
+                "Message-Checksum": to_attrs(
+                    {
+                        "algorithm": crypto.CHECKSUM_ALGORITHM,
+                        "order": ":".join(checksum_fields),
+                        "value": checksum.hexdigest(),
+                    }
+                ),
+                "Message-Signature": to_attrs(
+                    {
+                        "id": user.encryption_keys.public.key_id or 0,
+                        "algorithm": crypto.SIGNING_ALGORITHM,
+                        "value": signature,
+                    }
+                ),
+            }
+        )
+
+    @staticmethod
+    async def _build_access(
+        readers: Iterable[Address],
+        access_key: bytes,
+    ) -> tuple[str, ...]:
+        access: list[str] = []
+        for reader in (*readers, user.address):
+            if not (
+                (profile := await fetch_profile(reader))
+                and (key := profile.encryption_key)
+                and (key_id := key.key_id)
+            ):
+                msg = "Failed fetching reader profiles"
+                raise ValueError(msg)
+
+            try:
+                encrypted = crypto.encrypt_anonymous(access_key, key)
+            except ValueError as error:
+                msg = "Failed to encrypt access key"
+                raise ValueError(msg) from error
+
+            access.append(
+                to_attrs(
+                    {
+                        "link": model.generate_link(user.address, reader),
+                        "fingerprint": crypto.fingerprint(profile.signing_key),
+                        "value": b64encode(encrypted).decode("utf-8"),
+                        "id": key_id,
+                    }
+                )
+            )
+
+        return tuple(access)
 
 
 class _Home:
@@ -189,26 +463,24 @@ async def register() -> bool:
     """Try registering `client.user` and return whether the attempt was successful."""
     logger.info("Registering…")
 
-    data = "\n".join(
-        (
-            f"Name: {user.address.local_part}",
-            "Encryption-Key: "
-            + ";".join(
-                (
-                    f"id={user.encryption_keys.public.key_id}",
-                    f"algorithm={crypto.ANONYMOUS_ENCRYPTION_CIPHER}",
-                    f"value={user.encryption_keys.public}",
-                )
+    data = to_fields(
+        {
+            "Name": user.address.local_part,
+            "Encryption-Key": to_attrs(
+                {
+                    "id": user.encryption_keys.public.key_id,
+                    "algorithm": crypto.ANONYMOUS_ENCRYPTION_CIPHER,
+                    "value": user.encryption_keys.public,
+                }
             ),
-            "Signing-Key: "
-            + ";".join(
-                (
-                    f"algorithm={crypto.SIGNING_ALGORITHM}",
-                    f"value={user.signing_keys.public}",
-                )
+            "Signing-Key": to_attrs(
+                {
+                    "algorithm": crypto.SIGNING_ALGORITHM,
+                    "value": user.signing_keys.public,
+                }
             ),
-            f"Updated: {datetime.now(UTC).isoformat(timespec='seconds')}",
-        )
+            "Updated": datetime.now(UTC).isoformat(timespec="seconds"),
+        }
     ).encode("utf-8")
 
     for agent in await get_agents(user.address):
@@ -265,9 +537,9 @@ async def update_profile(values: dict[str, str]) -> None:
     )
 
     data = (
-        f"## Profile of {user.address}\n"
-        + "\n".join((f"{k.title()}: {v}") for k, v in values.items() if v)
-        + "\n##End of profile"
+        f"# Profile of {user.address}\n"
+        + to_fields({k: v for k, v in values.items() if v})
+        + "\n#End of profile"
     ).encode("utf-8")
 
     for agent in await get_agents(user.address):
@@ -394,11 +666,11 @@ async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> P
     try:
         data = b64encode(
             crypto.encrypt_anonymous(
-                ";".join(
-                    (
-                        f"address={address}",
-                        f"broadcasts={'Yes' if receive_broadcasts else 'No'}",
-                    )
+                to_attrs(
+                    {
+                        "address": address,
+                        "broadcasts": "Yes" if receive_broadcasts else "No",
+                    }
                 ).encode("utf-8"),
                 user.encryption_keys.public,
             )
@@ -445,7 +717,7 @@ async def delete_contact(address: Address) -> None:
 
 async def fetch_broadcasts(
     author: Address, *, exclude: Iterable[str] = ()
-) -> tuple[Message, ...]:
+) -> tuple[IncomingMessage, ...]:
     """Fetch broadcasts by `author`, without messages with IDs in `exclude`."""
     logger.debug("Fetching broadcasts from %s…", author)
     return await _fetch_messages(author, broadcasts=True, exclude=exclude)
@@ -453,7 +725,7 @@ async def fetch_broadcasts(
 
 async def fetch_link_messages(
     author: Address, *, exclude: Iterable[str] = ()
-) -> tuple[Message, ...]:
+) -> tuple[IncomingMessage, ...]:
     """Fetch messages by `author`, addressed to `client.user`.
 
     `exclude` are Message-Ids to ignore.
@@ -462,7 +734,7 @@ async def fetch_link_messages(
     return await _fetch_messages(author, exclude=exclude)
 
 
-async def fetch_outbox() -> tuple[Message, ...]:
+async def fetch_outbox() -> tuple[IncomingMessage, ...]:
     """Fetch messages by `client.user`."""
     logger.debug("Fetching outbox…")
     return await _fetch_messages(user.address)
@@ -495,48 +767,6 @@ async def download_attachment(parts: Iterable[Message]) -> bytes | None:
         data += contents
 
     return data
-
-
-def generate_message_id() -> str:
-    """Generate a unique ID for a new message."""
-    return sha256(
-        "".join(
-            (
-                crypto.random_string(length=24),
-                user.address.host_part,
-                user.address.local_part,
-            )
-        ).encode("utf-8")
-    ).hexdigest()
-
-
-async def send_message(
-    readers: Iterable[Address],
-    subject: str,
-    body: str,
-    subject_id: str | None = None,
-    attachments: dict[AttachmentProperties, bytes] | None = None,
-) -> None:
-    """Send a message to `readers`.
-
-    If `readers` is empty, send a broadcast.
-
-    `subject_id` is an optional ID of a thread that the message should be part of.
-    """
-    logger.debug("Sending message…")
-    attachments = attachments or {}
-
-    try:
-        await _OutgoingMessage(
-            readers,
-            subject,
-            body.encode("utf-8"),
-            subject_id,
-            attachments,
-        ).send()
-    except WriteError:
-        logger.exception("Error sending message")
-        raise
 
 
 async def notify_readers(readers: Iterable[Address]) -> None:
@@ -642,50 +872,32 @@ async def delete_message(ident: str) -> None:
     raise WriteError
 
 
-def save_draft(
-    readers: str | None = None,
-    subject: str | None = None,
-    body: str | None = None,
-    reply: str | None = None,
-    broadcast: bool = False,
-    ident: int | None = None,
-) -> None:
+def save_draft(draft: DraftMessage) -> None:
     """Serialize and save a message to disk for future use.
 
-    `ident` can be used to update a specific message loaded using `load_drafts()`,
-    by default, a new ID is generated.
-
-    See `send_message()` for other parameters, `load_drafts()` on how to retrieve it.
+    See `OutgoingMessage.send()` for other parameters,
+    `load_drafts()` on how to retrieve it.
     """
     logger.debug("Saving draft…")
     messages_path = data_dir / "drafts"
 
-    n = (
-        ident
-        if ident is not None
-        else 0
-        if not messages_path.is_dir()
-        else max(
-            *(
-                int(path.stem)
-                for path in messages_path.iterdir()
-                if path.stem.isdigit()
-            ),
-            0,
-        )
-        + 1
-    )
-
-    message_path = messages_path / f"{n}.json"
+    message_path = messages_path / f"{draft.ident}.json"
     message_path.parent.mkdir(parents=True, exist_ok=True)
 
-    json.dump((readers, subject, body, reply, broadcast), (message_path).open("w"))
-    logger.debug("Draft saved as %i.json", n)
+    json.dump(
+        (
+            draft.date.isoformat(timespec="seconds"),
+            draft.subject,
+            draft.subject_id,
+            list(map(str, draft.readers)),
+            draft.body,
+        ),
+        (message_path).open("w"),
+    )
+    logger.debug("Draft saved as %i.json", draft.ident)
 
 
-def load_drafts() -> Generator[
-    tuple[int, str | None, str | None, str | None, str | None, bool], None, None
-]:
+def load_drafts() -> Generator[DraftMessage, None, None]:
     """Load all drafts saved to disk.
 
     See `save_draft()`.
@@ -697,15 +909,26 @@ def load_drafts() -> Generator[
 
     for path in messages_path.iterdir():
         try:
-            message = tuple(json.load(path.open("r")))
-            yield (int(path.stem), *message)
-        except (JSONDecodeError, ValueError):  # noqa: PERF203
+            fields = tuple(json.load(path.open("r")))
+        except (JSONDecodeError, ValueError):
+            continue
+
+        try:
+            yield DraftMessage(
+                ident=path.stem,
+                date=datetime.fromisoformat(fields[0]),
+                subject=fields[1],
+                subject_id=fields[2],
+                readers=[Address(r) for r in fields[3]],
+                body=fields[4],
+            )
+        except (KeyError, ValueError):
             continue
 
     logger.debug("Loaded all drafts")
 
 
-def delete_draft(ident: int) -> None:
+def delete_draft(ident: str) -> None:
     """Delete the draft saved using `ident`.
 
     See `save_draft()`, `load_drafts()`.
@@ -721,7 +944,7 @@ def delete_draft(ident: int) -> None:
     logger.debug("Deleted draft %i", ident)
 
 
-def delete_all_saved_messages() -> None:
+def delete_all_drafts() -> None:
     """Delete all drafts saved using `save_draft()`."""
     logger.debug("Deleting all drafts…")
     rmtree(data_dir / "drafts", ignore_errors=True)
@@ -856,7 +1079,7 @@ async def _fetch_message_from_agent(
     *,
     broadcast: bool = False,
     exclude: Iterable[str] = (),
-) -> Message | None:
+) -> IncomingMessage | None:
     logger.debug("Fetching message %s…", ident[:_SHORT])
 
     messages_dir = data_dir / "messages" / author.host_part / author.local_part
@@ -880,7 +1103,13 @@ async def _fetch_message_from_agent(
         return None
 
     try:
-        message = Message(ident, envelope, author, user.encryption_keys.private, new)
+        message = IncomingMessage(
+            ident,
+            author,
+            envelope,
+            user.encryption_keys.private,
+            new=new,
+        )
     except ValueError:
         logger.exception("Constructing message %s failed", ident[:_SHORT])
         return None
@@ -930,7 +1159,7 @@ async def _fetch_message_from_agent(
     return message
 
 
-async def _fetch_message_ids(author: Address, *, broadcasts: bool = False) -> set[str]:
+async def _fetch_idents(author: Address, *, broadcasts: bool = False) -> set[str]:
     """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
     logger.debug("Fetching message IDs from %s…", author)
 
@@ -981,9 +1210,9 @@ async def _fetch_messages(
     *,
     broadcasts: bool = False,
     exclude: Iterable[str] = (),
-) -> tuple[Message, ...]:
-    messages: dict[str, Message] = {}
-    for ident in await _fetch_message_ids(author, broadcasts=broadcasts):
+) -> tuple[IncomingMessage, ...]:
+    messages: dict[str, IncomingMessage] = {}
+    for ident in await _fetch_idents(author, broadcasts=broadcasts):
         for agent in await get_agents(user.address):
             if message := await _fetch_message_from_agent(
                 (
@@ -1011,235 +1240,3 @@ async def _fetch_messages(
 
     logger.debug("Fetched messages from %s", author)
     return tuple(messages.values())
-
-
-@dataclass(slots=True)
-class _OutgoingMessage[T: _OutgoingMessage]:
-    readers: Iterable[Address]
-    subject: str
-    content: bytes
-    subject_id: str | None = None
-    attachments: dict[AttachmentProperties, bytes] = field(default_factory=dict)
-
-    _date: str | None = None
-    _attachment: dict[str, str] = field(default_factory=dict)
-    _parent_id: str | None = None
-
-    _ident: str = field(default_factory=generate_message_id, init=False)
-    _headers: dict[str, str] = field(default_factory=dict, init=False)
-    _parts: dict[str, tuple[dict[str, str], bytes]] = field(
-        default_factory=dict, init=False
-    )
-
-    _built: bool = field(default=False, init=False)
-
-    async def send(self) -> None:
-        try:
-            await self._build()
-
-            for agent in await get_agents(user.address):
-                if not await request(
-                    _Home(agent, user.address).messages,
-                    auth=True,
-                    headers=self._headers,
-                    data=self.content,
-                ):
-                    logger.error("Failed sending message")
-                    raise WriteError
-
-                await notify_readers(self.readers)
-                break
-
-            for part in self._parts.values():
-                await _OutgoingMessage(
-                    self.readers,
-                    self.subject,
-                    part[1],
-                    self.subject_id,
-                    _attachment=part[0],
-                    _parent_id=self._ident,
-                    _date=self._date,
-                ).send()
-
-        except ValueError as error:
-            logger.exception("Error sending message")
-            raise WriteError from error
-
-    async def _build(self) -> None:
-        if self._built:
-            return
-
-        self._date = self._date or datetime.now(UTC).isoformat(timespec="seconds")
-        self._headers: dict[str, str] = {
-            "Message-Id": self._ident,
-            "Content-Type": "application/octet-stream",
-        }
-
-        for props, data in self.attachments.items():
-            for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
-                part = data[start : start + MAX_MESSAGE_SIZE]
-                self._parts[props.name] = (
-                    {
-                        "name": props.name,
-                        "id": generate_message_id(),
-                        "type": props.type or "application/octet-stream",
-                        "size": str(len(data)),
-                        "part": f"{index + 1}/{len(self.attachments)}",
-                        "modified": props.modified or self._date,
-                    },
-                    part,
-                )
-
-        headers_bytes = "\n".join(
-            (
-                f"{key}:{value}"
-                for key, value in (
-                    {
-                        "Id": self._headers["Message-Id"],
-                        "Author": str(user.address),
-                        "Date": self._date,
-                        "Size": str(len(self.content)),
-                        "Checksum": ";".join(
-                            (
-                                f"algorithm={crypto.CHECKSUM_ALGORITHM}",
-                                f"value={sha256(self.content).hexdigest()}",
-                            )
-                        ),
-                        "Subject": self.subject,
-                        "Subject-Id": self.subject_id or self._headers["Message-Id"],
-                        "Category": "personal",
-                    }
-                    | (
-                        {"Readers": ",".join(str(reader) for reader in self.readers)}
-                        if self.readers
-                        else {}
-                    )
-                    | (
-                        {
-                            "File": ";".join(
-                                f"{key}={value}"
-                                for key, value in self._attachment.items()
-                            )
-                        }
-                        if self._attachment
-                        else {}
-                    )
-                    | ({"Parent-Id": self._parent_id} if self._parent_id else {})
-                    | (
-                        {
-                            "Files": ",".join(
-                                (
-                                    ";".join(
-                                        f"{key}={value}" for key, value in a[0].items()
-                                    )
-                                )
-                                for a in self._parts.values()
-                            )
-                        }
-                        if self._parts
-                        else {}
-                    )
-                ).items()
-            )
-        ).encode("utf-8")
-
-        if self.readers:
-            access_key = crypto.random_bytes(32)
-
-            try:
-                message_access = await self._build_access(self.readers, access_key)
-            except ValueError as error:
-                msg = "Error building message: Building access failed"
-                raise ValueError(msg) from error
-
-            try:
-                self.content = crypto.encrypt_xchacha20poly1305(
-                    self.content, access_key
-                )
-                headers_bytes = crypto.encrypt_xchacha20poly1305(
-                    headers_bytes, access_key
-                )
-            except ValueError as error:
-                msg = "Error building message: Encryption failed"
-                raise ValueError(msg) from error
-
-            self._headers.update(
-                {
-                    "Message-Access": ",".join(message_access),
-                    "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
-                }
-            )
-
-        self._headers["Message-Headers"] = (
-            self._headers.get("Message-Headers", "")
-            + f"value={b64encode(headers_bytes).decode('utf-8')}"
-        )
-
-        checksum_fields = sorted(
-            ("Message-Id", "Message-Headers")
-            + (("Message-Encryption", "Message-Access") if self.readers else ())
-        )
-
-        try:
-            checksum, signature = _sign_headers(
-                tuple(self._headers[f] for f in checksum_fields)
-            )
-        except ValueError as error:
-            msg = "Error building message: Signing headers failed"
-            raise ValueError(msg) from error
-
-        self._headers.update(
-            {
-                "Content-Length": str(len(self.content)),
-                "Message-Checksum": ";".join(
-                    (
-                        f"algorithm={crypto.CHECKSUM_ALGORITHM}",
-                        f"order={':'.join(checksum_fields)}",
-                        f"value={checksum.hexdigest()}",
-                    )
-                ),
-                "Message-Signature": ";".join(
-                    (
-                        f"id={user.encryption_keys.public.key_id or 0}",
-                        f"algorithm={crypto.SIGNING_ALGORITHM}",
-                        f"value={signature}",
-                    )
-                ),
-            }
-        )
-
-        self._built = True
-
-    @staticmethod
-    async def _build_access(
-        readers: Iterable[Address],
-        access_key: bytes,
-    ) -> tuple[str, ...]:
-        access: list[str] = []
-        for reader in (*readers, user.address):
-            if not (
-                (profile := await fetch_profile(reader))
-                and (key := profile.encryption_key)
-                and (key_id := key.key_id)
-            ):
-                msg = "Failed fetching reader profiles"
-                raise ValueError(msg)
-
-            try:
-                encrypted = crypto.encrypt_anonymous(access_key, key)
-            except ValueError as error:
-                msg = "Failed to encrypt access key"
-                raise ValueError(msg) from error
-
-            access.append(
-                ";".join(
-                    (
-                        f"link={model.generate_link(user.address, reader)}",
-                        f"fingerprint={crypto.fingerprint(profile.signing_key)}",
-                        f"value={b64encode(encrypted).decode('utf-8')}",
-                        f"id={key_id}",
-                    )
-                )
-            )
-
-        return tuple(access)

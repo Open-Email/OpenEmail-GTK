@@ -8,8 +8,9 @@ from contextlib import suppress
 from dataclasses import dataclass, field, fields
 from datetime import UTC, date, datetime
 from hashlib import sha256
+from itertools import chain
 from types import NoneType, UnionType
-from typing import NamedTuple, Self, get_args, get_origin
+from typing import Any, NamedTuple, Protocol, Self, get_args, get_origin
 
 from . import crypto
 from .crypto import Key, KeyPair
@@ -73,6 +74,19 @@ def generate_link(first: Address, second: Address) -> str:
     ).hexdigest()
 
 
+def generate_ident(author: Address) -> str:
+    """Generate a unique ID for a new message."""
+    return sha256(
+        "".join(
+            (
+                crypto.random_string(length=24),
+                author.host_part,
+                author.local_part,
+            )
+        ).encode("utf-8")
+    ).hexdigest()
+
+
 @dataclass(slots=True)
 class User:
     """A local user."""
@@ -94,62 +108,104 @@ class AttachmentProperties(NamedTuple):
     """A file attached to a message."""
 
     name: str
-    type: str | None = None
+    ident: str
+    type: str = "application/octet-stream"
     size: int = 0
-    part: str | None = None
+    part: tuple[int, int] = (0, 0)
     modified: str | None = None
 
+    @property
+    def dict(self) -> dict[str, str]:
+        """A dictionary representation of `self`."""
+        return (
+            {"name": self.name, "id": self.ident, "type": self.type}
+            | ({"size": str(self.size)} if self.size else {})
+            | ({"part": "/".join(map(str, self.part))} if all(self.part) else {})
+            | ({"modified": self.modified} if self.modified else {})
+        )
 
-@dataclass(slots=True)
-class Message:
+    @staticmethod
+    def parse_part(part: str) -> tuple[int, int]:
+        """Parse `part` to be used for `AttachmentProperties`.
+
+        This method never fails, it returns `(0, 0)` if the value cannot be parsed.
+        """
+        split = tuple(int(p.strip()) for p in part.split("/"))
+
+        try:
+            return (split[0], split[1])
+        except (IndexError, ValueError):
+            return (0, 0)
+
+
+class Message(Protocol):
     """A Mail/HTTPS message."""
 
     ident: str
-    headers: dict[str, str]
     author: Address
-    private_key: Key
+    original_author: Address
+    date: datetime
+    subject: str
 
-    new: bool = False
+    readers: list[Address]
+    access_key: bytes | None
 
-    date: datetime = field(init=False)
-    subject: str = field(init=False)
-    original_author: Address = field(init=False)
-    readers: list[Address] = field(init=False, default_factory=list)
+    attachments: dict[str, list["Message"]]
+    children: list["Message"]
+    file: AttachmentProperties | None
+    attachment_url: str | None
 
-    checksum: str | None = field(init=False, default=None)
-
-    access_links: str | None = field(init=False, default=None)
-    access_key: bytes | None = field(init=False, default=None)
-
-    parent_id: str | None = field(init=False, default=None)
-    part: int = field(init=False, default=0)
-    file: AttachmentProperties | None = field(init=False, default=None)
-    files: dict[str, AttachmentProperties] = field(init=False, default_factory=dict)
-
-    subject_id: str | None = field(init=False, default=None)
-
-    body: str | None = None
-    attachment_url: str | None = None
-
-    children: list[Self] = field(init=False, default_factory=list)
-    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
+    body: str | None
+    new: bool  # TODO
 
     @property
     def is_broadcast(self) -> bool:
-        """Whether the message is a broadcast."""
-        return not bool(self.access_links)
+        """Whether `self` is a broadcast."""
+        raise NotImplementedError
+
+
+@dataclass(slots=True)
+class IncomingMessage:
+    """A remote message."""
+
+    ident: str
+    author: Address
+    original_author: Address = field(init=False)
+    date: datetime = field(init=False)
+    checksum: str | None = field(init=False, default=None)
+    subject: str = field(init=False)
+    subject_id: str | None = field(init=False, default=None)
+    headers: dict[str, str]
+
+    readers: list[Address] = field(init=False, default_factory=list)
+    access_links: str | None = field(init=False, default=None)
+    access_key: bytes | None = field(init=False, default=None)
+    private_key: Key
+
+    files: dict[str, AttachmentProperties] = field(init=False, default_factory=dict)
+    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
+    children: list[Self] = field(init=False, default_factory=list)
+    file: AttachmentProperties | None = field(init=False, default=None)
+    attachment_url: str | None = None
+    parent_id: str | None = field(init=False, default=None)
+
+    body: str | None = None
+    new: bool = False
+
+    @property
+    def is_broadcast(self) -> bool:
+        """Whether `self` is a broadcast."""
+        return not self.access_links
 
     @property
     def is_child(self) -> bool:
-        """Whether the message is a child."""
+        """Whether `self` is a child."""
         return bool(self.parent_id)
 
     def __post_init__(self) -> None:
         message_headers: str | None = None
 
-        self.headers = {
-            key.lower(): value.strip() for key, value in self.headers.items()
-        }
+        self.headers = {k.lower(): v.strip() for k, v in self.headers.items()}
 
         for key, value in self.headers.items():
             match key:
@@ -260,9 +316,12 @@ class Message:
                 try:
                     self.files[file_headers["id"]] = AttachmentProperties(
                         file_headers["name"],
-                        file_headers.get("type"),
+                        file_headers["id"],
+                        file_headers.get("type") or "application/octet-stream",
                         str_to_int(file_headers.get("size")),
-                        file_headers.get("part"),
+                        AttachmentProperties.parse_part(part)
+                        if (part := file_headers.get("part"))
+                        else (0, 0),
                         file_headers.get("modified"),
                     )
                 except KeyError:
@@ -272,22 +331,21 @@ class Message:
             with suppress(KeyError):
                 self.file = AttachmentProperties(
                     file_headers["name"],
-                    file_headers.get("type"),
+                    self.ident,
+                    file_headers.get("type") or "application/octet-stream",
                     str_to_int(file_headers.get("size"))
                     or str_to_int(self.headers.get("size")),
-                    file_headers.get("part"),
+                    AttachmentProperties.parse_part(part)
+                    if (part := file_headers.get("part"))
+                    else (0, 0),
                     file_headers.get("modified"),
                 )
-
-            if part := file_headers.get("part"):
-                with suppress(ValueError):
-                    self.part = int(part.split("/")[0].strip())
 
         if readers := headers.get("readers"):
             for reader in readers.split(","):
                 try:
                     self.readers.append(Address(reader.strip()))
-                except ValueError: # noqa: PERF203
+                except ValueError:  # noqa: PERF203
                     continue
 
     def add_child(self, child: Self) -> None:
@@ -302,9 +360,6 @@ class Message:
             return
 
         child.file = props
-        if props.part:
-            with suppress(ValueError):
-                child.part = int(props.part.split("/")[0].strip())
 
     def reconstruct_from_children(self) -> None:
         """Reconstruct the entire contents of this message from all of its children.
@@ -328,12 +383,11 @@ class Message:
 
             attachment.append(child)
 
-        parts.sort(key=lambda part: part.part)
-        for part in parts:
-            self.body = f"{self.body or ''}{part.body or ''}"
+        for part in chain((parts,), self.attachments.values()):
+            part.sort(key=lambda p: p.file.part[0] if p.file else 0)
 
-        for attachment in self.attachments.values():
-            attachment.sort(key=lambda part: part.part)
+        for part in parts:
+            self.body = (self.body or "") + (part.body or "")
 
 
 @dataclass(slots=True)
@@ -469,3 +523,13 @@ class Profile:
             setattr(self, f.name, value)
 
         self.address = address
+
+
+def to_fields(dictionary: dict[Any, Any]) -> str:
+    r"""Serialize `dictionary` into a string in `k1: v\nk2: v` format."""
+    return "\n".join(f"{k}: {v}" for k, v in dictionary.items())
+
+
+def to_attrs(dictionary: dict[Any, Any]) -> str:
+    """Serialize `dictionary` into a string in `k1=v; k2=v` format."""
+    return "; ".join(f"{k}={v}" for k, v in dictionary.items())

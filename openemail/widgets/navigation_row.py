@@ -42,7 +42,7 @@ class NavigationRow(Gtk.ListBoxRow):
                     count += int(item.contact_request)
 
                 elif isinstance(item, Message):
-                    count += int(item.unread or (item.draft_id > -1))
+                    count += int(item.unread or bool(item.draft_id))
 
             self.counter = str(count or "")
 

@@ -4,11 +4,13 @@
 
 import asyncio
 import operator
+import re
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Iterable
 from dataclasses import fields
 from datetime import UTC, date, datetime
+from functools import partial
 from itertools import chain
 from shutil import rmtree
 from typing import Any, ClassVar, NamedTuple, cast
@@ -25,6 +27,7 @@ from .core.model import Address
 from .dict_store import DictStore
 
 MAX_PROFILE_IMAGE_DIMENSIONS = 800
+ADDRESS_SPLIT_PATTERN = ",|;| "
 
 
 class Profile(GObject.Object):
@@ -442,12 +445,8 @@ class IncomingAttachment(Attachment):
             return
 
         self.modified = props.modified
-        self.size = GLib.format_size_for_display(props.size)
-
-        if not props.type:
-            return
-
         self.type = props.type
+        self.size = GLib.format_size_for_display(props.size)
 
         if not (content_type := Gio.content_type_from_mime_type(props.type)):
             return
@@ -526,7 +525,7 @@ class Message(GObject.Object):
     unread = GObject.Property(type=bool, default=False)
 
     subject_id = GObject.Property(type=str)
-    draft_id = GObject.Property(type=int, default=-1)
+    draft_id = GObject.Property(type=str)
     broadcast = GObject.Property(type=bool, default=False)
 
     can_reply = GObject.Property(type=bool, default=False)
@@ -577,6 +576,9 @@ class Message(GObject.Object):
 
         if not message:
             return
+
+        if isinstance(message, client.DraftMessage):
+            self.draft_id = message.ident
 
         local_date = message.date.astimezone(
             datetime.now(UTC).astimezone().tzinfo,
@@ -707,13 +709,18 @@ class Message(GObject.Object):
         if not self._message:
             return
 
+        # TODO: Better UX, cancellation?
+        if isinstance(self._message, client.OutgoingMessage) and self._message.sending:
+            Notifier.send(_("Cannot discard message while sending"))
+            return
+
         outbox.remove(_ident(self._message))
 
         failed = False
         for msg in (self._message, *self._message.children):
             try:
                 await client.delete_message(msg.ident)
-            except WriteError: # noqa: PERF203
+            except WriteError:  # noqa: PERF203
                 if not failed:
                     Notifier.send(_("Failed to discard message"))
 
@@ -770,11 +777,22 @@ class Message(GObject.Object):
     def __ge__(self, other: object) -> bool:
         return self._compare(other, operator.ge)
 
+    def __hash__(self) -> int:  # TODO: Not sure about this
+        return hash(self._message)
+
 
 class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
     item_type = Message
+
+    def add(self, message: model.Message) -> None:
+        """Manually add `message` to `self`."""
+        if _ident(message) in self._items:
+            return
+
+        self._items[_ident(message)] = Message(message)
+        self.items_changed(len(self._items) - 1, 0, 1)
 
     async def _update(self) -> None:
         """Update `self` asynchronously using `self._fetch()`."""
@@ -826,74 +844,11 @@ class MessageStore(DictStore[str, Message]):
         )
 
 
-class _DraftStore(DictStore[int, Message]):
-    """An implementation of `Gio.ListModel` for storing drafts."""
-
-    item_type = Message
-
-    def save(
-        self,
-        readers: str | None = None,
-        subject: str | None = None,
-        body: str | None = None,
-        reply: str | None = None,
-        broadcast: bool = False,
-        draft_id: int | None = None,
-    ) -> None:
-        """Save a draft to disk for future use.
-
-        `draft_id` can be used to update a specific draft,
-        by default, a new ID is generated.
-        """
-        client.save_draft(readers, subject, body, reply, broadcast, draft_id)
-        run_task(self.update())
-
-    def delete(self, draft_id: int) -> None:
-        """Delete a draft saved using `save()`."""
-        client.delete_draft(draft_id)
-        self.remove(draft_id)
-
-    def delete_all(self) -> None:
-        """Delete all drafts saved using `save()`."""
-        client.delete_all_saved_messages()
-        self.clear()
-
-    async def _update(self) -> None:
-        """Update `self` by loading the latest drafts."""
-        idents: set[int] = set()
-
-        previous = len(self._items)
-        self._items.clear()
-
-        for draft in (drafts := tuple(client.load_drafts())):
-            message = Message()
-            (
-                message.draft_id,
-                message.name,
-                message.subject,
-                message.body,
-                message.subject_id,
-                message.broadcast,
-            ) = draft
-
-            user_profile.bind_property(
-                "image",
-                message,
-                "profile-image",
-                GObject.BindingFlags.SYNC_CREATE,
-            )
-
-            idents.add(message.draft_id)
-            self._items[message.draft_id] = message
-
-        self.items_changed(0, previous, len(drafts))
-
-
 class _BroadcastStore(MessageStore):
     async def _fetch(self) -> ...:
         deleted = settings.get_strv("deleted-messages")
         async for message in self._process_messages(
-            client.fetch_broadcasts(
+            client.fetch_broadcasts(  # pyright: ignore[reportArgumentType]
                 address := Address(contact.address),
                 exclude=tuple(
                     split[1]
@@ -933,7 +888,7 @@ class _InboxStore(MessageStore):
 
         deleted = settings.get_strv("deleted-messages")
         async for message in self._process_messages(
-            (
+            (  # pyright: ignore[reportArgumentType]
                 client.fetch_link_messages(
                     contact,
                     exclude=tuple(
@@ -952,7 +907,64 @@ class _OutboxStore(MessageStore):
     async def _fetch(self) -> ...:
         for message in await client.fetch_outbox():
             message.new = False  # New outbox messages should be marked read
+            yield message
 
+
+class _DraftStore(MessageStore):
+    """An implementation of `Gio.ListModel` for storing drafts."""
+
+    def save(
+        self,
+        ident: str | None = None,
+        readers: str | None = None,
+        subject: str | None = None,
+        body: str | None = None,
+        reply: str | None = None,
+    ) -> None:
+        """Save a draft to disk for future use.
+
+        `ident` can be used to update a specific draft,
+        by default, a new ID is generated.
+        """
+        try:
+            readers_list = (
+                [
+                    Address(r)
+                    for r in re.split(
+                        ADDRESS_SPLIT_PATTERN,
+                        readers,
+                    )
+                    if r
+                ]
+                if readers
+                else []
+            )
+        except ValueError:
+            return
+
+        draft = partial(
+            client.DraftMessage,
+            readers=readers_list,
+            subject=subject or "",
+            body=body,
+            subject_id=reply,
+        )
+
+        client.save_draft(draft(ident=ident) if ident else draft())
+        run_task(self.update())
+
+    def delete(self, ident: str) -> None:
+        """Delete a draft saved using `save()`."""
+        client.delete_draft(ident)
+        self.remove(ident)
+
+    def delete_all(self) -> None:
+        """Delete all drafts saved using `save()`."""
+        client.delete_all_drafts()
+        self.clear()
+
+    async def _fetch(self) -> ...:
+        for message in tuple(client.load_drafts()):
             yield message
 
 
@@ -1173,7 +1185,7 @@ async def send_message(
     reply: str | None = None,
     attachments: Iterable[OutgoingAttachment] = (),
 ) -> None:
-    """Send `message` to `readers`.
+    """Send a message to `readers`.
 
     If `readers` is empty, send a broadcast.
 
@@ -1198,19 +1210,31 @@ async def send_message(
         files[
             model.AttachmentProperties(
                 name=attachment.name,
+                # TODO: This is bad API
+                ident=model.generate_ident(client.user.address),
                 type=attachment.type,
                 modified=attachment.modified,
             )
         ] = data
 
+    outbox.add(
+        message := client.OutgoingMessage(
+            readers=list(readers),
+            subject=subject,
+            body=body,
+            subject_id=reply,
+            files=files,
+        )
+    )
+
     try:
-        await client.send_message(readers, subject, body, reply, attachments=files)
+        await message.send()
     except WriteError:
+        outbox.remove(message.ident)
         Notifier.send(_("Failed to send message"))
         Notifier().sending = False
         raise
 
-    await outbox.update()
     Notifier().sending = False
 
 
