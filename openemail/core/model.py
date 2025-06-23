@@ -110,7 +110,7 @@ class AttachmentProperties(NamedTuple):
     ident: str
     type: str = "application/octet-stream"
     size: int = 0
-    part: str | None = None
+    part: tuple[int, int] = (0, 0)
     modified: str | None = None
 
     @property
@@ -119,9 +119,22 @@ class AttachmentProperties(NamedTuple):
         return (
             {"name": self.name, "id": self.ident, "type": self.type}
             | ({"size": str(self.size)} if self.size else {})
-            | ({"part": self.part} if self.part else {})
+            | ({"part": "/".join(map(str, self.part))} if all(self.part) else {})
             | ({"modified": self.modified} if self.modified else {})
         )
+
+    @staticmethod
+    def parse_part(part: str) -> tuple[int, int]:
+        """Parse `part` to be used for `AttachmentProperties`.
+
+        This method never fails, it returns `(0, 0)` if the value cannot be parsed.
+        """
+        split = tuple(int(p.strip()) for p in part.split("/"))
+
+        try:
+            return (split[0], split[1])
+        except (IndexError, ValueError):
+            return (0, 0)
 
 
 class Message(Protocol):
@@ -306,7 +319,9 @@ class IncomingMessage:
                         file_headers["id"],
                         file_headers.get("type") or "application/octet-stream",
                         str_to_int(file_headers.get("size")),
-                        file_headers.get("part"),
+                        AttachmentProperties.parse_part(part)
+                        if (part := file_headers.get("part"))
+                        else (0, 0),
                         file_headers.get("modified"),
                     )
                 except KeyError:
@@ -320,13 +335,15 @@ class IncomingMessage:
                     file_headers.get("type") or "application/octet-stream",
                     str_to_int(file_headers.get("size"))
                     or str_to_int(self.headers.get("size")),
-                    file_headers.get("part"),
+                    AttachmentProperties.parse_part(part)
+                    if (part := file_headers.get("part"))
+                    else (0, 0),
                     file_headers.get("modified"),
                 )
 
             if part := file_headers.get("part"):
                 with suppress(ValueError):
-                    self.part = int(part.split("/")[0].strip())
+                    self.part = AttachmentProperties.parse_part(part)[0]
 
         if readers := headers.get("readers"):
             for reader in readers.split(","):
@@ -349,7 +366,7 @@ class IncomingMessage:
         child.file = props
         if props.part:
             with suppress(ValueError):
-                child.part = int(props.part.split("/")[0].strip())
+                child.part = props.part[0]
 
     def reconstruct_from_children(self) -> None:
         """Reconstruct the entire contents of this message from all of its children.

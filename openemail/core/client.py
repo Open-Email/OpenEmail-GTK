@@ -123,7 +123,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                             ident=props.ident,
                             type=props.type,
                             size=len(data),
-                            part=f"{index + 1}/{len(self.files)}",
+                            part=(index + 1, len(self.files)),
                             modified=props.modified
                             or self.date.isoformat(timespec="seconds"),
                         ),

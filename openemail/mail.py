@@ -772,6 +772,9 @@ class Message(GObject.Object):
     def __ge__(self, other: object) -> bool:
         return self._compare(other, operator.ge)
 
+    def __hash__(self) -> int:  # TODO: Not sure about this
+        return hash(self._message)
+
 
 class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
