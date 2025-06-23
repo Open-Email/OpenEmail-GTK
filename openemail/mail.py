@@ -926,21 +926,13 @@ class _DraftStore(MessageStore):
         `ident` can be used to update a specific draft,
         by default, a new ID is generated.
         """
-        try:
-            readers_list = (
-                [
-                    Address(r)
-                    for r in re.split(
-                        ADDRESS_SPLIT_PATTERN,
-                        readers,
-                    )
-                    if r
-                ]
-                if readers
-                else []
-            )
-        except ValueError:
-            return
+        readers_list = []
+        if readers:
+            for reader in re.split(ADDRESS_SPLIT_PATTERN, readers):
+                try:
+                    readers_list.append(Address(reader))
+                except ValueError:  # noqa: PERF203
+                    continue
 
         draft = partial(
             client.DraftMessage,

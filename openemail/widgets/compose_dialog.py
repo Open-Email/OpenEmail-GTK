@@ -79,7 +79,7 @@ class ComposeDialog(Adw.Dialog):
         self.privacy = "public" if message.broadcast else "private"
         self.subject_id = message.subject_id
         self.ident = message.draft_id
-        self.readers.props.text = message.name
+        self.readers.props.text = message.reader_addresses
         self.subject.props.text = message.subject
         self.body.props.text = message.body
 
