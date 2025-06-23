@@ -8,6 +8,7 @@ from contextlib import suppress
 from dataclasses import dataclass, field, fields
 from datetime import UTC, date, datetime
 from hashlib import sha256
+from itertools import chain
 from types import NoneType, UnionType
 from typing import Any, NamedTuple, Protocol, Self, get_args, get_origin
 
@@ -187,7 +188,6 @@ class IncomingMessage:
     file: AttachmentProperties | None = field(init=False, default=None)
     attachment_url: str | None = None
     parent_id: str | None = field(init=False, default=None)
-    part: int = field(init=False, default=0)  # TODO: This seems redundant
 
     body: str | None = None
     new: bool = False
@@ -341,10 +341,6 @@ class IncomingMessage:
                     file_headers.get("modified"),
                 )
 
-            if part := file_headers.get("part"):
-                with suppress(ValueError):
-                    self.part = AttachmentProperties.parse_part(part)[0]
-
         if readers := headers.get("readers"):
             for reader in readers.split(","):
                 try:
@@ -364,9 +360,6 @@ class IncomingMessage:
             return
 
         child.file = props
-        if props.part:
-            with suppress(ValueError):
-                child.part = props.part[0]
 
     def reconstruct_from_children(self) -> None:
         """Reconstruct the entire contents of this message from all of its children.
@@ -390,12 +383,11 @@ class IncomingMessage:
 
             attachment.append(child)
 
-        parts.sort(key=lambda part: part.part)
-        for part in parts:
-            self.body = f"{self.body or ''}{part.body or ''}"
+        for part in chain((parts,), self.attachments.values()):
+            part.sort(key=lambda p: p.file.part[0] if p.file else 0)
 
-        for attachment in self.attachments.values():
-            attachment.sort(key=lambda part: part.part)
+        for part in parts:
+            self.body = (self.body or "") + (part.body or "")
 
 
 @dataclass(slots=True)
