@@ -112,7 +112,7 @@ class _FolderPage(_SplitPage):
         )
 
         new_message.add_css_class("pill")
-        new_message.connect("clicked", lambda: self.compose_dialog.present_new(self))
+        new_message.connect("clicked", lambda *_: self.compose_dialog.present_new(self))
 
         self.content.empty_page.add_css_class("compact")
 
