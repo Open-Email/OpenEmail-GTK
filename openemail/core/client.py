@@ -102,6 +102,7 @@ class OutgoingMessage[T: OutgoingMessage]:
 
     body: str | None = field(default=None)
     new: bool = field(default=False, init=False)
+    sending: bool = field(default=False, init=False)
 
     _content: bytes = b""
 
@@ -142,6 +143,7 @@ class OutgoingMessage[T: OutgoingMessage]:
     async def send(self) -> None:
         """Send `self` to `self.readers`."""
         logger.debug("Sending message…")
+        self.sending = True
 
         try:
             await self._build()
@@ -154,6 +156,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                     data=self._content,
                 ):
                     logger.error("Failed sending message")
+                    self.sending = False
                     raise WriteError
 
                 await notify_readers(self.readers)
@@ -162,13 +165,16 @@ class OutgoingMessage[T: OutgoingMessage]:
             # TODO: asyncio.gather()
             for part in chain.from_iterable(self.attachments.values()):
                 if not isinstance(part, OutgoingMessage):
-                    return
+                    continue
 
                 await part.send()
 
         except ValueError as error:
             logger.exception("Error sending message")
+            self.sending = False
             raise WriteError from error
+
+        self.sending = False
 
     async def _build(self) -> None:
         if self.headers:

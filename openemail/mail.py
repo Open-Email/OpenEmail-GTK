@@ -709,6 +709,11 @@ class Message(GObject.Object):
         if not self._message:
             return
 
+        # TODO: Better UX, cancellation?
+        if isinstance(self._message, client.OutgoingMessage) and self._message.sending:
+            Notifier.send(_("Cannot discard message while sending"))
+            return
+
         outbox.remove(_ident(self._message))
 
         failed = False
