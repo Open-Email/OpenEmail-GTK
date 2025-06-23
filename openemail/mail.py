@@ -783,10 +783,10 @@ class MessageStore(DictStore[str, Message]):
 
     def add(self, message: model.Message) -> None:
         """Manually add `message` to `self`."""
-        if message.ident in self._items:
+        if _ident(message) in self._items:
             return
 
-        self._items[message.ident] = Message(message)
+        self._items[_ident(message)] = Message(message)
         self.items_changed(len(self._items) - 1, 0, 1)
 
     async def _update(self) -> None:
