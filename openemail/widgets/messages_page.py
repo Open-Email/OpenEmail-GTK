@@ -184,6 +184,7 @@ class DraftsPage(_MessagesPage):
             selection.unselect_all()
             self.compose_dialog.present_message(message, self)
 
+        self.content.model.props.can_unselect = True
         self.content.model.connect("notify::selected", on_selected)
 
         delete_dialog = Adw.AlertDialog(
