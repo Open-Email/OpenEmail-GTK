@@ -113,6 +113,16 @@ class AttachmentProperties(NamedTuple):
     part: str | None = None
     modified: str | None = None
 
+    @property
+    def dict(self) -> dict[str, str]:
+        """A dictionary representation of `self`."""
+        return (
+            {"name": self.name, "id": self.ident, "type": self.type}
+            | ({"size": str(self.size)} if self.size else {})
+            | ({"part": self.part} if self.part else {})
+            | ({"modified": self.modified} if self.modified else {})
+        )
+
 
 class Message(Protocol):
     """A Mail/HTTPS message."""
@@ -182,9 +192,7 @@ class IncomingMessage:
     def __post_init__(self) -> None:
         message_headers: str | None = None
 
-        self.headers = {
-            key.lower(): value.strip() for key, value in self.headers.items()
-        }
+        self.headers = {k.lower(): v.strip() for k, v in self.headers.items()}
 
         for key, value in self.headers.items():
             match key:

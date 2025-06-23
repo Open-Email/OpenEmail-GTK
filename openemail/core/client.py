@@ -204,16 +204,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                     | (
                         {
                             "File": ";".join(
-                                f"{key}={value}"
-                                for key, value in {
-                                    "name": self.file.name,
-                                    "id": self.file.ident,
-                                    "type": self.file.type,
-                                    "size": self.file.size,
-                                    "part": self.file.type,
-                                    "modified": self.file.modified,
-                                }.items()
-                                if value is not None  # TODO: Make this check redundant
+                                f"{k}={v}" for k, v in self.file.dict.items()
                             )
                         }
                         if self.file
@@ -223,21 +214,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                     | (
                         {
                             "Files": ",".join(
-                                (
-                                    ";".join(
-                                        f"{key}={value}"
-                                        for key, value in {
-                                            "name": a.name,
-                                            "id": a.ident,
-                                            "type": a.type,
-                                            "size": a.size,
-                                            "part": a.type,
-                                            "modified": a.modified,
-                                        }.items()
-                                        if value
-                                        is not None  # TODO: Make this check redundant
-                                    )
-                                )
+                                (";".join(f"{k}={v}" for k, v in a.dict.items()))
                                 for a in self.files
                             )
                         }
