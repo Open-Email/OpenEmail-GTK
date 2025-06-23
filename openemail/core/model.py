@@ -9,7 +9,7 @@ from dataclasses import dataclass, field, fields
 from datetime import UTC, date, datetime
 from hashlib import sha256
 from types import NoneType, UnionType
-from typing import NamedTuple, Protocol, Self, get_args, get_origin
+from typing import Any, NamedTuple, Protocol, Self, get_args, get_origin
 
 from . import crypto
 from .crypto import Key, KeyPair
@@ -531,3 +531,13 @@ class Profile:
             setattr(self, f.name, value)
 
         self.address = address
+
+
+def to_fields(dictionary: dict[Any, Any]) -> str:
+    r"""Serialize `dictionary` into a string in `k1: v\nk2: v` format."""
+    return "\n".join(f"{k}: {v}" for k, v in dictionary.items())
+
+
+def to_attrs(dictionary: dict[Any, Any]) -> str:
+    """Serialize `dictionary` into a string in `k1=v; k2=v` format."""
+    return "; ".join(f"{k}={v}" for k, v in dictionary.items())

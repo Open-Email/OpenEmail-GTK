@@ -30,6 +30,8 @@ from .model import (
     Profile,
     User,
     generate_ident,
+    to_attrs,
+    to_fields,
 )
 
 MAX_AGENTS = 3
@@ -177,51 +179,29 @@ class OutgoingMessage[T: OutgoingMessage]:
             "Content-Type": "application/octet-stream",
         }
 
-        headers_bytes = "\n".join(
-            (
-                f"{key}:{value}"
-                for key, value in (
+        headers_bytes = to_fields(
+            {
+                "Id": self.headers["Message-Id"],
+                "Author": str(user.address),
+                "Date": self.date.isoformat(timespec="seconds"),
+                "Size": str(len(self._content)),
+                "Checksum": to_attrs(
                     {
-                        "Id": self.headers["Message-Id"],
-                        "Author": str(user.address),
-                        "Date": self.date.isoformat(timespec="seconds"),
-                        "Size": str(len(self._content)),
-                        "Checksum": ";".join(
-                            (
-                                f"algorithm={crypto.CHECKSUM_ALGORITHM}",
-                                f"value={sha256(self._content).hexdigest()}",
-                            )
-                        ),
-                        "Subject": self.subject,
-                        "Subject-Id": self.subject_id or self.headers["Message-Id"],
-                        "Category": "personal",
+                        "algorithm": crypto.CHECKSUM_ALGORITHM,
+                        "value": sha256(self._content).hexdigest(),
                     }
-                    | (
-                        {"Readers": ",".join(str(reader) for reader in self.readers)}
-                        if self.readers
-                        else {}
-                    )
-                    | (
-                        {
-                            "File": ";".join(
-                                f"{k}={v}" for k, v in self.file.dict.items()
-                            )
-                        }
-                        if self.file
-                        else {}
-                    )
-                    | ({"Parent-Id": self.parent_id} if self.parent_id else {})
-                    | (
-                        {
-                            "Files": ",".join(
-                                (";".join(f"{k}={v}" for k, v in a.dict.items()))
-                                for a in self.files
-                            )
-                        }
-                        if self.files
-                        else {}
-                    )
-                ).items()
+                ),
+                "Subject": self.subject,
+                "Subject-Id": self.subject_id or self.headers["Message-Id"],
+                "Category": "personal",
+            }
+            | ({"Readers": ",".join(map(str, self.readers))} if self.readers else {})
+            | ({"File": to_attrs(self.file.dict)} if self.file else {})
+            | ({"Parent-Id": self.parent_id} if self.parent_id else {})
+            | (
+                {"Files": ",".join((to_attrs(a.dict)) for a in self.files)}
+                if self.files
+                else {}
             )
         ).encode("utf-8")
 
@@ -273,19 +253,19 @@ class OutgoingMessage[T: OutgoingMessage]:
         self.headers.update(
             {
                 "Content-Length": str(len(self._content)),
-                "Message-Checksum": ";".join(
-                    (
-                        f"algorithm={crypto.CHECKSUM_ALGORITHM}",
-                        f"order={':'.join(checksum_fields)}",
-                        f"value={checksum.hexdigest()}",
-                    )
+                "Message-Checksum": to_attrs(
+                    {
+                        "algorithm": crypto.CHECKSUM_ALGORITHM,
+                        "order": ":".join(checksum_fields),
+                        "value": checksum.hexdigest(),
+                    }
                 ),
-                "Message-Signature": ";".join(
-                    (
-                        f"id={user.encryption_keys.public.key_id or 0}",
-                        f"algorithm={crypto.SIGNING_ALGORITHM}",
-                        f"value={signature}",
-                    )
+                "Message-Signature": to_attrs(
+                    {
+                        "id": user.encryption_keys.public.key_id or 0,
+                        "algorithm": crypto.SIGNING_ALGORITHM,
+                        "value": signature,
+                    }
                 ),
             }
         )
@@ -312,13 +292,13 @@ class OutgoingMessage[T: OutgoingMessage]:
                 raise ValueError(msg) from error
 
             access.append(
-                ";".join(
-                    (
-                        f"link={model.generate_link(user.address, reader)}",
-                        f"fingerprint={crypto.fingerprint(profile.signing_key)}",
-                        f"value={b64encode(encrypted).decode('utf-8')}",
-                        f"id={key_id}",
-                    )
+                to_attrs(
+                    {
+                        "link": model.generate_link(user.address, reader),
+                        "fingerprint": crypto.fingerprint(profile.signing_key),
+                        "value": b64encode(encrypted).decode("utf-8"),
+                        "id": key_id,
+                    }
                 )
             )
 
@@ -476,26 +456,24 @@ async def register() -> bool:
     """Try registering `client.user` and return whether the attempt was successful."""
     logger.info("Registering…")
 
-    data = "\n".join(
-        (
-            f"Name: {user.address.local_part}",
-            "Encryption-Key: "
-            + ";".join(
-                (
-                    f"id={user.encryption_keys.public.key_id}",
-                    f"algorithm={crypto.ANONYMOUS_ENCRYPTION_CIPHER}",
-                    f"value={user.encryption_keys.public}",
-                )
+    data = to_fields(
+        {
+            "Name": user.address.local_part,
+            "Encryption-Key": to_attrs(
+                {
+                    "id": user.encryption_keys.public.key_id,
+                    "algorithm": crypto.ANONYMOUS_ENCRYPTION_CIPHER,
+                    "value": user.encryption_keys.public,
+                }
             ),
-            "Signing-Key: "
-            + ";".join(
-                (
-                    f"algorithm={crypto.SIGNING_ALGORITHM}",
-                    f"value={user.signing_keys.public}",
-                )
+            "Signing-Key": to_attrs(
+                {
+                    "algorithm": crypto.SIGNING_ALGORITHM,
+                    "value": user.signing_keys.public,
+                }
             ),
-            f"Updated: {datetime.now(UTC).isoformat(timespec='seconds')}",
-        )
+            "Updated": datetime.now(UTC).isoformat(timespec="seconds"),
+        }
     ).encode("utf-8")
 
     for agent in await get_agents(user.address):
@@ -552,9 +530,9 @@ async def update_profile(values: dict[str, str]) -> None:
     )
 
     data = (
-        f"## Profile of {user.address}\n"
-        + "\n".join((f"{k.title()}: {v}") for k, v in values.items() if v)
-        + "\n##End of profile"
+        f"# Profile of {user.address}\n"
+        + to_fields({k: v for k, v in values.items() if v})
+        + "\n#End of profile"
     ).encode("utf-8")
 
     for agent in await get_agents(user.address):
@@ -681,11 +659,11 @@ async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> P
     try:
         data = b64encode(
             crypto.encrypt_anonymous(
-                ";".join(
-                    (
-                        f"address={address}",
-                        f"broadcasts={'Yes' if receive_broadcasts else 'No'}",
-                    )
+                to_attrs(
+                    {
+                        "address": address,
+                        "broadcasts": "Yes" if receive_broadcasts else "No",
+                    }
                 ).encode("utf-8"),
                 user.encryption_keys.public,
             )
@@ -904,7 +882,7 @@ def save_draft(draft: DraftMessage) -> None:
             draft.date.isoformat(timespec="seconds"),
             draft.subject,
             draft.subject_id,
-            [str(r) for r in draft.readers],
+            list(map(str, draft.readers)),
             draft.body,
         ),
         (message_path).open("w"),
