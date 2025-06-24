@@ -33,8 +33,11 @@ class MessageView(Adw.Bin):
     visible_child_name = GObject.Property(type=str, default="empty")
     app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
 
-    undo: dict[Adw.Toast, Callable[[], Any]]
+    undo = GObject.Signal(
+        flags=GObject.SignalFlags.RUN_FIRST | GObject.SignalFlags.ACTION
+    )
 
+    _history: dict[Adw.Toast, Callable[[], Any]]
     _message: Message | None = None
 
     @GObject.Property(type=Message)
@@ -56,27 +59,7 @@ class MessageView(Adw.Bin):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.undo = {}
-
-        def undo(*_args: Any) -> bool:
-            if not self.undo:
-                return False
-
-            toast, callback = self.undo.popitem()
-            toast.dismiss()
-            callback()
-
-            return True
-
-        controller = Gtk.ShortcutController(scope=Gtk.ShortcutScope.MANAGED)
-        controller.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("<primary>z"),
-                Gtk.CallbackAction.new(undo),
-            )
-        )
-
-        self.add_controller(controller)
+        self._history = {}
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args: Any) -> None:
@@ -113,6 +96,15 @@ class MessageView(Adw.Bin):
         if self.message:
             run_task(self.message.discard())
 
+    @Gtk.Template.Callback()
+    def _undo(self, *_args: Any) -> None:
+        if not self._history:
+            return
+
+        toast, callback = self._history.popitem()
+        toast.dismiss()
+        callback()
+
     def _add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
-        toast = Notifier.send(title, lambda *_: self.undo.pop(toast, lambda: None)())
-        self.undo[toast] = undo
+        toast = Notifier.send(title, lambda *_: self._history.pop(toast, lambda: ...)())
+        self._history[toast] = undo
