@@ -2,6 +2,17 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MessageView: Adw.Bin {
+  undo => $_undo();
+
+  ShortcutController {
+    scope: managed;
+
+    Shortcut {
+      trigger: "<primary>z";
+      action: "signal(undo)";
+    }
+  }
+
   child: Adw.ViewStack {
     visible-child-name: bind template.visible-child-name;
 
