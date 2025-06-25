@@ -3,7 +3,6 @@
 # SPDX-FileContributor: kramo
 
 import asyncio
-import operator
 import re
 from abc import abstractmethod
 from collections import defaultdict
@@ -519,6 +518,7 @@ class Message(GObject.Object):
 
     date = GObject.Property(type=str)
     datetime = GObject.Property(type=str)
+    unix = GObject.Property(type=int)
 
     subject = GObject.Property(type=str)
     body = GObject.Property(type=str)
@@ -531,7 +531,6 @@ class Message(GObject.Object):
     can_reply = GObject.Property(type=bool, default=False)
     author_is_self = GObject.Property(type=bool, default=False)
     can_trash = GObject.Property(type=bool, default=False)
-    can_restore = GObject.Property(type=bool, default=False)
 
     original_author = GObject.Property(type=str)
     different_author = GObject.Property(type=bool, default=False)
@@ -553,7 +552,7 @@ class Message(GObject.Object):
         """The author of `self`."""
         return self._message.author if self._message else None
 
-    @property
+    @GObject.Property(type=bool, default=False)
     def trashed(self) -> bool:
         """Whether the item is in the trash."""
         if not self._message:
@@ -586,10 +585,8 @@ class Message(GObject.Object):
 
         self.date = local_date.strftime("%x")
         # Localized date format, time in H:M
-        self.datetime = _("{} at {}").format(
-            self.date,
-            local_date.strftime("%H:%M"),
-        )
+        self.datetime = _("{} at {}").format(self.date, local_date.strftime("%H:%M"))
+        self.unix = int(local_date.timestamp())
 
         self.subject = message.subject
         self.body = message.body or ""
@@ -750,35 +747,8 @@ class Message(GObject.Object):
 
     def _update_trashed_state(self) -> None:
         self.can_trash = not (self.author_is_self or self.trashed)
-        self.can_restore = self.trashed
-        self.can_reply = not self.can_restore
-
-    def _compare(self, other: object, func: Callable[[Any, Any], bool]) -> bool:
-        if not (self._message and isinstance(other, Message) and other._message):  # noqa: SLF001 https://github.com/astral-sh/ruff/issues/3933
-            return func(True, True)
-
-        return func(self.datetime, other.datetime)
-
-    def __eq__(self, other: object) -> bool:
-        return self._compare(other, operator.eq)
-
-    def __ne__(self, other: object) -> bool:
-        return self._compare(other, operator.ne)
-
-    def __lt__(self, other: object) -> bool:
-        return self._compare(other, operator.lt)
-
-    def __gt__(self, other: object) -> bool:
-        return self._compare(other, operator.gt)
-
-    def __le__(self, other: object) -> bool:
-        return self._compare(other, operator.le)
-
-    def __ge__(self, other: object) -> bool:
-        return self._compare(other, operator.ge)
-
-    def __hash__(self) -> int:  # TODO: Not sure about this
-        return hash(self._message)
+        self.can_reply = not self.trashed
+        self.notify("trashed")
 
 
 class MessageStore(DictStore[str, Message]):
@@ -943,6 +913,7 @@ class _DraftStore(MessageStore):
         )
 
         client.save_draft(draft(ident=ident) if ident else draft())
+        self.clear()  # TODO
         run_task(self.update())
 
     def delete(self, ident: str) -> None:

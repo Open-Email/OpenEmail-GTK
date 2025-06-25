@@ -1,0 +1,127 @@
+using Gtk 4.0;
+using Adw 1;
+
+/* MessagesPage */
+$ContentPage content {
+  details: $MessageView message_view {};
+
+  model: SingleSelection selection {
+    autoselect: false;
+
+    model: FilterListModel {
+      model: SortListModel sort_model {
+        sorter: NumericSorter {
+          expression: expr item as <$Message>.unix;
+        };
+      };
+
+      filter: EveryFilter {
+        BoolFilter trashed {
+          expression: expr item as <$Message>.trashed;
+          invert: true;
+        }
+
+        AnyFilter {
+          StringFilter {
+            expression: expr item as <$Message>.subject;
+            search: bind content.search_text;
+          }
+
+          StringFilter {
+            expression: expr item as <$Message>.body;
+            search: bind content.search_text;
+          }
+        }
+      };
+    };
+  };
+}
+
+$ComposeDialog compose_dialog {}
+
+/* _FolderPage */
+Adw.StatusPage no_messages {
+  icon-name: "mailbox-symbolic";
+  title: _("No Messages");
+  description: _("Select another folder or start a conversation");
+
+  child: Button new_button {
+    halign: center;
+    label: _("New Message");
+
+    styles [
+      "pill",
+    ]
+  };
+
+  styles [
+    "compact",
+  ]
+}
+
+Button toolbar_new {
+  icon-name: "mail-message-new-symbolic";
+  tooltip-text: _("New Message");
+
+  ShortcutController {
+    scope: managed;
+
+    Shortcut {
+      trigger: "<primary>n";
+      action: "activate";
+    }
+  }
+}
+
+/* DraftsPage */
+Adw.AlertDialog delete_dialog {
+  heading: _("Delete Drafts?");
+  body: _("All drafts will be permanently deleted");
+  default-response: "delete";
+
+  responses [
+    close: _("Cancel"),
+    delete: _("Delete All") destructive,
+  ]
+}
+
+Button delete_button {
+  icon-name: "fire-symbolic";
+  tooltip-text: _("Delete All");
+}
+
+Adw.StatusPage no_drafts {
+  icon-name: "drafts-symbolic";
+  title: _("No Drafts");
+  description: _("New unsent messages will appear here");
+
+  styles [
+    "compact",
+  ]
+}
+
+/* TrashPage */
+Adw.AlertDialog empty_dialog {
+  heading: _("Empty Trash?");
+  body: _("All items in the trash will be permanently deleted");
+  default-response: "empty";
+
+  responses [
+    close: _("Cancel"),
+    empty: _("Empty Trash") destructive,
+  ]
+}
+
+Button empty_button {
+  icon-name: "empty-trash-symbolic";
+  tooltip-text: _("Empty Trash");
+}
+
+Adw.StatusPage empty_trash {
+  icon-name: "trash-symbolic";
+  title: _("Trash is Empty");
+
+  styles [
+    "compact",
+  ]
+}

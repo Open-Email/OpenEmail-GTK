@@ -894,7 +894,7 @@ def save_draft(draft: DraftMessage) -> None:
         ),
         (message_path).open("w"),
     )
-    logger.debug("Draft saved as %i.json", draft.ident)
+    logger.debug("Draft saved as %s.json", draft.ident)
 
 
 def load_drafts() -> Generator[DraftMessage, None, None]:
@@ -933,15 +933,15 @@ def delete_draft(ident: str) -> None:
 
     See `save_draft()`, `load_drafts()`.
     """
-    logger.debug("Deleting draft %i…", ident)
+    logger.debug("Deleting draft %s…", ident)
 
     try:
         (data_dir / "drafts" / f"{ident}.json").unlink()
     except FileNotFoundError as error:
-        logger.debug("Failed to delete draft %i: %s", ident, error)
+        logger.debug("Failed to delete draft %s: %s", ident, error)
         return
 
-    logger.debug("Deleted draft %i", ident)
+    logger.debug("Deleted draft %s", ident)
 
 
 def delete_all_drafts() -> None:

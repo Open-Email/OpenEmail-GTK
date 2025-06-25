@@ -12,36 +12,36 @@ template $ContactsPage: Adw.NavigationPage {
       autoselect: false;
       notify::selected => $_on_selected();
 
-      model: SortListModel {
-        sorter: MultiSorter {
-          NumericSorter {
-            expression: expr item as <$Profile>.contact-request;
-            sort-order: descending;
-          }
+      model: FilterListModel {
+        model: SortListModel {
+          sorter: MultiSorter {
+            NumericSorter {
+              expression: expr item as <$Profile>.contact-request;
+              sort-order: descending;
+            }
 
-          StringSorter {
-            expression: expr item as <$Profile>.name;
-          }
-        };
+            StringSorter {
+              expression: expr item as <$Profile>.name;
+            }
+          };
 
-        model: FilterListModel {
           model: FlattenListModel {
             model: Gio.ListStore models {
               item-type: typeof<Gio.ListModel>;
             };
           };
+        };
 
-          filter: AnyFilter {
-            StringFilter {
-              expression: expr item as <$Profile>.address;
-              search: bind content.search-text;
-            }
+        filter: AnyFilter {
+          StringFilter {
+            expression: expr item as <$Profile>.address;
+            search: bind content.search-text;
+          }
 
-            StringFilter {
-              expression: expr item as <$Profile>.name;
-              search: bind content.search-text;
-            }
-          };
+          StringFilter {
+            expression: expr item as <$Profile>.name;
+            search: bind content.search-text;
+          }
         };
       };
     };

@@ -12,6 +12,7 @@
     <file preprocess="xml-stripblanks">navigation-row.ui</file>
     <file preprocess="xml-stripblanks">message-row.ui</file>
     <file preprocess="xml-stripblanks">message-view.ui</file>
+    <file preprocess="xml-stripblanks">messages-page.ui</file>
     <file preprocess="xml-stripblanks">preferences.ui</file>
     <file preprocess="xml-stripblanks">profile-settings.ui</file>
     <file preprocess="xml-stripblanks">profile-view.ui</file>

@@ -2,146 +2,76 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any
+from typing import Any, cast
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, mail, settings
+from openemail import PREFIX, mail
 from openemail.dict_store import DictStore
-from openemail.mail import Message, empty_trash
+from openemail.mail import Message, empty_trash, settings
 
-from .compose_dialog import ComposeDialog
-from .content_page import ContentPage
-from .message_view import MessageView
+from .compose_dialog import ComposeDialog  # noqa: TC001
+from .content_page import ContentPage  # noqa: TC001
+from .message_view import MessageView  # noqa: TC001
 
 
 class _MessagesPage(Adw.NavigationPage):
-    compose_dialog: ComposeDialog
-    message_view: MessageView
-    content: ContentPage
-
-    def __init__(self, model: Gio.ListModel, *, title: str, **kwargs: Any) -> None:
+    def __init__(self, model: Gio.ListModel, /, *, title: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.compose_dialog = ComposeDialog()
-        self.message_view = MessageView()
+        bld = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
 
-        self.content = ContentPage(
-            title=title,
-            details=self.message_view,
-            model=Gtk.SingleSelection(
-                autoselect=False,
-                model=Gtk.SortListModel.new(
-                    Gtk.FilterListModel.new(
-                        model,
-                        (
-                            search_filter := Gtk.CustomFilter.new(
-                                lambda item: (
-                                    (lowered := self.content.search_text.lower())
-                                    in item.name.lower()
-                                    or lowered in item.subject.lower()
-                                    or lowered in item.body.lower()
-                                )
-                                if self.content.search_text
-                                else True
-                            )
-                        ),
-                    ),
-                    Gtk.CustomSorter.new(lambda a, b, _: int(b > a) - int(b < a)),
-                ),
-            ),
-            factory=Gtk.BuilderListItemFactory.new_from_resource(
-                None, f"{PREFIX}/gtk/message-row.ui"
-            ),
+        self.trashed = cast("Gtk.BoolFilter", bld.get_object("trashed"))
+        settings.connect("changed::trashed-messages", self._on_trash_changed)
+        cast("Gtk.SortListModel", bld.get_object("sort_model")).props.model = model
+
+        self.compose_dialog = cast("ComposeDialog", bld.get_object("compose_dialog"))
+        self.message_view = cast("MessageView", bld.get_object("message_view"))
+        self.message_view.reply_button.connect(
+            "clicked",
+            lambda *_: self.compose_dialog.present_reply(message, self)
+            if (message := self.message_view.message)
+            else None,
         )
 
-        self.content.connect(
-            "notify::search-text",
-            lambda *_: search_filter.changed(Gtk.FilterChange.DIFFERENT),
+        self.content = cast("ContentPage", bld.get_object("content"))
+        self.content.title = self.props.title = title
+        self.content.model.connect("notify::selected", self._on_selected)
+        self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
+            None, f"{PREFIX}/gtk/message-row.ui"
         )
 
         self.props.child = self.content
-        self.props.title = title
 
-    def on_trash_changed(self, _obj: Any, _key: Any, trashed: Gtk.CustomFilter) -> None:
-        selection = self.content.model.props.selected
+    def _on_trash_changed(self, _obj: Any, _key: Any) -> None:
+        m.autoselect = (m := self.content.model.props).selected != GLib.MAXUINT
+        self.trashed.changed(Gtk.FilterChange.DIFFERENT)
+        m.autoselect = False
 
-        if selection != GLib.MAXUINT:
-            self.content.model.props.autoselect = True
+    def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+        self.message_view.message = (message := selection.props.selected_item)
+        if not isinstance(message, Message):
+            return
 
-        trashed.changed(Gtk.FilterChange.DIFFERENT)
-        self.content.model.props.autoselect = False
+        message.mark_read()
+        self.content.split_view.props.show_content = True
 
 
-class _SplitPage(_MessagesPage):
-    def __init__(self, model: Gio.ListModel, **kwargs: Any) -> None:
-        super().__init__(model, **kwargs)
+class _FolderPage(_MessagesPage):
+    def __init__(self, folder: DictStore, /, **kwargs: Any) -> None:
+        super().__init__(folder, **kwargs)
 
-        def on_selected(selection: Gtk.SingleSelection, *_args: Any) -> None:
-            if not isinstance(selected := selection.props.selected_item, Message):
-                return
+        bld = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
 
-            selected.mark_read()
-            self.content.split_view.props.show_content = True
-
-        self.content.model.connect("notify::selected", on_selected)
+        self.content.toolbar_button = cast("Gtk.Button", bld.get_object("toolbar_new"))
+        self.content.empty_page = cast("Adw.StatusPage", bld.get_object("no_messages"))
         self.content.model.bind_property("selected-item", self.message_view, "message")
 
-
-class _FolderPage(_SplitPage):
-    def __init__(self, folder: DictStore, **kwargs: Any) -> None:
-        super().__init__(
-            Gtk.FilterListModel.new(
-                folder, trashed := Gtk.CustomFilter.new(lambda item: not item.trashed)
-            ),
-            **kwargs,
-        )
-
-        settings.connect("changed::trashed-messages", self.on_trash_changed, trashed)
-
-        self.content.empty_page = Adw.StatusPage(
-            icon_name="mailbox-symbolic",
-            title=_("No Messages"),
-            description=_("Select another folder or start a conversation"),
-            child=(
-                new_message := Gtk.Button(
-                    halign=Gtk.Align.CENTER,
-                    label=_("New Message"),
-                )
-            ),
-        )
-
-        new_message.add_css_class("pill")
-        new_message.connect("clicked", lambda *_: self.compose_dialog.present_new(self))
-
-        self.content.empty_page.add_css_class("compact")
-
-        self.content.toolbar_button = Gtk.Button(
-            icon_name="mail-message-new-symbolic",
-            tooltip_text=_("New Message"),
-        )
-
-        controller = Gtk.ShortcutController(scope=Gtk.ShortcutScope.MANAGED)
-        controller.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("<primary>n"),
-                Gtk.ShortcutAction.parse_string("activate"),
-            )
-        )
-
-        self.content.toolbar_button.add_controller(controller)
-        self.content.toolbar_button.connect(
-            "clicked", lambda *_: self.compose_dialog.present_new(self)
-        )
-
-        self.message_view.reply_button.connect(
-            "clicked",
-            lambda *_: self.compose_dialog.present_reply(
-                self.message_view.message, self
-            )
-            if self.message_view.message
-            else self.compose_dialog.present_new(self),
-        )
+        for button in (
+            self.content.toolbar_button,
+            cast("Gtk.Button", bld.get_object("new_button")),
+        ):
+            button.connect("clicked", lambda *_: self.compose_dialog.present_new(self))
 
         folder.bind_property(
             "updating",
@@ -177,110 +107,66 @@ class DraftsPage(_MessagesPage):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(mail.drafts, title=_("Drafts"), **kwargs)
 
-        def on_selected(selection: Gtk.SingleSelection, *_args: Any) -> None:
-            if not (isinstance(message := selection.props.selected_item, Message)):
-                return
-
-            selection.unselect_all()
-            self.compose_dialog.present_message(message, self)
+        bld = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
 
         self.content.model.props.can_unselect = True
-        self.content.model.connect("notify::selected", on_selected)
 
-        delete_dialog = Adw.AlertDialog(
-            heading=_("Delete Drafts?"),
-            body=_("All drafts will be permanently deleted"),
-            default_response="delete",
-        )
-
-        delete_dialog.add_response("close", _("Cancel"))
-        delete_dialog.add_response("delete", _("Delete All"))
-        delete_dialog.set_response_appearance(
-            "delete", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-
+        delete_dialog = cast("Adw.AlertDialog", bld.get_object("delete_dialog"))
         delete_dialog.connect("response::delete", lambda *_: mail.drafts.delete_all())
 
-        self.content.toolbar_button = Gtk.Button(
-            icon_name="fire-symbolic",
-            tooltip_text=_("Delete All"),
-        )
+        delete_button = cast("Gtk.Button", bld.get_object("delete_button"))
+        delete_button.connect("clicked", lambda *_: delete_dialog.present(self))
+        self.content.toolbar_button = delete_button
 
+        self.content.empty_page = cast("Adw.StatusPage", bld.get_object("no_drafts"))
         self.content.model.bind_property(
             "n-items",
-            self.content.toolbar_button,
+            delete_button,
             "sensitive",
             GObject.BindingFlags.SYNC_CREATE,
         )
 
-        self.content.toolbar_button.connect(
-            "clicked", lambda *_: delete_dialog.present(self)
-        )
+    def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+        if not isinstance(message := selection.props.selected_item, Message):
+            return
 
-        self.content.empty_page = Adw.StatusPage(
-            icon_name="drafts-symbolic",
-            title=_("No Drafts"),
-            description=_("New unsent messages will appear here"),
-        )
-
-        self.content.empty_page.add_css_class("compact")
+        selection.unselect_all()
+        self.compose_dialog.present_message(message, self)
 
 
-class TrashPage(_SplitPage):
+class TrashPage(_MessagesPage):
     """A navigation page displaying the user's trash folder."""
 
     __gtype_name__ = "TrashPage"
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(
-            Gtk.FilterListModel.new(
-                Gtk.FlattenListModel.new(folders := Gio.ListStore.new(Gio.ListModel)),
-                trashed := Gtk.CustomFilter.new(lambda item: item.trashed),
-            ),
+            Gtk.FlattenListModel.new(folders := Gio.ListStore.new(Gio.ListModel)),
             title=_("Trash"),
             **kwargs,
         )
 
+        bld = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
+
+        self.trashed.props.invert = False
+
         folders.append(mail.broadcasts)
         folders.append(mail.inbox)
 
-        settings.connect("changed::trashed-messages", self.on_trash_changed, trashed)
-
-        self.content.empty_page = Adw.StatusPage(
-            icon_name="trash-symbolic",
-            title=_("Trash is Empty"),
-        )
-
-        self.content.empty_page.add_css_class("compact")
-
-        empty_dialog = Adw.AlertDialog(
-            heading=_("Empty Trash?"),
-            body=_("All items in the trash will be permanently deleted"),
-            default_response="empty",
-        )
-
-        empty_dialog.add_response("close", _("Cancel"))
-        empty_dialog.add_response("empty", _("Empty Trash"))
-        empty_dialog.set_response_appearance(
-            "empty", Adw.ResponseAppearance.DESTRUCTIVE
-        )
-
+        empty_dialog = cast("Adw.AlertDialog", bld.get_object("empty_dialog"))
         empty_dialog.connect("response::empty", lambda *_: empty_trash())
 
-        self.content.toolbar_button = Gtk.Button(
-            icon_name="empty-trash-symbolic",
-            tooltip_text=_("Empty Trash"),
-        )
+        empty_button = cast("Gtk.Button", bld.get_object("empty_button"))
+        empty_button.connect("clicked", lambda *_: empty_dialog.present(self))
+        self.content.toolbar_button = empty_button
 
+        self.content.empty_page = cast("Adw.StatusPage", bld.get_object("empty_trash"))
+        self.content.model.bind_property("selected-item", self.message_view, "message")
         self.content.model.bind_property(
             "n-items",
-            self.content.toolbar_button,
+            empty_button,
             "sensitive",
             GObject.BindingFlags.SYNC_CREATE,
-        )
-
-        self.content.toolbar_button.connect(
-            "clicked", lambda *_: empty_dialog.present(self)
         )
 
         def set_loading(*_args: Any) -> None:

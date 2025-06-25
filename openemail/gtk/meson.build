@@ -11,6 +11,7 @@ blueprints = custom_target(
     'help-overlay.blp',
     'message-row.blp',
     'message-view.blp',
+    'messages-page.blp',
     'navigation-row.blp',
     'preferences.blp',
     'profile-settings.blp',

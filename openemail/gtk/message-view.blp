@@ -69,7 +69,7 @@ template $MessageView: Adw.Bin {
 
           [end]
           Button {
-            visible: bind template.message as <$Message>.can-restore;
+            visible: bind template.message as <$Message>.trashed;
             label: _("Restore");
             clicked => $_restore();
 
