@@ -206,6 +206,13 @@ class DraftsPage(_MessagesPage):
             tooltip_text=_("Delete All"),
         )
 
+        self.content.model.bind_property(
+            "n-items",
+            self.content.toolbar_button,
+            "sensitive",
+            GObject.BindingFlags.SYNC_CREATE,
+        )
+
         self.content.toolbar_button.connect(
             "clicked", lambda *_: delete_dialog.present(self)
         )
@@ -263,6 +270,13 @@ class TrashPage(_SplitPage):
         self.content.toolbar_button = Gtk.Button(
             icon_name="empty-trash-symbolic",
             tooltip_text=_("Empty Trash"),
+        )
+
+        self.content.model.bind_property(
+            "n-items",
+            self.content.toolbar_button,
+            "sensitive",
+            GObject.BindingFlags.SYNC_CREATE,
         )
 
         self.content.toolbar_button.connect(
