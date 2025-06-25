@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any, cast
+from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
@@ -19,14 +19,14 @@ class _MessagesPage(Adw.NavigationPage):
     def __init__(self, model: Gio.ListModel, /, *, title: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        bld = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
+        self.builder = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
 
-        self.trashed = cast("Gtk.BoolFilter", bld.get_object("trashed"))
+        self.trashed: Gtk.BoolFilter = self._get_object("trashed")
         settings.connect("changed::trashed-messages", self._on_trash_changed)
-        cast("Gtk.SortListModel", bld.get_object("sort_model")).props.model = model
+        self._get_object("sort_model").props.model = model
 
-        self.compose_dialog = cast("ComposeDialog", bld.get_object("compose_dialog"))
-        self.message_view = cast("MessageView", bld.get_object("message_view"))
+        self.compose_dialog: ComposeDialog = self._get_object("compose_dialog")
+        self.message_view: MessageView = self._get_object("message_view")
         self.message_view.reply_button.connect(
             "clicked",
             lambda *_: self.compose_dialog.present_reply(message, self)
@@ -34,7 +34,7 @@ class _MessagesPage(Adw.NavigationPage):
             else None,
         )
 
-        self.content = cast("ContentPage", bld.get_object("content"))
+        self.content: ContentPage = self._get_object("content")
         self.content.title = self.props.title = title
         self.content.model.connect("notify::selected", self._on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
@@ -42,6 +42,9 @@ class _MessagesPage(Adw.NavigationPage):
         )
 
         self.props.child = self.content
+
+    def _get_object(self, name: str) -> Any:
+        return self.builder.get_object(name)
 
     def _on_trash_changed(self, _obj: Any, _key: Any) -> None:
         m.autoselect = (m := self.content.model.props).selected != GLib.MAXUINT
@@ -58,22 +61,20 @@ class _MessagesPage(Adw.NavigationPage):
 
 
 class _FolderPage(_MessagesPage):
-    def __init__(self, folder: DictStore, /, **kwargs: Any) -> None:
-        super().__init__(folder, **kwargs)
+    folder: DictStore
+    title: str
 
-        bld = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(self.folder, title=self.title, **kwargs)
 
-        self.content.toolbar_button = cast("Gtk.Button", bld.get_object("toolbar_new"))
-        self.content.empty_page = cast("Adw.StatusPage", bld.get_object("no_messages"))
+        self.content.toolbar_button = self._get_object("toolbar_new")
+        self.content.empty_page = self._get_object("no_messages")
         self.content.model.bind_property("selected-item", self.message_view, "message")
 
-        for button in (
-            self.content.toolbar_button,
-            cast("Gtk.Button", bld.get_object("new_button")),
-        ):
+        for button in (self.content.toolbar_button, self._get_object("new_button")):
             button.connect("clicked", lambda *_: self.compose_dialog.present_new(self))
 
-        folder.bind_property(
+        self.folder.bind_property(
             "updating",
             self.content,
             "loading",
@@ -85,18 +86,14 @@ class InboxPage(_FolderPage):
     """A navigation page displaying the user's inbox."""
 
     __gtype_name__ = "InboxPage"
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(mail.inbox, title=_("Inbox"), **kwargs)
+    folder, title = mail.inbox, _("Inbox")
 
 
 class OutboxPage(_FolderPage):
     """A navigation page displaying the user's outbox."""
 
     __gtype_name__ = "OutboxPage"
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(mail.outbox, title=_("Outbox"), **kwargs)
+    folder, title = mail.outbox, _("Outbox")
 
 
 class DraftsPage(_MessagesPage):
@@ -107,18 +104,16 @@ class DraftsPage(_MessagesPage):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(mail.drafts, title=_("Drafts"), **kwargs)
 
-        bld = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
-
         self.content.model.props.can_unselect = True
 
-        delete_dialog = cast("Adw.AlertDialog", bld.get_object("delete_dialog"))
+        delete_dialog: Adw.AlertDialog = self._get_object("delete_dialog")
         delete_dialog.connect("response::delete", lambda *_: mail.drafts.delete_all())
 
-        delete_button = cast("Gtk.Button", bld.get_object("delete_button"))
+        delete_button: Gtk.Button = self._get_object("delete_button")
         delete_button.connect("clicked", lambda *_: delete_dialog.present(self))
         self.content.toolbar_button = delete_button
 
-        self.content.empty_page = cast("Adw.StatusPage", bld.get_object("no_drafts"))
+        self.content.empty_page = self._get_object("no_drafts")
         self.content.model.bind_property(
             "n-items",
             delete_button,
@@ -146,21 +141,19 @@ class TrashPage(_MessagesPage):
             **kwargs,
         )
 
-        bld = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
-
         self.trashed.props.invert = False
 
         folders.append(mail.broadcasts)
         folders.append(mail.inbox)
 
-        empty_dialog = cast("Adw.AlertDialog", bld.get_object("empty_dialog"))
+        empty_dialog: Adw.AlertDialog = self._get_object("empty_dialog")
         empty_dialog.connect("response::empty", lambda *_: empty_trash())
 
-        empty_button = cast("Gtk.Button", bld.get_object("empty_button"))
+        empty_button: Gtk.Button = self._get_object("empty_button")
         empty_button.connect("clicked", lambda *_: empty_dialog.present(self))
         self.content.toolbar_button = empty_button
 
-        self.content.empty_page = cast("Adw.StatusPage", bld.get_object("empty_trash"))
+        self.content.empty_page = self._get_object("empty_trash")
         self.content.model.bind_property("selected-item", self.message_view, "message")
         self.content.model.bind_property(
             "n-items",
@@ -180,6 +173,4 @@ class BroadcastsPage(_FolderPage):
     """A navigation page displaying the user's broadcasts folder."""
 
     __gtype_name__ = "BroadcastsPage"
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(mail.broadcasts, title=_("Public"), **kwargs)
+    folder, title = mail.broadcasts, _("Public")
