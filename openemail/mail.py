@@ -208,17 +208,12 @@ class ProfileStore(DictStore[Address, Profile]):
 
         If `trust_images` is set to `False`, profile images will not be loaded.
         """
-        await asyncio.gather(
-            *chain(
-                (self._update_profile(Address(contact.address)) for contact in self),
-                (
-                    self._update_profile_image(Address(contact.address))
-                    for contact in self
-                )
-                if trust_images
-                else (),
-            ),
-        )
+        async with asyncio.TaskGroup() as tg:
+            for contact in self:
+                address = Address(contact.address)
+                tg.create_task(self._update_profile(address))
+                if trust_images:
+                    tg.create_task(self._update_profile_image(address))
 
     @staticmethod
     async def _update_profile(address: Address) -> None:

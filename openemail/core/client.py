@@ -162,13 +162,10 @@ class OutgoingMessage[T: OutgoingMessage]:
                 await notify_readers(self.readers)
                 break
 
-            await asyncio.gather(
-                *(
-                    part.send()
-                    for part in chain.from_iterable(self.attachments.values())
-                    if isinstance(part, OutgoingMessage)
-                )
-            )
+            async with asyncio.TaskGroup() as tg:
+                for part in chain.from_iterable(self.attachments.values()):
+                    if isinstance(part, OutgoingMessage):
+                        tg.create_task(part.send())
 
         except ValueError as error:
             logger.exception("Error sending message")
