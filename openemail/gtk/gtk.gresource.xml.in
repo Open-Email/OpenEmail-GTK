@@ -19,5 +19,6 @@
   </gresource>
   <gresource prefix="@PREFIX@">
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
+    <file>style.css</file>
   </gresource>
 </gresources>
