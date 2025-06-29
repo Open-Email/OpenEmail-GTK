@@ -1,0 +1,80 @@
+using Gtk 4.0;
+using Adw 1;
+
+Adw.ShortcutsDialog shortcuts_dialog {
+  Adw.ShortcutsSection {
+    title: _("General");
+
+    Adw.ShortcutsItem {
+      title: _("Sync");
+      accelerator: "<primary>r F5";
+    }
+
+    Adw.ShortcutsItem {
+      title: _("Search");
+      accelerator: "<primary>f";
+    }
+
+    Adw.ShortcutsItem {
+      title: _("Undo");
+      accelerator: "<primary>z";
+    }
+
+    Adw.ShortcutsItem {
+      title: _("Preferences");
+      action-name: "app.preferences";
+    }
+
+    Adw.ShortcutsItem {
+      title: _("Keyboard Shortcuts");
+      action-name: "app.shortcuts";
+    }
+
+    Adw.ShortcutsItem {
+      title: _("Quit");
+      action-name: "app.quit";
+    }
+  }
+
+  Adw.ShortcutsSection {
+    title: _("Messages");
+
+    Adw.ShortcutsItem {
+      title: _("New Message");
+      accelerator: "<primary>n";
+    }
+
+    Adw.ShortcutsItem {
+      title: _("Delete Message");
+      accelerator: "Delete";
+    }
+  }
+
+  Adw.ShortcutsSection {
+    title: _("New Message");
+
+    Adw.ShortcutsItem {
+      title: _("Bold");
+      accelerator: "<primary>b";
+    }
+
+    Adw.ShortcutsItem {
+      title: _("Italic");
+      accelerator: "<primary>i";
+    }
+  }
+
+  Adw.ShortcutsSection {
+    title: _("Contacts");
+
+    Adw.ShortcutsItem {
+      title: _("New Contact");
+      accelerator: "<primary>n";
+    }
+
+    Adw.ShortcutsItem {
+      title: _("Remove Contact");
+      accelerator: "Delete";
+    }
+  }
+}

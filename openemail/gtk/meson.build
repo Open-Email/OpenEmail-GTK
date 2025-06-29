@@ -16,6 +16,7 @@ blueprints = custom_target(
     'preferences.blp',
     'profile-settings.blp',
     'profile-view.blp',
+    'shortcuts-dialog.blp',
     'window.blp',
   ),
   output: '.',
