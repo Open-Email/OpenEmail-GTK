@@ -1,5 +1,4 @@
 blueprints = custom_target(
-  'blueprints',
   input: files(
     'attachments.blp',
     'compose-dialog.blp',
