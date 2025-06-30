@@ -24,7 +24,7 @@ class Application(Adw.Application):
 
     def __init__(self) -> None:
         super().__init__(application_id=APP_ID)
-        self.create_action("preferences", self._preferences)
+        self.create_action("preferences", self._preferences, ("<primary>comma",))
         self.create_action("about", self._about)
         self.create_action(
             "quit",
