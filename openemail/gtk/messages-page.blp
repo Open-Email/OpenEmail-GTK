@@ -12,6 +12,7 @@ $ContentPage content {
       model: SortListModel sort_model {
         sorter: NumericSorter {
           expression: expr item as <$Message>.unix;
+          sort-order: descending;
         };
       };
 
