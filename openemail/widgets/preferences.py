@@ -13,7 +13,7 @@ from .form import Form
 from .window import Window
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/gtk/preferences.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/preferences.ui")
 class Preferences(Adw.PreferencesDialog):
     """The application's preferences dialog."""
 

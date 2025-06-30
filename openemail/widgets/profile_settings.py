@@ -14,7 +14,7 @@ from openemail.mail import Profile, WriteError
 from .form import Form
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/gtk/profile-settings.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/profile-settings.ui")
 class ProfileSettings(Adw.PreferencesDialog):
     """A page presenting the user's editable public profile."""
 

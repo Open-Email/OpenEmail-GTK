@@ -35,7 +35,7 @@ class RemoveAttachmentButton(Gtk.Button):
         attachments.model.remove(self.item.props.position)
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/gtk/attachments.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/attachments.ui")
 class Attachments(Adw.Bin):
     """A grid of files attached to a message."""
 

@@ -22,7 +22,7 @@ from .form import Form
 from .message_body import MessageBody
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/gtk/compose-dialog.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/compose-dialog.ui")
 class ComposeDialog(Adw.Dialog):
     """A page listing a subset of the user's messages."""
 

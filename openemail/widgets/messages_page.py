@@ -19,7 +19,7 @@ class _MessagesPage(Adw.NavigationPage):
     def __init__(self, model: Gio.ListModel, /, *, title: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.builder = Gtk.Builder.new_from_resource(f"{PREFIX}/gtk/messages-page.ui")
+        self.builder = Gtk.Builder.new_from_resource(f"{PREFIX}/messages-page.ui")
 
         self.trashed: Gtk.BoolFilter = self._get_object("trashed")
         settings.connect("changed::trashed-messages", self._on_trash_changed)
@@ -38,7 +38,7 @@ class _MessagesPage(Adw.NavigationPage):
         self.content.title = self.props.title = title
         self.content.model.connect("notify::selected", self._on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
-            None, f"{PREFIX}/gtk/message-row.ui"
+            None, f"{PREFIX}/message-row.ui"
         )
 
         self.props.child = self.content

@@ -11,7 +11,7 @@ from openemail import PREFIX, settings
 from openemail.mail import Message, Profile
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/gtk/navigation-row.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/navigation-row.ui")
 class NavigationRow(Gtk.ListBoxRow):
     """An navigation item in the main sidebar with a counter."""
 
