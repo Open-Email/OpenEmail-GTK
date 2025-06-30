@@ -2,18 +2,6 @@ moduledir = pkgdatadir / 'openemail'
 
 subdir('gtk')
 
-gnome.compile_resources(
-  'openemail',
-  configure_file(
-    input: 'openemail.gresource.xml.in',
-    output: '@BASENAME@',
-    configuration: conf,
-  ),
-  gresource_bundle: true,
-  install: true,
-  install_dir: pkgdatadir,
-)
-
 configure_file(
   input: 'openemail.in',
   output: '@BASENAME@',
