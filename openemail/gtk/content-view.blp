@@ -22,8 +22,44 @@ template $ContentView: Adw.BreakpointBin {
 
       child: Adw.ToolbarView sidebar_toolbar_view {
         [top]
-        Adw.HeaderBar {
-          [start]
+        Adw.MultiLayoutView {
+          layout-name: bind template.header-bar-layout;
+
+          Adw.Layout {
+            name: "title";
+
+            content: Adw.HeaderBar {
+              [start]
+              Adw.LayoutSlot {
+                id: "profile";
+              }
+
+              [end]
+              Adw.LayoutSlot {
+                id: "menu";
+              }
+            };
+          }
+
+          Adw.Layout {
+            name: "no-title";
+
+            content: Adw.HeaderBar {
+              show-title: false;
+
+              [end]
+              Adw.LayoutSlot {
+                id: "menu";
+              }
+
+              [end]
+              Adw.LayoutSlot {
+                id: "profile";
+              }
+            };
+          }
+
+          [profile]
           Button {
             tooltip-text: _("Profile");
             clicked => $_on_profile_button_clicked();
@@ -41,7 +77,7 @@ template $ContentView: Adw.BreakpointBin {
             ]
           }
 
-          [end]
+          [menu]
           MenuButton {
             primary: true;
             icon-name: "open-menu-symbolic";

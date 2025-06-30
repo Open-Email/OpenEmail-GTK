@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
+from sys import platform
 from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
@@ -38,6 +39,20 @@ class ContentView(Adw.BreakpointBin):
     profile_stack_child_name = GObject.Property(type=str, default="loading")
     profile_image = GObject.Property(type=Gdk.Paintable)
     app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
+    header_bar_layout = GObject.Property(
+        type=str,
+        default=(
+            "no-title"
+            if platform.startswith("darwin")
+            or (
+                (settings := Gtk.Settings.get_default())
+                and not settings.props.gtk_decoration_layout.replace(
+                    "appmenu", ""
+                ).startswith(":")
+            )
+            else "title"
+        ),
+    )
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
