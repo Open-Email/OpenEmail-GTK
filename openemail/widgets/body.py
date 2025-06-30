@@ -11,10 +11,10 @@ MAX_LINES = 5
 MAX_CHARS = 100
 
 
-class MessageBody(Gtk.TextView):
+class Body(Gtk.TextView):
     """A widget for displaying a message's body with Markdown support."""
 
-    __gtype_name__ = "MessageBody"
+    __gtype_name__ = "Body"
 
     summary = GObject.Property(type=bool, default=False)
 

@@ -2,10 +2,10 @@ using Gtk 4.0;
 using Adw 1;
 using Gio 2.0;
 
-template $ContactsPage: Adw.NavigationPage {
+template $Contacts: Adw.NavigationPage {
   title: _("Contacts");
 
-  child: $ContentPage content {
+  child: $Page content {
     title: bind template.title;
 
     model: SingleSelection selection {

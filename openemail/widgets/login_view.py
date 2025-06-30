@@ -12,11 +12,11 @@ from openemail.mail import Address, KeyPair
 from .form import Form
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/auth-view.ui")
-class AuthView(Adw.Bin):
-    """A view prompting the user to log in."""
+@Gtk.Template.from_resource(f"{PREFIX}/login-view.ui")
+class LoginView(Adw.Bin):
+    """A view prompting the user to authenticate."""
 
-    __gtype_name__ = "AuthView"
+    __gtype_name__ = "LoginView"
 
     navigation_view: Adw.NavigationView = Gtk.Template.Child()
 

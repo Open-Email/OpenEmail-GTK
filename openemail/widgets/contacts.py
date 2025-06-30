@@ -10,18 +10,18 @@ from openemail import PREFIX, mail, run_task
 from openemail.mail import Address
 
 from .contact_row import ContactRow  # noqa: F401
-from .content_page import ContentPage
 from .form import Form
-from .profile_view import ProfileView
+from .page import Page
+from .profile import ProfileView
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/contacts-page.ui")
-class ContactsPage(Adw.NavigationPage):
+@Gtk.Template.from_resource(f"{PREFIX}/contacts.ui")
+class Contacts(Adw.NavigationPage):
     """A page with the contents of the user's address book."""
 
-    __gtype_name__ = "ContactsPage"
+    __gtype_name__ = "Contacts"
 
-    content: ContentPage = Gtk.Template.Child()
+    content: Page = Gtk.Template.Child()
     profile_view: ProfileView = Gtk.Template.Child()
 
     add_contact_dialog: Adw.AlertDialog = Gtk.Template.Child()

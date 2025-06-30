@@ -9,11 +9,11 @@ from gi.repository import Adw, GObject, Gtk
 from openemail import PREFIX, Notifier, mail, run_task
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/content-page.ui")
-class ContentPage(Adw.BreakpointBin):
+@Gtk.Template.from_resource(f"{PREFIX}/page.ui")
+class Page(Adw.BreakpointBin):
     """A split view for content and details."""
 
-    __gtype_name__ = "ContentPage"
+    __gtype_name__ = "Page"
 
     split_view: Adw.NavigationSplitView = Gtk.Template.Child()
     sync_button: Gtk.Button = Gtk.Template.Child()
@@ -49,7 +49,7 @@ class ContentPage(Adw.BreakpointBin):
     def _show_sidebar(self, *_args: Any) -> None:
         if not isinstance(
             split_view := getattr(
-                getattr(self.props.root, "content_view", None),
+                getattr(self.props.root, "content", None),
                 "split_view",
                 None,
             ),

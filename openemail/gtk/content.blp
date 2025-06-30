@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $ContentView: Adw.BreakpointBin {
+template $Content: Adw.BreakpointBin {
   width-request: 360;
   height-request: 294;
 
@@ -127,19 +127,19 @@ template $ContentView: Adw.BreakpointBin {
               row-selected => $_on_row_selected();
 
               $NavigationRow {
-                page: bind inbox_stack_page;
+                page: bind inbox_page;
               }
 
               $NavigationRow {
-                page: bind outbox_stack_page;
+                page: bind outbox_page;
               }
 
               $NavigationRow {
-                page: bind drafts_stack_page;
+                page: bind drafts_page;
               }
 
               $NavigationRow {
-                page: bind trash_stack_page;
+                page: bind trash_page;
               }
 
               styles [
@@ -156,11 +156,11 @@ template $ContentView: Adw.BreakpointBin {
               row-selected => $_on_bottom_row_selected();
 
               $NavigationRow {
-                page: bind broadcasts_stack_page;
+                page: bind broadcasts_page;
               }
 
               $NavigationRow {
-                page: bind contacts_stack_page;
+                page: bind contacts_page;
               }
 
               styles [
@@ -179,52 +179,52 @@ template $ContentView: Adw.BreakpointBin {
         enable-transitions: true;
         visible-child-name: bind template.content-child-name;
 
-        Adw.ViewStackPage broadcasts_stack_page {
+        Adw.ViewStackPage broadcasts_page {
           name: "broadcasts";
           icon-name: "broadcasts-symbolic";
-          title: bind broadcasts_page.title;
+          title: bind broadcasts.title;
 
-          child: $BroadcastsPage broadcasts_page {};
+          child: $Broadcasts broadcasts {};
         }
 
-        Adw.ViewStackPage inbox_stack_page {
+        Adw.ViewStackPage inbox_page {
           name: "inbox";
           icon-name: "inbox-symbolic";
-          title: bind inbox_page.title;
+          title: bind inbox.title;
 
-          child: $InboxPage inbox_page {};
+          child: $Inbox inbox {};
         }
 
-        Adw.ViewStackPage outbox_stack_page {
+        Adw.ViewStackPage outbox_page {
           name: "outbox";
           icon-name: "outbox-symbolic";
-          title: bind outbox_page.title;
+          title: bind outbox.title;
 
-          child: $OutboxPage outbox_page {};
+          child: $Outbox outbox {};
         }
 
-        Adw.ViewStackPage drafts_stack_page {
+        Adw.ViewStackPage drafts_page {
           name: "drafts";
           icon-name: "drafts-symbolic";
-          title: bind drafts_page.title;
+          title: bind drafts.title;
 
-          child: $DraftsPage drafts_page {};
+          child: $Drafts drafts {};
         }
 
-        Adw.ViewStackPage trash_stack_page {
+        Adw.ViewStackPage trash_page {
           name: "trash";
           icon-name: "trash-symbolic";
-          title: bind trash_page.title;
+          title: bind trash.title;
 
-          child: $TrashPage trash_page {};
+          child: $Trash trash {};
         }
 
-        Adw.ViewStackPage contacts_stack_page {
+        Adw.ViewStackPage contacts_page {
           name: "contacts";
           icon-name: "contacts-symbolic";
-          title: bind contacts_page.title;
+          title: bind contacts.title;
 
-          child: $ContactsPage contacts_page {};
+          child: $Contacts contacts {};
         }
       };
     };

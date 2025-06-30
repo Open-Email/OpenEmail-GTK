@@ -14,7 +14,7 @@ template $Window: Adw.ApplicationWindow {
       Adw.ViewStackPage {
         name: "auth";
 
-        child: $AuthView auth_view {
+        child: $LoginView login_view {
           authenticated => $_on_auth();
         };
       }
@@ -22,7 +22,7 @@ template $Window: Adw.ApplicationWindow {
       Adw.ViewStackPage {
         name: "content";
 
-        child: $ContentView content_view {};
+        child: $Content content {};
       }
     };
   };

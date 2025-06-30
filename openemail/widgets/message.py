@@ -12,18 +12,18 @@ from openemail import APP_ID, PREFIX, Notifier, run_task
 from openemail.mail import Message, Profile
 
 from .attachments import Attachments
-from .message_body import MessageBody
-from .profile_view import ProfileView
+from .body import Body
+from .profile import ProfileView
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/message-view.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/message.ui")
 class MessageView(Adw.Bin):
     """A view displaying metadata about, and the contents of a message."""
 
     __gtype_name__ = "MessageView"
 
     reply_button: Gtk.Button = Gtk.Template.Child()
-    message_body: MessageBody = Gtk.Template.Child()
+    body_view: Body = Gtk.Template.Child()
     attachments: Attachments = Gtk.Template.Child()
 
     profile_dialog: Adw.Dialog = Gtk.Template.Child()

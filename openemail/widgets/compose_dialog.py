@@ -18,8 +18,8 @@ from openemail.mail import (
 )
 
 from .attachments import Attachments
+from .body import Body
 from .form import Form
-from .message_body import MessageBody
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/compose-dialog.ui")
@@ -30,7 +30,7 @@ class ComposeDialog(Adw.Dialog):
 
     readers: Gtk.Text = Gtk.Template.Child()
     subject: Gtk.Text = Gtk.Template.Child()
-    body_view: MessageBody = Gtk.Template.Child()
+    body_view: Body = Gtk.Template.Child()
     compose_form: Form = Gtk.Template.Child()
 
     attachments: Attachments = Gtk.Template.Child()

@@ -11,15 +11,15 @@ from openemail.dict_store import DictStore
 from openemail.mail import Message, empty_trash, settings
 
 from .compose_dialog import ComposeDialog  # noqa: TC001
-from .content_page import ContentPage  # noqa: TC001
-from .message_view import MessageView  # noqa: TC001
+from .message import MessageView  # noqa: TC001
+from .page import Page  # noqa: TC001
 
 
-class _MessagesPage(Adw.NavigationPage):
+class _Messages(Adw.NavigationPage):
     def __init__(self, model: Gio.ListModel, /, *, title: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.builder = Gtk.Builder.new_from_resource(f"{PREFIX}/messages-page.ui")
+        self.builder = Gtk.Builder.new_from_resource(f"{PREFIX}/messages.ui")
 
         self.trashed: Gtk.BoolFilter = self._get_object("trashed")
         settings.connect("changed::trashed-messages", self._on_trash_changed)
@@ -34,7 +34,7 @@ class _MessagesPage(Adw.NavigationPage):
             else None,
         )
 
-        self.content: ContentPage = self._get_object("content")
+        self.content: Page = self._get_object("content")
         self.content.title = self.props.title = title
         self.content.model.connect("notify::selected", self._on_selected)
         self.content.factory = Gtk.BuilderListItemFactory.new_from_resource(
@@ -60,7 +60,7 @@ class _MessagesPage(Adw.NavigationPage):
         self.content.split_view.props.show_content = True
 
 
-class _FolderPage(_MessagesPage):
+class _Folder(_Messages):
     folder: DictStore
     title: str
 
@@ -82,24 +82,24 @@ class _FolderPage(_MessagesPage):
         )
 
 
-class InboxPage(_FolderPage):
+class Inbox(_Folder):
     """A navigation page displaying the user's inbox."""
 
-    __gtype_name__ = "InboxPage"
+    __gtype_name__ = "Inbox"
     folder, title = mail.inbox, _("Inbox")
 
 
-class OutboxPage(_FolderPage):
+class Outbox(_Folder):
     """A navigation page displaying the user's outbox."""
 
-    __gtype_name__ = "OutboxPage"
+    __gtype_name__ = "Outbox"
     folder, title = mail.outbox, _("Outbox")
 
 
-class DraftsPage(_MessagesPage):
+class Drafts(_Messages):
     """A navigation page displaying the user's drafts."""
 
-    __gtype_name__ = "DraftsPage"
+    __gtype_name__ = "Drafts"
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(mail.drafts, title=_("Drafts"), **kwargs)
@@ -129,10 +129,10 @@ class DraftsPage(_MessagesPage):
         self.compose_dialog.present_message(message, self)
 
 
-class TrashPage(_MessagesPage):
+class Trash(_Messages):
     """A navigation page displaying the user's trash folder."""
 
-    __gtype_name__ = "TrashPage"
+    __gtype_name__ = "Trash"
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(
@@ -169,8 +169,8 @@ class TrashPage(_MessagesPage):
         mail.broadcasts.connect("notify::updating", set_loading)
 
 
-class BroadcastsPage(_FolderPage):
+class Broadcasts(_Folder):
     """A navigation page displaying the user's broadcasts folder."""
 
-    __gtype_name__ = "BroadcastsPage"
+    __gtype_name__ = "Broadcasts"
     folder, title = mail.broadcasts, _("Public")

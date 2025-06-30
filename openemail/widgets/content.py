@@ -9,17 +9,17 @@ from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, Notifier, mail
 
-from .contacts_page import ContactsPage
-from .messages_page import BroadcastsPage, DraftsPage, InboxPage, OutboxPage, TrashPage
+from .contacts import Contacts
+from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash
 from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/content-view.ui")
-class ContentView(Adw.BreakpointBin):
+@Gtk.Template.from_resource(f"{PREFIX}/content.ui")
+class Content(Adw.BreakpointBin):
     """The main content of the application."""
 
-    __gtype_name__ = "ContentView"
+    __gtype_name__ = "Content"
 
     split_view: Adw.OverlaySplitView = Gtk.Template.Child()
 
@@ -28,12 +28,12 @@ class ContentView(Adw.BreakpointBin):
     bottom_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_settings: ProfileSettings = Gtk.Template.Child()
 
-    inbox_page: InboxPage = Gtk.Template.Child()
-    outbox_page: OutboxPage = Gtk.Template.Child()
-    drafts_page: DraftsPage = Gtk.Template.Child()
-    trash_page: TrashPage = Gtk.Template.Child()
-    broadcasts_page: BroadcastsPage = Gtk.Template.Child()
-    contacts_page: ContactsPage = Gtk.Template.Child()
+    inbox: Inbox = Gtk.Template.Child()
+    outbox: Outbox = Gtk.Template.Child()
+    drafts: Drafts = Gtk.Template.Child()
+    trash: Trash = Gtk.Template.Child()
+    broadcasts: Broadcasts = Gtk.Template.Child()
+    contacts: Contacts = Gtk.Template.Child()
 
     content_child_name = GObject.Property(type=str, default="inbox")
     profile_stack_child_name = GObject.Property(type=str, default="loading")

@@ -2,19 +2,19 @@
 <gresources>
   <gresource prefix="@PREFIX@">
     <file preprocess="xml-stripblanks">attachments.ui</file>
-    <file preprocess="xml-stripblanks">auth-view.ui</file>
     <file preprocess="xml-stripblanks">compose-dialog.ui</file>
     <file preprocess="xml-stripblanks">contact-row.ui</file>
-    <file preprocess="xml-stripblanks">contacts-page.ui</file>
-    <file preprocess="xml-stripblanks">content-page.ui</file>
-    <file preprocess="xml-stripblanks">content-view.ui</file>
+    <file preprocess="xml-stripblanks">contacts.ui</file>
+    <file preprocess="xml-stripblanks">content.ui</file>
+    <file preprocess="xml-stripblanks">login-view.ui</file>
     <file preprocess="xml-stripblanks">message-row.ui</file>
-    <file preprocess="xml-stripblanks">message-view.ui</file>
-    <file preprocess="xml-stripblanks">messages-page.ui</file>
+    <file preprocess="xml-stripblanks">message.ui</file>
+    <file preprocess="xml-stripblanks">messages.ui</file>
     <file preprocess="xml-stripblanks">navigation-row.ui</file>
+    <file preprocess="xml-stripblanks">page.ui</file>
     <file preprocess="xml-stripblanks">preferences.ui</file>
     <file preprocess="xml-stripblanks">profile-settings.ui</file>
-    <file preprocess="xml-stripblanks">profile-view.ui</file>
+    <file preprocess="xml-stripblanks">profile.ui</file>
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
     <file preprocess="xml-stripblanks">window.ui</file>
     <file>style.css</file>

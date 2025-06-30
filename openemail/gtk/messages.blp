@@ -1,8 +1,8 @@
 using Gtk 4.0;
 using Adw 1;
 
-/* MessagesPage */
-$ContentPage content {
+/* Messages */
+$Page content {
   details: $MessageView message_view {};
 
   model: SingleSelection selection {
@@ -40,7 +40,7 @@ $ContentPage content {
 
 $ComposeDialog compose_dialog {}
 
-/* _FolderPage */
+/* Folder */
 Adw.StatusPage no_messages {
   icon-name: "mailbox-symbolic";
   title: _("No Messages");
@@ -74,7 +74,7 @@ Button toolbar_new {
   }
 }
 
-/* DraftsPage */
+/* Drafts */
 Adw.AlertDialog delete_dialog {
   heading: _("Delete Drafts?");
   body: _("All drafts will be permanently deleted");
@@ -101,7 +101,7 @@ Adw.StatusPage no_drafts {
   ]
 }
 
-/* TrashPage */
+/* Trash */
 Adw.AlertDialog empty_dialog {
   heading: _("Empty Trash?");
   body: _("All items in the trash will be permanently deleted");

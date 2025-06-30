@@ -10,8 +10,8 @@ from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, Notifier, mail, run_task, settings, state_settings
 
-from .auth_view import AuthView
-from .content_view import ContentView
+from .content import Content
+from .login_view import LoginView
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/window.ui")
@@ -22,8 +22,8 @@ class Window(Adw.ApplicationWindow):
 
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
 
-    auth_view: AuthView = Gtk.Template.Child()
-    content_view: ContentView = Gtk.Template.Child()
+    login_view: LoginView = Gtk.Template.Child()
+    content: Content = Gtk.Template.Child()
 
     visible_child_name = GObject.Property(type=str, default="auth")
 
@@ -46,7 +46,7 @@ class Window(Adw.ApplicationWindow):
         )
         state_settings.bind(
             "show-sidebar",
-            self.content_view.split_view,
+            self.content.split_view,
             "show-sidebar",
             Gio.SettingsBindFlags.DEFAULT,
         )
