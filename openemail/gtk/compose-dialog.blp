@@ -234,19 +234,19 @@ template $ComposeDialog: Adw.Dialog {
 }
 
 $Form compose_form {
-  form: template;
-  submit: send_button;
+  submit-widget: send_button;
 
-  plain: StringList {
-    strings [
-      "subject",
-      "body",
-    ]
-  };
+  $FormField {
+    widget: readers;
+    type: address-list;
+    active: bind $_get_readers_field_active(template.privacy) as <bool>;
+  }
 
-  address-lists: Gtk.StringList {
-    strings [
-      "readers",
-    ]
-  };
+  $FormField {
+    widget: subject;
+  }
+
+  $FormField {
+    widget: body_view;
+  }
 }

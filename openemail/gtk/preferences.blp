@@ -194,12 +194,9 @@ Adw.AlertDialog add_domain_dialog {
 }
 
 $Form domain_form {
-  form: template;
-  submit: add_domain_dialog;
+  submit-widget: add_domain_dialog;
 
-  plain: StringList {
-    strings [
-      "domain_entry",
-    ]
-  };
+  $FormField {
+    widget: domain_entry;
+  }
 }

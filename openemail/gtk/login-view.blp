@@ -239,35 +239,30 @@ template $LoginView: Adw.Bin {
 }
 
 $Form email_form {
-  form: template;
-  submit: log_in_button;
+  submit-widget: log_in_button;
 
-  addresses: StringList {
-    strings [
-      "email_entry",
-    ]
-  };
+  $FormField {
+    widget: email_entry;
+    type: address;
+  }
 }
 
 $Form register_form {
-  form: template;
-  submit: register_button;
+  submit-widget: register_button;
 
-  plain: StringList {
-    strings [
-      "user_name_entry",
-    ]
-  };
+  $FormField {
+    widget: user_name_entry;
+  }
 }
 
 $Form auth_form {
-  form: template;
-  submit: auth_button;
+  submit-widget: auth_button;
 
-  plain: StringList {
-    strings [
-      "encryption_key_entry",
-      "signing_key_entry",
-    ]
-  };
+  $FormField {
+    widget: encryption_key_entry;
+  }
+
+  $FormField {
+    widget: signing_key_entry;
+  }
 }

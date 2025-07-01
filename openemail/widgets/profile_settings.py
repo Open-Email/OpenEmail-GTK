@@ -134,7 +134,7 @@ class ProfileSettings(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def _closed(self, *_args: Any) -> None:
-        if (not self._changed) or self.name_form.invalid:
+        if not (self._changed and self.name_form.valid):
             return
 
         if not self.away.props.enable_expansion:
