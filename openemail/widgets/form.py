@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
+# SPDX-FileContributor: Jamie Gravendeel
 
 import re
-from contextlib import suppress
-from enum import Enum
 from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
@@ -12,157 +11,127 @@ from gi.repository import Adw, GObject, Gtk
 from openemail.mail import ADDRESS_SPLIT_PATTERN, Address
 
 
-class FormField(Enum):
-    """A type of field in a form."""
+class FormFieldType(GObject.GEnum):
+    """A type of form field."""
 
-    PLAIN = 1
-    ADDRESS = 2
-    ADDRESS_LIST = 3
+    PLAIN = 0
+    ADDRESS = 1
+    ADDRESS_LIST = 2
 
 
-class Form(GObject.Object):
+class FormField(GObject.Object):
+    """A field in a form."""
+
+    __gtype_name__ = "FormField"
+
+    type = GObject.Property(type=FormFieldType, default=FormFieldType.PLAIN)
+
+    active = GObject.Property(type=bool, default=True)
+    valid = GObject.Property(type=bool, default=False)
+
+    text = GObject.Property(type=str)
+
+    @GObject.Property(type=Gtk.Widget)
+    def widget(self) -> Gtk.Widget:
+        """Get the widget containing the text."""
+        return self._widget
+
+    @widget.setter
+    def widget(self, widget: Gtk.Widget) -> None:
+        self._widget = widget
+
+        if isinstance(widget, Gtk.Editable):
+            text = widget
+        elif isinstance(widget, Gtk.TextView):
+            text = widget.props.buffer
+        else:
+            msg = "FormField.widget must be Gtk.Editable or Gtk.TextView"
+            raise TypeError(msg)
+
+        text.bind_property("text", self, "text", GObject.BindingFlags.BIDIRECTIONAL)
+        text.connect("notify::text", lambda *_: self.validate())
+
+    def validate(self) -> None:
+        """Validate the form field."""
+        match self.type:
+            case FormFieldType.PLAIN:
+                self.valid = bool(self.text)
+
+            case FormFieldType.ADDRESS:
+                try:
+                    Address(self.text)
+                except ValueError:
+                    self.valid = False
+                else:
+                    self.valid = True
+
+            case FormFieldType.ADDRESS_LIST:
+                if not (addresses := re.split(ADDRESS_SPLIT_PATTERN, self.text)):
+                    self.valid = False
+                    return
+
+                try:
+                    for address in addresses:
+                        Address(address)
+                except ValueError:
+                    self.valid = False
+                else:
+                    self.valid = True
+
+
+class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatibleMethodOverride]
     """An abstract representation of a form in UI with validation."""
 
     __gtype_name__ = "Form"
 
-    form = GObject.Property(type=Gtk.Widget)
-    submit = GObject.Property(type=GObject.Object)
+    submit_widget = GObject.Property(type=Gtk.Widget)
 
-    invalid: set[Gtk.Editable | Gtk.TextBuffer]
+    def __init__(self) -> None:
+        super().__init__()
 
-    _fields: dict[FormField, Gtk.StringList]
+        self._fields: list[FormField] = []
 
-    @GObject.Property(type=Gtk.StringList)
-    def plain(self) -> Gtk.StringList | None:
-        """Get the plain, text-only fields of the form."""
-        return self._fields.get(FormField.PLAIN)
+    @property
+    def valid(self) -> bool:
+        """Whether all fields in the form are valid."""
+        return all(field.valid for field in self._fields if field.active)
 
-    @plain.setter
-    def plain(self, fields: Gtk.StringList) -> None:
-        self._assign_fields(FormField.PLAIN, fields)
+    def do_add_child(self, _builder: Any, field: GObject.Object, _type: Any) -> None:
+        """Add a child to `self`."""
+        if not isinstance(field, FormField):
+            msg = "Children of `Form` must be `FormField`"
+            raise TypeError(msg)
 
-    @GObject.Property(type=Gtk.StringList)
-    def addresses(self) -> Gtk.StringList | None:
-        """Get fields of the form for addresses."""
-        return self._fields.get(FormField.ADDRESS)
+        self._fields.append(field)
 
-    @addresses.setter
-    def addresses(self, fields: Gtk.StringList) -> None:
-        self._assign_fields(FormField.ADDRESS, fields)
+    def do_parser_finished(self, *_args: Any) -> None:
+        """Call when a builder finishes the parsing of a UI definition."""
+        for field in self._fields:
+            field.connect("notify::valid", lambda *_: self._verify())
+            field.connect("notify::active", lambda *_: self._verify())
+            field.validate()
 
-    @GObject.Property(type=Gtk.StringList)
-    def address_lists(self) -> Gtk.StringList | None:
-        """Get fields of the form for comma-separated lists of addresses."""
-        return self._fields.get(FormField.ADDRESS_LIST)
+    def _verify(self) -> None:
+        if isinstance(self.submit_widget, Adw.AlertDialog):
+            if not (default := self.submit_widget.props.default_response):
+                msg = "`Adw.AlertDialog` must have a `default-response` for `Form`"
+                raise AttributeError(msg)
 
-    @address_lists.setter
-    def address_lists(self, fields: Gtk.StringList) -> None:
-        self._assign_fields(FormField.ADDRESS_LIST, fields)
+            self.submit_widget.set_response_enabled(default, self.valid)
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self._fields = {}
+        elif isinstance(self.submit_widget, Adw.EntryRow):
+            if self.valid:
+                self.submit_widget.remove_css_class("error")
+            else:
+                self.submit_widget.add_css_class("error")
+
+        elif self.submit_widget:
+            self.submit_widget.props.sensitive = self.valid
 
     def reset(self) -> None:
         """Reset the state of the form.
 
         Useful for reusable widgets after submission.
         """
-        for fields in self._fields.values():
-            for field in fields:
-                if not hasattr(self.form, field.props.string):
-                    continue
-
-                getattr(self.form, field.props.string).props.text = ""
-
-    def _assign_fields(self, form_field: FormField, fields: Gtk.StringList) -> None:
-        self._fields[form_field] = fields
-
-        if self.form.get_realized():
-            self._setup()
-            return
-
-        self.form.connect("realize", self._setup)
-
-    def _setup(self, *_args: Any) -> None:
-        with suppress(TypeError):
-            self.form.disconnect_by_func(self._setup)
-
-        self.invalid = set()
-
-        for form_field, fields in self._fields.items():
-            for field in fields:
-                try:
-                    widget = getattr(self.form, field.props.string)
-                except AttributeError:
-                    continue
-
-                widget.connect("changed", self._validate, form_field)
-                self._validate(widget, form_field)
-
-        self._verify()
-
-    def _validate(
-        self,
-        field: Gtk.Editable | Gtk.TextBuffer,
-        form_field: FormField,
-    ) -> None:
-        text = field.props.text
-
-        match form_field:
-            case FormField.PLAIN:
-                (self._valid if text else self._invalid)(field)
-
-            case FormField.ADDRESS:
-                try:
-                    Address(text)
-                except ValueError:
-                    self._invalid(field)
-                    return
-
-                self._valid(field)
-
-            case FormField.ADDRESS_LIST:
-                if not (
-                    addresses := tuple(
-                        address
-                        for address in re.split(ADDRESS_SPLIT_PATTERN, text)
-                        if address
-                    )
-                ):
-                    self._invalid(field)
-                    return
-
-                try:
-                    tuple(map(Address, addresses))
-                except ValueError:
-                    self._invalid(field)
-                else:
-                    self._valid(field)
-
-    def _verify(self) -> None:
-        if isinstance(self.submit, Adw.AlertDialog):
-            if not (default := self.submit.props.default_response):
-                return
-
-            self.submit.set_response_enabled(default, not self.invalid)
-            return
-
-        if isinstance(self.submit, Adw.EntryRow):
-            (
-                self.submit.add_css_class
-                if self.invalid
-                else self.submit.remove_css_class
-            )("error")
-            return
-
-        if isinstance(self.submit, Gtk.Widget):
-            self.submit.props.sensitive = not self.invalid
-
-    def _valid(self, editable: Gtk.Editable | Gtk.TextBuffer) -> None:
-        self.invalid.discard(editable)
-        self._verify()
-
-    def _invalid(self, editable: Gtk.Editable | Gtk.TextBuffer) -> None:
-        self.invalid.add(editable)
-        self._verify()
+        for field in self._fields:
+            field.text = ""

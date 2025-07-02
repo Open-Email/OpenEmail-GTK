@@ -103,12 +103,10 @@ Adw.AlertDialog add_contact_dialog {
 }
 
 $Form address_form {
-  form: template;
-  submit: add_contact_dialog;
+  submit-widget: add_contact_dialog;
 
-  addresses: StringList {
-    strings [
-      "address",
-    ]
-  };
+  $FormField {
+    widget: address;
+    type: address;
+  }
 }

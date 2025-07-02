@@ -39,22 +39,10 @@ class ComposeDialog(Adw.Dialog):
     subject_id: str | None = None
     ident: str | None = None
 
-    _privacy: str = "private"
+    privacy = GObject.Property(type=str, default="private")
+
     _save: bool = True
     _completion_running = False
-
-    @GObject.Property(type=str)
-    def privacy(self) -> str:
-        """Return "public" for broadcasts, "private" otherwise."""
-        return self._privacy
-
-    @privacy.setter
-    def privacy(self, privacy: str) -> None:
-        self._privacy = privacy
-
-        self.compose_form.address_lists = Gtk.StringList.new(
-            ("readers",) if self.privacy == "private" else ()
-        )
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -296,6 +284,10 @@ class ComposeDialog(Adw.Dialog):
 
         self.body.end_user_action()
         self.body_view.grab_focus()
+
+    @Gtk.Template.Callback()
+    def _get_readers_field_active(self, _obj: Any, privacy: str) -> bool:
+        return privacy == "private"
 
     @Gtk.Template.Callback()
     def _closed(self, *_args: Any) -> None:

@@ -141,12 +141,9 @@ template $ProfileSettings: Adw.PreferencesDialog {
 }
 
 $Form name_form {
-  form: template;
-  submit: name;
+  submit-widget: name;
 
-  plain: StringList {
-    strings [
-      "name",
-    ]
-  };
+  $FormField {
+    widget: name;
+  }
 }

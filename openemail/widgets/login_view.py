@@ -41,7 +41,7 @@ class LoginView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _log_in(self, *_args: Any) -> None:
-        if self.email_form.invalid:
+        if not self.email_form.valid:
             return
 
         self.navigation_view.push_by_tag("keys")
@@ -83,7 +83,7 @@ class LoginView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _authenticate(self, *_args: Any) -> None:
-        if self.auth_form.invalid:
+        if not self.auth_form.valid:
             return
 
         try:
