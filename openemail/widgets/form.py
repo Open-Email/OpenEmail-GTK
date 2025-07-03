@@ -94,8 +94,9 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
         super().__init__()
 
         self._fields: list[FormField] = []
+        self.connect("notify::valid", lambda *_: self._verify())
 
-    @property
+    @GObject.Property(type=bool, default=False)
     def valid(self) -> bool:
         """Whether all fields in the form are valid."""
         return all(field.valid for field in self._fields if field.active)
@@ -111,8 +112,8 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
     def do_parser_finished(self, *_args: Any) -> None:
         """Call when a builder finishes the parsing of a UI definition."""
         for field in self._fields:
-            field.connect("notify::valid", lambda *_: self._verify())
-            field.connect("notify::active", lambda *_: self._verify())
+            field.connect("notify::valid", lambda *_: self.notify("valid"))
+            field.connect("notify::active", lambda *_: self.notify("valid"))
             field.validate()
 
     def _verify(self) -> None:
