@@ -94,7 +94,7 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
         super().__init__()
 
         self._fields: list[FormField] = []
-        self.connect("notify::valid", lambda *_: self._verify())
+        self.connect("notify::valid", lambda *_: self._update_submit_widget())
 
     @GObject.Property(type=bool, default=False)
     def valid(self) -> bool:
@@ -116,7 +116,7 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
             field.connect("notify::active", lambda *_: self.notify("valid"))
             field.validate()
 
-    def _verify(self) -> None:
+    def _update_submit_widget(self) -> None:
         if isinstance(self.submit_widget, Adw.AlertDialog):
             if not (default := self.submit_widget.props.default_response):
                 msg = "`Adw.AlertDialog` must have a `default-response` for `Form`"
