@@ -38,8 +38,6 @@ class FormField(GObject.Object):
 
     @widget.setter
     def widget(self, widget: Gtk.Widget) -> None:
-        self._widget = widget
-
         if isinstance(widget, Gtk.Editable):
             text = widget
         elif isinstance(widget, Gtk.TextView):
@@ -50,6 +48,8 @@ class FormField(GObject.Object):
 
         text.bind_property("text", self, "text", GObject.BindingFlags.BIDIRECTIONAL)
         text.connect("notify::text", lambda *_: self.validate())
+
+        self._widget = widget
 
     def validate(self) -> None:
         """Validate the form field."""
