@@ -97,9 +97,8 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
         super().__init__()
 
         self._fields: list[FormField] = []
-        self.connect("notify::valid", lambda *_: self._update_submit_widget())
 
-    @GObject.Property(type=bool, default=False)
+    @property
     def valid(self) -> bool:
         """Whether all fields in the form are valid."""
         return all(field.valid for field in self._fields if field.active)
@@ -115,14 +114,14 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
     def do_parser_finished(self, *_args: Any) -> None:
         """Call when a builder finishes the parsing of a UI definition."""
         for field in self._fields:
-            field.connect("notify::valid", lambda *_: self.notify("valid"))
-            field.connect("notify::active", lambda *_: self.notify("valid"))
+            field.connect("notify::valid", lambda *_: self._update_submit_widget())
+            field.connect("notify::active", lambda *_: self._update_submit_widget())
             field.validate()
 
     def _update_submit_widget(self) -> None:
         if isinstance(self.submit_widget, Adw.AlertDialog):
             if not (default := self.submit_widget.props.default_response):
-                msg = "Form.submit-widget must have Adw.AlertDialog.default-response"
+                msg = "Form.submit-widget as Adw.AlertDialog must have default-response"
                 raise AttributeError(msg)
 
             self.submit_widget.set_response_enabled(default, self.valid)
