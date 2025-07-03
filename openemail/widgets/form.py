@@ -78,6 +78,10 @@ class FormField(GObject.Object):
                 else:
                     self.valid = True
 
+    def reset(self) -> None:
+        """Reset the form field."""
+        self.text = ""
+
 
 class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatibleMethodOverride]
     """An abstract representation of a form in UI with validation."""
@@ -134,4 +138,4 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
         Useful for reusable widgets after submission.
         """
         for field in self._fields:
-            field.text = ""
+            field.reset()
