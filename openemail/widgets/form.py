@@ -32,24 +32,27 @@ class FormField(GObject.Object):
     text = GObject.Property(type=str)
 
     @GObject.Property(type=Gtk.Widget)
-    def widget(self) -> Gtk.Widget:
-        """Get the widget containing the text."""
-        return self._widget
+    def field(self) -> Gtk.Widget:
+        """Get the field containing the text."""
+        return self._field
 
-    @widget.setter
-    def widget(self, widget: Gtk.Widget) -> None:
-        if isinstance(widget, Gtk.Editable):
-            text = widget
-        elif isinstance(widget, Gtk.TextView):
-            text = widget.props.buffer
+    @field.setter
+    def field(self, field: Gtk.Widget) -> None:
+        if isinstance(field, Gtk.Editable):
+            field.bind_property(
+                "text", self, "text", GObject.BindingFlags.BIDIRECTIONAL
+            )
+            field.connect("notify::text", lambda *_: self.validate())
+        elif isinstance(field, Gtk.TextView):
+            field.props.buffer.bind_property(
+                "text", self, "text", GObject.BindingFlags.BIDIRECTIONAL
+            )
+            field.props.buffer.connect("notify::text", lambda *_: self.validate())
         else:
-            msg = "FormField.widget must be Gtk.Editable or Gtk.TextView"
+            msg = "FormField.field must be Gtk.Editable or Gtk.TextView"
             raise TypeError(msg)
 
-        text.bind_property("text", self, "text", GObject.BindingFlags.BIDIRECTIONAL)
-        text.connect("notify::text", lambda *_: self.validate())
-
-        self._widget = widget
+        self._field = field
 
     def validate(self) -> None:
         """Validate the form field."""
@@ -94,9 +97,8 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
         super().__init__()
 
         self._fields: list[FormField] = []
-        self.connect("notify::valid", lambda *_: self._update_submit_widget())
 
-    @GObject.Property(type=bool, default=False)
+    @property
     def valid(self) -> bool:
         """Whether all fields in the form are valid."""
         return all(field.valid for field in self._fields if field.active)
@@ -104,7 +106,7 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
     def do_add_child(self, _builder: Any, field: GObject.Object, _type: Any) -> None:
         """Add a child to `self`."""
         if not isinstance(field, FormField):
-            msg = "Children of `Form` must be `FormField`"
+            msg = "Children of Form must be FormField"
             raise TypeError(msg)
 
         self._fields.append(field)
@@ -112,14 +114,14 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
     def do_parser_finished(self, *_args: Any) -> None:
         """Call when a builder finishes the parsing of a UI definition."""
         for field in self._fields:
-            field.connect("notify::valid", lambda *_: self.notify("valid"))
-            field.connect("notify::active", lambda *_: self.notify("valid"))
+            field.connect("notify::valid", lambda *_: self._update_submit_widget())
+            field.connect("notify::active", lambda *_: self._update_submit_widget())
             field.validate()
 
     def _update_submit_widget(self) -> None:
         if isinstance(self.submit_widget, Adw.AlertDialog):
             if not (default := self.submit_widget.props.default_response):
-                msg = "`Adw.AlertDialog` must have a `default-response` for `Form`"
+                msg = "Form.submit-widget as Adw.AlertDialog must have default-response"
                 raise AttributeError(msg)
 
             self.submit_widget.set_response_enabled(default, self.valid)

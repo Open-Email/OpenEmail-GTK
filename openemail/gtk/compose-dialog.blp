@@ -237,16 +237,16 @@ $Form compose_form {
   submit-widget: send_button;
 
   $FormField {
-    widget: readers;
+    field: readers;
     type: address-list;
     active: bind $_get_readers_field_active(template.privacy) as <bool>;
   }
 
   $FormField {
-    widget: subject;
+    field: subject;
   }
 
   $FormField {
-    widget: body_view;
+    field: body_view;
   }
 }

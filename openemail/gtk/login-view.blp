@@ -242,7 +242,7 @@ $Form email_form {
   submit-widget: log_in_button;
 
   $FormField {
-    widget: email_entry;
+    field: email_entry;
     type: address;
   }
 }
@@ -251,7 +251,7 @@ $Form register_form {
   submit-widget: register_button;
 
   $FormField {
-    widget: user_name_entry;
+    field: user_name_entry;
   }
 }
 
@@ -259,10 +259,10 @@ $Form auth_form {
   submit-widget: auth_button;
 
   $FormField {
-    widget: encryption_key_entry;
+    field: encryption_key_entry;
   }
 
   $FormField {
-    widget: signing_key_entry;
+    field: signing_key_entry;
   }
 }
