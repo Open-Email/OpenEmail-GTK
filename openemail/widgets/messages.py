@@ -61,7 +61,7 @@ class _Messages(Adw.NavigationPage):
 
 
 class _Folder(_Messages):
-    folder: DictStore
+    folder: DictStore[str, Message]
     title: str
 
     def __init__(self, **kwargs: Any) -> None:

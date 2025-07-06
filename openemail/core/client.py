@@ -7,7 +7,6 @@ import json
 import logging
 from base64 import b64encode
 from collections.abc import AsyncGenerator, Generator, Iterable, Sequence
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
@@ -50,68 +49,84 @@ class WriteError(Exception):
     """Raised if writing to the server fails."""
 
 
-@dataclass(slots=True)
 class DraftMessage:
     """A local message, saved as a draft."""
 
-    ident: str = field(default_factory=lambda: generate_ident(user.address))
-    author: Address = field(default_factory=lambda: user.address, init=False)
-    original_author: Address = field(default_factory=lambda: user.address, init=False)
-    date: datetime = field(default_factory=lambda: datetime.now(UTC))
-    subject: str = ""
-    subject_id: str | None = None
-
-    readers: list[Address] = field(default_factory=list)
-    access_key: bytes | None = field(init=False, default=None)
-
-    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
-    children: list[Message] = field(init=False, default_factory=list)
-    file: AttachmentProperties | None = field(default=None)
-    attachment_url: str | None = field(init=False, default=None)
-
-    body: str | None = field(default=None)
-    new: bool = field(default=False, init=False)
-
     @property
     def is_broadcast(self) -> bool:
         """Whether `self` is a broadcast."""
         return bool(self.readers)
 
+    def __init__(
+        self,
+        ident: str | None = None,
+        date: datetime | None = None,
+        subject: str = "",
+        subject_id: str | None = None,
+        readers: list[Address] | None = None,
+        body: str | None = None,
+    ) -> None:
+        self.ident = ident or generate_ident(user.address)
+        self.author = self.original_author = user.address
+        self.date = date or datetime.now(UTC)
+        self.subject = subject
+        self.subject_id = subject_id
 
-@dataclass(slots=True)
-class OutgoingMessage[T: OutgoingMessage]:
+        self.readers = readers or []
+        self.access_key: bytes | None = None
+
+        self.attachments = dict[str, list[DraftMessage]]()
+        self.children = list[DraftMessage]()
+        self.file: AttachmentProperties | None = None
+        self.attachment_url: str | None = None
+
+        self.body = body
+        self.new: bool = False
+
+
+class OutgoingMessage:
     """A local message, to be sent."""
 
-    ident: str = field(default_factory=lambda: generate_ident(user.address), init=False)
-    author: Address = field(default_factory=lambda: user.address, init=False)
-    original_author: Address = field(default_factory=lambda: user.address, init=False)
-    date: datetime = field(default_factory=lambda: datetime.now(UTC))
-    subject: str = ""
-    subject_id: str | None = None
-    headers: dict[str, str] = field(default_factory=dict, init=False)
-
-    readers: list[Address] = field(default_factory=list)
-    access_key: bytes | None = field(init=False, default=None)
-
-    files: dict[AttachmentProperties, bytes] = field(default_factory=dict)
-    attachments: dict[str, list[Message]] = field(init=False, default_factory=dict)
-    children: list[Message] = field(init=False, default_factory=list)
-    file: AttachmentProperties | None = field(default=None)
-    attachment_url: str | None = field(init=False, default=None)
-    parent_id: str | None = None
-
-    body: str | None = field(default=None)
-    new: bool = field(default=False, init=False)
-    sending: bool = field(default=False, init=False)
-
-    _content: bytes = b""
-
     @property
     def is_broadcast(self) -> bool:
         """Whether `self` is a broadcast."""
         return bool(self.readers)
 
-    def __post_init__(self) -> None:
+    def __init__(
+        self,
+        date: datetime | None = None,
+        subject: str = "",
+        subject_id: str | None = None,
+        readers: list[Address] | None = None,
+        files: dict[AttachmentProperties, bytes] | None = None,
+        file: AttachmentProperties | None = None,
+        attachment_url: str | None = None,
+        parent_id: str | None = None,
+        body: str | None = None,
+        content: bytes = b"",
+    ) -> None:
+        self.ident = generate_ident(user.address)
+        self.author = self.original_author = user.address
+        self.date = date or datetime.now(UTC)
+        self.subject = subject
+        self.subject_id = subject_id
+        self.headers = dict[str, str]()
+
+        self.readers = readers or []
+        self.access_key: bytes | None = None
+
+        self.files = files or {}
+        self.attachments = dict[str, list[OutgoingMessage]]()
+        self.children = list[OutgoingMessage]()
+        self.file = file
+        self.attachment_url = attachment_url
+        self.parent_id = parent_id
+
+        self.body = body
+        self.content = content
+        self.new: bool = False
+        self.sending: bool = False
+
         for props, data in self.files.items():
             self.attachments[props.name] = []
             for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
@@ -131,14 +146,14 @@ class OutgoingMessage[T: OutgoingMessage]:
                             or self.date.isoformat(timespec="seconds"),
                         ),
                         parent_id=self.ident,
-                        _content=data[start : start + MAX_MESSAGE_SIZE],
+                        content=data[start : start + MAX_MESSAGE_SIZE],
                     )
                 )
 
         if not self.body:
             return
 
-        self._content = self.body.encode("utf-8")
+        self.content = self.body.encode("utf-8")
 
     async def send(self) -> None:
         """Send `self` to `self.readers`."""
@@ -153,7 +168,7 @@ class OutgoingMessage[T: OutgoingMessage]:
                     _Home(agent, user.address).messages,
                     auth=True,
                     headers=self.headers,
-                    data=self._content,
+                    data=self.content,
                 ):
                     logger.error("Failed sending message")
                     self.sending = False
@@ -164,8 +179,7 @@ class OutgoingMessage[T: OutgoingMessage]:
 
             async with asyncio.TaskGroup() as tg:
                 for part in chain.from_iterable(self.attachments.values()):
-                    if isinstance(part, OutgoingMessage):
-                        tg.create_task(part.send())
+                    tg.create_task(part.send())
 
         except ValueError as error:
             logger.exception("Error sending message")
@@ -188,11 +202,11 @@ class OutgoingMessage[T: OutgoingMessage]:
                 "Id": self.headers["Message-Id"],
                 "Author": str(user.address),
                 "Date": self.date.isoformat(timespec="seconds"),
-                "Size": str(len(self._content)),
+                "Size": str(len(self.content)),
                 "Checksum": to_attrs(
                     {
                         "algorithm": crypto.CHECKSUM_ALGORITHM,
-                        "value": sha256(self._content).hexdigest(),
+                        "value": sha256(self.content).hexdigest(),
                     }
                 ),
                 "Subject": self.subject,
@@ -219,8 +233,8 @@ class OutgoingMessage[T: OutgoingMessage]:
                 raise ValueError(msg) from error
 
             try:
-                self._content = crypto.encrypt_xchacha20poly1305(
-                    self._content, self.access_key
+                self.content = crypto.encrypt_xchacha20poly1305(
+                    self.content, self.access_key
                 )
                 headers_bytes = crypto.encrypt_xchacha20poly1305(
                     headers_bytes, self.access_key
@@ -256,7 +270,7 @@ class OutgoingMessage[T: OutgoingMessage]:
 
         self.headers.update(
             {
-                "Content-Length": str(len(self._content)),
+                "Content-Length": str(len(self.content)),
                 "Message-Checksum": to_attrs(
                     {
                         "algorithm": crypto.CHECKSUM_ALGORITHM,
@@ -279,7 +293,7 @@ class OutgoingMessage[T: OutgoingMessage]:
         readers: Iterable[Address],
         access_key: bytes,
     ) -> tuple[str, ...]:
-        access: list[str] = []
+        access = list[str]()
         for reader in (*readers, user.address):
             if not (
                 (profile := await fetch_profile(reader))
@@ -401,7 +415,7 @@ async def request(
     return response
 
 
-_agents: dict[str, tuple[str, ...]] = {}
+_agents = dict[str, tuple[str, ...]]()
 
 
 async def get_agents(address: Address) -> tuple[str, ...]:
@@ -609,7 +623,7 @@ async def fetch_contacts() -> set[tuple[Address, bool]]:
     Returns their addresses and whether broadcasts should be received from them.
     """
     logger.debug("Fetching contact list…")
-    addresses = []
+    addresses = list[tuple[Address, bool]]()
 
     for agent in await get_agents(user.address):
         if not (response := await request(_Home(agent, user.address).links, auth=True)):
@@ -810,7 +824,7 @@ async def notify_readers(readers: Iterable[Address]) -> None:
         logger.warning("Failed notifying %s", reader)
 
 
-async def fetch_notifications() -> AsyncGenerator[Notification, None]:
+async def fetch_notifications() -> AsyncGenerator[Notification]:
     """Fetch all of `client.user`'s new notifications.
 
     Note that this generator assumes that you process all notifications yielded by it.
@@ -837,7 +851,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification, None]:
             with notifications_path.open("r") as file:
                 notifications = set(json.load(file))
         except (FileNotFoundError, JSONDecodeError, ValueError):
-            notifications = set()
+            notifications = set[str]()
 
         for notification in contents.split("\n"):
             if not (stripped := notification.strip()):
@@ -894,7 +908,7 @@ def save_draft(draft: DraftMessage) -> None:
     logger.debug("Draft saved as %s.json", draft.ident)
 
 
-def load_drafts() -> Generator[DraftMessage, None, None]:
+def load_drafts() -> Generator[DraftMessage]:
     """Load all drafts saved to disk.
 
     See `save_draft()`.
@@ -1165,12 +1179,12 @@ async def _fetch_idents(author: Address, *, broadcasts: bool = False) -> set[str
         path /= "broadcasts"
 
     if author == user.address:
-        local_ids = set()
+        local_ids = set[str]()
     else:
         try:
             local_ids = {p.stem for p in path.iterdir() if p.suffix == ".json"}
         except FileNotFoundError:
-            local_ids = set()
+            local_ids = set[str]()
 
     for agent in await get_agents(user.address):
         if not (
@@ -1208,7 +1222,7 @@ async def _fetch_messages(
     broadcasts: bool = False,
     exclude: Iterable[str] = (),
 ) -> tuple[IncomingMessage, ...]:
-    messages: dict[str, IncomingMessage] = {}
+    messages = dict[str, IncomingMessage]()
     for ident in await _fetch_idents(author, broadcasts=broadcasts):
         for agent in await get_agents(user.address):
             if message := await _fetch_message_from_agent(

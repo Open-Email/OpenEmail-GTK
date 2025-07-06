@@ -5,7 +5,7 @@
 import re
 from base64 import b64decode
 from contextlib import suppress
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, fields
 from datetime import UTC, date, datetime
 from hashlib import sha256
 from itertools import chain
@@ -150,8 +150,8 @@ class Message(Protocol):
     readers: list[Address]
     access_key: bytes | None
 
-    attachments: dict[str, list["Message"]]
-    children: list["Message"]
+    attachments: dict[str, list[Self]]
+    children: list[Self]
     file: AttachmentProperties | None
     attachment_url: str | None
 
@@ -164,33 +164,8 @@ class Message(Protocol):
         raise NotImplementedError
 
 
-@dataclass(slots=True)
 class IncomingMessage:
     """A remote message."""
-
-    ident: str
-    author: Address
-    original_author: Address = field(init=False)
-    date: datetime = field(init=False)
-    checksum: str | None = field(init=False, default=None)
-    subject: str = field(init=False)
-    subject_id: str | None = field(init=False, default=None)
-    headers: dict[str, str]
-
-    readers: list[Address] = field(init=False, default_factory=list)
-    access_links: str | None = field(init=False, default=None)
-    access_key: bytes | None = field(init=False, default=None)
-    private_key: Key
-
-    files: dict[str, AttachmentProperties] = field(init=False, default_factory=dict)
-    attachments: dict[str, list[Self]] = field(init=False, default_factory=dict)
-    children: list[Self] = field(init=False, default_factory=list)
-    file: AttachmentProperties | None = field(init=False, default=None)
-    attachment_url: str | None = None
-    parent_id: str | None = field(init=False, default=None)
-
-    body: str | None = None
-    new: bool = False
 
     @property
     def is_broadcast(self) -> bool:
@@ -202,11 +177,39 @@ class IncomingMessage:
         """Whether `self` is a child."""
         return bool(self.parent_id)
 
-    def __post_init__(self) -> None:
+    def __init__(
+        self,
+        ident: str,
+        author: Address,
+        headers: dict[str, str],
+        private_key: Key,
+        new: bool = False,
+    ) -> None:
+        self.ident = ident
+        self.author = author
+        self.original_author: Address
+        self.date: datetime
+        self.checksum: str | None = None
+        self.subject: str
+        self.subject_id: str | None = None
+        self.headers = {k.lower(): v.strip() for k, v in headers.items()}
+
+        self.readers = list[Address]()
+        self.access_links: str | None = None
+        self.access_key: bytes | None = None
+        self.private_key = private_key
+
+        self.files = dict[str, AttachmentProperties]()
+        self.attachments = dict[str, list[IncomingMessage]]()
+        self.children = list[IncomingMessage]()
+        self.file: AttachmentProperties | None = None
+        self.attachment_url: str | None = None
+        self.parent_id: str | None = None
+
+        self.body: str | None = None
+        self.new = new
+
         message_headers: str | None = None
-
-        self.headers = {k.lower(): v.strip() for k, v in self.headers.items()}
-
         for key, value in self.headers.items():
             match key:
                 case "message-access":
@@ -231,6 +234,9 @@ class IncomingMessage:
 
                 case "message-checksum":
                     self.checksum = value
+
+                case _:
+                    pass
 
         if not message_headers:
             msg = "Empty message headers"
@@ -366,7 +372,7 @@ class IncomingMessage:
 
         Should only be called after all children have been fetched and added.
         """
-        parts: list[Self] = []
+        parts = list[IncomingMessage]()
 
         for child in self.children:
             if not (child.parent_id and (child.parent_id == self.ident)):
@@ -390,8 +396,7 @@ class IncomingMessage:
             self.body = (self.body or "") + (part.body or "")
 
 
-@dataclass(slots=True)
-class Notification:
+class Notification(NamedTuple):
     """A Mail/HTTPS notification."""
 
     ident: str

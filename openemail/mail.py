@@ -12,7 +12,7 @@ from datetime import UTC, date, datetime
 from functools import partial
 from itertools import chain
 from shutil import rmtree
-from typing import Any, ClassVar, NamedTuple, cast
+from typing import Any, ClassVar, NamedTuple, Self, cast
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
@@ -21,7 +21,7 @@ from openemail import Notifier, run_task, secret_service, settings
 
 from .core import client, model
 from .core.client import WriteError, user
-from .core.crypto import KeyPair  # noqa: F401
+from .core.crypto import KeyPair
 from .core.model import Address
 from .dict_store import DictStore
 
@@ -270,7 +270,7 @@ class _AddressBook(ProfileStore):
 
     async def _update(self) -> None:
         """Update `self` from remote data asynchronously."""
-        contacts: set[Address] = set()
+        contacts = set[Address]()
 
         for contact, receives_broadcasts in await client.fetch_contacts():
             contacts.add(contact)
@@ -346,7 +346,7 @@ class Attachment(GObject.Object):
         )
 
 
-class OutgoingAttachment[T: OutgoingAttachment](Attachment):
+class OutgoingAttachment(Attachment):
     """An attachment that has not yet been sent."""
 
     gfile = GObject.Property(type=Gio.File)
@@ -362,7 +362,7 @@ class OutgoingAttachment[T: OutgoingAttachment](Attachment):
         Gio.AppInfo.launch_default_for_uri(self.gfile.get_uri())
 
     @classmethod
-    async def from_file(cls: type[T], gfile: Gio.File) -> T:
+    async def from_file(cls, gfile: Gio.File) -> Self:
         """Create an outgoing attachment from `gfile`.
 
         Raises ValueError if `gfile` doesn't have all required attributes.
@@ -402,9 +402,7 @@ class OutgoingAttachment[T: OutgoingAttachment](Attachment):
         )
 
     @classmethod
-    async def choose(
-        cls: type[T], parent: Gtk.Widget | None = None
-    ) -> AsyncGenerator[T, None]:
+    async def choose(cls, parent: Gtk.Widget | None = None) -> AsyncGenerator[Self]:
         """Prompt the user to choose a attachments using the file picker."""
         try:
             gfiles = await cast(
@@ -481,11 +479,11 @@ class IncomingAttachment(Attachment):
                 flags=Gio.FileCreateFlags.REPLACE_DESTINATION,
             )
             await cast(
-                "Awaitable",
+                "Awaitable[int]",
                 stream.write_bytes_async(GLib.Bytes.new(data), GLib.PRIORITY_DEFAULT),
             )
             await cast(
-                "Awaitable",
+                "Awaitable[bool]",
                 stream.close_async(GLib.PRIORITY_DEFAULT),
             )
 
@@ -570,9 +568,6 @@ class Message(GObject.Object):
         if not message:
             return
 
-        if isinstance(message, client.DraftMessage):
-            self.draft_id = message.ident
-
         local_date = message.date.astimezone(
             datetime.now(UTC).astimezone().tzinfo,
         )
@@ -626,6 +621,9 @@ class Message(GObject.Object):
         self._image_binding = Profile.of(message.author).bind_property(
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
+
+        if isinstance(message, client.DraftMessage):
+            self.draft_id = message.ident
 
     def trash(self) -> None:
         """Move `self` to the trash."""
@@ -760,9 +758,9 @@ class MessageStore(DictStore[str, Message]):
 
     async def _update(self) -> None:
         """Update `self` asynchronously using `self._fetch()`."""
-        idents: set[str] = set()
+        idents = set[str]()
 
-        async for message in self._fetch():  # pyright: ignore[reportGeneralTypeIssues]
+        async for message in self._fetch():
             ident = _ident(message)
 
             idents.add(ident)
@@ -782,12 +780,12 @@ class MessageStore(DictStore[str, Message]):
             removed += 1
 
     @abstractmethod
-    async def _fetch(self) -> ...: ...
+    def _fetch(self) -> AsyncGenerator[model.Message]: ...
 
     async def _process_messages(
         self, futures: Iterable[Awaitable[Iterable[model.Message]]]
-    ) -> AsyncGenerator[model.Message, None]:
-        unread = set()
+    ) -> AsyncGenerator[model.Message]:
+        unread = set[str]()
         # TODO: Replace with async for in 3.13, not supported in 3.12
         for messages in asyncio.as_completed(futures):
             # This is async iteration, we don't want a data race
@@ -809,7 +807,7 @@ class MessageStore(DictStore[str, Message]):
 
 
 class _BroadcastStore(MessageStore):
-    async def _fetch(self) -> ...:
+    async def _fetch(self) -> AsyncGenerator[model.Message]:
         deleted = settings.get_strv("deleted-messages")
         async for message in self._process_messages(
             client.fetch_broadcasts(  # pyright: ignore[reportArgumentType]
@@ -827,8 +825,8 @@ class _BroadcastStore(MessageStore):
 
 
 class _InboxStore(MessageStore):
-    async def _fetch(self) -> ...:
-        known_notifiers = set()
+    async def _fetch(self) -> AsyncGenerator[model.Message]:
+        known_notifiers = set[Address]()
         other_contacts = {Address(contact.address) for contact in address_book}
 
         async for notification in client.fetch_notifications():
@@ -868,7 +866,7 @@ class _InboxStore(MessageStore):
 
 
 class _OutboxStore(MessageStore):
-    async def _fetch(self) -> ...:
+    async def _fetch(self) -> AsyncGenerator[model.Message]:
         for message in await client.fetch_outbox():
             message.new = False  # New outbox messages should be marked read
             yield message
@@ -890,7 +888,7 @@ class _DraftStore(MessageStore):
         `ident` can be used to update a specific draft,
         by default, a new ID is generated.
         """
-        readers_list = []
+        readers_list = list[Address]()
         if readers:
             for reader in re.split(ADDRESS_SPLIT_PATTERN, readers):
                 try:
@@ -920,7 +918,7 @@ class _DraftStore(MessageStore):
         client.delete_all_drafts()
         self.clear()
 
-    async def _fetch(self) -> ...:
+    async def _fetch(self) -> AsyncGenerator[model.Message]:
         for message in tuple(client.load_drafts()):
             yield message
 
@@ -1107,10 +1105,16 @@ async def update_user_profile() -> None:
     user_profile.set_from_profile(profile := await client.fetch_profile(user.address))
 
     if profile:
-        user.signing_keys.public = profile.signing_key
+        user.signing_keys = KeyPair(
+            user.signing_keys.private,
+            profile.signing_key,
+        )
 
         if profile.encryption_key:
-            user.encryption_keys.public = profile.encryption_key
+            user.encryption_keys = KeyPair(
+                user.encryption_keys.private,
+                profile.encryption_key,
+            )
 
     try:
         user_profile.image = Gdk.Texture.new_from_bytes(
@@ -1152,7 +1156,7 @@ async def send_message(
     """
     Notifier().sending = True
 
-    files = {}
+    files = dict[model.AttachmentProperties, bytes]()
     for attachment in attachments:
         try:
             _success, data, _etag = await cast(
@@ -1167,7 +1171,6 @@ async def send_message(
         files[
             model.AttachmentProperties(
                 name=attachment.name,
-                # TODO: This is bad API
                 ident=model.generate_ident(client.user.address),
                 type=attachment.type,
                 modified=attachment.modified,
@@ -1246,8 +1249,8 @@ def _ident(message: model.Message) -> str:
 
 
 if interval := settings.get_uint("empty-trash-interval"):
-    deleted = set()
-    new_trashed = []
+    deleted = set[str]()
+    new_trashed = list[str]()
 
     today = datetime.now(UTC).date()
     for message in settings.get_strv("trashed-messages"):

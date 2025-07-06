@@ -4,7 +4,7 @@
 # SPDX-FileContributor: Jamie Gravendeel
 
 import re
-from typing import Any
+from typing import Any, cast
 
 from gi.repository import Adw, GObject, Gtk
 
@@ -56,7 +56,7 @@ class FormField(GObject.Object):
 
     def validate(self) -> None:
         """Validate the form field."""
-        match self.type:
+        match cast("FormFieldType", self.type):
             case FormFieldType.PLAIN:
                 self.valid = bool(self.text)
 
@@ -96,7 +96,7 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
     def __init__(self) -> None:
         super().__init__()
 
-        self._fields: list[FormField] = []
+        self._fields = list[FormField]()
 
     @property
     def valid(self) -> bool:

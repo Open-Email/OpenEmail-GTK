@@ -106,5 +106,5 @@ class MessageView(Adw.Bin):
         callback()
 
     def _add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
-        toast = Notifier.send(title, lambda *_: self._history.pop(toast, lambda: ...)())
+        toast = Notifier.send(title, lambda *_: self._history.pop(toast, lambda: ...)())  # pyright: ignore[reportUnknownArgumentType]
         self._history[toast] = undo

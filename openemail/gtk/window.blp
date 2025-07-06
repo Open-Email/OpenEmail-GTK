@@ -26,4 +26,11 @@ template $Window: Adw.ApplicationWindow {
       }
     };
   };
+
+  ShortcutController {
+    Shortcut {
+      trigger: "<primary>w";
+      action: "action(window.close)";
+    }
+  }
 }

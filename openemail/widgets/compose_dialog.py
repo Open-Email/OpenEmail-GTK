@@ -119,7 +119,7 @@ class ComposeDialog(Adw.Dialog):
                 end = contact.address[len(start) :]
 
                 self._completion_running = True
-                readers.insert_text(end, pos)
+                readers.insert_text(end, pos)  # pyright: ignore[reportUnknownMemberType]
                 self._completion_running = False
 
                 readers.select_region(pos, pos + len(end))
@@ -129,8 +129,8 @@ class ComposeDialog(Adw.Dialog):
 
     @Gtk.Template.Callback()
     def _send_message(self, *_args: Any) -> None:
-        readers: list[Address] = []
-        warnings: dict[Address, str | None] = {}
+        readers = list[Address]()
+        warnings = dict[Address, str | None]()
         if self.privacy == "private":
             for reader in re.split(ADDRESS_SPLIT_PATTERN, self.readers.props.text):
                 if not reader:

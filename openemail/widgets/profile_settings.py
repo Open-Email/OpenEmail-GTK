@@ -109,7 +109,7 @@ class ProfileSettings(Adw.PreferencesDialog):
 
         mail.user_profile.connect(
             "notify::updating",
-            lambda p, _: self.set_property("profile", None if p.updating else p),
+            lambda p, _: self.set_property("profile", None if p.updating else p),  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
         )
 
     @Gtk.Template.Callback()

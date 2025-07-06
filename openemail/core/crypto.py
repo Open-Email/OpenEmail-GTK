@@ -3,10 +3,9 @@
 # SPDX-FileContributor: kramo
 
 from base64 import b64decode, b64encode
-from dataclasses import dataclass
 from hashlib import sha256
 from secrets import choice, token_bytes
-from typing import NamedTuple
+from typing import NamedTuple, Self
 
 from nacl.bindings import (
     crypto_aead_xchacha20poly1305_ietf_decrypt,
@@ -42,15 +41,14 @@ class Key(NamedTuple):
         return b64encode(bytes(self)).decode("utf-8")
 
 
-@dataclass(slots=True)
-class KeyPair[T: KeyPair]:
+class KeyPair(NamedTuple):
     """A public-private keypair."""
 
     private: Key
     public: Key
 
     @classmethod
-    def from_b64(cls: type[T], b64: str) -> T:
+    def from_b64(cls, b64: str) -> Self:
         """Get the keypair for a given Base64-encoded string."""
         data = b64decode(b64.encode("utf-8"))
         match len(data):
@@ -63,7 +61,7 @@ class KeyPair[T: KeyPair]:
                 raise ValueError(msg)
 
     @classmethod
-    def for_encryption(cls: type[T]) -> T:
+    def for_encryption(cls) -> Self:
         """Generate a new keypair used for encryption."""
         return cls(
             Key(bytes(key := PrivateKey.generate())),
@@ -71,7 +69,7 @@ class KeyPair[T: KeyPair]:
         )
 
     @classmethod
-    def for_signing(cls: type[T]) -> T:
+    def for_signing(cls) -> Self:
         """Generate a new keypair used for signing."""
         return cls(Key(bytes(key := SigningKey.generate())), Key(bytes(key.verify_key)))
 

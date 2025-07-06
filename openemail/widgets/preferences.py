@@ -123,16 +123,16 @@ class Preferences(Adw.PreferencesDialog):
             self.domains.remove(self._domain_rows.pop())
 
         for domain in settings.get_strv("trusted-domains"):
-            (
-                remove_button := Gtk.Button(
-                    icon_name="edit-delete-symbolic",
-                    tooltip_text=_("Remove"),
-                    valign=Gtk.Align.CENTER,
-                    has_frame=False,
-                )
-            ).connect(
+            remove_button = Gtk.Button(
+                icon_name="edit-delete-symbolic",
+                tooltip_text=_("Remove"),
+                valign=Gtk.Align.CENTER,
+                has_frame=False,
+            )
+
+            remove_button.connect(
                 "clicked",
-                lambda _obj, domain: self._remove_domain(domain),
+                lambda _obj, domain: self._remove_domain(domain),  # pyright: ignore[reportUnknownArgumentType]
                 domain,
             )
 

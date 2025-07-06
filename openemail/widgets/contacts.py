@@ -9,7 +9,7 @@ from gi.repository import Adw, Gio, GObject, Gtk
 from openemail import PREFIX, mail, run_task
 from openemail.mail import Address
 
-from .contact_row import ContactRow  # noqa: F401
+from .contact_row import ContactRow  # noqa: F401 # pyright: ignore[reportUnusedImport]
 from .form import Form
 from .page import Page
 from .profile import ProfileView
