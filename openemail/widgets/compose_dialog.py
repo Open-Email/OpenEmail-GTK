@@ -8,7 +8,7 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import PREFIX, mail, run_task
+from openemail import PREFIX, mail, create_task
 from openemail.mail import (
     ADDRESS_SPLIT_PATTERN,
     Address,
@@ -175,7 +175,7 @@ class ComposeDialog(Adw.Dialog):
             mail.drafts.delete(self.ident)
             self.ident = None
 
-        run_task(
+        create_task(
             mail.send_message(
                 readers,
                 self.subject.props.text,
@@ -195,7 +195,7 @@ class ComposeDialog(Adw.Dialog):
 
     @Gtk.Template.Callback()
     def _attach_files(self, *_args: Any) -> None:
-        run_task(self._attach_files_task())
+        create_task(self._attach_files_task())
 
     @Gtk.Template.Callback()
     def _format_bold(self, *_args: Any) -> None:

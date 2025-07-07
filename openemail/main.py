@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
+import asyncio
 import json
 import logging
 import sys
@@ -10,6 +11,7 @@ from logging.handlers import RotatingFileHandler
 from typing import Any
 
 import keyring
+from gi.events import GLibEventLoopPolicy
 from gi.repository import Adw, Gio
 
 from openemail import APP_ID, PREFIX, log_file, mail, secret_service, settings
@@ -113,4 +115,5 @@ def main() -> int:
         ),
     )
 
+    asyncio.set_event_loop_policy(GLibEventLoopPolicy())
     return Application().run(sys.argv)
