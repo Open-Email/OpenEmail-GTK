@@ -30,6 +30,10 @@ MAX_PROFILE_IMAGE_DIMENSIONS = 800
 ADDRESS_SPLIT_PATTERN = ",|;| "
 
 
+def _ident(message: model.Message) -> str:
+    return f"{message.author.host_part} {message.ident}"
+
+
 class Profile(GObject.Object):
     """A GObject representation of a user profile."""
 
@@ -190,19 +194,7 @@ class ProfileStore(DictStore[Address, Profile]):
     """An implementation of `Gio.ListModel` for storing profiles."""
 
     item_type = Profile
-
-    def add(self, contact: Address, *, receives_broadcasts: bool = True) -> None:
-        """Manually add `contact` to `self`.
-
-        Note that this item will be removed after `update()` is called
-        and if is not part of the user's remote address book.
-        """
-        if contact in self._items:
-            return
-
-        Profile.of(contact).set_receives_broadcasts(receives_broadcasts)
-        self._items[contact] = Profile.of(contact)
-        self.items_changed(len(self._items) - 1, 0, 1)
+    default_factory = Profile.of
 
     async def update_profiles(self, *, trust_images: bool = True) -> None:
         """Update the profiles of contacts in the user's address book.
@@ -274,8 +266,9 @@ class _AddressBook(ProfileStore):
         contacts = set[Address]()
 
         for contact, receives_broadcasts in await client.fetch_contacts():
+            Profile.of(contact).set_receives_broadcasts(receives_broadcasts)
             contacts.add(contact)
-            self.add(contact, receives_broadcasts=receives_broadcasts)
+            self.add(contact)
 
         for address in self._items.copy():
             if address not in contacts:
@@ -776,14 +769,8 @@ class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
     item_type = Message
-
-    def add(self, message: model.Message) -> None:
-        """Manually add `message` to `self`."""
-        if _ident(message) in self._items:
-            return
-
-        self._items[_ident(message)] = Message(message)
-        self.items_changed(len(self._items) - 1, 0, 1)
+    key_for = _ident
+    default_factory = Message
 
     async def _update(self) -> None:
         """Update `self` asynchronously using `self._fetch()`."""
@@ -1271,10 +1258,6 @@ async def delete_account() -> None:
         return
 
     log_out()
-
-
-def _ident(message: model.Message) -> str:
-    return f"{message.author.host_part} {message.ident}"
 
 
 if interval := settings.get_uint("empty-trash-interval"):

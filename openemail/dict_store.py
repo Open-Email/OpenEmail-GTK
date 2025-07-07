@@ -3,7 +3,7 @@
 # SPDX-FileContributor: kramo
 
 from abc import abstractmethod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from gi.repository import Gio, GObject
@@ -13,6 +13,9 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
 
     item_type: type
+
+    key_for: Callable[[Any], K] = lambda k: k
+    default_factory: Callable[[Any], V]
 
     updating = GObject.Property(type=bool, default=False)
 
@@ -49,6 +52,22 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
         self.updating = True
         await self._update()
         self.updating = False
+
+    def add(self, item: Any) -> None:
+        """Manually add `item` to `self`.
+
+        Uses `self.__class__.key_for(item)` and `self.__class__.default_factory(item)`
+        to get the key and value respectively.
+
+        Note that this will not add it to the underlying data store,
+        only the client's version. It may be removed after `update()` is called.
+        """
+        key = self.__class__.key_for(item)
+        if key in self._items:
+            return
+
+        self._items[key] = self.__class__.default_factory(item)
+        self.items_changed(len(self._items) - 1, 0, 1)
 
     def remove(self, item: K) -> None:
         """Remove `item` from `self`.
