@@ -26,11 +26,7 @@ class Application(Adw.Application):
         super().__init__(application_id=APP_ID)
         self._create_action("preferences", self._preferences, ("<primary>comma",))
         self._create_action("about", self._about)
-        self._create_action(
-            "quit",
-            lambda *_: win.close() if (win := self.props.active_window) else None,
-            ("<primary>q",),
-        )
+        self._create_action("quit", self._quit, ("<primary>q",))
 
         if not (
             (address := settings.get_string("address"))
@@ -96,6 +92,12 @@ class Application(Adw.Application):
             return
 
         Preferences().present(win)
+
+    def _quit(self, *_args: Any) -> None:
+        if not (win := self.props.active_window):
+            return
+
+        win.close()
 
 
 def main() -> int:
