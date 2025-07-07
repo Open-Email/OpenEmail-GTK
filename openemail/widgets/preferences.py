@@ -10,7 +10,6 @@ from gi.repository import Adw, GObject, Gtk
 from openemail import PREFIX, mail, run_task, settings
 
 from .form import Form
-from .window import Window
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/preferences.ui")
@@ -33,6 +32,8 @@ class Preferences(Adw.PreferencesDialog):
     private_encryption_key = GObject.Property(type=str)
     public_signing_key = GObject.Property(type=str)
     public_encryption_key = GObject.Property(type=str)
+
+    logged_out = GObject.Signal()
 
     _sync_intervals = (0, 60, 300, 900, 1800, 3600)
     _trash_intervals = (0, 1, 7, 14, 30)
@@ -84,16 +85,13 @@ class Preferences(Adw.PreferencesDialog):
     def _confirm_delete(self, *_args: Any) -> None:
         self.force_close()
         run_task(mail.delete_account())
+        self.emit("logged-out")
 
     @Gtk.Template.Callback()
     def _confirm_remove(self, *_args: Any) -> None:
         self.force_close()
         mail.log_out()
-
-        if not isinstance(win := self.props.root, Window):
-            return
-
-        win.visible_child_name = "auth"
+        self.emit("logged-out")
 
     @Gtk.Template.Callback()
     def _new_domain(self, *_args: Any) -> None:

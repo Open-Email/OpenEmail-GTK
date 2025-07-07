@@ -3,15 +3,26 @@
 # SPDX-FileContributor: kramo
 
 import json
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Notifier, mail, run_task, settings, state_settings
+from openemail import (
+    APP_ID,
+    PREFIX,
+    Notifier,
+    log_file,
+    mail,
+    run_task,
+    settings,
+    state_settings,
+)
 
 from .content import Content
 from .login_view import LoginView
+from .preferences import Preferences
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/window.ui")
@@ -31,6 +42,12 @@ class Window(Adw.ApplicationWindow):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
+        self._create_action(
+            "preferences", lambda *_: self._present_preferences(), ("<primary>comma",)
+        )
+        self._create_action("about", lambda *_: self._present_about_dialog())
+        self._create_action("quit", lambda *_: self.close(), ("<primary>q",))
 
         state_settings.bind(
             "width",
@@ -82,3 +99,43 @@ class Window(Adw.ApplicationWindow):
             return
 
         self.toast_overlay.add_toast(toast)
+
+    def _present_preferences(self) -> None:
+        preferences = Preferences()
+        preferences.connect(
+            "logged-out", lambda *_: self.set_property("visible-child-name", "auth")
+        )
+        preferences.present(self)
+
+    def _present_about_dialog(self) -> None:
+        about = Adw.AboutDialog.new_from_appdata(f"{PREFIX}/{APP_ID}.metainfo.xml")
+        about.props.developers = ["kramo https://kramo.page"]
+        about.props.designers = [
+            "kramo https://kramo.page",
+            "Varti Studio https://varti-studio.com",
+        ]
+        about.props.copyright = "© 2025 Mercata Sagl"
+        # Translators: Replace "translator-credits" with your name/username,
+        # and optionally an email or URL.
+        about.props.translator_credits = _("translator-credits")
+
+        try:
+            about.props.debug_info = log_file.read_text()
+        except FileNotFoundError:
+            pass
+        else:
+            about.props.debug_info_filename = log_file.name
+
+        about.present(self)
+
+    def _create_action(
+        self,
+        name: str,
+        callback: Callable[..., Any],
+        shortcuts: Sequence[str] | None = None,
+    ) -> None:
+        action = Gio.SimpleAction.new(name, None)
+        action.connect("activate", callback)
+        self.add_action(action)
+        if shortcuts and (app := self.props.application):
+            app.set_accels_for_action(f"win.{name}", shortcuts)
