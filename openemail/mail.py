@@ -10,6 +10,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Iter
 from dataclasses import fields
 from datetime import UTC, date, datetime
 from functools import partial
+from gettext import ngettext
 from itertools import chain
 from shutil import rmtree
 from typing import Any, ClassVar, NamedTuple, Self, cast
@@ -521,7 +522,8 @@ class Message(GObject.Object):
     broadcast = GObject.Property(type=bool, default=False)
 
     can_reply = GObject.Property(type=bool, default=False)
-    author_is_self = GObject.Property(type=bool, default=False)
+    outgoing = GObject.Property(type=bool, default=False)
+    incoming = GObject.Property(type=bool, default=True)
     can_trash = GObject.Property(type=bool, default=False)
 
     original_author = GObject.Property(type=str)
@@ -532,7 +534,10 @@ class Message(GObject.Object):
     attachments = GObject.Property(type=Gio.ListStore)
 
     name = GObject.Property(type=str)
+    icon_name = GObject.Property(type=str)
     profile_image = GObject.Property(type=Gdk.Paintable)
+    show_initials = GObject.Property(type=bool, default=False)
+    profile = GObject.Property(type=Profile)
 
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
@@ -581,49 +586,73 @@ class Message(GObject.Object):
         self.body = message.body or ""
         self.unread = message.new
 
-        self.author_is_self = message.author == user.address
+        self.outgoing = message.author == user.address
+        self.incoming = not self.outgoing
 
         self._update_trashed_state()
 
         self.original_author = f"{_('Original Author:')} {message.original_author}"
         self.different_author = message.author != message.original_author
 
+        readers = tuple(r for r in message.readers if r != user.address)
         if message.is_broadcast:
             self.readers = _("Public Message")
         else:
-            self.readers = f"{_('Readers:')} {user_profile.name}"
-            for reader in message.readers:
-                if reader == user.address:
-                    continue
-
+            # Others will be appended to this string in the format: ", reader1, reader2"
+            self.readers = _("Readers: Me")
+            for reader in readers:
                 self.readers += f", {Profile.of(reader).name or reader}"
 
         self.reader_addresses = ", ".join(
-            str(reader)
-            for reader in list(dict.fromkeys((*message.readers, message.author)))
-            if (reader != user.address)
+            map(str, readers if self.outgoing else (*readers, message.author))
         )
 
         self.attachments.remove_all()
         for name, parts in message.attachments.items():
             self.attachments.append(IncomingAttachment(name, parts))
 
-        if self._name_binding:
-            self._name_binding.unbind()
+        if isinstance(message, client.DraftMessage):
+            self.draft_id = message.ident
 
-        self._name_binding = Profile.of(message.author).bind_property(
+        for binding in (self._name_binding, self._image_binding):
+            if binding:
+                binding.unbind()
+
+        self._name_binding = self._image_binding = None
+        self.profile = self.profile_image = None
+        self.show_initials = False
+
+        if not (message.readers or message.is_broadcast):
+            self.name = _("No Readers")
+            self.icon_name = "public-access-symbolic"
+            return
+
+        if self.outgoing and message.is_broadcast:
+            self.name = _("Public Message")
+            self.icon_name = "broadcasts-symbolic"
+            return
+
+        if self.outgoing and (len(readers) > 1):
+            self.name = ngettext(
+                "{} Reader",
+                "{} Readers",
+                len(readers),
+            ).format(len(readers))
+            self.icon_name = "contacts-symbolic"
+            return
+
+        self.profile = Profile.of(
+            readers[0] if (self.outgoing and readers) else message.author
+        )
+
+        self._name_binding = self.profile.bind_property(
             "name", self, "name", GObject.BindingFlags.SYNC_CREATE
         )
 
-        if self._image_binding:
-            self._image_binding.unbind()
-
-        self._image_binding = Profile.of(message.author).bind_property(
+        self.show_initials = True
+        self._image_binding = self.profile.bind_property(
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
-
-        if isinstance(message, client.DraftMessage):
-            self.draft_id = message.ident
 
     def trash(self) -> None:
         """Move `self` to the trash."""
@@ -738,7 +767,7 @@ class Message(GObject.Object):
         )
 
     def _update_trashed_state(self) -> None:
-        self.can_trash = not (self.author_is_self or self.trashed)
+        self.can_trash = not (self.outgoing or self.trashed)
         self.can_reply = not self.trashed
         self.notify("trashed")
 

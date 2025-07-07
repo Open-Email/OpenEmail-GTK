@@ -8,7 +8,7 @@
     <file preprocess="xml-stripblanks">content.ui</file>
     <file preprocess="xml-stripblanks">login-view.ui</file>
     <file preprocess="xml-stripblanks">message-row.ui</file>
-    <file preprocess="xml-stripblanks">message.ui</file>
+    <file preprocess="xml-stripblanks">message-view.ui</file>
     <file preprocess="xml-stripblanks">messages.ui</file>
     <file preprocess="xml-stripblanks">navigation-row.ui</file>
     <file preprocess="xml-stripblanks">page.ui</file>

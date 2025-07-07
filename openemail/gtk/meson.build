@@ -7,7 +7,7 @@ blueprints = custom_target(
     'content.blp',
     'login-view.blp',
     'message-row.blp',
-    'message.blp',
+    'message-view.blp',
     'messages.blp',
     'navigation-row.blp',
     'page.blp',

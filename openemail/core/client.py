@@ -55,7 +55,7 @@ class DraftMessage:
     @property
     def is_broadcast(self) -> bool:
         """Whether `self` is a broadcast."""
-        return bool(self.readers)
+        return False
 
     def __init__(
         self,
@@ -90,7 +90,7 @@ class OutgoingMessage:
     @property
     def is_broadcast(self) -> bool:
         """Whether `self` is a broadcast."""
-        return bool(self.readers)
+        return not self.readers
 
     def __init__(
         self,

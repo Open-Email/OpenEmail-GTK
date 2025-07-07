@@ -11,7 +11,7 @@ from openemail.dict_store import DictStore
 from openemail.mail import Message, empty_trash, settings
 
 from .compose_dialog import ComposeDialog  # noqa: TC001
-from .message import MessageView  # noqa: TC001
+from .message_view import MessageView  # noqa: TC001
 from .page import Page  # noqa: TC001
 
 

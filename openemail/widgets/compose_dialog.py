@@ -78,7 +78,7 @@ class ComposeDialog(Adw.Dialog):
         self.attachments.model.remove_all()
         self.compose_form.reset()
         self.privacy = (
-            "public" if (message.broadcast and message.author_is_self) else "private"
+            "public" if (message.broadcast and message.outgoing) else "private"
         )
         self.readers.props.text = message.reader_addresses
 

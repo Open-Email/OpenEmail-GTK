@@ -89,7 +89,7 @@ template $MessageView: Adw.Bin {
 
           [end]
           Button {
-            visible: bind template.message as <$Message>.author-is-self;
+            visible: bind template.message as <$Message>.outgoing;
             icon-name: "trash-symbolic";
             tooltip-text: _("Discard");
             clicked => $_discard();
@@ -136,6 +136,7 @@ template $MessageView: Adw.Bin {
               Button {
                 valign: start;
                 tooltip-text: _("Profile");
+                can-target: bind $_has_profile(template.message as <$Message>.profile) as <bool>;
                 clicked => $_show_profile_dialog();
 
                 child: Adw.Avatar {
@@ -145,8 +146,9 @@ template $MessageView: Adw.Bin {
                   margin-end: 6;
                   size: 48;
                   text: bind template.message as <$Message>.name;
+                  icon-name: bind template.message as <$Message>.icon-name;
                   custom-image: bind template.message as <$Message>.profile-image;
-                  show-initials: true;
+                  show-initials: bind template.message as <$Message>.show-initials;
                 };
 
                 styles [
@@ -165,6 +167,7 @@ template $MessageView: Adw.Bin {
                   Label {
                     hexpand: true;
                     halign: start;
+                    visible: bind template.message as <$Message>.incoming;
                     label: bind template.message as <$Message>.name;
                     wrap: true;
                     wrap-mode: word_char;
@@ -175,6 +178,7 @@ template $MessageView: Adw.Bin {
                   }
 
                   Label {
+                    hexpand: true;
                     halign: end;
                     label: bind template.message as <$Message>.datetime;
                     wrap: true;

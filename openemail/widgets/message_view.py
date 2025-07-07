@@ -3,20 +3,19 @@
 # SPDX-FileContributor: kramo
 
 from collections.abc import Callable
-from contextlib import suppress
 from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, Notifier, run_task
-from openemail.mail import Message, Profile
+from openemail.mail import Message
 
 from .attachments import Attachments
 from .body import Body
 from .profile import ProfileView
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/message.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/message-view.ui")
 class MessageView(Adw.Bin):
     """A view displaying metadata about, and the contents of a message."""
 
@@ -62,13 +61,12 @@ class MessageView(Adw.Bin):
         self._history = {}
 
     @Gtk.Template.Callback()
-    def _show_profile_dialog(self, *_args: Any) -> None:
-        profile = None
-        if self.message:
-            with suppress(ValueError):
-                profile = Profile.of(self.message.author)
+    def _has_profile(self, *_args: Any) -> bool:
+        return self.message and self.message.profile
 
-        self.profile_view.profile = profile
+    @Gtk.Template.Callback()
+    def _show_profile_dialog(self, *_args: Any) -> None:
+        self.profile_view.profile = self.message.profile
         self.profile_dialog.present(self)
 
     @Gtk.Template.Callback()

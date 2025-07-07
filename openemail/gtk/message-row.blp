@@ -33,8 +33,9 @@ template ListItem {
         margin-top: 3;
         size: 32;
         text: bind template.item as <$Message>.name;
+        icon-name: bind template.item as <$Message>.icon-name;
         custom-image: bind template.item as <$Message>.profile-image;
-        show-initials: true;
+        show-initials: bind template.item as <$Message>.show-initials;
       }
 
       Box {
