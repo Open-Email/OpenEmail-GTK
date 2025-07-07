@@ -19,13 +19,12 @@ MAX_HEADERS_SIZE = 512_000
 MESSAGE_LIFETIME = 7
 
 
-class Address:
+class Address(str):
     """A Mail/HTTPS address."""
 
-    local_part: str
-    host_part: str
+    __slots__ = ("host_part", "local_part")
 
-    def __init__(self, address: str) -> None:
+    def __new__(cls, address: str) -> Self:  # noqa: D102
         if not re.match(
             r"^[a-z0-9][a-z0-9\.\-_\+]{2,}@[a-z0-9.-]+\.[a-z]{2,}|xn--[a-z0-9]{2,}$",
             address := address.lower(),
@@ -33,38 +32,10 @@ class Address:
             msg = f'Email address "{address}" is invalid'
             raise ValueError(msg)
 
-        try:
-            self.local_part, self.host_part = address.split("@")
-        except ValueError as error:
-            msg = f'Email address "{address}" contains more than a single @ character'
-            raise ValueError(msg) from error
+        return super().__new__(cls, address)
 
-    def __repr__(self) -> str:
-        return str(self)
-
-    def __str__(self) -> str:
-        return f"{self.local_part}@{self.host_part}"
-
-    def __eq__(self, other: object) -> bool:
-        return str(self) == str(other)
-
-    def __ne__(self, other: object) -> bool:
-        return str(self) != str(other)
-
-    def __lt__(self, other: object) -> bool:
-        return str(self) < str(other)
-
-    def __gt__(self, other: object) -> bool:
-        return str(self) > str(other)
-
-    def __le__(self, other: object) -> bool:
-        return str(self) >= str(other)
-
-    def __ge__(self, other: object) -> bool:
-        return str(self) <= str(other)
-
-    def __hash__(self) -> int:
-        return hash(str(self))
+    def __init__(self, address: str) -> None:  # noqa: ARG002
+        self.local_part, self.host_part = self.split("@")
 
 
 def generate_link(first: Address, second: Address) -> str:
