@@ -1,7 +1,0 @@
-{
-  "reportMissingModuleSource": "none",
-  "reportMissingTypeStubs": "none",
-  "reportRedeclaration": "none",
-  "reportUnknownLambdaType": "none",
-  "typeCheckingMode": "strict"
-}

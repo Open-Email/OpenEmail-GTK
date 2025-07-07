@@ -1,0 +1,34 @@
+[tool.pyright]
+reportMissingModuleSource = "none"
+reportMissingTypeStubs = "none"
+reportRedeclaration = "none"
+reportUnknownLambdaType = "none"
+typeCheckingMode = "strict"
+
+[tool.ruff]
+builtins = ["_"]
+lint.select = ["ALL"]
+lint.ignore = [
+  "ANN401",
+  "C901",
+  "COM812",
+  "D100",
+  "D105",
+  "D107",
+  "E402",
+  "ERA001",
+  "FA102",
+  "FBT",
+  "FIX",
+  "FLY002",
+  "PLR0904",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0914",
+  "PLR0915",
+  "PLR0916",
+  "PLR0917",
+  "S310",
+  "TD",
+]
