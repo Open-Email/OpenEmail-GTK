@@ -8,7 +8,7 @@ from typing import Any, cast
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, mail, run_task
+from openemail import PREFIX, mail, create_task
 from openemail.mail import Profile, WriteError
 
 from .form import Form
@@ -119,14 +119,14 @@ class ProfileSettings(Adw.PreferencesDialog):
     @Gtk.Template.Callback()
     def _delete_image(self, *_args: Any) -> None:
         self.pending = True
-        run_task(
+        create_task(
             mail.delete_profile_image(),
             lambda _: self.set_property("pending", False),
         )
 
     @Gtk.Template.Callback()
     def _replace_image(self, *_args: Any) -> None:
-        run_task(self._replace_image_task())
+        create_task(self._replace_image_task())
 
     @Gtk.Template.Callback()
     def _on_change(self, *_args: Any) -> None:
@@ -141,7 +141,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             self.away_warning.props.text = ""
 
         self._changed = False
-        run_task(mail.update_profile({key: f() for key, f in self._fields.items()}))
+        create_task(mail.update_profile({key: f() for key, f in self._fields.items()}))
 
     async def _replace_image_task(self) -> None:
         try:

@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import GObject, Gtk
 
-from openemail import PREFIX, mail, run_task, settings
+from openemail import PREFIX, mail, create_task, settings
 from openemail.mail import Profile
 
 
@@ -23,7 +23,7 @@ class ContactRow(Gtk.Box):
         self._remove_address()
 
         try:
-            run_task(mail.address_book.new(self.profile.value_of("address")))
+            create_task(mail.address_book.new(self.profile.value_of("address")))
         except ValueError:
             return
 

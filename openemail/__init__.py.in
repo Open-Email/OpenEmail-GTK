@@ -10,16 +10,16 @@ gi.require_version("Gdk", "4.0")
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-import asyncio
-from asyncio import Task
 from collections.abc import Callable, Coroutine
 from pathlib import Path
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self, cast
 
-from gi.events import GLibEventLoopPolicy
 from gi.repository import Adw, Gio, GLib, GObject
 
 from openemail.core import client
+
+if TYPE_CHECKING:
+    from asyncio import Task
 
 APP_ID = "@APP_ID@"
 VERSION = "@VERSION@"
@@ -67,26 +67,20 @@ class Notifier(GObject.Object):
         return toast
 
 
-asyncio.set_event_loop_policy(GLibEventLoopPolicy())
-_loop = asyncio.get_event_loop()
-_tasks = set[Task[Any]]()
-
-
-def run_task(
+def create_task(
     coro: Coroutine[Any, Any, Any],
     callback: Callable[[bool], Any] | None = None,
 ) -> None:
-    """Run a coroutine in a task.
+    """Execute a coroutine in a task.
 
     Calls `callback` on finish with `True` if no exceptions were raised
     and `False` otherwise.
     """
-    _tasks.add(task := _loop.create_task(coro))
+    if not (app := Gio.Application.get_default()):
+        msg = "create_task() called before Application finished initializing"
+        raise RuntimeError(msg)
 
-    def done_callback(task: Task[Any]) -> None:
-        if callback:
-            callback(not task.exception())
-
-        _tasks.discard(task)
-
-    task.add_done_callback(done_callback)
+    task = cast("Task[Any]", app.create_asyncio_task(coro))  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+    task.add_done_callback(
+        lambda task: callback(not task.exception()) if callback else None
+    )
