@@ -27,17 +27,15 @@ class NavigationRow(Gtk.ListBoxRow):
         return self._page
 
     @page.setter
-    def page(self, page: Adw.ViewStackPage) -> None:
+    def page(self, page: Adw.ViewStackPage) -> None:  # HACK
         self._page = page
 
         if not (content := getattr(self._page.props.child, "content", None)):
             return
 
-        model = content.model.props.model.props.model.props.model
-
         def update_counter(*_args: Any) -> None:
             count = 0
-            for item in model:
+            for item in content.model:
                 if isinstance(item, Profile):
                     count += int(item.contact_request)
 
@@ -46,7 +44,7 @@ class NavigationRow(Gtk.ListBoxRow):
 
             self.counter = str(count or "")
 
-        model.connect("items-changed", update_counter)
+        content.model.connect("items-changed", update_counter)
         settings.connect("changed::unread-messages", update_counter)
         settings.connect("changed::contact-requests", update_counter)
         update_counter()
