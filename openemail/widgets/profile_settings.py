@@ -8,7 +8,7 @@ from typing import Any, cast
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, mail, create_task
+from openemail import PREFIX, create_task, mail
 from openemail.mail import Profile, WriteError
 
 from .form import Form

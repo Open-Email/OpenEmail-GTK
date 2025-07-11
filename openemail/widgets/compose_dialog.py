@@ -8,7 +8,7 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import PREFIX, mail, create_task
+from openemail import PREFIX, create_task, mail
 from openemail.mail import (
     ADDRESS_SPLIT_PATTERN,
     Address,

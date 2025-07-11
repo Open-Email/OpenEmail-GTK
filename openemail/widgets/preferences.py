@@ -7,7 +7,7 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import PREFIX, mail, create_task, settings
+from openemail import PREFIX, create_task, mail, settings
 
 from .form import Form
 from .window import Window

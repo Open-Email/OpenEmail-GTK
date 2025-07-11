@@ -11,7 +11,9 @@ from logging.handlers import RotatingFileHandler
 from typing import Any
 
 import keyring
-from gi.events import GLibEventLoopPolicy
+from gi.events import (  # pyright: ignore[reportMissingImports]
+    GLibEventLoopPolicy,  # pyright: ignore[reportUnknownVariableType]
+)
 from gi.repository import Adw, Gio
 
 from openemail import APP_ID, PREFIX, log_file, mail, secret_service, settings
@@ -115,5 +117,5 @@ def main() -> int:
         ),
     )
 
-    asyncio.set_event_loop_policy(GLibEventLoopPolicy())
+    asyncio.set_event_loop_policy(GLibEventLoopPolicy())  # pyright: ignore[reportUnknownArgumentType]
     return Application().run(sys.argv)

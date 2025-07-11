@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import PREFIX, Notifier, mail, create_task
+from openemail import PREFIX, Notifier, create_task, mail
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/page.ui")
