@@ -9,8 +9,8 @@ from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, Notifier, mail
 
-from .contacts import Contacts
-from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash
+from .contacts import Contacts  # noqa: F401
+from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash  # noqa: F401
 from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
@@ -28,13 +28,6 @@ class Content(Adw.BreakpointBin):
     sidebar_toolbar_view: Adw.ToolbarView = Gtk.Template.Child()
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     content: Adw.ViewStack = Gtk.Template.Child()
-
-    inbox: Inbox = Gtk.Template.Child()
-    outbox: Outbox = Gtk.Template.Child()
-    drafts: Drafts = Gtk.Template.Child()
-    trash: Trash = Gtk.Template.Child()
-    broadcasts: Broadcasts = Gtk.Template.Child()
-    contacts: Contacts = Gtk.Template.Child()
 
     content_child_name = GObject.Property(type=str, default="inbox")
     profile_stack_child_name = GObject.Property(type=str, default="loading")
@@ -57,7 +50,6 @@ class Content(Adw.BreakpointBin):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
         Notifier().bind_property(
             "sending",
@@ -73,6 +65,7 @@ class Content(Adw.BreakpointBin):
             GObject.BindingFlags.SYNC_CREATE,
         )
 
+        self.sidebar.select_row(self.sidebar.get_row_at_index(0))
         self.sidebar.set_header_func(self._header_func)
 
     def _header_func(self, row: Gtk.ListBoxRow, *_args: Any) -> None:
