@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-import asyncio
 import json
 import logging
 import sys
@@ -117,5 +116,5 @@ def main() -> int:
         ),
     )
 
-    asyncio.set_event_loop_policy(GLibEventLoopPolicy())  # pyright: ignore[reportUnknownArgumentType]
-    return Application().run(sys.argv)
+    with GLibEventLoopPolicy():
+        return Application().run(sys.argv)
