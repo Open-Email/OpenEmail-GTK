@@ -9,8 +9,8 @@ from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, Notifier, mail
 
-from .contacts import Contacts
-from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash
+from .contacts import Contacts  # noqa: F401
+from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash  # noqa: F401
 from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
@@ -27,13 +27,6 @@ class Content(Adw.BreakpointBin):
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     bottom_sidebar: Gtk.ListBox = Gtk.Template.Child()
     profile_settings: ProfileSettings = Gtk.Template.Child()
-
-    inbox: Inbox = Gtk.Template.Child()
-    outbox: Outbox = Gtk.Template.Child()
-    drafts: Drafts = Gtk.Template.Child()
-    trash: Trash = Gtk.Template.Child()
-    broadcasts: Broadcasts = Gtk.Template.Child()
-    contacts: Contacts = Gtk.Template.Child()
 
     content_child_name = GObject.Property(type=str, default="inbox")
     profile_stack_child_name = GObject.Property(type=str, default="loading")
