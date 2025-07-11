@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import GObject, Gtk
 
-from openemail import PREFIX, mail, create_task, settings
+from openemail import PREFIX, create_task, mail, settings
 from openemail.mail import Profile
 
 

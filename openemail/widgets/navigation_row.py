@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-
 from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
