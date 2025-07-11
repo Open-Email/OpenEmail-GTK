@@ -62,7 +62,7 @@ template $Content: Adw.BreakpointBin {
           [profile]
           Button {
             tooltip-text: _("Profile");
-            clicked => $_on_profile_button_clicked();
+            clicked => $_present_profile_settings(profile_settings) not-swapped;
 
             child: Adw.Avatar {
               size: 24;

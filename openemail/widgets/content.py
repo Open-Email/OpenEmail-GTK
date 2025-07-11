@@ -28,7 +28,6 @@ class Content(Adw.BreakpointBin):
     sidebar_toolbar_view: Adw.ToolbarView = Gtk.Template.Child()
     sidebar: Gtk.ListBox = Gtk.Template.Child()
     content: Adw.ViewStack = Gtk.Template.Child()
-    profile_settings: ProfileSettings = Gtk.Template.Child()
 
     inbox: Inbox = Gtk.Template.Child()
     outbox: Outbox = Gtk.Template.Child()
@@ -87,5 +86,5 @@ class Content(Adw.BreakpointBin):
         self.split_view.props.show_sidebar = not self.split_view.props.collapsed
 
     @Gtk.Template.Callback()
-    def _on_profile_button_clicked(self, *_args: Any) -> None:
-        self.profile_settings.present(self)
+    def _present_profile_settings(self, dialog: ProfileSettings, *_args: Any) -> None:
+        dialog.present(self)
