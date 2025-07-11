@@ -33,20 +33,20 @@ class Content(Adw.BreakpointBin):
     profile_stack_child_name = GObject.Property(type=str, default="loading")
     profile_image = GObject.Property(type=Gdk.Paintable)
     app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
-    header_bar_layout = GObject.Property(
-        type=str,
-        default=(
-            "no-title"
-            if platform.startswith("darwin")
-            or (
-                (settings := Gtk.Settings.get_default())
-                and not settings.props.gtk_decoration_layout.replace(
-                    "appmenu", ""
-                ).startswith(":")
-            )
-            else "title"
-        ),
-    )
+
+    @GObject.Property(type=str)
+    def header_bar_layout(self) -> str:
+        """Get the header bar layout."""
+        layout = (
+            settings.props.gtk_decoration_layout
+            if (settings := Gtk.Settings.get_default())
+            else "appmenu:close"  # GNOME default
+        )
+
+        is_mac = platform.startswith("darwin")
+        has_start_window_controls = not layout.replace("appmenu", "").startswith(":")
+
+        return "no-title" if is_mac or has_start_window_controls else "title"
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
