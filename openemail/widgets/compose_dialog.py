@@ -8,8 +8,9 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import PREFIX, create_task, mail
-from openemail.mail import (
+from openemail import PREFIX
+from openemail.lib import asyncio, mail
+from openemail.lib.mail import (
     ADDRESS_SPLIT_PATTERN,
     Address,
     Message,
@@ -175,7 +176,7 @@ class ComposeDialog(Adw.Dialog):
             mail.drafts.delete(self.ident)
             self.ident = None
 
-        create_task(
+        asyncio.create_task(
             mail.send_message(
                 readers,
                 self.subject.props.text,
@@ -195,7 +196,7 @@ class ComposeDialog(Adw.Dialog):
 
     @Gtk.Template.Callback()
     def _attach_files(self, *_args: Any) -> None:
-        create_task(self._attach_files_task())
+        asyncio.create_task(self._attach_files_task())
 
     @Gtk.Template.Callback()
     def _format_bold(self, *_args: Any) -> None:

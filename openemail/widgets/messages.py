@@ -6,9 +6,10 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, mail
-from openemail.dict_store import DictStore
-from openemail.mail import Message, empty_trash, settings
+from openemail import PREFIX
+from openemail.lib import mail
+from openemail.lib.dict_store import DictStore
+from openemail.lib.mail import Message, settings
 
 from .compose_dialog import ComposeDialog  # noqa: TC001
 from .message_view import MessageView  # noqa: TC001
@@ -147,7 +148,7 @@ class Trash(_Messages):
         folders.append(mail.inbox)
 
         empty_dialog: Adw.AlertDialog = self._get_object("empty_dialog")
-        empty_dialog.connect("response::empty", lambda *_: empty_trash())
+        empty_dialog.connect("response::empty", lambda *_: mail.empty_trash())
 
         empty_button: Gtk.Button = self._get_object("empty_button")
         empty_button.connect("clicked", lambda *_: empty_dialog.present(self))

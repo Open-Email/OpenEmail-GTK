@@ -13,6 +13,7 @@ openemail/gtk/content.blp
 openemail/gtk/login-view.blp
 openemail/gtk/message-row.blp
 openemail/gtk/message-view.blp
+openemail/gtk/messages.blp
 openemail/gtk/navigation-row.blp
 openemail/gtk/page.blp
 openemail/gtk/preferences.blp
@@ -21,8 +22,15 @@ openemail/gtk/profile.blp
 openemail/gtk/shortcuts-dialog.blp
 openemail/gtk/window.blp
 
+openemail/lib/asyncio.py
+openemail/lib/dict_store.py
+openemail/lib/mail.py
+openemail/lib/notifier.py
+
+openemail/widgets/attachments.py
 openemail/widgets/body.py
 openemail/widgets/compose_dialog.py
+openemail/widgets/contact_row.py
 openemail/widgets/contacts.py
 openemail/widgets/content.py
 openemail/widgets/form.py
@@ -34,10 +42,7 @@ openemail/widgets/page.py
 openemail/widgets/preferences.py
 openemail/widgets/profile_settings.py
 openemail/widgets/profile.py
-openemail/widgets/request_buttons.py
 openemail/widgets/window.py
 
 openemail/__init__.py.in
-openemail/dict_store.py
-openemail/mail.py
 openemail/main.py

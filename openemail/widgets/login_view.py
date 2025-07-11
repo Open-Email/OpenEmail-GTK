@@ -6,8 +6,10 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Notifier, mail
-from openemail.mail import Address, KeyPair
+from openemail import APP_ID, PREFIX
+from openemail.lib import mail
+from openemail.lib.mail import Address, KeyPair
+from openemail.lib.notifier import Notifier
 
 from .form import Form
 

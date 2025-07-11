@@ -6,9 +6,10 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, create_task, mail
+from openemail import APP_ID, PREFIX
 from openemail.core.model import Address
-from openemail.mail import Profile
+from openemail.lib import asyncio, mail
+from openemail.lib.mail import Profile
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/profile.ui")
@@ -125,7 +126,7 @@ class ProfileView(Adw.Bin):
             return
 
         try:
-            create_task(mail.address_book.delete(Address(self.profile.address)))
+            asyncio.create_task(mail.address_book.delete(Address(self.profile.address)))
         except ValueError:
             return
 

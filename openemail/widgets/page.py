@@ -6,7 +6,9 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import PREFIX, Notifier, create_task, mail
+from openemail import PREFIX
+from openemail.lib import asyncio, mail
+from openemail.lib.notifier import Notifier
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/page.ui")
@@ -61,7 +63,7 @@ class Page(Adw.BreakpointBin):
 
     @Gtk.Template.Callback()
     def _sync(self, *_args: Any) -> None:
-        create_task(mail.sync())
+        asyncio.create_task(mail.sync())
 
     @Gtk.Template.Callback()
     def _get_sidebar_child_name(

@@ -15,9 +15,10 @@ from gi.events import (  # pyright: ignore[reportMissingImports]
 )
 from gi.repository import Adw, Gio
 
-from openemail import APP_ID, PREFIX, log_file, mail, secret_service, settings
-from openemail.mail import Address, KeyPair
+from openemail import APP_ID, PREFIX, log_file, secret_service, settings
 
+from .lib import mail
+from .lib.mail import Address, KeyPair
 from .widgets.preferences import Preferences
 from .widgets.window import Window
 

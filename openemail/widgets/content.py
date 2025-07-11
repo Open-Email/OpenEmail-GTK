@@ -7,7 +7,9 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Notifier, mail
+from openemail import APP_ID, PREFIX
+from openemail.lib import mail
+from openemail.lib.notifier import Notifier
 
 from .contacts import Contacts  # noqa: F401
 from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash  # noqa: F401

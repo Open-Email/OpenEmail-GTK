@@ -6,8 +6,9 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import PREFIX, create_task, mail
-from openemail.mail import Address
+from openemail import PREFIX
+from openemail.lib import asyncio, mail
+from openemail.lib.mail import Address
 
 from .contact_row import ContactRow  # noqa: F401
 from .form import Form
@@ -51,7 +52,7 @@ class Contacts(Adw.NavigationPage):
     @Gtk.Template.Callback()
     def _add_contact(self, *_args: Any) -> None:
         try:
-            create_task(mail.address_book.new(Address(self.address.props.text)))
+            asyncio.create_task(mail.address_book.new(Address(self.address.props.text)))
         except ValueError:
             return
 

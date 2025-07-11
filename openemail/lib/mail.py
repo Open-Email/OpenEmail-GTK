@@ -24,13 +24,15 @@ from typing import Any, ClassVar, NamedTuple, Self, cast
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
-from openemail import Notifier, create_task, secret_service, settings
+from openemail import secret_service, settings
+from openemail.core import client, model
+from openemail.core.client import WriteError, user
+from openemail.core.crypto import KeyPair
+from openemail.core.model import Address
 
-from .core import client, model
-from .core.client import WriteError, user
-from .core.crypto import KeyPair
-from .core.model import Address
+from . import asyncio
 from .dict_store import DictStore
+from .notifier import Notifier
 
 MAX_PROFILE_IMAGE_DIMENSIONS = 800
 ADDRESS_SPLIT_PATTERN = ",|;| "
@@ -131,8 +133,8 @@ class Profile(GObject.Object):
 
         self._broadcasts = receive_broadcasts
 
-        create_task(broadcasts.update())
-        create_task(
+        asyncio.create_task(broadcasts.update())
+        asyncio.create_task(
             client.new_contact(
                 self._profile.address,
                 receive_broadcasts=receive_broadcasts,
@@ -208,9 +210,9 @@ class ProfileStore(DictStore[Address, Profile]):
         If `trust_images` is set to `False`, profile images will not be loaded.
         """
         for address in (Address(contact.address) for contact in self):
-            create_task(self._update_profile(address))
+            asyncio.create_task(self._update_profile(address))
             if trust_images:
-                create_task(self._update_profile_image(address))
+                asyncio.create_task(self._update_profile_image(address))
 
     @staticmethod
     async def _update_profile(address: Address) -> None:
@@ -236,16 +238,16 @@ class _AddressBook(ProfileStore):
         Profile.of(address).contact_request = False
         self.add(address)
 
-        create_task(self.update_profiles())
-        create_task(broadcasts.update())
-        create_task(inbox.update())
+        asyncio.create_task(self.update_profiles())
+        asyncio.create_task(broadcasts.update())
+        asyncio.create_task(inbox.update())
 
         try:
             await client.new_contact(address, receive_broadcasts=receive_broadcasts)
         except WriteError:
             self.remove(address)
-            create_task(broadcasts.update())
-            create_task(inbox.update())
+            asyncio.create_task(broadcasts.update())
+            asyncio.create_task(inbox.update())
 
             Notifier.send(_("Failed to add contact"))
             raise
@@ -253,15 +255,15 @@ class _AddressBook(ProfileStore):
     async def delete(self, address: Address) -> None:
         """Delete `address` from the user's address book."""
         self.remove(address)
-        create_task(broadcasts.update())
-        create_task(inbox.update())
+        asyncio.create_task(broadcasts.update())
+        asyncio.create_task(inbox.update())
 
         try:
             await client.delete_contact(address)
         except WriteError:
             self.add(address)
-            create_task(broadcasts.update())
-            create_task(inbox.update())
+            asyncio.create_task(broadcasts.update())
+            asyncio.create_task(inbox.update())
 
             Notifier.send(_("Failed to remove contact"))
             raise
@@ -297,7 +299,7 @@ class _ContactRequests(ProfileStore):
                 request.contact_request = False
                 self.remove(request.address)
 
-        create_task(self.update_profiles(trust_images=False))
+        asyncio.create_task(self.update_profiles(trust_images=False))
 
 
 class Attachment(GObject.Object):
@@ -430,7 +432,7 @@ class IncomingAttachment(Attachment):
 
     def open(self, parent: Gtk.Widget | None = None) -> None:
         """Download and reconstruct `self` from its parts, then open for saving."""
-        create_task(self._save(parent))
+        asyncio.create_task(self._save(parent))
 
     async def _save(self, parent: Gtk.Widget | None) -> None:
         msg = _("Failed to download attachment")
@@ -909,7 +911,7 @@ class _DraftStore(MessageStore):
 
         client.save_draft(draft(ident=ident) if ident else draft())
         self.clear()  # TODO
-        create_task(self.update())
+        asyncio.create_task(self.update())
 
     def delete(self, ident: str) -> None:
         """Delete a draft saved using `save()`."""
@@ -958,7 +960,7 @@ def try_auth(
         if on_failure:
             on_failure()
 
-    create_task(auth(), done)
+    asyncio.create_task(auth(), done)
 
 
 def register(
@@ -982,7 +984,7 @@ def register(
         if on_failure:
             on_failure()
 
-    create_task(auth(), done)
+    asyncio.create_task(auth(), done)
 
 
 async def sync(*, periodic: bool = False) -> None:
@@ -1022,11 +1024,11 @@ async def sync(*, periodic: bool = False) -> None:
             Notifier().syncing = False
 
     for task in tasks:
-        create_task(task, lambda _, t=task: done(t))
+        asyncio.create_task(task, lambda _, t=task: done(t))
 
     settings.connect(
         "changed::contact-requests",
-        lambda *_: create_task(contact_requests.update()),
+        lambda *_: asyncio.create_task(contact_requests.update()),
     )
 
 
