@@ -4,6 +4,7 @@ reportMissingModuleSource = "none"
 reportMissingTypeStubs = "none"
 reportRedeclaration = "none"
 reportUnknownLambdaType = "none"
+reportUnusedImport = "none"
 typeCheckingMode = "strict"
 
 [tool.ruff]
