@@ -14,6 +14,8 @@ from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash
 from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
+SECOND_SIDEBAR_GROUP_INDEX = 4
+
 
 @Gtk.Template.from_resource(f"{PREFIX}/content.ui")
 class Content(Adw.BreakpointBin):
@@ -25,7 +27,7 @@ class Content(Adw.BreakpointBin):
 
     sidebar_toolbar_view: Adw.ToolbarView = Gtk.Template.Child()
     sidebar: Gtk.ListBox = Gtk.Template.Child()
-    bottom_sidebar: Gtk.ListBox = Gtk.Template.Child()
+    content: Adw.ViewStack = Gtk.Template.Child()
     profile_settings: ProfileSettings = Gtk.Template.Child()
 
     inbox: Inbox = Gtk.Template.Child()
@@ -72,39 +74,17 @@ class Content(Adw.BreakpointBin):
             GObject.BindingFlags.SYNC_CREATE,
         )
 
-    @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: NavigationRow | None) -> None:
-        if not row:
-            return
+        self.sidebar.set_header_func(self._header_func)
 
-        self.bottom_sidebar.unselect_all()
+    def _header_func(self, row: Gtk.ListBoxRow, *_args: Any) -> None:
+        if row.get_index() == SECOND_SIDEBAR_GROUP_INDEX:
+            row.set_header(Gtk.Separator())
+
+    @Gtk.Template.Callback()
+    def _on_row_selected(self, _obj: Any, row: NavigationRow) -> None:
         self.sidebar.select_row(row)
-
-        self.content_child_name = (
-            "inbox",
-            "outbox",
-            "drafts",
-            "trash",
-        )[row.get_index()]
-
-        if self.split_view.props.collapsed:
-            self.split_view.props.show_sidebar = False
-
-    @Gtk.Template.Callback()
-    def _on_bottom_row_selected(self, _obj: Any, row: NavigationRow | None) -> None:
-        if not row:
-            return
-
-        self.sidebar.unselect_all()
-        self.bottom_sidebar.select_row(row)
-
-        self.content_child_name = (
-            "broadcasts",
-            "contacts",
-        )[row.get_index()]
-
-        if self.split_view.props.collapsed:
-            self.split_view.props.show_sidebar = False
+        self.content.props.visible_child = row.page.props.child
+        self.split_view.props.show_sidebar = not self.split_view.props.collapsed
 
     @Gtk.Template.Callback()
     def _on_profile_button_clicked(self, *_args: Any) -> None:
