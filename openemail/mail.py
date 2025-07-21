@@ -147,9 +147,7 @@ class Profile(GObject.Object):
     @address.setter
     def address(self, address: str) -> None:
         self._address = address
-
-        if not self.name:
-            self.name = address
+        self.name = self.name or address
 
     @GObject.Property(type=str)
     def name(self) -> str | None:
