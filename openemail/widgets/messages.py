@@ -11,7 +11,7 @@ from openemail.dict_store import DictStore
 from openemail.mail import Message, empty_trash, settings
 
 from .compose_dialog import ComposeDialog  # noqa: TC001
-from .message_view import MessageView  # noqa: TC001
+from .message_view import ThreadView  # noqa: TC001
 from .page import Page  # noqa: TC001
 
 
@@ -26,11 +26,11 @@ class _Messages(Adw.NavigationPage):
         self._get_object("sort_model").props.model = model
 
         self.compose_dialog: ComposeDialog = self._get_object("compose_dialog")
-        self.message_view: MessageView = self._get_object("message_view")
-        self.message_view.reply_button.connect(
-            "clicked",
+        self.thread_view: ThreadView = self._get_object("thread_view")
+        self.thread_view.connect(
+            "reply",
             lambda *_: self.compose_dialog.present_reply(message, self)
-            if (message := self.message_view.message)
+            if (message := self.thread_view.message)
             else None,
         )
 
@@ -52,7 +52,7 @@ class _Messages(Adw.NavigationPage):
         m.autoselect = False
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        self.message_view.message = (message := selection.props.selected_item)
+        self.thread_view.message = (message := selection.props.selected_item)
         if not isinstance(message, Message):
             return
 
@@ -69,7 +69,7 @@ class _Folder(_Messages):
 
         self.content.toolbar_button = self._get_object("toolbar_new")
         self.content.empty_page = self._get_object("no_messages")
-        self.content.model.bind_property("selected-item", self.message_view, "message")
+        self.content.model.bind_property("selected-item", self.thread_view, "message")
 
         for button in (self.content.toolbar_button, self._get_object("new_button")):
             button.connect("clicked", lambda *_: self.compose_dialog.present_new(self))
@@ -154,7 +154,7 @@ class Trash(_Messages):
         self.content.toolbar_button = empty_button
 
         self.content.empty_page = self._get_object("empty_trash")
-        self.content.model.bind_property("selected-item", self.message_view, "message")
+        self.content.model.bind_property("selected-item", self.thread_view, "message")
         self.content.model.bind_property(
             "n-items",
             empty_button,

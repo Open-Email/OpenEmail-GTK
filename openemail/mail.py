@@ -594,8 +594,13 @@ class Message(GObject.Object):
         for name, parts in message.attachments.items():
             self.attachments.append(IncomingAttachment(name, parts))
 
-        if isinstance(message, client.DraftMessage):
-            self.draft_id = message.ident
+        match message:
+            case client.IncomingMessage():
+                self.subject_id = message.subject_id
+            case client.DraftMessage():
+                self.draft_id = message.ident
+            case _:
+                pass
 
         for binding in (self._name_binding, self._image_binding):
             if binding:

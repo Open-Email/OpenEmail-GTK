@@ -3,11 +3,12 @@
 # SPDX-FileContributor: kramo
 
 from collections.abc import Callable
+from itertools import chain
 from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Notifier, create_task
+from openemail import APP_ID, PREFIX, Notifier, create_task, mail
 from openemail.mail import Message
 
 from .attachments import Attachments
@@ -32,6 +33,7 @@ class MessageView(Adw.Bin):
     visible_child_name = GObject.Property(type=str, default="empty")
     app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
 
+    reply = GObject.Signal()
     undo = GObject.Signal(
         flags=GObject.SignalFlags.RUN_FIRST | GObject.SignalFlags.ACTION
     )
@@ -42,7 +44,7 @@ class MessageView(Adw.Bin):
     @GObject.Property(type=Message)
     def message(self) -> Message | None:
         """Get the `Message` that `self` represents."""
-        return self._message or Message()
+        return self._message
 
     @message.setter
     def message(self, message: Message | None) -> None:
@@ -68,6 +70,10 @@ class MessageView(Adw.Bin):
     def _show_profile_dialog(self, *_args: Any) -> None:
         self.profile_view.profile = self.message.profile
         self.profile_dialog.present(self)
+
+    @Gtk.Template.Callback()
+    def _reply(self, *_args: Any) -> None:
+        self.emit("reply")
 
     @Gtk.Template.Callback()
     def _trash(self, *_args: Any) -> None:
@@ -106,3 +112,64 @@ class MessageView(Adw.Bin):
     def _add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
         toast = Notifier.send(title, lambda *_: self._history.pop(toast, lambda: ...)())  # pyright: ignore[reportUnknownArgumentType]
         self._history[toast] = undo
+
+
+class ThreadView(Adw.Bin):
+    """A view displaying a thread of messages."""
+
+    __gtype_name__ = "ThreadView"
+
+    scrolled_window: Gtk.ScrolledWindow
+    box: Gtk.Box
+
+    children: list[MessageView]
+
+    reply = GObject.Signal()
+
+    _message: Message | None = None
+
+    @GObject.Property(type=Message)
+    def message(self) -> Message | None:
+        """Get the `Message` that `self` represents."""
+        return self._message
+
+    @message.setter
+    def message(self, message: Message | None) -> None:
+        if message == self.message:
+            return
+
+        self._message = message
+
+        for child in self.children.copy():
+            self.children.remove(child)
+            self.box.remove(child)
+            child.disconnect_by_func(self._reply)
+
+        self._append(message)
+
+        if not message:
+            return
+
+        for current in chain(mail.inbox, mail.outbox):
+            if (current == message) or (current.subject_id != message.subject_id):
+                continue
+
+            self._append(current)
+
+    def _reply(self, *_args: Any) -> None:
+        self.emit("reply")
+
+    def _append(self, message: Message | None) -> None:
+        self.children.append(view := MessageView(message=message))
+        view.connect("reply", self._reply)
+        self.box.append(view)
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        self.children = []
+        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self._append(None)
+
+        self.scrolled_window = Gtk.ScrolledWindow(child=self.box)
+        self.props.child = Adw.ToolbarView(content=self.scrolled_window)
