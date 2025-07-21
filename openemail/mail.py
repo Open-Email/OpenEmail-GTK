@@ -19,7 +19,7 @@ from functools import partial
 from gettext import ngettext
 from itertools import chain
 from shutil import rmtree
-from typing import Any, ClassVar, NamedTuple, Self, cast
+from typing import Any, ClassVar, NamedTuple, Self, cast, override
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
@@ -336,6 +336,7 @@ class OutgoingAttachment(Attachment):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(can_remove=True, **kwargs)
 
+    @override
     def open(self) -> None:
         """Open `self` for viewing."""
         if not self.gfile:
@@ -426,6 +427,7 @@ class IncomingAttachment(Attachment):
 
         self.icon = Gio.content_type_get_icon(content_type)
 
+    @override
     def open(self, parent: Gtk.Widget | None = None) -> None:
         """Download and reconstruct `self` from its parts, then open for saving."""
         create_task(self._save(parent))

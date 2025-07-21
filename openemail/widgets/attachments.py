@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any
+from typing import Any, override
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
@@ -22,8 +22,8 @@ class RemoveAttachmentButton(Gtk.Button):
         self.props.icon_name = "remove-symbolic"
         self.props.tooltip_text = _("Remove")
 
+    @override
     def do_clicked(self) -> None:
-        """Signal emitted when the button has been activated (pressed and released)."""
         if not (
             (overlay := self.props.parent)
             and (list_item := overlay.props.parent)

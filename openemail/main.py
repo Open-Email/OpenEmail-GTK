@@ -7,7 +7,7 @@ import logging
 import sys
 from collections.abc import Callable, Sequence
 from logging.handlers import RotatingFileHandler
-from typing import Any
+from typing import Any, override
 
 import keyring
 from gi.events import (  # pyright: ignore[reportMissingImports]
@@ -47,11 +47,8 @@ class Application(Adw.Application):
         except ValueError:
             return
 
+    @override
     def do_activate(self) -> None:
-        """Raise the application's main window, creating it if necessary.
-
-        Called when the application is activated.
-        """
         (self.props.active_window or Window(application=self)).present()
 
     def _create_action(
