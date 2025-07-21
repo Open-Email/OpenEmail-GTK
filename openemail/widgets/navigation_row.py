@@ -17,6 +17,7 @@ class NavigationRow(Gtk.ListBoxRow):
     __gtype_name__ = "NavigationRow"
 
     counter = GObject.Property(type=str)
+    separator = GObject.Property(type=bool, default=False)
 
     _page: Adw.ViewStackPage
 

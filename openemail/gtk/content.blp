@@ -120,53 +120,37 @@ template $Content: Adw.BreakpointBin {
         content: ScrolledWindow {
           hscrollbar-policy: never;
 
-          child: Box {
-            orientation: vertical;
+          child: ListBox sidebar {
+            row-selected => $_on_row_selected();
 
-            ListBox sidebar {
-              row-selected => $_on_row_selected();
-
-              $NavigationRow {
-                page: bind inbox_page;
-              }
-
-              $NavigationRow {
-                page: bind outbox_page;
-              }
-
-              $NavigationRow {
-                page: bind drafts_page;
-              }
-
-              $NavigationRow {
-                page: bind trash_page;
-              }
-
-              styles [
-                "navigation-sidebar",
-              ]
+            $NavigationRow {
+              page: bind inbox_page;
             }
 
-            Separator {
-              margin-start: 12;
-              margin-end: 12;
+            $NavigationRow {
+              page: bind outbox_page;
             }
 
-            ListBox bottom_sidebar {
-              row-selected => $_on_bottom_row_selected();
-
-              $NavigationRow {
-                page: bind broadcasts_page;
-              }
-
-              $NavigationRow {
-                page: bind contacts_page;
-              }
-
-              styles [
-                "navigation-sidebar",
-              ]
+            $NavigationRow {
+              page: bind drafts_page;
             }
+
+            $NavigationRow {
+              page: bind trash_page;
+            }
+
+            $NavigationRow {
+              page: bind broadcasts_page;
+              separator: true;
+            }
+
+            $NavigationRow {
+              page: bind contacts_page;
+            }
+
+            styles [
+              "navigation-sidebar",
+            ]
           };
         };
       };
@@ -175,20 +159,10 @@ template $Content: Adw.BreakpointBin {
     content: Adw.NavigationPage {
       title: _("Content");
 
-      child: Adw.ViewStack content {
+      child: Adw.ViewStack stack {
         enable-transitions: true;
-        visible-child-name: bind template.content-child-name;
-
-        Adw.ViewStackPage broadcasts_page {
-          name: "broadcasts";
-          icon-name: "broadcasts-symbolic";
-          title: bind broadcasts.title;
-
-          child: $Broadcasts broadcasts {};
-        }
 
         Adw.ViewStackPage inbox_page {
-          name: "inbox";
           icon-name: "inbox-symbolic";
           title: bind inbox.title;
 
@@ -196,7 +170,6 @@ template $Content: Adw.BreakpointBin {
         }
 
         Adw.ViewStackPage outbox_page {
-          name: "outbox";
           icon-name: "outbox-symbolic";
           title: bind outbox.title;
 
@@ -204,7 +177,6 @@ template $Content: Adw.BreakpointBin {
         }
 
         Adw.ViewStackPage drafts_page {
-          name: "drafts";
           icon-name: "drafts-symbolic";
           title: bind drafts.title;
 
@@ -212,15 +184,20 @@ template $Content: Adw.BreakpointBin {
         }
 
         Adw.ViewStackPage trash_page {
-          name: "trash";
           icon-name: "trash-symbolic";
           title: bind trash.title;
 
           child: $Trash trash {};
         }
 
+        Adw.ViewStackPage broadcasts_page {
+          icon-name: "broadcasts-symbolic";
+          title: bind broadcasts.title;
+
+          child: $Broadcasts broadcasts {};
+        }
+
         Adw.ViewStackPage contacts_page {
-          name: "contacts";
           icon-name: "contacts-symbolic";
           title: bind contacts.title;
 

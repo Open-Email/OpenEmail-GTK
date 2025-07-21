@@ -25,7 +25,7 @@ class Content(Adw.BreakpointBin):
 
     sidebar_toolbar_view: Adw.ToolbarView = Gtk.Template.Child()
     sidebar: Gtk.ListBox = Gtk.Template.Child()
-    bottom_sidebar: Gtk.ListBox = Gtk.Template.Child()
+    stack: Adw.ViewStack = Gtk.Template.Child()
     profile_settings: ProfileSettings = Gtk.Template.Child()
 
     content_child_name = GObject.Property(type=str, default="inbox")
@@ -49,6 +49,7 @@ class Content(Adw.BreakpointBin):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+        self.sidebar.set_header_func(self._header_func)
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
         Notifier().bind_property(
@@ -65,36 +66,17 @@ class Content(Adw.BreakpointBin):
             GObject.BindingFlags.SYNC_CREATE,
         )
 
+    def _header_func(self, row: NavigationRow, *_args: Any) -> None:
+        if row.separator:
+            row.set_header(Gtk.Separator(margin_start=9, margin_end=9))
+
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: NavigationRow | None) -> None:
         if not row:
             return
 
-        self.bottom_sidebar.unselect_all()
         self.sidebar.select_row(row)
-
-        self.content_child_name = (
-            "inbox",
-            "outbox",
-            "drafts",
-            "trash",
-        )[row.get_index()]
-
-        if self.split_view.props.collapsed:
-            self.split_view.props.show_sidebar = False
-
-    @Gtk.Template.Callback()
-    def _on_bottom_row_selected(self, _obj: Any, row: NavigationRow | None) -> None:
-        if not row:
-            return
-
-        self.sidebar.unselect_all()
-        self.bottom_sidebar.select_row(row)
-
-        self.content_child_name = (
-            "broadcasts",
-            "contacts",
-        )[row.get_index()]
+        self.stack.props.visible_child = row.page.props.child
 
         if self.split_view.props.collapsed:
             self.split_view.props.show_sidebar = False
