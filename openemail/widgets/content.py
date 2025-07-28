@@ -67,8 +67,14 @@ class Content(Adw.BreakpointBin):
         )
 
     def _header_func(self, row: NavigationRow, *_args: Any) -> None:
-        if row.separator:
-            row.set_header(Gtk.Separator(margin_start=9, margin_end=9))
+        row.set_header(
+            Gtk.Separator(
+                margin_start=9,
+                margin_end=9,
+            )
+            if row.separator
+            else None
+        )
 
     @Gtk.Template.Callback()
     def _on_row_selected(self, _obj: Any, row: NavigationRow | None) -> None:

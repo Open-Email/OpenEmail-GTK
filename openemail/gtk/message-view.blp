@@ -13,218 +13,191 @@ template $MessageView: Adw.Bin {
     }
   }
 
-  child: Adw.ViewStack {
-    visible-child-name: bind template.visible-child-name;
+  child: Box {
+    orientation: vertical;
+    margin-start: 18;
+    margin-end: 24;
+    margin-top: 6;
+    spacing: 12;
 
-    Adw.ViewStackPage {
-      name: "empty";
+    Box {
+      valign: start;
+      spacing: 12;
 
-      child: WindowHandle {
-        child: Adw.StatusPage {
-          icon-name: bind template.app-icon-name;
+      Button {
+        valign: start;
+        tooltip-text: _("Profile");
+        can-target: bind $_has_profile(template.message as <$Message>.profile) as <bool>;
+        clicked => $_show_profile_dialog();
+
+        child: Adw.Avatar {
+          margin-top: 6;
+          margin-bottom: 6;
+          margin-start: 6;
+          margin-end: 6;
+          size: 48;
+          text: bind template.message as <$Message>.name;
+          icon-name: bind template.message as <$Message>.icon-name;
+          custom-image: bind template.message as <$Message>.profile-image;
+          show-initials: bind template.message as <$Message>.show-initials;
+        };
+
+        styles [
+          "circular",
+          "flat",
+        ]
+      }
+
+      Box {
+        valign: center;
+        orientation: vertical;
+        spacing: 3;
+
+        Label {
+          halign: start;
+          label: bind template.message as <$Message>.datetime;
+          wrap: true;
+          wrap-mode: word;
+          justify: right;
 
           styles [
-            "compact",
-            "dimmed",
+            "numeric",
+            "caption",
           ]
-        };
-      };
-    }
-
-    Adw.ViewStackPage {
-      name: "message";
-
-      child: Box {
-        orientation: vertical;
-        margin-start: 18;
-        margin-end: 24;
-        margin-top: 6;
-        spacing: 12;
-
-        Box {
-          valign: start;
-          spacing: 12;
-
-          Button {
-            valign: start;
-            tooltip-text: _("Profile");
-            can-target: bind $_has_profile(template.message as <$Message>.profile) as <bool>;
-            clicked => $_show_profile_dialog();
-
-            child: Adw.Avatar {
-              margin-top: 6;
-              margin-bottom: 6;
-              margin-start: 6;
-              margin-end: 6;
-              size: 48;
-              text: bind template.message as <$Message>.name;
-              icon-name: bind template.message as <$Message>.icon-name;
-              custom-image: bind template.message as <$Message>.profile-image;
-              show-initials: bind template.message as <$Message>.show-initials;
-            };
-
-            styles [
-              "circular",
-              "flat",
-            ]
-          }
-
-          Box {
-            valign: center;
-            orientation: vertical;
-            spacing: 3;
-
-            Label {
-              halign: start;
-              label: bind template.message as <$Message>.datetime;
-              wrap: true;
-              wrap-mode: word;
-              justify: right;
-
-              styles [
-                "numeric",
-                "caption",
-              ]
-            }
-
-            Label {
-              halign: start;
-              visible: bind template.message as <$Message>.incoming;
-              label: bind template.message as <$Message>.name;
-              wrap: true;
-              wrap-mode: word_char;
-
-              styles [
-                "title-4",
-              ]
-            }
-
-            Label {
-              halign: start;
-              label: bind template.message as <$Message>.original_author;
-              visible: bind template.message as <$Message>.different-author;
-              wrap: true;
-              wrap-mode: word_char;
-              selectable: true;
-
-              styles [
-                "caption",
-              ]
-            }
-
-            Label {
-              halign: start;
-              label: bind template.message as <$Message>.readers;
-              wrap: true;
-              wrap-mode: word_char;
-              selectable: true;
-
-              styles [
-                "caption",
-              ]
-            }
-          }
-
-          Box {
-            hexpand: true;
-            halign: end;
-            valign: start;
-
-            [end]
-            Button {
-              visible: bind template.message as <$Message>.can-trash;
-              icon-name: "trash-symbolic";
-              tooltip-text: _("Trash");
-              clicked => $_trash();
-
-              ShortcutController {
-                scope: managed;
-
-                Shortcut {
-                  trigger: "Delete|KP_Delete";
-                  action: "activate";
-                }
-              }
-            }
-
-            [end]
-            Button {
-              visible: bind template.message as <$Message>.trashed;
-              label: _("Restore");
-              clicked => $_restore();
-
-              ShortcutController {
-                scope: managed;
-
-                Shortcut {
-                  trigger: "Delete|KP_Delete";
-                  action: "activate";
-                }
-              }
-
-              styles [
-                "flat",
-              ]
-            }
-
-            [end]
-            Button {
-              visible: bind template.message as <$Message>.outgoing;
-              icon-name: "trash-symbolic";
-              tooltip-text: _("Discard");
-              clicked => $_discard();
-
-              ShortcutController {
-                scope: managed;
-
-                Shortcut {
-                  trigger: "Delete|KP_Delete";
-                  action: "activate";
-                }
-              }
-            }
-
-            [end]
-            Button reply_button {
-              visible: bind template.message as <$Message>.can-reply;
-              icon-name: "mail-reply-sender-symbolic";
-              tooltip-text: _("Reply");
-              clicked => $_reply();
-            }
-
-            styles [
-              "toolbar",
-              "card",
-            ]
-          }
         }
 
         Label {
           halign: start;
-          margin-start: 6;
-          label: bind template.message as <$Message>.subject;
+          visible: bind template.message as <$Message>.incoming;
+          label: bind template.message as <$Message>.name;
+          wrap: true;
+          wrap-mode: word_char;
+
+          styles [
+            "title-4",
+          ]
+        }
+
+        Label {
+          halign: start;
+          label: bind template.message as <$Message>.original_author;
+          visible: bind template.message as <$Message>.different-author;
           wrap: true;
           wrap-mode: word_char;
           selectable: true;
 
           styles [
-            "heading",
+            "caption",
           ]
         }
 
-        $Body body_view {
-          editable: false;
-          margin-start: 6;
-          text: bind template.message as <$Message>.body;
+        Label {
+          halign: start;
+          label: bind template.message as <$Message>.readers;
+          wrap: true;
+          wrap-mode: word_char;
+          selectable: true;
+
+          styles [
+            "caption",
+          ]
+        }
+      }
+
+      Box {
+        hexpand: true;
+        halign: end;
+        valign: start;
+
+        [end]
+        Button {
+          visible: bind template.message as <$Message>.can-trash;
+          icon-name: "trash-symbolic";
+          tooltip-text: _("Trash");
+          clicked => $_trash();
+
+          ShortcutController {
+            scope: managed;
+
+            Shortcut {
+              trigger: "Delete|KP_Delete";
+              action: "activate";
+            }
+          }
         }
 
-        $Attachments attachments {}
+        [end]
+        Button {
+          visible: bind template.message as <$Message>.trashed;
+          label: _("Restore");
+          clicked => $_restore();
 
-        Separator {
-          margin-start: 6;
+          ShortcutController {
+            scope: managed;
+
+            Shortcut {
+              trigger: "Delete|KP_Delete";
+              action: "activate";
+            }
+          }
+
+          styles [
+            "flat",
+          ]
         }
-      };
+
+        [end]
+        Button {
+          visible: bind template.message as <$Message>.outgoing;
+          icon-name: "trash-symbolic";
+          tooltip-text: _("Discard");
+          clicked => $_discard();
+
+          ShortcutController {
+            scope: managed;
+
+            Shortcut {
+              trigger: "Delete|KP_Delete";
+              action: "activate";
+            }
+          }
+        }
+
+        [end]
+        Button reply_button {
+          visible: bind template.message as <$Message>.can-reply;
+          icon-name: "mail-reply-sender-symbolic";
+          tooltip-text: _("Reply");
+          clicked => $_reply();
+        }
+
+        styles [
+          "toolbar",
+          "card",
+        ]
+      }
     }
+
+    Label {
+      halign: start;
+      margin-start: 6;
+      label: bind template.message as <$Message>.subject;
+      wrap: true;
+      wrap-mode: word_char;
+      selectable: true;
+
+      styles [
+        "heading",
+      ]
+    }
+
+    $Body body_view {
+      editable: false;
+      margin-start: 6;
+      text: bind template.message as <$Message>.body;
+    }
+
+    $Attachments attachments {}
 
     styles [
       "view",

@@ -30,9 +30,6 @@ class MessageView(Adw.Bin):
     profile_view: ProfileView = Gtk.Template.Child()
     confirm_discard_dialog: Adw.AlertDialog = Gtk.Template.Child()
 
-    visible_child_name = GObject.Property(type=str, default="empty")
-    app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
-
     reply = GObject.Signal()
     undo = GObject.Signal(
         flags=GObject.SignalFlags.RUN_FIRST | GObject.SignalFlags.ACTION
@@ -50,12 +47,8 @@ class MessageView(Adw.Bin):
     def message(self, message: Message | None) -> None:
         self._message = message
 
-        if not message:
-            self.visible_child_name = "empty"
-            return
-
-        self.visible_child_name = "message"
-        self.attachments.model = message.attachments
+        if message:
+            self.attachments.model = message.attachments
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -121,7 +114,7 @@ class ThreadView(Adw.Bin):
 
     toolbar_view: Adw.ToolbarView
     scrolled_window: Gtk.ScrolledWindow
-    box: Gtk.Box
+    box: Gtk.ListBox
 
     children: list[MessageView]
 
@@ -136,20 +129,29 @@ class ThreadView(Adw.Bin):
 
     @message.setter
     def message(self, message: Message | None) -> None:
-        if message == self.message:
-            return
-
         self._message = message
 
+        self.box.remove_all()
         for child in self.children.copy():
             self.children.remove(child)
-            self.box.remove(child)
             child.disconnect_by_func(self._reply)
 
-        self._append(message)
+        if message:
+            self.box.remove_css_class("background")
+            self.add_css_class("view")
 
-        if not message:
+        else:
+            status_page = Adw.StatusPage(icon_name=f"{APP_ID}-symbolic")
+            status_page.add_css_class("compact")
+            status_page.add_css_class("dimmed")
+            self.box.set_placeholder(Gtk.WindowHandle(child=status_page))
+
+            self.remove_css_class("view")
+            self.box.add_css_class("background")
+
             return
+
+        self._append(message)
 
         for current in chain(mail.inbox, mail.outbox):
             if (current == message) or (current.subject_id != message.subject_id):
@@ -163,16 +165,23 @@ class ThreadView(Adw.Bin):
     def _append(self, message: Message | None) -> None:
         self.children.append(view := MessageView(message=message))
         view.connect("reply", self._reply)
-        self.box.append(view)
+        self.box.append(Gtk.ListBoxRow(focusable=False, activatable=False, child=view))
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.add_css_class("view")
+        self.box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.box.add_css_class("background")
+        self.box.set_header_func(
+            lambda row, before: row.set_header(  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+                Gtk.Separator(margin_bottom=12, margin_start=24, margin_end=30)
+                if before
+                else None
+            )
+        )
 
         self.children = []
-        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
-        self._append(None)
+        self.message = None
 
         self.scrolled_window = Gtk.ScrolledWindow(child=self.box)
         self.toolbar_view = Adw.ToolbarView(content=self.scrolled_window)
