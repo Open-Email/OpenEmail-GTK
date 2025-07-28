@@ -16,7 +16,7 @@ from os import getenv
 from pathlib import Path
 from shutil import rmtree
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from . import crypto, model
@@ -376,12 +376,12 @@ async def request(
     headers["User-Agent"] = "Mozilla/5.0"
 
     try:
-        parsed = urlparse(url)
-        if parsed.scheme != "https":
+        split = urlsplit(url)
+        if split.scheme != "https":
             return None
 
         if auth:
-            if not (agent := parsed.hostname):
+            if not (agent := split.hostname):
                 return None
 
             headers.update(

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from itertools import chain
 from typing import Any
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, Notifier, create_task, mail
 from openemail.mail import Message
@@ -17,7 +17,7 @@ from .profile import ProfileView
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/message-view.ui")
-class MessageView(Adw.Bin):
+class MessageView(Gtk.Box):
     """A view displaying metadata about, and the contents of a message."""
 
     __gtype_name__ = "MessageView"
@@ -114,6 +114,7 @@ class ThreadView(Adw.Bin):
 
     toolbar_view: Adw.ToolbarView
     scrolled_window: Gtk.ScrolledWindow
+    viewport: Gtk.Viewport
     box: Gtk.ListBox
 
     children: list[MessageView]
@@ -151,7 +152,7 @@ class ThreadView(Adw.Bin):
 
             return
 
-        self._append(message)
+        row = self._append(message)
 
         for current in chain(mail.inbox, mail.outbox):
             if (current == message) or (current.subject_id != message.subject_id):
@@ -159,22 +160,32 @@ class ThreadView(Adw.Bin):
 
             self._append(current)
 
+        GLib.timeout_add(100, self.viewport.scroll_to, row)
+
     def _reply(self, *_args: Any) -> None:
         self.emit("reply")
 
-    def _append(self, message: Message | None) -> None:
-        self.children.append(view := MessageView(message=message))
+    def _append(self, message: Message | None) -> Gtk.ListBoxRow:
+        view = MessageView(message=message)
         view.connect("reply", self._reply)
-        self.box.append(Gtk.ListBoxRow(focusable=False, activatable=False, child=view))
+        self.children.append(view)
+
+        row = Gtk.ListBoxRow(focusable=False, activatable=False, child=view)
+        self.box.append(row)
+        return row
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
         self.box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         self.box.add_css_class("background")
+        self.box.set_sort_func(
+            lambda a, b: b.props.child.message.unix - a.props.child.message.unix  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+        )
+
         self.box.set_header_func(
             lambda row, before: row.set_header(  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
-                Gtk.Separator(margin_bottom=12, margin_start=24, margin_end=30)
+                Gtk.Separator(margin_bottom=12, margin_start=24, margin_end=24)
                 if before
                 else None
             )
@@ -183,7 +194,8 @@ class ThreadView(Adw.Bin):
         self.children = []
         self.message = None
 
-        self.scrolled_window = Gtk.ScrolledWindow(child=self.box)
+        self.viewport = Gtk.Viewport(child=self.box)
+        self.scrolled_window = Gtk.ScrolledWindow(child=self.viewport)
         self.toolbar_view = Adw.ToolbarView(content=self.scrolled_window)
         self.toolbar_view.add_top_bar(Adw.HeaderBar(show_title=False))
         self.props.child = self.toolbar_view

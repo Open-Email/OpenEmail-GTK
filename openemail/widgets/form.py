@@ -73,6 +73,10 @@ class FormField(GObject.Object):
                     self.valid = False
                     return
 
+                if not (any(addresses)):
+                    self.valid = False
+                    return
+
                 try:
                     for address in addresses:
                         if address:
