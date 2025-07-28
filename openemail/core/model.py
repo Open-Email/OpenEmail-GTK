@@ -281,7 +281,7 @@ class IncomingMessage:
             msg = "Incomplete header contents"
             raise ValueError(msg) from error
 
-        self.subject_id = headers.get("subject.id", self.ident)
+        self.subject_id = headers.get("subject-id", self.ident)
         self.parent_id = headers.get("parent-id")
 
         def str_to_int(string: str | None) -> int:

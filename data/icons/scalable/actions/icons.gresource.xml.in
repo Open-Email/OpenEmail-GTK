@@ -18,6 +18,7 @@
     <file preprocess="xml-stripblanks">open-menu-symbolic.svg</file>
     <file preprocess="xml-stripblanks">private-message-symbolic.svg</file>
     <file preprocess="xml-stripblanks">remove-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">restore-symbolic.svg</file>
     <file preprocess="xml-stripblanks">search-symbolic.svg</file>
     <file preprocess="xml-stripblanks">settings-symbolic.svg</file>
     <file preprocess="xml-stripblanks">sidebar-show-symbolic-rtl.svg</file>
