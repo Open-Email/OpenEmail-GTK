@@ -29,9 +29,7 @@ class _Messages(Adw.NavigationPage):
         self.thread_view: ThreadView = self._get_object("thread_view")
         self.thread_view.connect(
             "reply",
-            lambda *_: self.compose_dialog.present_reply(message, self)
-            if (message := self.thread_view.message)
-            else None,
+            lambda _, message: self.compose_dialog.present_reply(message, self),  # pyright: ignore[reportUnknownArgumentType]
         )
 
         self.content: Page = self._get_object("content")

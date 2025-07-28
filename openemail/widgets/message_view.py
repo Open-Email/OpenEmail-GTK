@@ -119,7 +119,7 @@ class ThreadView(Adw.Bin):
 
     children: list[MessageView]
 
-    reply = GObject.Signal()
+    reply = GObject.Signal(arg_types=(Message,))
 
     _message: Message | None = None
 
@@ -162,8 +162,8 @@ class ThreadView(Adw.Bin):
 
         GLib.timeout_add(100, self.viewport.scroll_to, row)
 
-    def _reply(self, *_args: Any) -> None:
-        self.emit("reply")
+    def _reply(self, view: MessageView, *_args: Any) -> None:
+        self.emit("reply", view.message)
 
     def _append(self, message: Message | None) -> Gtk.ListBoxRow:
         view = MessageView(message=message)
