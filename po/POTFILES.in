@@ -35,6 +35,7 @@ openemail/widgets/preferences.py
 openemail/widgets/profile_settings.py
 openemail/widgets/profile.py
 openemail/widgets/request_buttons.py
+openemail/widgets/thread_view.py
 openemail/widgets/window.py
 
 openemail/__init__.py.in
