@@ -108,44 +108,13 @@ template $MessageView: Box {
       halign: end;
       valign: start;
 
-      [end]
-      Button {
-        visible: bind template.message as <$Message>.can-trash;
-        icon-name: "trash-symbolic";
-        tooltip-text: _("Trash");
-        clicked => $_trash();
-
-        ShortcutController {
-          scope: managed;
-
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
-          }
-        }
+      Button reply_button {
+        visible: bind template.message as <$Message>.can-reply;
+        icon-name: "mail-reply-sender-symbolic";
+        tooltip-text: _("Reply");
+        clicked => $_reply();
       }
 
-      [end]
-      Button {
-        visible: bind template.message as <$Message>.trashed;
-        label: _("Restore");
-        clicked => $_restore();
-
-        ShortcutController {
-          scope: managed;
-
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
-          }
-        }
-
-        styles [
-          "flat",
-        ]
-      }
-
-      [end]
       Button {
         visible: bind template.message as <$Message>.outgoing;
         icon-name: "trash-symbolic";
@@ -162,12 +131,36 @@ template $MessageView: Box {
         }
       }
 
-      [end]
-      Button reply_button {
-        visible: bind template.message as <$Message>.can-reply;
-        icon-name: "mail-reply-sender-symbolic";
-        tooltip-text: _("Reply");
-        clicked => $_reply();
+      Button {
+        visible: bind template.message as <$Message>.can-trash;
+        icon-name: "trash-symbolic";
+        tooltip-text: _("Trash");
+        clicked => $_trash();
+
+        ShortcutController {
+          scope: managed;
+
+          Shortcut {
+            trigger: "Delete|KP_Delete";
+            action: "activate";
+          }
+        }
+      }
+
+      Button {
+        visible: bind template.message as <$Message>.trashed;
+        icon-name: "restore-symbolic";
+        tooltip-text: _("Restore");
+        clicked => $_restore();
+
+        ShortcutController {
+          scope: managed;
+
+          Shortcut {
+            trigger: "Delete|KP_Delete";
+            action: "activate";
+          }
+        }
       }
 
       styles [
