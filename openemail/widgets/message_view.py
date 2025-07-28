@@ -185,7 +185,7 @@ class ThreadView(Adw.Bin):
 
         self.box.set_header_func(
             lambda row, before: row.set_header(  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
-                Gtk.Separator(margin_bottom=12, margin_start=24, margin_end=24)
+                Gtk.Separator(margin_bottom=12, margin_start=18, margin_end=18)
                 if before
                 else None
             )
