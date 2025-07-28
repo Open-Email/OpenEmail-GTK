@@ -119,6 +119,7 @@ class ThreadView(Adw.Bin):
 
     __gtype_name__ = "ThreadView"
 
+    toolbar_view: Adw.ToolbarView
     scrolled_window: Gtk.ScrolledWindow
     box: Gtk.Box
 
@@ -167,9 +168,13 @@ class ThreadView(Adw.Bin):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
+        self.add_css_class("view")
+
         self.children = []
-        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
         self._append(None)
 
         self.scrolled_window = Gtk.ScrolledWindow(child=self.box)
-        self.props.child = Adw.ToolbarView(content=self.scrolled_window)
+        self.toolbar_view = Adw.ToolbarView(content=self.scrolled_window)
+        self.toolbar_view.add_top_bar(Adw.HeaderBar(show_title=False))
+        self.props.child = self.toolbar_view
