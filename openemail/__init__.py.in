@@ -39,7 +39,7 @@ class Notifier(GObject.Object):
     sending = GObject.Property(type=bool, default=False)
     syncing = GObject.Property(type=bool, default=False)
 
-    send_notification = GObject.Signal(name="send", arg_types=(Adw.Toast,))
+    send_notification = GObject.Signal("send", arg_types=(Adw.Toast,))
 
     _default = None
 
