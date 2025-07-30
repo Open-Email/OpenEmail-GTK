@@ -994,16 +994,17 @@ async def sync(*, periodic: bool = False) -> None:
     """Populate the app's content by fetching the user's data."""
     Notifier().syncing = True
 
-    if periodic and (interval := settings.get_uint("sync-interval")):
-        GLib.timeout_add_seconds(interval, create_task, sync(periodic=True))
+    if periodic:
+        interval = settings.get_uint("sync-interval")
+        GLib.timeout_add_seconds(interval or 60, create_task, sync(periodic=True))
 
         # The user chose manual sync, check again in a minute
         if not interval:
             return
 
-        # Assume that nobody is logged in, skip sync for now
-        if not settings.get_string("address"):
-            return
+    # Assume that nobody is logged in, skip sync for now
+    if not settings.get_string("address"):
+        return
 
     broadcasts.updating = True
     inbox.updating = True
