@@ -2,7 +2,7 @@
 <gresources>
   <gresource prefix="@PREFIX@">
     <file preprocess="xml-stripblanks">attachments.ui</file>
-    <file preprocess="xml-stripblanks">compose-dialog.ui</file>
+    <file preprocess="xml-stripblanks">compose-sheet.ui</file>
     <file preprocess="xml-stripblanks">contact-row.ui</file>
     <file preprocess="xml-stripblanks">contacts.ui</file>
     <file preprocess="xml-stripblanks">content.ui</file>

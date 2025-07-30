@@ -6,203 +6,205 @@ template $Content: Adw.BreakpointBin {
   height-request: 294;
 
   Adw.Breakpoint {
-    condition ("max-width: 900px")
+    condition ("max-width: 900")
 
     setters {
       split_view.collapsed: true;
     }
   }
 
-  child: Adw.OverlaySplitView split_view {
-    max-sidebar-width: 260;
-    sidebar-width-fraction: 0.22;
+  child: $ComposeSheet compose_sheet {
+    content: Adw.OverlaySplitView split_view {
+      max-sidebar-width: 260;
+      sidebar-width-fraction: 0.22;
 
-    sidebar: Adw.NavigationPage {
-      title: _("OpenEmail");
+      sidebar: Adw.NavigationPage {
+        title: _("OpenEmail");
 
-      child: Adw.ToolbarView sidebar_toolbar_view {
-        [top]
-        Adw.MultiLayoutView {
-          layout-name: bind template.header-bar-layout;
+        child: Adw.ToolbarView sidebar_toolbar_view {
+          [top]
+          Adw.MultiLayoutView {
+            layout-name: bind template.header-bar-layout;
 
-          Adw.Layout {
-            name: "title";
+            Adw.Layout {
+              name: "title";
 
-            content: Adw.HeaderBar {
-              [start]
-              Adw.LayoutSlot {
-                id: "profile";
-              }
+              content: Adw.HeaderBar {
+                [start]
+                Adw.LayoutSlot {
+                  id: "profile";
+                }
 
-              [end]
-              Adw.LayoutSlot {
-                id: "menu";
-              }
-            };
-          }
-
-          Adw.Layout {
-            name: "no-title";
-
-            content: Adw.HeaderBar {
-              show-title: false;
-
-              [end]
-              Adw.LayoutSlot {
-                id: "menu";
-              }
-
-              [end]
-              Adw.LayoutSlot {
-                id: "profile";
-              }
-            };
-          }
-
-          [profile]
-          Button {
-            tooltip-text: _("Profile");
-            clicked => $_on_profile_button_clicked();
-
-            child: Adw.Avatar {
-              size: 24;
-              custom-image: bind template.profile-image;
-              icon-name: bind template.app-icon-name;
-              text: "e"; // For a blue color
-            };
-
-            styles [
-              "circular",
-              "flat",
-            ]
-          }
-
-          [menu]
-          MenuButton {
-            primary: true;
-            icon-name: "open-menu-symbolic";
-            tooltip-text: _("Main Menu");
-
-            menu-model: menu {
-              item (_("_Preferences"), "app.preferences")
-              item (_("_Keyboard Shortcuts"), "app.shortcuts")
-              item (_("_About OpenEmail"), "app.about")
-            };
-          }
-        }
-
-        [bottom]
-        ListBox {
-          selection-mode: none;
-
-          ListBoxRow {
-            activatable: false;
-
-            child: Box {
-              margin-top: 6;
-              margin-bottom: 6;
-              margin-start: 6;
-              spacing: 12;
-
-              Adw.Spinner {}
-
-              Label {
-                label: _("Sending");
-              }
-            };
-          }
-
-          styles [
-            "navigation-sidebar",
-          ]
-        }
-
-        content: ScrolledWindow {
-          hscrollbar-policy: never;
-
-          child: ListBox sidebar {
-            row-selected => $_on_row_selected();
-
-            $NavigationRow {
-              page: bind inbox_page;
+                [end]
+                Adw.LayoutSlot {
+                  id: "menu";
+                }
+              };
             }
 
-            $NavigationRow {
-              page: bind outbox_page;
+            Adw.Layout {
+              name: "no-title";
+
+              content: Adw.HeaderBar {
+                show-title: false;
+
+                [end]
+                Adw.LayoutSlot {
+                  id: "menu";
+                }
+
+                [end]
+                Adw.LayoutSlot {
+                  id: "profile";
+                }
+              };
             }
 
-            $NavigationRow {
-              page: bind drafts_page;
+            [profile]
+            Button {
+              tooltip-text: _("Profile");
+              clicked => $_on_profile_button_clicked();
+
+              child: Adw.Avatar {
+                size: 24;
+                custom-image: bind template.profile-image;
+                icon-name: bind template.app-icon-name;
+                text: "e"; // For a blue color
+              };
+
+              styles [
+                "circular",
+                "flat",
+              ]
             }
 
-            $NavigationRow {
-              page: bind trash_page;
-            }
+            [menu]
+            MenuButton {
+              primary: true;
+              icon-name: "open-menu-symbolic";
+              tooltip-text: _("Main Menu");
 
-            $NavigationRow {
-              page: bind broadcasts_page;
-              separator: true;
+              menu-model: menu {
+                item (_("_Preferences"), "app.preferences")
+                item (_("_Keyboard Shortcuts"), "app.shortcuts")
+                item (_("_About OpenEmail"), "app.about")
+              };
             }
+          }
 
-            $NavigationRow {
-              page: bind contacts_page;
+          [bottom]
+          ListBox {
+            selection-mode: none;
+
+            ListBoxRow {
+              activatable: false;
+
+              child: Box {
+                margin-top: 6;
+                margin-bottom: 6;
+                margin-start: 6;
+                spacing: 12;
+
+                Adw.Spinner {}
+
+                Label {
+                  label: _("Sending");
+                }
+              };
             }
 
             styles [
               "navigation-sidebar",
             ]
+          }
+
+          content: ScrolledWindow {
+            hscrollbar-policy: never;
+
+            child: ListBox sidebar {
+              row-selected => $_on_row_selected();
+
+              $NavigationRow {
+                page: bind inbox_page;
+              }
+
+              $NavigationRow {
+                page: bind outbox_page;
+              }
+
+              $NavigationRow {
+                page: bind drafts_page;
+              }
+
+              $NavigationRow {
+                page: bind trash_page;
+              }
+
+              $NavigationRow {
+                page: bind broadcasts_page;
+                separator: true;
+              }
+
+              $NavigationRow {
+                page: bind contacts_page;
+              }
+
+              styles [
+                "navigation-sidebar",
+              ]
+            };
           };
         };
       };
-    };
 
-    content: Adw.NavigationPage {
-      title: _("Content");
+      content: Adw.NavigationPage {
+        title: _("Content");
 
-      child: Adw.ViewStack stack {
-        enable-transitions: true;
+        child: Adw.ViewStack stack {
+          enable-transitions: true;
 
-        Adw.ViewStackPage inbox_page {
-          icon-name: "inbox-symbolic";
-          title: bind inbox.title;
+          Adw.ViewStackPage inbox_page {
+            icon-name: "inbox-symbolic";
+            title: bind inbox.title;
 
-          child: $Inbox inbox {};
-        }
+            child: $Inbox inbox {};
+          }
 
-        Adw.ViewStackPage outbox_page {
-          icon-name: "outbox-symbolic";
-          title: bind outbox.title;
+          Adw.ViewStackPage outbox_page {
+            icon-name: "outbox-symbolic";
+            title: bind outbox.title;
 
-          child: $Outbox outbox {};
-        }
+            child: $Outbox outbox {};
+          }
 
-        Adw.ViewStackPage drafts_page {
-          icon-name: "drafts-symbolic";
-          title: bind drafts.title;
+          Adw.ViewStackPage drafts_page {
+            icon-name: "drafts-symbolic";
+            title: bind drafts.title;
 
-          child: $Drafts drafts {};
-        }
+            child: $Drafts drafts {};
+          }
 
-        Adw.ViewStackPage trash_page {
-          icon-name: "trash-symbolic";
-          title: bind trash.title;
+          Adw.ViewStackPage trash_page {
+            icon-name: "trash-symbolic";
+            title: bind trash.title;
 
-          child: $Trash trash {};
-        }
+            child: $Trash trash {};
+          }
 
-        Adw.ViewStackPage broadcasts_page {
-          icon-name: "broadcasts-symbolic";
-          title: bind broadcasts.title;
+          Adw.ViewStackPage broadcasts_page {
+            icon-name: "broadcasts-symbolic";
+            title: bind broadcasts.title;
 
-          child: $Broadcasts broadcasts {};
-        }
+            child: $Broadcasts broadcasts {};
+          }
 
-        Adw.ViewStackPage contacts_page {
-          icon-name: "contacts-symbolic";
-          title: bind contacts.title;
+          Adw.ViewStackPage contacts_page {
+            icon-name: "contacts-symbolic";
+            title: bind contacts.title;
 
-          child: $Contacts contacts {};
-        }
+            child: $Contacts contacts {};
+          }
+        };
       };
     };
   };

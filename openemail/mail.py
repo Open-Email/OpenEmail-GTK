@@ -995,7 +995,7 @@ async def sync(*, periodic: bool = False) -> None:
     Notifier().syncing = True
 
     if periodic and (interval := settings.get_uint("sync-interval")):
-        GLib.timeout_add_seconds(interval or 60, sync, True)
+        GLib.timeout_add_seconds(interval, create_task, sync(periodic=True))
 
         # The user chose manual sync, check again in a minute
         if not interval:

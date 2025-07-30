@@ -7,8 +7,10 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
+import openemail
 from openemail import APP_ID, PREFIX, Notifier, mail
 
+from .compose_sheet import ComposeSheet
 from .contacts import Contacts  # noqa: F401
 from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash  # noqa: F401
 from .navigation_row import NavigationRow
@@ -21,6 +23,7 @@ class Content(Adw.BreakpointBin):
 
     __gtype_name__ = "Content"
 
+    compose_sheet: ComposeSheet = Gtk.Template.Child()
     split_view: Adw.OverlaySplitView = Gtk.Template.Child()
 
     sidebar_toolbar_view: Adw.ToolbarView = Gtk.Template.Child()
@@ -49,6 +52,9 @@ class Content(Adw.BreakpointBin):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+
+        openemail.compose_sheet = self.compose_sheet
+
         self.sidebar.set_header_func(self._header_func)
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 

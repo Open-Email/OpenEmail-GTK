@@ -6,11 +6,11 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
+import openemail
 from openemail import PREFIX, mail
 from openemail.dict_store import DictStore
 from openemail.mail import Message, empty_trash, settings
 
-from .compose_dialog import ComposeDialog  # noqa: TC001
 from .page import Page  # noqa: TC001
 from .thread_view import ThreadView  # noqa: TC001
 
@@ -25,11 +25,10 @@ class _Messages(Adw.NavigationPage):
         settings.connect("changed::trashed-messages", self._on_trash_changed)
         self._get_object("sort_model").props.model = model
 
-        self.compose_dialog: ComposeDialog = self._get_object("compose_dialog")
         self.thread_view: ThreadView = self._get_object("thread_view")
         self.thread_view.connect(
             "reply",
-            lambda _, message: self.compose_dialog.present_reply(message, self),  # pyright: ignore[reportUnknownArgumentType]
+            lambda _, message: openemail.compose_sheet.reply(message),  # pyright: ignore[reportUnknownArgumentType]
         )
 
         self.content: Page = self._get_object("content")
@@ -70,7 +69,7 @@ class _Folder(_Messages):
         self.content.model.bind_property("selected-item", self.thread_view, "message")
 
         for button in (self.content.toolbar_button, self._get_object("new_button")):
-            button.connect("clicked", lambda *_: self.compose_dialog.present_new(self))
+            button.connect("clicked", lambda *_: openemail.compose_sheet.new_message())
 
         self.folder.bind_property(
             "updating",
@@ -124,7 +123,7 @@ class Drafts(_Messages):
             return
 
         selection.unselect_all()
-        self.compose_dialog.present_message(message, self)
+        openemail.compose_sheet.open_message(message)
 
 
 class Trash(_Messages):

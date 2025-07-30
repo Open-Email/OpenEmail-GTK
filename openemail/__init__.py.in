@@ -21,6 +21,9 @@ from openemail.core import client
 if TYPE_CHECKING:
     from asyncio import Task
 
+    from openemail.widgets.compose_sheet import ComposeSheet
+
+
 APP_ID = "@APP_ID@"
 VERSION = "@VERSION@"
 PREFIX = "@PREFIX@"
@@ -31,6 +34,8 @@ state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
 log_file = Path(GLib.get_user_state_dir(), "openemail.log")
 client.data_dir = Path(GLib.get_user_data_dir(), "openemail")
+
+compose_sheet: "ComposeSheet"
 
 
 class Notifier(GObject.Object):

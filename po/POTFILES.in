@@ -6,7 +6,7 @@ data/metainfo.xml.in
 data/gschema.xml.in
 
 openemail/gtk/attachments.blp
-openemail/gtk/compose-dialog.blp
+openemail/gtk/compose-sheet.blp
 openemail/gtk/contact-row.blp
 openemail/gtk/contacts.blp
 openemail/gtk/content.blp
@@ -22,7 +22,7 @@ openemail/gtk/shortcuts-dialog.blp
 openemail/gtk/window.blp
 
 openemail/widgets/body.py
-openemail/widgets/compose_dialog.py
+openemail/widgets/compose_sheet.py
 openemail/widgets/contacts.py
 openemail/widgets/content.py
 openemail/widgets/form.py

@@ -22,12 +22,13 @@ from .body import Body
 from .form import Form
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/compose-dialog.ui")
-class ComposeDialog(Adw.Dialog):
+@Gtk.Template.from_resource(f"{PREFIX}/compose-sheet.ui")
+class ComposeSheet(Adw.BreakpointBin):
     """A page listing a subset of the user's messages."""
 
-    __gtype_name__ = "ComposeDialog"
+    __gtype_name__ = "ComposeSheet"
 
+    bottom_sheet: Adw.BottomSheet = Gtk.Template.Child()
     readers: Gtk.Text = Gtk.Template.Child()
     subject: Gtk.Text = Gtk.Template.Child()
     body_view: Body = Gtk.Template.Child()
@@ -39,6 +40,7 @@ class ComposeDialog(Adw.Dialog):
     subject_id: str | None = None
     ident: str | None = None
 
+    content = GObject.Property(type=Gtk.Widget)
     privacy = GObject.Property(type=str, default="private")
 
     _save: bool = True
@@ -49,20 +51,33 @@ class ComposeDialog(Adw.Dialog):
 
         self.attachments.model = Gio.ListStore.new(OutgoingAttachment)
         self.body = self.body_view.props.buffer
+        self.bind_property(
+            "content",
+            self.bottom_sheet,
+            "content",
+            GObject.BindingFlags.BIDIRECTIONAL,
+        )
 
-    def present_new(self, parent: Gtk.Widget) -> None:
-        """Present `self` with empty contents."""
+    def new_message(self) -> None:
+        """Open `self` with empty contents."""
+        if self.bottom_sheet.props.reveal_bottom_bar:
+            self._save_draft()
+
         self.subject_id = None
         self.ident = None
         self.privacy = "private"
         self.attachments.model.remove_all()
         self.compose_form.reset()
 
-        self.present(parent)
+        self.bottom_sheet.props.open = True
+        self.bottom_sheet.props.reveal_bottom_bar = True
         self.readers.grab_focus()
 
-    def present_message(self, message: Message, parent: Gtk.Widget) -> None:
-        """Present `self`, displaying the contents of `message`."""
+    def open_message(self, message: Message) -> None:
+        """Open `self` with `message`."""
+        if self.bottom_sheet.props.reveal_bottom_bar:
+            self._save_draft()
+
         self.attachments.model.remove_all()
         self.privacy = "public" if message.broadcast else "private"
         self.subject_id = message.subject_id
@@ -71,10 +86,14 @@ class ComposeDialog(Adw.Dialog):
         self.subject.props.text = message.subject
         self.body.props.text = message.body
 
-        self.present(parent)
+        self.bottom_sheet.props.open = True
+        self.bottom_sheet.props.reveal_bottom_bar = True
 
-    def present_reply(self, message: Message, parent: Gtk.Widget) -> None:
-        """Present `self`, replying to `message`."""
+    def reply(self, message: Message) -> None:
+        """Open `self`, replying to `message`."""
+        if self.bottom_sheet.props.reveal_bottom_bar:
+            self._save_draft()
+
         self.attachments.model.remove_all()
         self.compose_form.reset()
         self.privacy = (
@@ -82,20 +101,23 @@ class ComposeDialog(Adw.Dialog):
         )
         self.readers.props.text = message.reader_addresses
 
-        if body := message.body:
-            self.body.props.text = (
-                # Date and time, author
-                _("On {}, {} wrote:").format(message.datetime, message.name)
-                + "\n"
-                + re.sub(r"^(?!>)", r"> ", body, flags=re.MULTILINE)
-                + "\n\n"
-            )
+        # Discuss whether this is needed
+
+        # if body := message.body:
+        #     self.body.props.text = (
+        #         # Date and time, author
+        #         _("On {}, {} wrote:").format(message.datetime, message.name)
+        #         + "\n"
+        #         + re.sub(r"^(?!>)", r"> ", body, flags=re.MULTILINE)
+        #         + "\n\n"
+        #     )
 
         self.subject.props.text = message.subject
         self.subject_id = message.subject_id
         self.ident = None
 
-        self.present(parent)
+        self.bottom_sheet.props.open = True
+        self.bottom_sheet.props.reveal_bottom_bar = True
         self.body_view.grab_focus()
 
     @Gtk.Template.Callback()
@@ -191,7 +213,7 @@ class ComposeDialog(Adw.Dialog):
 
         self.subject_id = None
         self._save = False
-        self.force_close()
+        self._cancel()
 
     @Gtk.Template.Callback()
     def _attach_files(self, *_args: Any) -> None:
@@ -290,7 +312,10 @@ class ComposeDialog(Adw.Dialog):
         return privacy == "private"
 
     @Gtk.Template.Callback()
-    def _closed(self, *_args: Any) -> None:
+    def _get_bottom_bar_label(self, _obj: Any, subject: str) -> str:
+        return subject or _("New Message")
+
+    def _save_draft(self) -> None:
         if not self._save:
             self._save = True
             return
@@ -308,3 +333,9 @@ class ComposeDialog(Adw.Dialog):
             body,
             self.subject_id,
         )
+
+    @Gtk.Template.Callback()
+    def _cancel(self, *_args: Any) -> None:
+        self.bottom_sheet.props.reveal_bottom_bar = False
+        self.bottom_sheet.props.open = False
+        self._save_draft()
