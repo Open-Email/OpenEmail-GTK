@@ -77,7 +77,7 @@ class ProfileView(Adw.Bin):
                     self._groups.append(
                         group := Adw.PreferencesGroup(
                             title=category.name,
-                            separate_rows=True,  # pyright: ignore[reportCallIssue]
+                            separate_rows=True,
                         )
                     )
                     self.page.add(group)

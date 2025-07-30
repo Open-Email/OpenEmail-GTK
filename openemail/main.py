@@ -10,9 +10,7 @@ from logging.handlers import RotatingFileHandler
 from typing import Any, override
 
 import keyring
-from gi.events import (  # pyright: ignore[reportMissingImports]
-    GLibEventLoopPolicy,  # pyright: ignore[reportUnknownVariableType]
-)
+from gi.events import GLibEventLoopPolicy
 from gi.repository import Adw, Gio
 
 from openemail import APP_ID, PREFIX, log_file, mail, secret_service, settings
