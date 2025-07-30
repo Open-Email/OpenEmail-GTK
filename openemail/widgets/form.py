@@ -69,11 +69,7 @@ class FormField(GObject.Object):
                     self.valid = True
 
             case FormFieldType.ADDRESS_LIST:
-                if not (addresses := re.split(ADDRESS_SPLIT_PATTERN, self.text)):
-                    self.valid = False
-                    return
-
-                if not (any(addresses)):
+                if not any(addresses := re.split(ADDRESS_SPLIT_PATTERN, self.text)):
                     self.valid = False
                     return
 
