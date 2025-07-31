@@ -12,6 +12,7 @@ from collections.abc import (
     Callable,
     Coroutine,
     Iterable,
+    Iterator,
 )
 from dataclasses import fields
 from datetime import UTC, date, datetime
@@ -19,7 +20,7 @@ from functools import partial
 from gettext import ngettext
 from itertools import chain
 from shutil import rmtree
-from typing import Any, ClassVar, NamedTuple, Self, cast, override
+from typing import Any, Self, cast, override
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
@@ -40,6 +41,54 @@ def _ident(message: model.Message) -> str:
     return f"{message.author.host_part} {message.ident}"
 
 
+class ProfileField(GObject.Object):
+    """A profile field."""
+
+    ident = GObject.Property(type=str)
+    name = GObject.Property(type=str)
+
+    def __init__(self, ident: str, name: str, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        self.ident = ident
+        self.name = name
+
+
+class Category(GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]
+    """A profile category."""
+
+    ident = GObject.Property(type=str)
+    name = GObject.Property(type=str)
+
+    def __init__(
+        self,
+        ident: str,
+        name: str,
+        fields: dict[str, str],
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+
+        self.ident = ident
+        self.name = name
+        self._fields = tuple(ProfileField(K, V) for K, V in fields.items())
+
+    def __iter__(self) -> Iterator[ProfileField]:
+        return super().__iter__()  # pyright: ignore[reportReturnType]
+
+    def do_get_item(self, position: int) -> ProfileField:
+        """Get the item at `position`."""
+        return self._fields[position]
+
+    def do_get_item_type(self) -> type[ProfileField]:
+        """Get the type of the items in `self`."""
+        return ProfileField
+
+    def do_get_n_items(self) -> int:
+        """Get the number of items in `self`."""
+        return len(self._fields)
+
+
 class Profile(GObject.Object):
     """A GObject representation of a user profile."""
 
@@ -51,53 +100,71 @@ class Profile(GObject.Object):
     has_name = GObject.Property(type=bool, default=False)
     has_image = GObject.Property(type=bool, default=False)
 
-    class Category(NamedTuple):
-        """A category of profile fields."""
-
-        ident: str
-        name: str
-
-    categories: ClassVar[dict[Category, dict[str, str]]] = {
-        Category("general", _("General")): {
-            "status": _("Status"),
-            "about": _("About"),
-        },
-        Category("personal", _("Personal")): {
-            "gender": _("Gender"),
-            "relationship-status": _("Relationship Status"),
-            "birthday": _("Birthday"),
-            "education": _("Education"),
-            "languages": _("Languages"),
-            "places-lived": _("Places Lived"),
-            "notes": _("Notes"),
-        },
-        Category("work", _("Work")): {
-            "work": _("Work"),
-            "organization": _("Organization"),
-            "department": _("Department"),
-            "job-title": _("Job Title"),
-        },
-        Category("interests", _("Interests")): {
-            "interests": _("Interests"),
-            "books": _("Books"),
-            "movies": _("Movies"),
-            "music": _("Music"),
-            "sports": _("Sports"),
-        },
-        Category("contacts", _("Contact")): {
-            "website": _("Website"),
-            "location": _("Location"),
-            "mailing-address": _("Mailing Address"),
-            "phone": _("Phone"),
-            "streams": _("Topics"),
-        },
-        Category("configuration", _("Options")): {
-            "public-access": _("People Can Reach Me"),
-            "public-links": _("Public Contacts"),
-            "last-seen-public": _("Share Presence"),
-            "address-expansion": _("Address Expansion"),
-        },
-    }
+    categories = (
+        Category(
+            "general",
+            _("General"),
+            {
+                "status": _("Status"),
+                "about": _("About"),
+            },
+        ),
+        Category(
+            "personal",
+            _("Personal"),
+            {
+                "gender": _("Gender"),
+                "relationship-status": _("Relationship Status"),
+                "birthday": _("Birthday"),
+                "education": _("Education"),
+                "languages": _("Languages"),
+                "places-lived": _("Places Lived"),
+                "notes": _("Notes"),
+            },
+        ),
+        Category(
+            "work",
+            _("Work"),
+            {
+                "work": _("Work"),
+                "organization": _("Organization"),
+                "department": _("Department"),
+                "job-title": _("Job Title"),
+            },
+        ),
+        Category(
+            "interests",
+            _("Interests"),
+            {
+                "interests": _("Interests"),
+                "books": _("Books"),
+                "movies": _("Movies"),
+                "music": _("Music"),
+                "sports": _("Sports"),
+            },
+        ),
+        Category(
+            "contacts",
+            _("Contact"),
+            {
+                "website": _("Website"),
+                "location": _("Location"),
+                "mailing-address": _("Mailing Address"),
+                "phone": _("Phone"),
+                "streams": _("Topics"),
+            },
+        ),
+        Category(
+            "configuration",
+            _("Options"),
+            {
+                "public-access": _("People Can Reach Me"),
+                "public-links": _("Public Contacts"),
+                "last-seen-public": _("Share Presence"),
+                "address-expansion": _("Address Expansion"),
+            },
+        ),
+    )
 
     _profile: model.Profile | None = None
     _broadcasts: bool = True
