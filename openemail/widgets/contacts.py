@@ -12,7 +12,7 @@ from openemail.mail import Address
 from .contact_row import ContactRow  # noqa: F401
 from .form import Form
 from .page import Page
-from .profile import ProfileView
+from .profile_view import ProfileView
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contacts.ui")
