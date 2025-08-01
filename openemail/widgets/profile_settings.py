@@ -9,7 +9,7 @@ from typing import Any, cast
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, create_task, mail
-from openemail.mail import Profile, WriteError
+from openemail.mail import Profile, ProfileField, WriteError
 
 from .form import Form
 
@@ -63,37 +63,41 @@ class ProfileSettings(Adw.PreferencesDialog):
         self.status.props.text = profile.value_of("status") or ""
         self.about.props.text = profile.value_of("about") or ""
 
-        for category, fields in Profile.categories.items():
+        for category in Profile.categories:
             if category.ident == "general":  # Already added manually
                 continue
 
-            self._pages.append(
-                page := Adw.PreferencesPage(
-                    title=category.name,
-                    icon_name=f"{category.ident}-symbolic",
-                )
+            page = Adw.PreferencesPage(
+                title=category.name, icon_name=f"{category.ident}-symbolic"
             )
+            self._pages.append(page)
             self.add(page)
-            page.add(group := Adw.PreferencesGroup())
 
-            for ident, name in fields.items():
-                if not isinstance(value := profile.value_of(ident), bool):
-                    row = Adw.EntryRow(title=name, text=str(value or ""))
-                    row.add_css_class("property")
-                    row.add_prefix(Gtk.Image(icon_name=f"{ident}-symbolic"))
-                    row.connect("changed", self._on_change)
-                    group.add(row)
-                    self._fields[ident] = row.get_text
-                    continue
-
-                row = Adw.SwitchRow(title=name, active=value)
-                row.add_prefix(Gtk.Image(icon_name=f"{ident}-symbolic"))
-                row.connect("notify::active", self._on_change)
-                group.add(row)
-                self._fields[ident] = lambda r=row: "Yes" if r.props.active else "No"
+            group = Adw.PreferencesGroup()
+            group.bind_model(category, self._create_row, profile)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+            page.add(group)
 
         self.visible_child_name = "profile"
         self._changed = False
+
+    def _create_row(self, field: ProfileField, profile: Profile) -> Gtk.Widget:
+        value = profile.value_of(field.ident)
+
+        if isinstance(value, bool):
+            row = Adw.SwitchRow(active=value)
+            row.connect("notify::active", self._on_change)
+            self._fields[field.ident] = lambda r=row: "Yes" if r.props.active else "No"
+
+        else:
+            row = Adw.EntryRow(text=str(value or ""))
+            row.add_css_class("property")
+            row.connect("changed", self._on_change)
+            self._fields[field.ident] = row.get_text
+
+        row.props.title = field.name
+        row.add_prefix(Gtk.Image.new_from_icon_name(f"{field.ident}-symbolic"))
+
+        return row
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

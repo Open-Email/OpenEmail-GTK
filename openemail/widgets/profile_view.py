@@ -8,7 +8,7 @@ from gi.repository import Adw, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, create_task, mail
 from openemail.core.model import Address
-from openemail.mail import Profile
+from openemail.mail import Profile, ProfileField
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/profile.ui")
@@ -64,39 +64,21 @@ class ProfileView(Adw.Bin):
 
         self._groups = []
 
-        for category, fields in Profile.categories.items():
+        def _filter_empty_fields(field: ProfileField) -> bool:
+            return bool(profile.value_of(field.ident))
+
+        empty_fields_filter = Gtk.CustomFilter.new(_filter_empty_fields)
+        for category in Profile.categories:
             if category.ident == "configuration":  # Only relevant for settings
                 continue
 
-            group = None
-            for ident, name in fields.items():
-                if not (value := str(profile.value_of(ident) or "")):
-                    continue
+            if not (filtered := Gtk.FilterListModel.new(category, empty_fields_filter)):
+                continue
 
-                if not group:
-                    self._groups.append(
-                        group := Adw.PreferencesGroup(
-                            title=category.name,
-                            separate_rows=True,
-                        )
-                    )
-                    self.page.add(group)
-
-                row = Adw.ActionRow(
-                    title=name,
-                    subtitle=value,
-                    subtitle_selectable=True,
-                    use_markup=False,
-                )
-                row.add_css_class("property")
-                row.add_prefix(
-                    Gtk.Image(
-                        valign=Gtk.Align.START,
-                        icon_name=f"{ident}-symbolic",
-                        margin_top=18,
-                    )
-                )
-                group.add(row)
+            group = Adw.PreferencesGroup(title=category.name, separate_rows=True)
+            group.bind_model(filtered, self._create_row, profile)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+            self._groups.append(group)
+            self.page.add(group)
 
         if self._broadcasts_binding:
             self._broadcasts_binding.unbind()
@@ -109,6 +91,25 @@ class ProfileView(Adw.Bin):
         )
 
         self.visible_child_name = "profile"
+
+    @staticmethod
+    def _create_row(field: ProfileField, profile: Profile) -> Gtk.Widget:
+        row = Adw.ActionRow(
+            title=field.name,
+            subtitle=profile.value_of(field.ident),
+            subtitle_selectable=True,
+            use_markup=False,
+        )
+        row.add_css_class("property")
+        row.add_prefix(
+            Gtk.Image(
+                valign=Gtk.Align.START,
+                icon_name=f"{field.ident}-symbolic",
+                margin_top=18,
+            )
+        )
+
+        return row
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

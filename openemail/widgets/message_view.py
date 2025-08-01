@@ -12,7 +12,7 @@ from openemail.mail import Message
 
 from .attachments import Attachments
 from .body import Body
-from .profile import ProfileView
+from .profile_view import ProfileView
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/message-view.ui")
