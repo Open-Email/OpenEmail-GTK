@@ -4,9 +4,20 @@
 
 from abc import abstractmethod
 from collections.abc import Callable, Iterator
+from pathlib import Path
 from typing import Any
 
-from gi.repository import Gio, GObject
+from gi.repository import Gio, GLib, GObject
+
+from openemail.core import client
+
+from . import APP_ID
+
+settings = Gio.Settings.new(APP_ID)
+state_settings = Gio.Settings.new(f"{APP_ID}.State")
+secret_service = f"{APP_ID}.Keys"
+log_file = Path(GLib.get_user_state_dir(), "openemail.log")
+client.data_dir = Path(GLib.get_user_data_dir(), "openemail")
 
 
 class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]

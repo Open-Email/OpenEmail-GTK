@@ -6,8 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, create_task
-from openemail.app import mail
+from openemail.app import APP_ID, PREFIX, create_task, mail
 from openemail.app.mail import Profile, ProfileField
 from openemail.core.model import Address
 

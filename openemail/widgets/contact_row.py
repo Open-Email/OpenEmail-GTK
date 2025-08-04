@@ -6,9 +6,9 @@ from typing import Any
 
 from gi.repository import GObject, Gtk
 
-from openemail import PREFIX, create_task, settings
-from openemail.app import mail
+from openemail.app import PREFIX, create_task, mail
 from openemail.app.mail import Profile
+from openemail.app.store import settings
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contact-row.ui")

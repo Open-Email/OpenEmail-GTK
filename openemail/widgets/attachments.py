@@ -6,7 +6,7 @@ from typing import Any, override
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import PREFIX
+from openemail.app import PREFIX
 
 
 class RemoveAttachmentButton(Gtk.Button):

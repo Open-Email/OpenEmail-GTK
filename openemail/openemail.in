@@ -29,6 +29,13 @@ if __name__ == "__main__":
         resource_path = Path(pkgdatadir, f"{resource}.gresource")
         Gio.resources_register(Gio.Resource.load(str(resource_path)))
 
+    from openemail import app
+
+    app.APP_ID = "@APP_ID@"
+    app.VERSION = "@VERSION@"
+    app.PREFIX = "@PREFIX@"
+    app.PROFILE = "@PROFILE@"
+
     from openemail.app import main
 
     sys.exit(main.main())

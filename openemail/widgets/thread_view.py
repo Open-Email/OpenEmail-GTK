@@ -7,8 +7,7 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import APP_ID
-from openemail.app import mail
+from openemail.app import APP_ID, mail
 from openemail.app.mail import Message
 
 from .message_view import MessageView

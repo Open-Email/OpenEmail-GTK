@@ -20,18 +20,24 @@ from functools import partial
 from gettext import ngettext
 from itertools import chain
 from shutil import rmtree
-from typing import Any, Self, cast, override
+from typing import TYPE_CHECKING, Any, Self, cast, override
 
 import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
-from openemail import Notifier, create_task, secret_service, settings
 from openemail.core import client, model
 from openemail.core.client import WriteError, user
 from openemail.core.crypto import KeyPair
 from openemail.core.model import Address
 
-from .store import DictStore
+from . import Notifier, create_task
+from .store import DictStore, secret_service, settings
+
+if TYPE_CHECKING:
+    from openemail.widgets.compose_sheet import ComposeSheet
+
+
+compose_sheet: "ComposeSheet"
 
 MAX_PROFILE_IMAGE_DIMENSIONS = 800
 ADDRESS_SPLIT_PATTERN = ",|;| "

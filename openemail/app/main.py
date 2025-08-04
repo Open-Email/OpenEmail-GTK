@@ -13,12 +13,12 @@ import keyring
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Adw, Gio
 
-from openemail import APP_ID, PREFIX, log_file, secret_service, settings
 from openemail.widgets.preferences import Preferences
 from openemail.widgets.window import Window
 
-from . import mail
+from . import APP_ID, PREFIX, mail
 from .mail import Address, KeyPair
+from .store import log_file, secret_service, settings
 
 
 class Application(Adw.Application):

@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
+# SPDX-FileContributor: kramo
+
+"""A Mail/HTTPS client."""
+
+import gi
+
+gi.require_version("Gdk", "4.0")
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any, Self, cast
+
+from gi.repository import Adw, Gio, GObject
+
+if TYPE_CHECKING:
+    from asyncio import Task
+
+APP_ID: str
+VERSION: str
+PREFIX: str
+PROFILE: str
+
+
+class Notifier(GObject.Object):
+    """Used for sending user-facing information throughout the application."""
+
+    sending = GObject.Property(type=bool, default=False)
+    syncing = GObject.Property(type=bool, default=False)
+
+    send_notification = GObject.Signal("send", arg_types=(Adw.Toast,))
+
+    _default = None
+
+    def __new__(cls, **kwargs: Any) -> Self:  # noqa: D102
+        if not cls._default:
+            cls._default = super().__new__(cls, **kwargs)
+
+        return cls._default
+
+    @classmethod
+    def send(
+        cls, title: str, undo: Callable[[Adw.Toast, Any], Any] | None = None
+    ) -> Adw.Toast:
+        """Emit the `Notifier::send` signal with a toast from `title` and `undo`.
+
+        `undo` is called on `Adw.Toast::button-clicked`.
+        """
+        toast = Adw.Toast(title=title, priority=Adw.ToastPriority.HIGH)
+
+        if undo:
+            toast.props.button_label = _("Undo")
+            toast.connect("button-clicked", undo)
+
+        cls().emit("send", toast)
+        return toast
+
+
+def create_task(
+    coro: Coroutine[Any, Any, Any],
+    callback: Callable[[bool], Any] | None = None,
+) -> None:
+    """Execute a coroutine in a task.
+
+    Calls `callback` on finish with `True` if no exceptions were raised
+    and `False` otherwise.
+    """
+    if not (app := Gio.Application.get_default()):
+        msg = "create_task() called before Application finished initializing"
+        raise RuntimeError(msg)
+
+    task = cast("Task[Any]", app.create_asyncio_task(coro))  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+    task.add_done_callback(
+        lambda task: callback(not task.exception()) if callback else None
+    )

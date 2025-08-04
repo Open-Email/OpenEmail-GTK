@@ -6,11 +6,9 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-import openemail
-from openemail import PREFIX
-from openemail.app import mail
-from openemail.app.mail import Message, empty_trash, settings
-from openemail.app.store import DictStore
+from openemail.app import PREFIX, mail
+from openemail.app.mail import Message, empty_trash
+from openemail.app.store import DictStore, settings
 
 from .page import Page  # noqa: TC001
 from .thread_view import ThreadView  # noqa: TC001
@@ -29,7 +27,7 @@ class _Messages(Adw.NavigationPage):
         self.thread_view: ThreadView = self._get_object("thread_view")
         self.thread_view.connect(
             "reply",
-            lambda _, message: openemail.compose_sheet.reply(message),  # pyright: ignore[reportUnknownArgumentType]
+            lambda _, message: mail.compose_sheet.reply(message),  # pyright: ignore[reportUnknownArgumentType]
         )
 
         self.content: Page = self._get_object("content")
@@ -70,7 +68,7 @@ class _Folder(_Messages):
         self.content.model.bind_property("selected-item", self.thread_view, "message")
 
         for button in (self.content.toolbar_button, self._get_object("new_button")):
-            button.connect("clicked", lambda *_: openemail.compose_sheet.new_message())
+            button.connect("clicked", lambda *_: mail.compose_sheet.new_message())
 
         self.folder.bind_property(
             "updating",
@@ -124,7 +122,7 @@ class Drafts(_Messages):
             return
 
         selection.unselect_all()
-        openemail.compose_sheet.open_message(message)
+        mail.compose_sheet.open_message(message)
 
 
 class Trash(_Messages):
