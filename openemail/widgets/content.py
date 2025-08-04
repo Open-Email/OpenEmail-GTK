@@ -8,7 +8,8 @@ from typing import Any
 from gi.repository import Adw, Gdk, GObject, Gtk
 
 import openemail
-from openemail import APP_ID, PREFIX, Notifier, mail
+from openemail import APP_ID, PREFIX, Notifier
+from openemail.app import mail
 
 from .compose_sheet import ComposeSheet
 from .contacts import Contacts  # noqa: F401

@@ -5,6 +5,10 @@ data/desktop.in
 data/metainfo.xml.in
 data/gschema.xml.in
 
+openemail/app/store.py
+openemail/app/mail.py
+openemail/app/main.py
+
 openemail/gtk/attachments.blp
 openemail/gtk/compose-sheet.blp
 openemail/gtk/contact-row.blp
@@ -17,7 +21,7 @@ openemail/gtk/navigation-row.blp
 openemail/gtk/page.blp
 openemail/gtk/preferences.blp
 openemail/gtk/profile-settings.blp
-openemail/gtk/profile.blp
+openemail/gtk/profile-view.blp
 openemail/gtk/shortcuts-dialog.blp
 openemail/gtk/window.blp
 
@@ -33,12 +37,9 @@ openemail/widgets/navigation_row.py
 openemail/widgets/page.py
 openemail/widgets/preferences.py
 openemail/widgets/profile_settings.py
-openemail/widgets/profile.py
+openemail/widgets/profile_view.py
 openemail/widgets/request_buttons.py
 openemail/widgets/thread_view.py
 openemail/widgets/window.py
 
 openemail/__init__.py.in
-openemail/dict_store.py
-openemail/mail.py
-openemail/main.py

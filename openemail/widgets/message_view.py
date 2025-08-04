@@ -8,7 +8,7 @@ from typing import Any
 from gi.repository import Adw, GObject, Gtk
 
 from openemail import PREFIX, Notifier, create_task
-from openemail.mail import Message
+from openemail.app.mail import Message
 
 from .attachments import Attachments
 from .body import Body

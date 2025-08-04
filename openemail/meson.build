@@ -12,14 +12,10 @@ configure_file(
 )
 
 install_data(
-  [
-    configure_file(input: '__init__.py.in', output: '@BASENAME@', configuration: conf),
-    'dict_store.py',
-    'mail.py',
-    'main.py',
-  ],
+  [configure_file(input: '__init__.py.in', output: '@BASENAME@', configuration: conf)],
   install_dir: moduledir,
 )
 
+install_subdir('app', install_dir: moduledir)
 install_subdir('core', install_dir: moduledir)
 install_subdir('widgets', install_dir: moduledir)

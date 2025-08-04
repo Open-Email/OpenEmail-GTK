@@ -13,7 +13,7 @@ blueprints = custom_target(
     'page.blp',
     'preferences.blp',
     'profile-settings.blp',
-    'profile.blp',
+    'profile-view.blp',
     'shortcuts-dialog.blp',
     'window.blp',
   ),

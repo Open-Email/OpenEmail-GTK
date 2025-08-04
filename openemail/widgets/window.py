@@ -8,15 +8,8 @@ from typing import Any
 import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import (
-    APP_ID,
-    PREFIX,
-    Notifier,
-    create_task,
-    mail,
-    settings,
-    state_settings,
-)
+from openemail import APP_ID, PREFIX, Notifier, create_task, settings, state_settings
+from openemail.app import mail
 
 from .content import Content
 from .login_view import LoginView

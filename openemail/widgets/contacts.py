@@ -6,8 +6,9 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import PREFIX, create_task, mail
-from openemail.mail import Address
+from openemail import PREFIX, create_task
+from openemail.app import mail
+from openemail.app.mail import Address
 
 from .contact_row import ContactRow  # noqa: F401
 from .form import Form

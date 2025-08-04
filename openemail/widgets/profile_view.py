@@ -6,12 +6,13 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, create_task, mail
+from openemail import APP_ID, PREFIX, create_task
+from openemail.app import mail
+from openemail.app.mail import Profile, ProfileField
 from openemail.core.model import Address
-from openemail.mail import Profile, ProfileField
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/profile.ui")
+@Gtk.Template.from_resource(f"{PREFIX}/profile-view.ui")
 class ProfileView(Adw.Bin):
     """A page presenting a user's profile."""
 

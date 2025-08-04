@@ -26,12 +26,12 @@ import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail import Notifier, create_task, secret_service, settings
+from openemail.core import client, model
+from openemail.core.client import WriteError, user
+from openemail.core.crypto import KeyPair
+from openemail.core.model import Address
 
-from .core import client, model
-from .core.client import WriteError, user
-from .core.crypto import KeyPair
-from .core.model import Address
-from .dict_store import DictStore
+from .store import DictStore
 
 MAX_PROFILE_IMAGE_DIMENSIONS = 800
 ADDRESS_SPLIT_PATTERN = ",|;| "

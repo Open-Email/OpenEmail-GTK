@@ -7,9 +7,10 @@ from typing import Any
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 import openemail
-from openemail import PREFIX, mail
-from openemail.dict_store import DictStore
-from openemail.mail import Message, empty_trash, settings
+from openemail import PREFIX
+from openemail.app import mail
+from openemail.app.mail import Message, empty_trash, settings
+from openemail.app.store import DictStore
 
 from .page import Page  # noqa: TC001
 from .thread_view import ThreadView  # noqa: TC001

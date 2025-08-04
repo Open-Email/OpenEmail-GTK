@@ -14,7 +14,7 @@
     <file preprocess="xml-stripblanks">page.ui</file>
     <file preprocess="xml-stripblanks">preferences.ui</file>
     <file preprocess="xml-stripblanks">profile-settings.ui</file>
-    <file preprocess="xml-stripblanks">profile.ui</file>
+    <file preprocess="xml-stripblanks">profile-view.ui</file>
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
     <file preprocess="xml-stripblanks">window.ui</file>
     <file>style.css</file>
