@@ -96,8 +96,8 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
 
     submit_widget = GObject.Property(type=Gtk.Widget)
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
         self._fields = list[FormField]()
 
