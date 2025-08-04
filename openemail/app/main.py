@@ -6,6 +6,7 @@ import json
 import logging
 import sys
 from collections.abc import Callable, Sequence
+from datetime import UTC, date, datetime
 from logging.handlers import RotatingFileHandler
 from typing import Any, override
 
@@ -13,11 +14,12 @@ import keyring
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Adw, Gio
 
+from openemail.core.crypto import KeyPair
+from openemail.core.model import Address
 from openemail.widgets.preferences import Preferences
 from openemail.widgets.window import Window
 
 from . import APP_ID, PREFIX, mail
-from .mail import Address, KeyPair
 from .store import log_file, secret_service, settings
 
 
@@ -29,6 +31,30 @@ class Application(Adw.Application):
         self._create_action("preferences", self._preferences, ("<primary>comma",))
         self._create_action("about", self._about)
         self._create_action("quit", self._quit, ("<primary>q",))
+
+        if interval := settings.get_uint("empty-trash-interval"):
+            deleted = set[str]()
+            new_trashed = list[str]()
+
+            today = datetime.now(UTC).date()
+            for message in settings.get_strv("trashed-messages"):
+                ident, timestamp = message.rsplit(maxsplit=1)
+
+                try:
+                    trashed = date.fromisoformat(timestamp)
+                except ValueError:
+                    continue
+
+                if today.day - trashed.day >= interval:
+                    deleted.add(ident)
+                else:
+                    new_trashed.append(message)
+
+            settings.set_strv("trashed-messages", new_trashed)
+            settings.set_strv(
+                "deleted-messages",
+                tuple(set(settings.get_strv("deleted-messages")) | deleted),
+            )
 
         if not (
             (address := settings.get_string("address"))

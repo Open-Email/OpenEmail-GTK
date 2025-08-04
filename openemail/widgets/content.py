@@ -7,7 +7,7 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail.app import APP_ID, PREFIX, Notifier, mail
+from openemail.app import APP_ID, PREFIX, Notifier, mail, store
 
 from .compose_sheet import ComposeSheet
 from .contacts import Contacts  # noqa: F401
@@ -64,7 +64,7 @@ class Content(Adw.BreakpointBin):
             GObject.BindingFlags.SYNC_CREATE,
         )
 
-        mail.user_profile.bind_property(
+        store.user_profile.bind_property(
             "image",
             self,
             "profile-image",

@@ -6,9 +6,9 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail.app import PREFIX, mail
-from openemail.app.mail import Message, empty_trash
-from openemail.app.store import DictStore, settings
+from openemail.app import PREFIX, mail, store
+from openemail.app.mail import Message
+from openemail.app.store import DictStore, empty_trash, settings
 
 from .page import Page  # noqa: TC001
 from .thread_view import ThreadView  # noqa: TC001
@@ -82,14 +82,14 @@ class Inbox(_Folder):
     """A navigation page displaying the user's inbox."""
 
     __gtype_name__ = "Inbox"
-    folder, title = mail.inbox, _("Inbox")
+    folder, title = store.inbox, _("Inbox")
 
 
 class Outbox(_Folder):
     """A navigation page displaying the user's outbox."""
 
     __gtype_name__ = "Outbox"
-    folder, title = mail.outbox, _("Outbox")
+    folder, title = store.outbox, _("Outbox")
 
 
 class Drafts(_Messages):
@@ -98,12 +98,12 @@ class Drafts(_Messages):
     __gtype_name__ = "Drafts"
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(mail.drafts, title=_("Drafts"), **kwargs)
+        super().__init__(store.drafts, title=_("Drafts"), **kwargs)
 
         self.content.model.props.can_unselect = True
 
         delete_dialog: Adw.AlertDialog = self._get_object("delete_dialog")
-        delete_dialog.connect("response::delete", lambda *_: mail.drafts.delete_all())
+        delete_dialog.connect("response::delete", lambda *_: store.drafts.delete_all())
 
         delete_button: Gtk.Button = self._get_object("delete_button")
         delete_button.connect("clicked", lambda *_: delete_dialog.present(self))
@@ -139,8 +139,8 @@ class Trash(_Messages):
 
         self.trashed.props.invert = False
 
-        folders.append(mail.broadcasts)
-        folders.append(mail.inbox)
+        folders.append(store.broadcasts)
+        folders.append(store.inbox)
 
         empty_dialog: Adw.AlertDialog = self._get_object("empty_dialog")
         empty_dialog.connect("response::empty", lambda *_: empty_trash())
@@ -159,14 +159,14 @@ class Trash(_Messages):
         )
 
         def set_loading(*_args: Any) -> None:
-            self.content.loading = mail.inbox.updating or mail.broadcasts.updating
+            self.content.loading = store.inbox.updating or store.broadcasts.updating
 
-        mail.inbox.connect("notify::updating", set_loading)
-        mail.broadcasts.connect("notify::updating", set_loading)
+        store.inbox.connect("notify::updating", set_loading)
+        store.broadcasts.connect("notify::updating", set_loading)
 
 
 class Broadcasts(_Folder):
     """A navigation page displaying the user's broadcasts folder."""
 
     __gtype_name__ = "Broadcasts"
-    folder, title = mail.broadcasts, _("Public")
+    folder, title = store.broadcasts, _("Public")

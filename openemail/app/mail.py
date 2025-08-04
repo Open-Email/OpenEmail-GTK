@@ -2,21 +2,10 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-import re
 from abc import abstractmethod
-from collections import defaultdict
-from collections.abc import (
-    AsyncGenerator,
-    AsyncIterable,
-    Awaitable,
-    Coroutine,
-    Iterable,
-    Iterator,
-)
-from datetime import UTC, date, datetime
-from functools import partial
+from collections.abc import AsyncGenerator, Awaitable, Iterable, Iterator
+from datetime import UTC, datetime
 from gettext import ngettext
-from itertools import chain
 from typing import TYPE_CHECKING, Any, Self, cast, override
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
@@ -28,7 +17,6 @@ from openemail.core.crypto import KeyPair
 from openemail.core.model import Address
 
 from . import Notifier
-from .store import DictStore, settings
 
 if TYPE_CHECKING:
     from openemail.widgets.compose_sheet import ComposeSheet
@@ -37,15 +25,15 @@ if TYPE_CHECKING:
 compose_sheet: "ComposeSheet"
 
 MAX_PROFILE_IMAGE_DIMENSIONS = 800
-ADDRESS_SPLIT_PATTERN = ",|;| "
 
 
-def _ident(message: model.Message) -> str:
+def get_ident(message: model.Message) -> str:
+    """Get a globally unique identifier for `message`."""
     return f"{message.author.host_part} {message.ident}"
 
 
 class ProfileField(GObject.Object):
-    """A profile field."""
+    """A field for information on a user."""
 
     ident = GObject.Property(type=str)
     name = GObject.Property(type=str)
@@ -196,6 +184,8 @@ class Profile(GObject.Object):
 
     @receive_broadcasts.setter
     def receive_broadcasts(self, receive_broadcasts: bool) -> None:
+        from .store import broadcasts  # noqa: PLC0415
+
         if self._broadcasts == receive_broadcasts or (not self._profile):
             return
 
@@ -242,6 +232,8 @@ class Profile(GObject.Object):
     @staticmethod
     def of(address: Address) -> "Profile":
         """Get the profile associated with `address`."""
+        from .store import profiles  # noqa: PLC0415
+
         (profile := profiles[address]).address = str(address)
         return profile
 
@@ -262,110 +254,6 @@ class Profile(GObject.Object):
 
         self._broadcasts = value
         self.notify("receive-broadcasts")
-
-
-class ProfileStore(DictStore[Address, Profile]):
-    """An implementation of `Gio.ListModel` for storing profiles."""
-
-    item_type = Profile
-    default_factory = Profile.of
-
-    async def update_profiles(self, *, trust_images: bool = True) -> None:
-        """Update the profiles of contacts in the user's address book.
-
-        If `trust_images` is set to `False`, profile images will not be loaded.
-        """
-        for address in (Address(contact.address) for contact in self):
-            app.create_task(self._update_profile(address))
-            if trust_images:
-                app.create_task(self._update_profile_image(address))
-
-    @staticmethod
-    async def _update_profile(address: Address) -> None:
-        Profile.of(address).set_from_profile(await client.fetch_profile(address))
-
-    @staticmethod
-    async def _update_profile_image(address: Address) -> None:
-        try:
-            Profile.of(address).image = (
-                Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))
-                if (image := await client.fetch_profile_image(address))
-                else None
-            )
-        except GLib.Error:
-            Profile.of(address).image = None
-
-
-class _AddressBook(ProfileStore):
-    """An implementation of `Gio.ListModel` for storing contacts."""
-
-    async def new(self, address: Address, *, receive_broadcasts: bool = True) -> None:
-        """Add `address` to the user's address book."""
-        Profile.of(address).contact_request = False
-        self.add(address)
-
-        app.create_task(self.update_profiles())
-        app.create_task(broadcasts.update())
-        app.create_task(inbox.update())
-
-        try:
-            await client.new_contact(address, receive_broadcasts=receive_broadcasts)
-        except WriteError:
-            self.remove(address)
-            app.create_task(broadcasts.update())
-            app.create_task(inbox.update())
-
-            Notifier.send(_("Failed to add contact"))
-            raise
-
-    async def delete(self, address: Address) -> None:
-        """Delete `address` from the user's address book."""
-        self.remove(address)
-        app.create_task(broadcasts.update())
-        app.create_task(inbox.update())
-
-        try:
-            await client.delete_contact(address)
-        except WriteError:
-            self.add(address)
-            app.create_task(broadcasts.update())
-            app.create_task(inbox.update())
-
-            Notifier.send(_("Failed to remove contact"))
-            raise
-
-    async def _update(self) -> None:
-        contacts = set[Address]()
-
-        for contact, receives_broadcasts in await client.fetch_contacts():
-            Profile.of(contact).set_receives_broadcasts(receives_broadcasts)
-            contacts.add(contact)
-            self.add(contact)
-
-        for address in self._items.copy():
-            if address not in contacts:
-                self.remove(address)
-
-
-class _ContactRequests(ProfileStore):
-    """An implementation of `Gio.ListModel` for storing contact requests."""
-
-    async def _update(self) -> None:
-        for request in (requests := settings.get_strv("contact-requests")):
-            try:
-                address = Address(request)
-            except ValueError:
-                continue
-
-            Profile.of(address).contact_request = True
-            self.add(address)
-
-        for request in self:
-            if request.address not in requests:
-                request.contact_request = False
-                self.remove(request.address)
-
-        app.create_task(self.update_profiles(trust_images=False))
 
 
 class Attachment(GObject.Object):
@@ -605,11 +493,13 @@ class Message(GObject.Object):
     @GObject.Property(type=bool, default=False)
     def trashed(self) -> bool:
         """Whether the item is in the trash."""
+        from .store import settings  # noqa: PLC0415
+
         if not self._message:
             return False
 
         return any(
-            msg.rsplit(maxsplit=1)[0] == _ident(self._message)
+            msg.rsplit(maxsplit=1)[0] == get_ident(self._message)
             for msg in settings.get_strv("trashed-messages")
         )
 
@@ -714,6 +604,8 @@ class Message(GObject.Object):
 
     def trash(self) -> None:
         """Move `self` to the trash."""
+        from .store import settings  # noqa: PLC0415
+
         if not self._message:
             return
 
@@ -721,7 +613,7 @@ class Message(GObject.Object):
             "trashed-messages",
             (
                 *settings.get_strv("trashed-messages"),
-                f"{_ident(self._message)} {datetime.now(UTC).date().isoformat()}",
+                f"{get_ident(self._message)} {datetime.now(UTC).date().isoformat()}",
             ),
         )
 
@@ -729,6 +621,8 @@ class Message(GObject.Object):
 
     def restore(self) -> None:
         """Restore `self` from the trash."""
+        from .store import settings  # noqa: PLC0415
+
         if not self._message:
             return
 
@@ -737,7 +631,7 @@ class Message(GObject.Object):
             tuple(
                 msg
                 for msg in settings.get_strv("trashed-messages")
-                if msg.rsplit(maxsplit=1)[0] != _ident(self._message)
+                if msg.rsplit(maxsplit=1)[0] != get_ident(self._message)
             ),
         )
 
@@ -745,12 +639,16 @@ class Message(GObject.Object):
 
     def delete(self) -> None:
         """Remove `self` from the trash."""
+        from .store import broadcasts, inbox, settings  # noqa: PLC0415
+
         if not self._message:
             return
 
         settings.set_strv(
             "deleted-messages",
-            tuple(set(settings.get_strv("deleted-messages")) | {_ident(self._message)}),
+            tuple(
+                set(settings.get_strv("deleted-messages")) | {get_ident(self._message)}
+            ),
         )
 
         envelopes_dir = (
@@ -775,13 +673,15 @@ class Message(GObject.Object):
             (messages_dir / child.ident).unlink(missing_ok=True)
 
         (broadcasts if self._message.is_broadcast else inbox).remove(
-            _ident(self._message)
+            get_ident(self._message)
         )
         self.restore()
         self.set_from_message(None)
 
     async def discard(self) -> None:
         """Discard `self` and its children."""
+        from .store import outbox  # noqa: PLC0415
+
         if not self._message:
             return
 
@@ -790,7 +690,7 @@ class Message(GObject.Object):
             Notifier.send(_("Cannot discard message while sending"))
             return
 
-        outbox.remove(_ident(self._message))
+        outbox.remove(get_ident(self._message))
 
         failed = False
         for msg in (self._message, *self._message.children):
@@ -810,6 +710,8 @@ class Message(GObject.Object):
 
         Does nothing if the message is not unread.
         """
+        from .store import settings  # noqa: PLC0415
+
         if not self.unread:
             return
 
@@ -821,241 +723,15 @@ class Message(GObject.Object):
         self._message.new = False
         settings.set_strv(
             "unread-messages",
-            tuple(set(settings.get_strv("unread-messages")) - {_ident(self._message)}),
+            tuple(
+                set(settings.get_strv("unread-messages")) - {get_ident(self._message)}
+            ),
         )
 
     def _update_trashed_state(self) -> None:
         self.can_trash = not (self.outgoing or self.trashed)
         self.can_reply = not self.trashed
         self.notify("trashed")
-
-
-class MessageStore(DictStore[str, Message]):
-    """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
-
-    item_type = Message
-    key_for = _ident
-    default_factory = Message
-
-    async def _update(self) -> None:
-        idents = set[str]()
-
-        async for message in self._fetch():
-            ident = _ident(message)
-
-            idents.add(ident)
-            if ident in self._items:
-                continue
-
-            self._items[ident] = Message(message)
-            self.items_changed(len(self._items) - 1, 0, 1)
-
-        removed = 0
-        for index, ident in enumerate(self._items.copy()):
-            if ident in idents:
-                continue
-
-            self._items.pop(ident)
-            self.items_changed(index - removed, 1, 0)
-            removed += 1
-
-    @abstractmethod
-    def _fetch(self) -> AsyncGenerator[model.Message]: ...
-
-    async def _process_messages(
-        self, futures: AsyncIterable[Iterable[model.Message]]
-    ) -> AsyncGenerator[model.Message]:
-        unread = set[str]()
-        async for messages in futures:
-            current_unread = settings.get_strv("unread-messages")
-
-            for message in messages:
-                if message.new:
-                    unread.add(_ident(message))
-
-                elif _ident(message) in current_unread:
-                    message.new = True
-
-                yield message
-
-        settings.set_strv(
-            "unread-messages",
-            tuple(set(settings.get_strv("unread-messages")) | unread),
-        )
-
-
-class _BroadcastStore(MessageStore):
-    async def _fetch(self) -> AsyncGenerator[model.Message]:
-        deleted = settings.get_strv("deleted-messages")
-        async for message in self._process_messages(
-            await client.fetch_broadcasts(
-                address := Address(contact.address),
-                exclude=tuple(
-                    split[1]
-                    for ident in deleted
-                    if (split := ident.split(" "))[0] == address.host_part
-                ),
-            )
-            for contact in address_book
-            if contact.receive_broadcasts
-        ):
-            yield message
-
-
-class _InboxStore(MessageStore):
-    async def _fetch(self) -> AsyncGenerator[model.Message]:
-        known_notifiers = set[Address]()
-        other_contacts = {Address(contact.address) for contact in address_book}
-
-        async for notification in client.fetch_notifications():
-            if notification.is_expired:
-                continue
-
-            if (notifier := notification.notifier) in other_contacts:
-                other_contacts.remove(notifier)
-                known_notifiers.add(notifier)
-                continue
-
-            if notifier.host_part in settings.get_strv("trusted-domains"):
-                await address_book.new(notifier)
-                known_notifiers.add(notifier)
-                continue
-
-            if str(notifier) in (current := settings.get_strv("contact-requests")):
-                continue
-
-            settings.set_strv("contact-requests", [*current, str(notifier)])
-
-        deleted = settings.get_strv("deleted-messages")
-        async for message in self._process_messages(
-            (
-                await client.fetch_link_messages(
-                    contact,
-                    exclude=tuple(
-                        split[1]
-                        for ident in deleted
-                        if (split := ident.split(" "))[0] == contact.host_part
-                    ),
-                )
-                for contact in chain(known_notifiers, other_contacts)
-            ),
-        ):
-            yield message
-
-
-class _OutboxStore(MessageStore):
-    async def _fetch(self) -> AsyncGenerator[model.Message]:
-        for message in await client.fetch_outbox():
-            message.new = False  # New outbox messages should be marked read
-            yield message
-
-
-class _DraftStore(MessageStore):
-    """An implementation of `Gio.ListModel` for storing drafts."""
-
-    def save(
-        self,
-        ident: str | None = None,
-        readers: str | None = None,
-        subject: str | None = None,
-        body: str | None = None,
-        reply: str | None = None,
-    ) -> None:
-        """Save a draft to disk for future use.
-
-        `ident` can be used to update a specific draft,
-        by default, a new ID is generated.
-        """
-        readers_list = list[Address]()
-        if readers:
-            for reader in re.split(ADDRESS_SPLIT_PATTERN, readers):
-                try:
-                    readers_list.append(Address(reader))
-                except ValueError:  # noqa: PERF203
-                    continue
-
-        draft = partial(
-            client.DraftMessage,
-            readers=readers_list,
-            subject=subject or "",
-            body=body,
-            subject_id=reply,
-        )
-
-        client.save_draft(draft(ident=ident) if ident else draft())
-        self.clear()  # TODO
-        app.create_task(self.update())
-
-    def delete(self, ident: str) -> None:
-        """Delete a draft saved using `save()`."""
-        client.delete_draft(ident)
-        self.remove(ident)
-
-    def delete_all(self) -> None:
-        """Delete all drafts saved using `save()`."""
-        client.delete_all_drafts()
-        self.clear()
-
-    async def _fetch(self) -> AsyncGenerator[model.Message]:
-        for message in tuple(client.load_drafts()):
-            yield message
-
-
-profiles: defaultdict[Address, Profile] = defaultdict(Profile)
-address_book = _AddressBook()
-contact_requests = _ContactRequests()
-user_profile = Profile()
-
-broadcasts = _BroadcastStore()
-inbox = _InboxStore()
-outbox = _OutboxStore()
-drafts = _DraftStore()
-
-
-async def sync(*, periodic: bool = False) -> None:
-    """Populate the app's content by fetching the user's data."""
-    Notifier().syncing = True
-
-    if periodic:
-        interval = settings.get_uint("sync-interval")
-        GLib.timeout_add_seconds(interval or 60, app.create_task, sync(periodic=True))
-
-        # The user chose manual sync, check again in a minute
-        if not interval:
-            return
-
-    # Assume that nobody is logged in, skip sync for now
-    if not settings.get_string("address"):
-        return
-
-    broadcasts.updating = True
-    inbox.updating = True
-    outbox.updating = True
-
-    await address_book.update()
-
-    tasks: set[Coroutine[Any, Any, Any]] = {
-        update_user_profile(),
-        address_book.update_profiles(),
-        contact_requests.update(),
-        broadcasts.update(),
-        inbox.update(),
-        outbox.update(),
-        drafts.update(),
-    }
-
-    def done(task: Coroutine[Any, Any, Any]) -> None:
-        tasks.discard(task)
-        if not tasks:
-            Notifier().syncing = False
-
-    for task in tasks:
-        app.create_task(task, lambda _, t=task: done(t))
-
-    settings.connect(
-        "changed::contact-requests",
-        lambda *_: app.create_task(contact_requests.update()),
-    )
 
 
 async def update_profile(values: dict[str, str]) -> None:
@@ -1138,6 +814,8 @@ async def update_profile_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
 
 async def update_user_profile() -> None:
     """Update the profile of the user by fetching new data remotely."""
+    from .store import user_profile  # noqa: PLC0415
+
     user_profile.updating = True
     user_profile.set_from_profile(profile := await client.fetch_profile(user.address))
 
@@ -1191,6 +869,8 @@ async def send_message(
 
     `attachments` is a dictionary of `Gio.File`s and filenames.
     """
+    from .store import outbox  # noqa: PLC0415
+
     Notifier().sending = True
 
     files = dict[model.AttachmentProperties, bytes]()
@@ -1233,34 +913,3 @@ async def send_message(
         raise
 
     Notifier().sending = False
-
-
-def empty_trash() -> None:
-    """Empty the user's trash."""
-    for message in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
-        message.delete()
-
-
-if interval := settings.get_uint("empty-trash-interval"):
-    deleted = set[str]()
-    new_trashed = list[str]()
-
-    today = datetime.now(UTC).date()
-    for message in settings.get_strv("trashed-messages"):
-        ident, timestamp = message.rsplit(maxsplit=1)
-
-        try:
-            trashed = date.fromisoformat(timestamp)
-        except ValueError:
-            continue
-
-        if today.day - trashed.day >= interval:
-            deleted.add(ident)
-        else:
-            new_trashed.append(message)
-
-    settings.set_strv("trashed-messages", new_trashed)
-    settings.set_strv(
-        "deleted-messages",
-        tuple(set(settings.get_strv("deleted-messages")) | deleted),
-    )

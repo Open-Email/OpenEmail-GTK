@@ -13,7 +13,7 @@ from openemail import app
 from openemail.core import client, model
 from openemail.core.client import WriteError, user
 
-from . import Notifier, mail
+from . import Notifier, store
 from .store import secret_service, settings
 
 
@@ -67,15 +67,15 @@ def register(
 
 def log_out() -> None:
     """Remove the user's local account."""
-    for profile in mail.profiles.values():
+    for profile in store.profiles.values():
         profile.set_from_profile(None)
 
-    mail.profiles.clear()
-    mail.address_book.clear()
-    mail.contact_requests.clear()
-    mail.broadcasts.clear()
-    mail.inbox.clear()
-    mail.outbox.clear()
+    store.profiles.clear()
+    store.address_book.clear()
+    store.contact_requests.clear()
+    store.broadcasts.clear()
+    store.inbox.clear()
+    store.outbox.clear()
 
     settings.reset("address")
     settings.reset("sync-interval")

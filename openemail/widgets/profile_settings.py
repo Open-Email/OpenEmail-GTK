@@ -9,7 +9,7 @@ from typing import Any, cast
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail import app
-from openemail.app import PREFIX, mail
+from openemail.app import PREFIX, mail, store
 from openemail.app.mail import Profile, ProfileField, WriteError
 
 from .form import Form
@@ -112,7 +112,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             "about": self.about.get_text,
         }
 
-        mail.user_profile.connect(
+        store.user_profile.connect(
             "notify::updating",
             lambda p, _: self.set_property("profile", None if p.updating else p),  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
         )

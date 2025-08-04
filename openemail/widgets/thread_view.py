@@ -7,7 +7,7 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail.app import APP_ID, mail
+from openemail.app import APP_ID, store
 from openemail.app.mail import Message
 
 from .message_view import MessageView
@@ -60,7 +60,7 @@ class ThreadView(Adw.Bin):
 
         row = self._append(message)
 
-        for current in chain(mail.inbox, mail.outbox):
+        for current in chain(store.inbox, store.outbox):
             if (current == message) or (current.subject_id != message.subject_id):
                 continue
 
