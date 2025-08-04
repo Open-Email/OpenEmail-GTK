@@ -8,7 +8,8 @@ from typing import Any
 import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail.app import APP_ID, PREFIX, Notifier, create_task, mail
+from openemail import app
+from openemail.app import APP_ID, PREFIX, Notifier, mail
 from openemail.app.store import settings, state_settings
 
 from .content import Content
@@ -53,7 +54,7 @@ class Window(Adw.ApplicationWindow):
         )
 
         Notifier().connect("send", self._on_send_notification)
-        create_task(mail.sync(periodic=True))
+        app.create_task(mail.sync(periodic=True))
 
         if not mail.user.logged_in:
             return
@@ -75,7 +76,7 @@ class Window(Adw.ApplicationWindow):
 
         settings.set_string("address", str(mail.user.address))
 
-        create_task(mail.sync())
+        app.create_task(mail.sync())
         self.visible_child_name = "content"
 
     def _on_send_notification(self, _obj: Any, toast: Adw.Toast) -> None:

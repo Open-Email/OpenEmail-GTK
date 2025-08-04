@@ -6,7 +6,8 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail.app import PREFIX, create_task, mail
+from openemail import app
+from openemail.app import PREFIX, mail
 from openemail.app.mail import Address
 
 from .contact_row import ContactRow  # noqa: F401
@@ -51,7 +52,7 @@ class Contacts(Adw.NavigationPage):
     @Gtk.Template.Callback()
     def _add_contact(self, *_args: Any) -> None:
         try:
-            create_task(mail.address_book.new(Address(self.address.props.text)))
+            app.create_task(mail.address_book.new(Address(self.address.props.text)))
         except ValueError:
             return
 

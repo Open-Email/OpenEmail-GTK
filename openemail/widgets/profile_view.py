@@ -6,7 +6,8 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail.app import APP_ID, PREFIX, create_task, mail
+from openemail import app
+from openemail.app import APP_ID, PREFIX, mail
 from openemail.app.mail import Profile, ProfileField
 from openemail.core.model import Address
 
@@ -126,7 +127,7 @@ class ProfileView(Adw.Bin):
             return
 
         try:
-            create_task(mail.address_book.delete(Address(self.profile.address)))
+            app.create_task(mail.address_book.delete(Address(self.profile.address)))
         except ValueError:
             return
 

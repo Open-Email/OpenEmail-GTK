@@ -8,7 +8,8 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail.app import PREFIX, create_task, mail
+from openemail import app
+from openemail.app import PREFIX, mail
 from openemail.app.mail import (
     ADDRESS_SPLIT_PATTERN,
     Address,
@@ -197,7 +198,7 @@ class ComposeSheet(Adw.BreakpointBin):
             mail.drafts.delete(self.ident)
             self.ident = None
 
-        create_task(
+        app.create_task(
             mail.send_message(
                 readers,
                 self.subject.props.text,
@@ -217,7 +218,7 @@ class ComposeSheet(Adw.BreakpointBin):
 
     @Gtk.Template.Callback()
     def _attach_files(self, *_args: Any) -> None:
-        create_task(self._attach_files_task())
+        app.create_task(self._attach_files_task())
 
     @Gtk.Template.Callback()
     def _format_bold(self, *_args: Any) -> None:
