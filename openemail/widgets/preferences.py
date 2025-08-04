@@ -8,7 +8,7 @@ from typing import Any
 from gi.repository import Adw, GObject, Gtk
 
 from openemail import app
-from openemail.app import PREFIX, mail
+from openemail.app import PREFIX, account, mail
 from openemail.app.store import settings
 
 from .form import Form
@@ -85,12 +85,12 @@ class Preferences(Adw.PreferencesDialog):
     @Gtk.Template.Callback()
     def _confirm_delete(self, *_args: Any) -> None:
         self.force_close()
-        app.create_task(mail.delete_account())
+        app.create_task(account.delete())
 
     @Gtk.Template.Callback()
     def _confirm_remove(self, *_args: Any) -> None:
         self.force_close()
-        mail.log_out()
+        account.log_out()
 
         if not isinstance(win := self.props.root, Window):
             return

@@ -9,20 +9,16 @@ from collections.abc import (
     AsyncGenerator,
     AsyncIterable,
     Awaitable,
-    Callable,
     Coroutine,
     Iterable,
     Iterator,
 )
-from dataclasses import fields
 from datetime import UTC, date, datetime
 from functools import partial
 from gettext import ngettext
 from itertools import chain
-from shutil import rmtree
 from typing import TYPE_CHECKING, Any, Self, cast, override
 
-import keyring
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
 from openemail import app
@@ -32,7 +28,7 @@ from openemail.core.crypto import KeyPair
 from openemail.core.model import Address
 
 from . import Notifier
-from .store import DictStore, secret_service, settings
+from .store import DictStore, settings
 
 if TYPE_CHECKING:
     from openemail.widgets.compose_sheet import ComposeSheet
@@ -246,7 +242,7 @@ class Profile(GObject.Object):
     @staticmethod
     def of(address: Address) -> "Profile":
         """Get the profile associated with `address`."""
-        (profile := _profiles[address]).address = str(address)
+        (profile := profiles[address]).address = str(address)
         return profile
 
     def value_of(self, ident: str) -> Any:
@@ -1005,7 +1001,7 @@ class _DraftStore(MessageStore):
             yield message
 
 
-_profiles: defaultdict[Address, Profile] = defaultdict(Profile)
+profiles: defaultdict[Address, Profile] = defaultdict(Profile)
 address_book = _AddressBook()
 contact_requests = _ContactRequests()
 user_profile = Profile()
@@ -1014,54 +1010,6 @@ broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
 drafts = _DraftStore()
-
-
-def try_auth(
-    on_success: Callable[[], Any] | None = None,
-    on_failure: Callable[[], Any] | None = None,
-) -> None:
-    """Try authenticating and call `on_success` or `on_failure` based on the result."""
-
-    async def auth() -> None:
-        if not await client.try_auth():
-            raise ValueError
-
-    def done(success: bool) -> None:
-        if success:
-            if on_success:
-                on_success()
-            return
-
-        Notifier.send(_("Authentication failed"))
-
-        if on_failure:
-            on_failure()
-
-    app.create_task(auth(), done)
-
-
-def register(
-    on_success: Callable[[], Any] | None = None,
-    on_failure: Callable[[], Any] | None = None,
-) -> None:
-    """Try authenticating and call `on_success` or `on_failure` based on the result."""
-
-    async def auth() -> None:
-        if not await client.register():
-            raise ValueError
-
-    def done(success: bool) -> None:
-        if success:
-            if on_success:
-                on_success()
-            return
-
-        Notifier.send(_("Registration failed, try another address"))
-
-        if on_failure:
-            on_failure()
-
-    app.create_task(auth(), done)
 
 
 async def sync(*, periodic: bool = False) -> None:
@@ -1291,46 +1239,6 @@ def empty_trash() -> None:
     """Empty the user's trash."""
     for message in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
         message.delete()
-
-
-def log_out() -> None:
-    """Remove the user's local account."""
-    for profile in _profiles.values():
-        profile.set_from_profile(None)
-
-    _profiles.clear()
-    address_book.clear()
-    contact_requests.clear()
-    broadcasts.clear()
-    inbox.clear()
-    outbox.clear()
-
-    settings.reset("address")
-    settings.reset("sync-interval")
-    settings.reset("empty-trash-interval")
-    settings.reset("trusted-domains")
-    settings.reset("contact-requests")
-    settings.reset("unread-messages")
-    settings.reset("trashed-messages")
-    settings.reset("deleted-messages")
-
-    keyring.delete_password(secret_service, str(user.address))
-
-    rmtree(client.data_dir, ignore_errors=True)
-
-    for field in fields(model.User):
-        delattr(user, field.name)
-
-
-async def delete_account() -> None:
-    """Permanently delete the user's account."""
-    try:
-        await client.delete_account()
-    except WriteError:
-        Notifier.send(_("Failed to delete account"))
-        return
-
-    log_out()
 
 
 if interval := settings.get_uint("empty-trash-interval"):

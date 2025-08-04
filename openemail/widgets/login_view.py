@@ -6,7 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail.app import APP_ID, PREFIX, Notifier, mail
+from openemail.app import APP_ID, PREFIX, Notifier, account, mail
 from openemail.app.mail import Address, KeyPair
 
 from .form import Form
@@ -69,7 +69,7 @@ class LoginView(Adw.Bin):
             GLib.timeout_add_seconds(1, self._reset)
 
         self.register_button_child_name = "loading"
-        mail.register(
+        account.register(
             success,
             lambda: self.set_property(
                 "register-button-child-name",
@@ -106,7 +106,7 @@ class LoginView(Adw.Bin):
             GLib.timeout_add_seconds(1, self._reset)
 
         self.button_child_name = "loading"
-        mail.try_auth(
+        account.try_auth(
             success,
             lambda: self.set_property(
                 "button-child-name",
