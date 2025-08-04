@@ -57,8 +57,8 @@ class ProfileField(GObject.Object):
         self.name = name
 
 
-class Category(GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]
-    """A profile category."""
+class ProfileCategory(GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]
+    """A category of profile fields."""
 
     ident = GObject.Property(type=str)
     name = GObject.Property(type=str)
@@ -104,7 +104,7 @@ class Profile(GObject.Object):
     has_image = GObject.Property(type=bool, default=False)
 
     categories = (
-        Category(
+        ProfileCategory(
             "general",
             _("General"),
             {
@@ -112,7 +112,7 @@ class Profile(GObject.Object):
                 "about": _("About"),
             },
         ),
-        Category(
+        ProfileCategory(
             "personal",
             _("Personal"),
             {
@@ -125,7 +125,7 @@ class Profile(GObject.Object):
                 "notes": _("Notes"),
             },
         ),
-        Category(
+        ProfileCategory(
             "work",
             _("Work"),
             {
@@ -135,7 +135,7 @@ class Profile(GObject.Object):
                 "job-title": _("Job Title"),
             },
         ),
-        Category(
+        ProfileCategory(
             "interests",
             _("Interests"),
             {
@@ -146,7 +146,7 @@ class Profile(GObject.Object):
                 "sports": _("Sports"),
             },
         ),
-        Category(
+        ProfileCategory(
             "contacts",
             _("Contact"),
             {
@@ -157,7 +157,7 @@ class Profile(GObject.Object):
                 "streams": _("Topics"),
             },
         ),
-        Category(
+        ProfileCategory(
             "configuration",
             _("Options"),
             {
