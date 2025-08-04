@@ -11,6 +11,7 @@ configure_file(
   install_mode: 'r-xr-xr-x',
 )
 
+install_data(files('__init__.py'), install_dir: moduledir)
 install_subdir('app', install_dir: moduledir)
 install_subdir('core', install_dir: moduledir)
 install_subdir('widgets', install_dir: moduledir)
