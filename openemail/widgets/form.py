@@ -33,27 +33,17 @@ class FormField(GObject.Object):
     text = GObject.Property(type=str)
 
     @GObject.Property(type=Gtk.Widget)
-    def field(self) -> Gtk.Widget:
+    def field(self) -> Gtk.Editable | Gtk.TextView:
         """Get the field containing the text."""
         return self._field
 
     @field.setter
-    def field(self, field: Gtk.Widget) -> None:
-        if isinstance(field, Gtk.Editable):
-            field.bind_property(
-                "text", self, "text", GObject.BindingFlags.BIDIRECTIONAL
-            )
-            field.connect("notify::text", lambda *_: self.validate())
-        elif isinstance(field, Gtk.TextView):
-            field.props.buffer.bind_property(
-                "text", self, "text", GObject.BindingFlags.BIDIRECTIONAL
-            )
-            field.props.buffer.connect("notify::text", lambda *_: self.validate())
-        else:
-            msg = "FormField.field must be Gtk.Editable or Gtk.TextView"
-            raise TypeError(msg)
-
+    def field(self, field: Gtk.Editable | Gtk.TextView) -> None:
         self._field = field
+
+        buffer = field.props.buffer if isinstance(field, Gtk.TextView) else field
+        buffer.bind_property("text", self, "text", GObject.BindingFlags.BIDIRECTIONAL)
+        buffer.connect("notify::text", lambda *_: self.validate())
 
     def validate(self) -> None:
         """Validate the form field."""
