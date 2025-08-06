@@ -3,7 +3,7 @@
 # SPDX-FileContributor: kramo
 
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Self
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
 
@@ -11,7 +11,7 @@ from openemail import app
 from openemail.core import client, model
 from openemail.core.client import WriteError, user
 from openemail.core.crypto import KeyPair
-from openemail.core.model import Address
+from openemail.core.model import Address, User
 
 from . import Notifier
 
@@ -149,6 +149,8 @@ class Profile(GObject.Object):
     _name: str | None = None
     _image: Gdk.Paintable | None = None
 
+    _user: Self | None = None
+
     def set_from_profile(self, profile: model.Profile | None) -> None:
         """Set the properties of `self` from `profile`."""
         self._profile = profile
@@ -215,13 +217,26 @@ class Profile(GObject.Object):
         self._image = image
         self.has_image = bool(image)
 
-    @staticmethod
-    def of(address: Address) -> "Profile":
-        """Get the profile associated with `address`."""
-        from .store import profiles  # noqa: PLC0415
+    @classmethod
+    def of(cls, user: Address | User, /) -> "Profile":
+        """Get the profile associated with `user`.
 
-        (profile := profiles[address]).address = str(address)
-        return profile
+        If `user` is a User object instead of an Address,
+        returns a `Profile` object that always represents the data of
+        the currently logged in user, even after a relogin.
+        """
+        match user:
+            case Address():
+                from .store import profiles  # noqa: PLC0415
+
+                (profile := profiles[user]).address = str(user)
+                return profile
+
+            case User():
+                if not cls._user:
+                    cls._user = cls()
+
+                return cls._user
 
     def value_of(self, ident: str) -> Any:
         """Get the value of the field identified by `ident` in `self`."""
@@ -244,10 +259,10 @@ class Profile(GObject.Object):
 
 async def refresh() -> None:
     """Update the profile of the user by fetching new data remotely."""
-    from .store import user_profile  # noqa: PLC0415
-
-    user_profile.updating = True
-    user_profile.set_from_profile(profile := await client.fetch_profile(user.address))
+    Profile.of(client.user).updating = True
+    Profile.of(client.user).set_from_profile(
+        profile := await client.fetch_profile(user.address)
+    )
 
     if profile:
         user.signing_keys = KeyPair(
@@ -262,15 +277,15 @@ async def refresh() -> None:
             )
 
     try:
-        user_profile.image = Gdk.Texture.new_from_bytes(
+        Profile.of(client.user).image = Gdk.Texture.new_from_bytes(
             GLib.Bytes.new(await client.fetch_profile_image(user.address))
         )
     except GLib.Error:
-        user_profile.image = None
+        Profile.of(client.user).image = None
 
-    Profile.of(user.address).image = user_profile.image
+    Profile.of(user.address).image = Profile.of(client.user).image
     Profile.of(user.address).set_from_profile(profile)
-    user_profile.updating = False
+    Profile.of(client.user).updating = False
 
 
 async def update(values: dict[str, str]) -> None:

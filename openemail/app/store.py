@@ -230,7 +230,6 @@ class _ContactRequests(ProfileStore):
 profiles: defaultdict[Address, Profile] = defaultdict(Profile)
 address_book = _AddressBook()
 contact_requests = _ContactRequests()
-user_profile = Profile()
 
 
 class MessageStore(DictStore[str, Message]):
