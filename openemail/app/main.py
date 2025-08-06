@@ -14,12 +14,13 @@ import keyring
 from gi.events import GLibEventLoopPolicy
 from gi.repository import Adw, Gio
 
+from openemail.core import client
 from openemail.core.crypto import KeyPair
 from openemail.core.model import Address
 from openemail.widgets.preferences import Preferences
 from openemail.widgets.window import Window
 
-from . import APP_ID, PREFIX, mail
+from . import APP_ID, PREFIX
 from .store import log_file, secret_service, settings
 
 
@@ -66,9 +67,9 @@ class Application(Adw.Application):
             return
 
         try:
-            mail.user.address = Address(address)
-            mail.user.encryption_keys = KeyPair.from_b64(encryption_key)
-            mail.user.signing_keys = KeyPair.from_b64(signing_key)
+            client.user.address = Address(address)
+            client.user.encryption_keys = KeyPair.from_b64(encryption_key)
+            client.user.signing_keys = KeyPair.from_b64(signing_key)
         except ValueError:
             return
 

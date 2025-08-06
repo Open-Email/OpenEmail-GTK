@@ -4,13 +4,14 @@
 
 import re
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Self
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import app
-from openemail.app import PREFIX, mail, store
-from openemail.app.mail import Address, Message, OutgoingAttachment, Profile
+from openemail.app import PREFIX, message, store
+from openemail.app.message import Address, Message, OutgoingAttachment
+from openemail.app.profile import Profile
 from openemail.app.store import ADDRESS_SPLIT_PATTERN
 
 from .attachments import Attachments
@@ -23,6 +24,8 @@ class ComposeSheet(Adw.BreakpointBin):
     """A page listing a subset of the user's messages."""
 
     __gtype_name__ = "ComposeSheet"
+
+    default: Self
 
     bottom_sheet: Adw.BottomSheet = Gtk.Template.Child()
     readers: Gtk.Text = Gtk.Template.Child()
@@ -194,7 +197,7 @@ class ComposeSheet(Adw.BreakpointBin):
             self.ident = None
 
         app.create_task(
-            mail.send_message(
+            message.send(
                 readers,
                 self.subject.props.text,
                 self.body.props.text,

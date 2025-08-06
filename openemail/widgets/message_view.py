@@ -9,7 +9,7 @@ from gi.repository import Adw, GObject, Gtk
 
 from openemail import app
 from openemail.app import PREFIX, Notifier
-from openemail.app.mail import Message
+from openemail.app.message import Message
 
 from .attachments import Attachments
 from .body import Body

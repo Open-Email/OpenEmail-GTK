@@ -6,8 +6,10 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail.app import APP_ID, PREFIX, Notifier, account, mail
-from openemail.app.mail import Address, KeyPair
+from openemail.app import APP_ID, PREFIX, Notifier, account
+from openemail.core import client
+from openemail.core.crypto import KeyPair
+from openemail.core.model import Address
 
 from .form import Form
 
@@ -54,13 +56,15 @@ class LoginView(Adw.Bin):
     @Gtk.Template.Callback()
     def _register(self, *_args: Any) -> None:
         try:
-            mail.user.address = Address(self.user_name_entry.props.text + "@open.email")
+            client.user.address = Address(
+                f"{self.user_name_entry.props.text}@open.email"
+            )
         except ValueError:
             Notifier.send(_("Invalid name, try another one"))
             return
 
-        mail.user.encryption_keys = KeyPair.for_encryption()
-        mail.user.signing_keys = KeyPair.for_signing()
+        client.user.encryption_keys = KeyPair.for_encryption()
+        client.user.signing_keys = KeyPair.for_signing()
 
         def success() -> None:
             self.register_button_child_name = "label"
@@ -87,11 +91,11 @@ class LoginView(Adw.Bin):
             return
 
         try:
-            mail.user.address = Address(self.email_entry.props.text)
-            mail.user.encryption_keys = KeyPair.from_b64(
+            client.user.address = Address(self.email_entry.props.text)
+            client.user.encryption_keys = KeyPair.from_b64(
                 self.encryption_key_entry.props.text,
             )
-            mail.user.signing_keys = KeyPair.from_b64(
+            client.user.signing_keys = KeyPair.from_b64(
                 self.signing_key_entry.props.text,
             )
 

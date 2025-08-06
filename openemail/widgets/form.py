@@ -8,8 +8,8 @@ from typing import Any, cast
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail.app.mail import Address
 from openemail.app.store import ADDRESS_SPLIT_PATTERN
+from openemail.core.model import Address
 
 
 class FormFieldType(GObject.GEnum):

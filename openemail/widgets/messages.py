@@ -6,10 +6,11 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail.app import PREFIX, mail, store
-from openemail.app.mail import Message
+from openemail.app import PREFIX, store
+from openemail.app.message import Message
 from openemail.app.store import DictStore, empty_trash, settings
 
+from .compose_sheet import ComposeSheet
 from .page import Page  # noqa: TC001
 from .thread_view import ThreadView  # noqa: TC001
 
@@ -27,7 +28,7 @@ class _Messages(Adw.NavigationPage):
         self.thread_view: ThreadView = self._get_object("thread_view")
         self.thread_view.connect(
             "reply",
-            lambda _, message: mail.compose_sheet.reply(message),  # pyright: ignore[reportUnknownArgumentType]
+            lambda _, msg: ComposeSheet.default.reply(msg),  # pyright: ignore[reportUnknownArgumentType]
         )
 
         self.content: Page = self._get_object("content")
@@ -68,7 +69,7 @@ class _Folder(_Messages):
         self.content.model.bind_property("selected-item", self.thread_view, "message")
 
         for button in (self.content.toolbar_button, self._get_object("new_button")):
-            button.connect("clicked", lambda *_: mail.compose_sheet.new_message())
+            button.connect("clicked", lambda *_: ComposeSheet.default.new_message())
 
         self.folder.bind_property(
             "updating",
@@ -118,11 +119,11 @@ class Drafts(_Messages):
         )
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
-        if not isinstance(message := selection.props.selected_item, Message):
+        if not isinstance(msg := selection.props.selected_item, Message):
             return
 
         selection.unselect_all()
-        mail.compose_sheet.open_message(message)
+        ComposeSheet.default.open_message(msg)
 
 
 class Trash(_Messages):

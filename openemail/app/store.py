@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-
 import re
 from abc import abstractmethod
 from collections import defaultdict
@@ -26,8 +25,9 @@ from openemail.core import client, model
 from openemail.core.client import WriteError
 from openemail.core.model import Address
 
-from . import APP_ID, Notifier
-from .mail import Message, Profile, get_ident, update_user_profile
+from . import APP_ID, Notifier, message, profile
+from .message import Message
+from .profile import Profile
 
 ADDRESS_SPLIT_PATTERN = ",|;| "
 
@@ -237,20 +237,20 @@ class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
     item_type = Message
-    key_for = get_ident
+    key_for = message.get_ident
     default_factory = Message
 
     async def _update(self) -> None:
         idents = set[str]()
 
-        async for message in self._fetch():
-            ident = get_ident(message)
+        async for msg in self._fetch():
+            ident = message.get_ident(msg)
 
             idents.add(ident)
             if ident in self._items:
                 continue
 
-            self._items[ident] = Message(message)
+            self._items[ident] = Message(msg)
             self.items_changed(len(self._items) - 1, 0, 1)
 
         removed = 0
@@ -272,14 +272,14 @@ class MessageStore(DictStore[str, Message]):
         async for messages in futures:
             current_unread = settings.get_strv("unread-messages")
 
-            for message in messages:
-                if message.new:
-                    unread.add(get_ident(message))
+            for msg in messages:
+                if msg.new:
+                    unread.add(message.get_ident(msg))
 
-                elif get_ident(message) in current_unread:
-                    message.new = True
+                elif message.get_ident(msg) in current_unread:
+                    msg.new = True
 
-                yield message
+                yield msg
 
         settings.set_strv(
             "unread-messages",
@@ -290,7 +290,7 @@ class MessageStore(DictStore[str, Message]):
 class _BroadcastStore(MessageStore):
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         deleted = settings.get_strv("deleted-messages")
-        async for message in self._process_messages(
+        async for msg in self._process_messages(
             await client.fetch_broadcasts(
                 address := Address(contact.address),
                 exclude=tuple(
@@ -302,7 +302,7 @@ class _BroadcastStore(MessageStore):
             for contact in address_book
             if contact.receive_broadcasts
         ):
-            yield message
+            yield msg
 
 
 class _InboxStore(MessageStore):
@@ -330,7 +330,7 @@ class _InboxStore(MessageStore):
             settings.set_strv("contact-requests", [*current, str(notifier)])
 
         deleted = settings.get_strv("deleted-messages")
-        async for message in self._process_messages(
+        async for msg in self._process_messages(
             (
                 await client.fetch_link_messages(
                     contact,
@@ -343,14 +343,14 @@ class _InboxStore(MessageStore):
                 for contact in chain(known_notifiers, other_contacts)
             ),
         ):
-            yield message
+            yield msg
 
 
 class _OutboxStore(MessageStore):
     async def _fetch(self) -> AsyncGenerator[model.Message]:
-        for message in await client.fetch_outbox():
-            message.new = False  # New outbox messages should be marked read
-            yield message
+        for msg in await client.fetch_outbox():
+            msg.new = False  # New outbox messages should be marked read
+            yield msg
 
 
 class _DraftStore(MessageStore):
@@ -398,8 +398,8 @@ class _DraftStore(MessageStore):
         self.clear()
 
     async def _fetch(self) -> AsyncGenerator[model.Message]:
-        for message in tuple(client.load_drafts()):
-            yield message
+        for msg in tuple(client.load_drafts()):
+            yield msg
 
 
 broadcasts = _BroadcastStore()
@@ -431,7 +431,7 @@ async def sync(*, periodic: bool = False) -> None:
     await address_book.update()
 
     tasks: set[Coroutine[Any, Any, Any]] = {
-        update_user_profile(),
+        profile.refresh(),
         address_book.update_profiles(),
         contact_requests.update(),
         broadcasts.update(),
@@ -456,5 +456,5 @@ async def sync(*, periodic: bool = False) -> None:
 
 def empty_trash() -> None:
     """Empty the user's trash."""
-    for message in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
-        message.delete()
+    for msg in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
+        msg.delete()

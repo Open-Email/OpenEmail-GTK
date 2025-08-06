@@ -9,8 +9,9 @@ openemail/app/__init__.py
 openemail/app/_asyncio.py
 openemail/app/_notifier.py
 openemail/app/account.py
-openemail/app/mail.py
 openemail/app/main.py
+openemail/app/message.py
+openemail/app/profile.py
 openemail/app/store.py
 
 openemail/gtk/attachments.blp

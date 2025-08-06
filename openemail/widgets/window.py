@@ -9,8 +9,9 @@ import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import app
-from openemail.app import APP_ID, PREFIX, Notifier, mail, store
+from openemail.app import APP_ID, PREFIX, Notifier, store
 from openemail.app.store import settings, state_settings
+from openemail.core import client
 
 from .content import Content
 from .login_view import LoginView
@@ -56,7 +57,7 @@ class Window(Adw.ApplicationWindow):
         Notifier().connect("send", self._on_send_notification)
         app.create_task(store.sync(periodic=True))
 
-        if not mail.user.logged_in:
+        if not client.user.logged_in:
             return
 
         self.visible_child_name = "content"
@@ -65,16 +66,16 @@ class Window(Adw.ApplicationWindow):
     def _on_auth(self, *_args: Any) -> None:
         keyring.set_password(
             f"{APP_ID}.Keys",
-            str(mail.user.address),
+            str(client.user.address),
             json.dumps(
                 {
-                    "privateEncryptionKey": str(mail.user.encryption_keys.private),
-                    "privateSigningKey": str(mail.user.signing_keys),
+                    "privateEncryptionKey": str(client.user.encryption_keys.private),
+                    "privateSigningKey": str(client.user.signing_keys),
                 }
             ),
         )
 
-        settings.set_string("address", str(mail.user.address))
+        settings.set_string("address", str(client.user.address))
 
         app.create_task(store.sync())
         self.visible_child_name = "content"

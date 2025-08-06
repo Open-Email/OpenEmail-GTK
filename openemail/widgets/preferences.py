@@ -8,8 +8,9 @@ from typing import Any
 from gi.repository import Adw, GObject, Gtk
 
 from openemail import app
-from openemail.app import PREFIX, account, mail
+from openemail.app import PREFIX, account
 from openemail.app.store import settings
+from openemail.core import client
 
 from .form import Form
 from .window import Window
@@ -47,10 +48,10 @@ class Preferences(Adw.PreferencesDialog):
         settings.connect("changed::trusted-domains", self._build_domains)
         self._build_domains()
 
-        self.private_signing_key = str(mail.user.signing_keys)
-        self.private_encryption_key = str(mail.user.encryption_keys.private)
-        self.public_signing_key = str(mail.user.signing_keys.public)
-        self.public_encryption_key = str(mail.user.encryption_keys.public)
+        self.private_signing_key = str(client.user.signing_keys)
+        self.private_encryption_key = str(client.user.encryption_keys.private)
+        self.public_signing_key = str(client.user.signing_keys.public)
+        self.public_encryption_key = str(client.user.encryption_keys.public)
 
         with suppress(ValueError):
             self.sync_interval_combo_row.props.selected = self._sync_intervals.index(

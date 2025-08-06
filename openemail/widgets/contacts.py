@@ -8,7 +8,7 @@ from gi.repository import Adw, Gio, GObject, Gtk
 
 from openemail import app
 from openemail.app import PREFIX, store
-from openemail.app.mail import Address
+from openemail.core.model import Address
 
 from .contact_row import ContactRow  # noqa: F401
 from .form import Form

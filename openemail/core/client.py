@@ -523,7 +523,7 @@ async def fetch_profile(address: Address) -> Profile | None:
     return None
 
 
-async def update_profile(values: dict[str, str]) -> None:
+async def update(values: dict[str, str]) -> None:
     """Update `client.user`'s public profile with `values`."""
     logger.debug("Updating user profile…")
 
@@ -587,7 +587,7 @@ async def fetch_profile_image(address: Address) -> bytes | None:
     return None
 
 
-async def update_profile_image(image: bytes) -> None:
+async def update_image(image: bytes) -> None:
     """Upload `image` to be used as `client.user`'s profile image."""
     logger.debug("Updating profile image…")
     for agent in await get_agents(user.address):
@@ -604,7 +604,7 @@ async def update_profile_image(image: bytes) -> None:
     raise WriteError
 
 
-async def delete_profile_image() -> None:
+async def delete_image() -> None:
     """Delete `client.user`'s profile image."""
     logger.debug("Deleting profile image…")
     for agent in await get_agents(user.address):

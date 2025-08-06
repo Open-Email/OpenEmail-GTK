@@ -8,7 +8,8 @@ from gi.repository import Adw, GObject, Gtk
 
 from openemail import app
 from openemail.app import APP_ID, PREFIX, store
-from openemail.app.mail import Address, Profile, ProfileField
+from openemail.app.profile import Profile, ProfileField
+from openemail.core.model import Address
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/profile-view.ui")

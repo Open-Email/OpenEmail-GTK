@@ -8,7 +8,7 @@ from gi.repository import GObject, Gtk
 
 from openemail import app
 from openemail.app import PREFIX, store
-from openemail.app.mail import Profile
+from openemail.app.profile import Profile
 from openemail.app.store import settings
 
 

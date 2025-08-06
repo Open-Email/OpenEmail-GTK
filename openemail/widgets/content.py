@@ -7,7 +7,7 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail.app import APP_ID, PREFIX, Notifier, mail, store
+from openemail.app import APP_ID, PREFIX, Notifier, store
 
 from .compose_sheet import ComposeSheet
 from .contacts import Contacts  # noqa: F401
@@ -52,7 +52,7 @@ class Content(Adw.BreakpointBin):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        mail.compose_sheet = self.compose_sheet
+        ComposeSheet.default = self.compose_sheet
 
         self.sidebar.set_header_func(self._header_func)
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
