@@ -6,10 +6,8 @@ from typing import Any
 
 from gi.repository import GObject, Gtk
 
-from openemail import app
-from openemail.app import PREFIX, store
-from openemail.app.profile import Profile
-from openemail.app.store import settings
+import openemail as app
+from openemail import PREFIX, Profile, settings
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contact-row.ui")
@@ -25,7 +23,7 @@ class ContactRow(Gtk.Box):
         self._remove_address()
 
         try:
-            app.create_task(store.address_book.new(self.profile.value_of("address")))
+            app.create_task(app.address_book.new(self.profile.value_of("address")))
         except ValueError:
             return
 

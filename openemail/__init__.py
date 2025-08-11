@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
+# SPDX-FileContributor: kramo
+
+# ruff: noqa: F401
+
+"""A Mail/HTTPS client."""
+
+import gettext
+import locale
+import logging
+import signal
+import sys
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+import gi
+
+gi.require_versions({"Gdk": "4.0", "Gtk": "4.0", "Adw": "1"})
+
+from gi.repository import Gio
+
+from .configuration import APP_ID, LOCALEDIR, PKGDATADIR, PREFIX, PROFILE, VERSION
+from .core.client import WriteError, user
+from .core.crypto import KeyPair
+from .core.model import Address
+
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+if sys.platform.startswith("linux"):
+    locale.bindtextdomain("openemail", LOCALEDIR)
+    locale.textdomain("openemail")
+
+gettext.install("openemail", LOCALEDIR)
+
+for resource in ("data", "gtk", "icons"):
+    resource_path = Path(PKGDATADIR, f"{resource}.gresource")
+    Gio.resources_register(Gio.Resource.load(str(resource_path)))
+
+from .account import delete as delete_account
+from .account import log_out, register, try_auth
+from .asyncio import create_task
+from .message import Attachment, IncomingAttachment, Message, OutgoingAttachment
+from .message import send as send_message
+from .notifier import Notifier
+from .profile import Profile, ProfileCategory, ProfileField
+from .profile import delete_image as delete_profile_image
+from .profile import refresh as refresh_profile
+from .profile import update as update_profile
+from .profile import update_image as update_profile_image
+from .store import (
+    ADDRESS_SPLIT_PATTERN,
+    DictStore,
+    MessageStore,
+    ProfileStore,
+    address_book,
+    broadcasts,
+    contact_requests,
+    drafts,
+    empty_trash,
+    inbox,
+    log_file,
+    outbox,
+    profiles,
+    secret_service,
+    settings,
+    state_settings,
+    sync,
+)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(levelname)s: %(name)s:%(lineno)d %(message)s",
+    handlers=(
+        (
+            logging.StreamHandler(),
+            RotatingFileHandler(log_file, maxBytes=1_000_000),
+        )
+    ),
+)

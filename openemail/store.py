@@ -20,14 +20,14 @@ from typing import Any
 
 from gi.repository import Gdk, Gio, GLib, GObject
 
-from openemail import app
-from openemail.core import client, model
-from openemail.core.client import WriteError
-from openemail.core.model import Address
-
-from . import APP_ID, Notifier, message, profile
-from .message import Message
-from .profile import Profile
+from .asyncio import create_task
+from .configuration import APP_ID
+from .core import client, model
+from .core.client import WriteError
+from .core.model import Address
+from .message import Message, get_ident
+from .notifier import Notifier
+from .profile import Profile, refresh
 
 ADDRESS_SPLIT_PATTERN = ",|;| "
 
@@ -135,9 +135,9 @@ class ProfileStore(DictStore[Address, Profile]):
         If `trust_images` is set to `False`, profile images will not be loaded.
         """
         for address in (Address(contact.address) for contact in self):
-            app.create_task(self._update_profile(address))
+            create_task(self._update_profile(address))
             if trust_images:
-                app.create_task(self._update_profile_image(address))
+                create_task(self._update_profile_image(address))
 
     @staticmethod
     async def _update_profile(address: Address) -> None:
@@ -163,16 +163,16 @@ class _AddressBook(ProfileStore):
         Profile.of(address).contact_request = False
         self.add(address)
 
-        app.create_task(self.update_profiles())
-        app.create_task(broadcasts.update())
-        app.create_task(inbox.update())
+        create_task(self.update_profiles())
+        create_task(broadcasts.update())
+        create_task(inbox.update())
 
         try:
             await client.new_contact(address, receive_broadcasts=receive_broadcasts)
         except WriteError:
             self.remove(address)
-            app.create_task(broadcasts.update())
-            app.create_task(inbox.update())
+            create_task(broadcasts.update())
+            create_task(inbox.update())
 
             Notifier.send(_("Failed to add contact"))
             raise
@@ -180,15 +180,15 @@ class _AddressBook(ProfileStore):
     async def delete(self, address: Address) -> None:
         """Delete `address` from the user's address book."""
         self.remove(address)
-        app.create_task(broadcasts.update())
-        app.create_task(inbox.update())
+        create_task(broadcasts.update())
+        create_task(inbox.update())
 
         try:
             await client.delete_contact(address)
         except WriteError:
             self.add(address)
-            app.create_task(broadcasts.update())
-            app.create_task(inbox.update())
+            create_task(broadcasts.update())
+            create_task(inbox.update())
 
             Notifier.send(_("Failed to remove contact"))
             raise
@@ -224,26 +224,21 @@ class _ContactRequests(ProfileStore):
                 request.contact_request = False
                 self.remove(request.address)
 
-        app.create_task(self.update_profiles(trust_images=False))
-
-
-profiles: defaultdict[Address, Profile] = defaultdict(Profile)
-address_book = _AddressBook()
-contact_requests = _ContactRequests()
+        create_task(self.update_profiles(trust_images=False))
 
 
 class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
     item_type = Message
-    key_for = message.get_ident
+    key_for = get_ident
     default_factory = Message
 
     async def _update(self) -> None:
         idents = set[str]()
 
         async for msg in self._fetch():
-            ident = message.get_ident(msg)
+            ident = get_ident(msg)
 
             idents.add(ident)
             if ident in self._items:
@@ -273,9 +268,9 @@ class MessageStore(DictStore[str, Message]):
 
             for msg in messages:
                 if msg.new:
-                    unread.add(message.get_ident(msg))
+                    unread.add(get_ident(msg))
 
-                elif message.get_ident(msg) in current_unread:
+                elif get_ident(msg) in current_unread:
                     msg.new = True
 
                 yield msg
@@ -384,7 +379,7 @@ class _DraftStore(MessageStore):
 
         client.save_draft(draft(ident=ident) if ident else draft())
         self.clear()  # TODO
-        app.create_task(self.update())
+        create_task(self.update())
 
     def delete(self, ident: str) -> None:
         """Delete a draft saved using `save()`."""
@@ -401,19 +396,13 @@ class _DraftStore(MessageStore):
             yield msg
 
 
-broadcasts = _BroadcastStore()
-inbox = _InboxStore()
-outbox = _OutboxStore()
-drafts = _DraftStore()
-
-
 async def sync(*, periodic: bool = False) -> None:
     """Populate the app's content by fetching the user's data."""
     Notifier().syncing = True
 
     if periodic:
         interval = settings.get_uint("sync-interval")
-        GLib.timeout_add_seconds(interval or 60, app.create_task, sync(periodic=True))
+        GLib.timeout_add_seconds(interval or 60, create_task, sync(periodic=True))
 
         # The user chose manual sync, check again in a minute
         if not interval:
@@ -430,7 +419,7 @@ async def sync(*, periodic: bool = False) -> None:
     await address_book.update()
 
     tasks: set[Coroutine[Any, Any, Any]] = {
-        profile.refresh(),
+        refresh(),
         address_book.update_profiles(),
         contact_requests.update(),
         broadcasts.update(),
@@ -445,11 +434,11 @@ async def sync(*, periodic: bool = False) -> None:
             Notifier().syncing = False
 
     for task in tasks:
-        app.create_task(task, lambda _, t=task: done(t))
+        create_task(task, lambda _, t=task: done(t))
 
     settings.connect(
         "changed::contact-requests",
-        lambda *_: app.create_task(contact_requests.update()),
+        lambda *_: create_task(contact_requests.update()),
     )
 
 
@@ -457,3 +446,13 @@ def empty_trash() -> None:
     """Empty the user's trash."""
     for msg in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
         msg.delete()
+
+
+profiles: defaultdict[Address, Profile] = defaultdict(Profile)
+address_book = _AddressBook()
+contact_requests = _ContactRequests()
+
+broadcasts = _BroadcastStore()
+inbox = _InboxStore()
+outbox = _OutboxStore()
+drafts = _DraftStore()

@@ -6,9 +6,8 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail.app import PREFIX, store
-from openemail.app.message import Message
-from openemail.app.store import DictStore, empty_trash, settings
+import openemail as app
+from openemail import PREFIX, Message, empty_trash, settings
 
 from .compose_sheet import ComposeSheet
 from .page import Page  # noqa: TC001
@@ -58,7 +57,7 @@ class _Messages(Adw.NavigationPage):
 
 
 class _Folder(_Messages):
-    folder: DictStore[str, Message]
+    folder: Gio.ListModel
     title: str
 
     def __init__(self, **kwargs: Any) -> None:
@@ -83,14 +82,14 @@ class Inbox(_Folder):
     """A navigation page displaying the user's inbox."""
 
     __gtype_name__ = "Inbox"
-    folder, title = store.inbox, _("Inbox")
+    folder, title = app.inbox, _("Inbox")
 
 
 class Outbox(_Folder):
     """A navigation page displaying the user's outbox."""
 
     __gtype_name__ = "Outbox"
-    folder, title = store.outbox, _("Outbox")
+    folder, title = app.outbox, _("Outbox")
 
 
 class Drafts(_Messages):
@@ -99,12 +98,12 @@ class Drafts(_Messages):
     __gtype_name__ = "Drafts"
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(store.drafts, title=_("Drafts"), **kwargs)
+        super().__init__(app.drafts, title=_("Drafts"), **kwargs)
 
         self.content.model.props.can_unselect = True
 
         delete_dialog: Adw.AlertDialog = self._get_object("delete_dialog")
-        delete_dialog.connect("response::delete", lambda *_: store.drafts.delete_all())
+        delete_dialog.connect("response::delete", lambda *_: app.drafts.delete_all())
 
         delete_button: Gtk.Button = self._get_object("delete_button")
         delete_button.connect("clicked", lambda *_: delete_dialog.present(self))
@@ -140,8 +139,8 @@ class Trash(_Messages):
 
         self.trashed.props.invert = False
 
-        folders.append(store.broadcasts)
-        folders.append(store.inbox)
+        folders.append(app.broadcasts)
+        folders.append(app.inbox)
 
         empty_dialog: Adw.AlertDialog = self._get_object("empty_dialog")
         empty_dialog.connect("response::empty", lambda *_: empty_trash())
@@ -160,14 +159,14 @@ class Trash(_Messages):
         )
 
         def set_loading(*_args: Any) -> None:
-            self.content.loading = store.inbox.updating or store.broadcasts.updating
+            self.content.loading = app.inbox.updating or app.broadcasts.updating
 
-        store.inbox.connect("notify::updating", set_loading)
-        store.broadcasts.connect("notify::updating", set_loading)
+        app.inbox.connect("notify::updating", set_loading)
+        app.broadcasts.connect("notify::updating", set_loading)
 
 
 class Broadcasts(_Folder):
     """A navigation page displaying the user's broadcasts folder."""
 
     __gtype_name__ = "Broadcasts"
-    folder, title = store.broadcasts, _("Public")
+    folder, title = app.broadcasts, _("Public")

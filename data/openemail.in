@@ -1,0 +1,9 @@
+#!@PYTHON@
+
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
+# SPDX-FileContributor: kramo
+
+import runpy
+
+runpy.run_module("openemail")

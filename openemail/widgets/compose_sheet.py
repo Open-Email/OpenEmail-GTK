@@ -8,11 +8,15 @@ from typing import Any, Self
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import app
-from openemail.app import PREFIX, message, store
-from openemail.app.message import Address, Message, OutgoingAttachment
-from openemail.app.profile import Profile
-from openemail.app.store import ADDRESS_SPLIT_PATTERN
+import openemail as app
+from openemail import (
+    ADDRESS_SPLIT_PATTERN,
+    PREFIX,
+    Address,
+    Message,
+    OutgoingAttachment,
+    Profile,
+)
 
 from .attachments import Attachments
 from .body import Body
@@ -133,7 +137,7 @@ class ComposeSheet(Adw.BreakpointBin):
             if not start:
                 return
 
-            for contact in store.address_book:
+            for contact in app.address_book:
                 if not (contact.address and contact.address.startswith(start)):
                     continue
 
@@ -193,11 +197,11 @@ class ComposeSheet(Adw.BreakpointBin):
 
     def _send(self, readers: Iterable[Address]) -> None:
         if self.ident:
-            store.drafts.delete(self.ident)
+            app.drafts.delete(self.ident)
             self.ident = None
 
         app.create_task(
-            message.send(
+            app.send_message(
                 readers,
                 self.subject.props.text,
                 self.body.props.text,
@@ -325,7 +329,7 @@ class ComposeSheet(Adw.BreakpointBin):
         if not (subject or body):
             return
 
-        store.drafts.save(
+        app.drafts.save(
             self.ident,
             self.readers.props.text,
             subject,

@@ -1,17 +1,22 @@
-moduledir = pkgdatadir / 'openemail'
+moduledir = py_installation.get_install_dir() / 'openemail'
 
 subdir('gtk')
 
-configure_file(
-  input: 'openemail.in',
-  output: '@BASENAME@',
-  configuration: conf,
-  install: true,
-  install_dir: get_option('bindir'),
-  install_mode: 'r-xr-xr-x',
+init = configure_file(
+    input: 'configuration.py.in',
+    output: '@BASENAME@',
+    configuration: conf,
+    install_dir: moduledir,
 )
 
-install_data(files('__init__.py'), install_dir: moduledir)
-install_subdir('app', install_dir: moduledir)
-install_subdir('core', install_dir: moduledir)
-install_subdir('widgets', install_dir: moduledir)
+install_subdir(
+    '.',
+    install_dir: moduledir,
+    exclude_directories: ['gtk'],
+    exclude_files: [
+        '__builtins__.pyi',
+        'configuration.py',
+        'configuration.py.in',
+        'meson.build',
+    ],
+)

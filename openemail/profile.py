@@ -7,13 +7,12 @@ from typing import Any, Self
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
 
-from openemail import app
-from openemail.core import client, model
-from openemail.core.client import WriteError, user
-from openemail.core.crypto import KeyPair
-from openemail.core.model import Address, User
-
-from . import Notifier
+from .asyncio import create_task
+from .core import client, model
+from .core.client import WriteError, user
+from .core.crypto import KeyPair
+from .core.model import Address, User
+from .notifier import Notifier
 
 MAX_IMAGE_DIMENSIONS = 800
 
@@ -179,8 +178,8 @@ class Profile(GObject.Object):
 
         self._broadcasts = receive_broadcasts
 
-        app.create_task(broadcasts.update())
-        app.create_task(
+        create_task(broadcasts.update())
+        create_task(
             client.new_contact(
                 self._profile.address,
                 receive_broadcasts=receive_broadcasts,
@@ -257,6 +256,7 @@ class Profile(GObject.Object):
         self.notify("receive-broadcasts")
 
 
+# TODO: Maybe these could be methods of a sublcass of Profile specific to the user
 async def refresh() -> None:
     """Update the profile of the user by fetching new data remotely."""
     Profile.of(client.user).updating = True

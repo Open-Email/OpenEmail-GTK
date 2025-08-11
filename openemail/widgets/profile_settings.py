@@ -8,11 +8,8 @@ from typing import Any, cast
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
 
-from openemail import app
-from openemail.app import PREFIX, profile
-from openemail.app.profile import Profile, ProfileField
-from openemail.core import client
-from openemail.core.client import WriteError
+import openemail as app
+from openemail import PREFIX, Profile, ProfileField, WriteError
 
 from .form import Form
 
@@ -114,7 +111,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             "about": self.about.get_text,
         }
 
-        Profile.of(client.user).connect(
+        Profile.of(app.user).connect(
             "notify::updating",
             lambda p, _: self.set_property("profile", None if p.updating else p),  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
         )
@@ -127,7 +124,7 @@ class ProfileSettings(Adw.PreferencesDialog):
     def _delete_image(self, *_args: Any) -> None:
         self.pending = True
         app.create_task(
-            profile.delete_image(),
+            app.delete_profile_image(),
             lambda _: self.set_property("pending", False),
         )
 
@@ -148,7 +145,9 @@ class ProfileSettings(Adw.PreferencesDialog):
             self.away_warning.props.text = ""
 
         self._changed = False
-        app.create_task(profile.update({key: f() for key, f in self._fields.items()}))
+        app.create_task(
+            app.update_profile({key: f() for key, f in self._fields.items()})
+        )
 
     async def _replace_image_task(self) -> None:
         try:
@@ -183,6 +182,6 @@ class ProfileSettings(Adw.PreferencesDialog):
         self.pending = True
 
         with suppress(WriteError):
-            await profile.update_image(pixbuf)
+            await app.update_profile_image(pixbuf)
 
         self.pending = False

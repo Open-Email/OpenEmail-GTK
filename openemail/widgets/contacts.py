@@ -6,9 +6,8 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
 
-from openemail import app
-from openemail.app import PREFIX, store
-from openemail.core.model import Address
+import openemail as app
+from openemail import PREFIX, Address
 
 from .contact_row import ContactRow  # noqa: F401
 from .form import Form
@@ -34,10 +33,10 @@ class Contacts(Adw.NavigationPage):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-        self.models.append(store.contact_requests)
-        self.models.append(store.address_book)
+        self.models.append(app.contact_requests)
+        self.models.append(app.address_book)
 
-        store.address_book.bind_property(
+        app.address_book.bind_property(
             "updating",
             self.content,
             "loading",
@@ -52,7 +51,7 @@ class Contacts(Adw.NavigationPage):
     @Gtk.Template.Callback()
     def _add_contact(self, *_args: Any) -> None:
         try:
-            app.create_task(store.address_book.new(Address(self.address.props.text)))
+            app.create_task(app.address_book.new(Address(self.address.props.text)))
         except ValueError:
             return
 

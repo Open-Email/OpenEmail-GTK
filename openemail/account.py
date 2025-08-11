@@ -9,12 +9,20 @@ from typing import Any
 
 import keyring
 
-from openemail import app
-from openemail.core import client, model
-from openemail.core.client import WriteError, user
-
-from . import Notifier, store
-from .store import secret_service, settings
+from .asyncio import create_task
+from .core import client, model
+from .core.client import WriteError, user
+from .notifier import Notifier
+from .store import (
+    address_book,
+    broadcasts,
+    contact_requests,
+    inbox,
+    outbox,
+    profiles,
+    secret_service,
+    settings,
+)
 
 
 def try_auth(
@@ -38,7 +46,7 @@ def try_auth(
         if on_failure:
             on_failure()
 
-    app.create_task(auth(), done)
+    create_task(auth(), done)
 
 
 def register(
@@ -62,20 +70,20 @@ def register(
         if on_failure:
             on_failure()
 
-    app.create_task(auth(), done)
+    create_task(auth(), done)
 
 
 def log_out() -> None:
     """Remove the user's local account."""
-    for profile in store.profiles.values():
+    for profile in profiles.values():
         profile.set_from_profile(None)
 
-    store.profiles.clear()
-    store.address_book.clear()
-    store.contact_requests.clear()
-    store.broadcasts.clear()
-    store.inbox.clear()
-    store.outbox.clear()
+    profiles.clear()
+    address_book.clear()
+    contact_requests.clear()
+    broadcasts.clear()
+    inbox.clear()
+    outbox.clear()
 
     settings.reset("address")
     settings.reset("sync-interval")

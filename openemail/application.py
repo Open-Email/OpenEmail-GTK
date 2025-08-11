@@ -3,25 +3,20 @@
 # SPDX-FileContributor: kramo
 
 import json
-import logging
-import sys
 from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime
-from logging.handlers import RotatingFileHandler
 from typing import Any, override
 
 import keyring
-from gi.events import GLibEventLoopPolicy
 from gi.repository import Adw, Gio
 
-from openemail.core import client
-from openemail.core.crypto import KeyPair
-from openemail.core.model import Address
-from openemail.widgets.preferences import Preferences
-from openemail.widgets.window import Window
-
-from . import APP_ID, PREFIX
+from .configuration import APP_ID, PREFIX
+from .core import client
+from .core.crypto import KeyPair
+from .core.model import Address
 from .store import log_file, secret_service, settings
+from .widgets.preferences import Preferences
+from .widgets.window import Window
 
 
 class Application(Adw.Application):
@@ -124,20 +119,3 @@ class Application(Adw.Application):
             return
 
         win.close()
-
-
-def main() -> int:
-    """Run the application."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(levelname)s: %(name)s:%(lineno)d %(message)s",
-        handlers=(
-            (
-                logging.StreamHandler(),
-                RotatingFileHandler(log_file, maxBytes=1_000_000),
-            )
-        ),
-    )
-
-    with GLibEventLoopPolicy():
-        return Application().run(sys.argv)

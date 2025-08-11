@@ -6,10 +6,7 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail.app import PREFIX
-from openemail.app.message import Message
-from openemail.app.profile import Profile
-from openemail.app.store import settings
+from openemail import PREFIX, Message, Profile, settings
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/navigation-row.ui")

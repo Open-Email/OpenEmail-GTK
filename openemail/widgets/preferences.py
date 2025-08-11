@@ -7,10 +7,8 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import app
-from openemail.app import PREFIX, account
-from openemail.app.store import settings
-from openemail.core import client
+import openemail as app
+from openemail import PREFIX, settings
 
 from .form import Form
 from .window import Window
@@ -48,10 +46,10 @@ class Preferences(Adw.PreferencesDialog):
         settings.connect("changed::trusted-domains", self._build_domains)
         self._build_domains()
 
-        self.private_signing_key = str(client.user.signing_keys)
-        self.private_encryption_key = str(client.user.encryption_keys.private)
-        self.public_signing_key = str(client.user.signing_keys.public)
-        self.public_encryption_key = str(client.user.encryption_keys.public)
+        self.private_signing_key = str(app.user.signing_keys)
+        self.private_encryption_key = str(app.user.encryption_keys.private)
+        self.public_signing_key = str(app.user.signing_keys.public)
+        self.public_encryption_key = str(app.user.encryption_keys.public)
 
         with suppress(ValueError):
             self.sync_interval_combo_row.props.selected = self._sync_intervals.index(
@@ -86,12 +84,12 @@ class Preferences(Adw.PreferencesDialog):
     @Gtk.Template.Callback()
     def _confirm_delete(self, *_args: Any) -> None:
         self.force_close()
-        app.create_task(account.delete())
+        app.create_task(app.delete_account())
 
     @Gtk.Template.Callback()
     def _confirm_remove(self, *_args: Any) -> None:
         self.force_close()
-        account.log_out()
+        app.log_out()
 
         if not isinstance(win := self.props.root, Window):
             return

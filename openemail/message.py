@@ -10,12 +10,11 @@ from typing import Any, Self, cast, override
 
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
-from openemail import app
-from openemail.core import client, model
-from openemail.core.client import WriteError, user
-from openemail.core.model import Address
-
-from . import Notifier
+from .asyncio import create_task
+from .core import client, model
+from .core.client import WriteError, user
+from .core.model import Address
+from .notifier import Notifier
 from .profile import Profile
 
 
@@ -156,7 +155,7 @@ class IncomingAttachment(Attachment):
     @override
     def open(self, parent: Gtk.Widget | None = None) -> None:
         """Download and reconstruct `self` from its parts, then open for saving."""
-        app.create_task(self._save(parent))
+        create_task(self._save(parent))
 
     async def _save(self, parent: Gtk.Widget | None) -> None:
         msg = _("Failed to download attachment")
