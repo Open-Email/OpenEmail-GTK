@@ -6,7 +6,7 @@ import sys
 
 from gi.events import GLibEventLoopPolicy
 
-from .application import Application
+from .gtk.application import Application
 
 with GLibEventLoopPolicy():
     sys.exit(Application().run(sys.argv))

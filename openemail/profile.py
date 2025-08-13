@@ -7,6 +7,7 @@ from typing import Any, Self
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
 
+from . import core
 from .asyncio import create_task
 from .core import client, model
 from .core.client import WriteError, user
@@ -259,8 +260,8 @@ class Profile(GObject.Object):
 # TODO: Maybe these could be methods of a sublcass of Profile specific to the user
 async def refresh():
     """Update the profile of the user by fetching new data remotely."""
-    Profile.of(client.user).updating = True
-    Profile.of(client.user).set_from_profile(
+    Profile.of(core.user).updating = True
+    Profile.of(core.user).set_from_profile(
         profile := await client.fetch_profile(user.address)
     )
 
@@ -277,15 +278,15 @@ async def refresh():
             )
 
     try:
-        Profile.of(client.user).image = Gdk.Texture.new_from_bytes(
+        Profile.of(core.user).image = Gdk.Texture.new_from_bytes(
             GLib.Bytes.new(await client.fetch_profile_image(user.address))
         )
     except GLib.Error:
-        Profile.of(client.user).image = None
+        Profile.of(core.user).image = None
 
-    Profile.of(user.address).image = Profile.of(client.user).image
+    Profile.of(user.address).image = Profile.of(core.user).image
     Profile.of(user.address).set_from_profile(profile)
-    Profile.of(client.user).updating = False
+    Profile.of(core.user).updating = False
 
 
 async def update(values: dict[str, str]):

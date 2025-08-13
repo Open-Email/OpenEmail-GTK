@@ -1,1 +1,0 @@
-"""GTK widgets for OpenEmail."""

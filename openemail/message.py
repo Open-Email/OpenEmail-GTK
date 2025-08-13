@@ -10,6 +10,7 @@ from typing import Any, Self, cast, override
 
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
+from . import core
 from .asyncio import create_task
 from .core import client, model
 from .core.client import WriteError, user
@@ -453,7 +454,7 @@ class Message(GObject.Object):
             return
 
         # TODO: Better UX, cancellation?
-        if isinstance(self._message, client.OutgoingMessage) and self._message.sending:
+        if isinstance(self._message, model.OutgoingMessage) and self._message.sending:
             Notifier.send(_("Cannot discard message while sending"))
             return
 
@@ -535,14 +536,14 @@ async def send(
         files[
             model.AttachmentProperties(
                 name=attachment.name,
-                ident=model.generate_ident(client.user.address),
+                ident=model.generate_ident(core.user.address),
                 type=attachment.type,
                 modified=attachment.modified,
             )
         ] = data
 
     outbox.add(
-        message := client.OutgoingMessage(
+        message := model.OutgoingMessage(
             readers=list(readers),
             subject=subject,
             body=body,

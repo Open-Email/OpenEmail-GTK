@@ -4,362 +4,37 @@
 
 import asyncio
 import json
-import logging
 from base64 import b64encode
-from collections.abc import AsyncGenerator, Generator, Iterable, Sequence
+from collections.abc import AsyncGenerator, Generator, Iterable
 from datetime import UTC, datetime
-from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
-from itertools import chain
 from json import JSONDecodeError
-from os import getenv
-from pathlib import Path
+from logging import getLogger
 from shutil import rmtree
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-from . import crypto, model
+from . import crypto, data_dir, model, urls, user
 from .model import (
     Address,
-    AttachmentProperties,
+    DraftMessage,
     IncomingMessage,
     Message,
     Notification,
     Profile,
-    User,
-    generate_ident,
+    WriteError,
     to_attrs,
     to_fields,
 )
 
 MAX_AGENTS = 3
-MAX_MESSAGE_SIZE = 64_000_000
 MAX_PROFILE_SIZE = 64_000
 MAX_PROFILE_IMAGE_SIZE = 640_000
 
 _SHORT = 8
 
-logger = logging.getLogger(__name__)
-data_dir = Path(getenv("XDG_DATA_DIR", Path.home() / ".local" / "share"), "openemail")
-user = User()
-
-
-class WriteError(Exception):
-    """Raised if writing to the server fails."""
-
-
-class DraftMessage:
-    """A local message, saved as a draft."""
-
-    @property
-    def is_broadcast(self) -> bool:
-        """Whether `self` is a broadcast."""
-        return False
-
-    def __init__(
-        self,
-        ident: str | None = None,
-        date: datetime | None = None,
-        subject: str = "",
-        subject_id: str | None = None,
-        readers: list[Address] | None = None,
-        body: str | None = None,
-    ):
-        self.ident = ident or generate_ident(user.address)
-        self.author = self.original_author = user.address
-        self.date = date or datetime.now(UTC)
-        self.subject = subject
-        self.subject_id = subject_id
-
-        self.readers = readers or []
-        self.access_key: bytes | None = None
-
-        self.attachments = dict[str, list[DraftMessage]]()
-        self.children = list[DraftMessage]()
-        self.file: AttachmentProperties | None = None
-        self.attachment_url: str | None = None
-
-        self.body = body
-        self.new: bool = False
-
-
-class OutgoingMessage:
-    """A local message, to be sent."""
-
-    @property
-    def is_broadcast(self) -> bool:
-        """Whether `self` is a broadcast."""
-        return not self.readers
-
-    def __init__(
-        self,
-        date: datetime | None = None,
-        subject: str = "",
-        subject_id: str | None = None,
-        readers: list[Address] | None = None,
-        files: dict[AttachmentProperties, bytes] | None = None,
-        file: AttachmentProperties | None = None,
-        attachment_url: str | None = None,
-        parent_id: str | None = None,
-        body: str | None = None,
-        content: bytes = b"",
-    ):
-        self.ident = generate_ident(user.address)
-        self.author = self.original_author = user.address
-        self.date = date or datetime.now(UTC)
-        self.subject = subject
-        self.subject_id = subject_id
-        self.headers = dict[str, str]()
-
-        self.readers = readers or []
-        self.access_key: bytes | None = None
-
-        self.files = files or {}
-        self.attachments = dict[str, list[OutgoingMessage]]()
-        self.children = list[OutgoingMessage]()
-        self.file = file
-        self.attachment_url = attachment_url
-        self.parent_id = parent_id
-
-        self.body = body
-        self.content = content
-        self.new: bool = False
-        self.sending: bool = False
-
-        for props, data in self.files.items():
-            self.attachments[props.name] = []
-            for index, start in enumerate(range(0, len(data), MAX_MESSAGE_SIZE)):
-                self.attachments[props.name].append(
-                    OutgoingMessage(
-                        self.date,
-                        self.subject,
-                        self.subject_id,
-                        self.readers,
-                        file=AttachmentProperties(
-                            name=props.name,
-                            ident=props.ident,
-                            type=props.type,
-                            size=len(data),
-                            part=(index + 1, len(self.files)),
-                            modified=props.modified
-                            or self.date.isoformat(timespec="seconds"),
-                        ),
-                        parent_id=self.ident,
-                        content=data[start : start + MAX_MESSAGE_SIZE],
-                    )
-                )
-
-        if not self.body:
-            return
-
-        self.content = self.body.encode("utf-8")
-
-    async def send(self):
-        """Send `self` to `self.readers`."""
-        logger.debug("Sending message…")
-        self.sending = True
-
-        try:
-            await self._build()
-
-            for agent in await get_agents(user.address):
-                if not await request(
-                    _Home(agent, user.address).messages,
-                    auth=True,
-                    headers=self.headers,
-                    data=self.content,
-                ):
-                    logger.error("Failed sending message")
-                    self.sending = False
-                    raise WriteError
-
-                await notify_readers(self.readers)
-                break
-
-            for part in chain.from_iterable(self.attachments.values()):
-                await part.send()
-
-        except ValueError as error:
-            logger.exception("Error sending message")
-            self.sending = False
-            raise WriteError from error
-
-        self.sending = False
-
-    async def _build(self):
-        if self.headers:
-            return
-
-        self.headers: dict[str, str] = {
-            "Message-Id": self.ident,
-            "Content-Type": "application/octet-stream",
-        }
-
-        headers_bytes = to_fields(
-            {
-                "Id": self.headers["Message-Id"],
-                "Author": user.address,
-                "Date": self.date.isoformat(timespec="seconds"),
-                "Size": str(len(self.content)),
-                "Checksum": to_attrs(
-                    {
-                        "algorithm": crypto.CHECKSUM_ALGORITHM,
-                        "value": sha256(self.content).hexdigest(),
-                    }
-                ),
-                "Subject": self.subject,
-                "Subject-Id": self.subject_id or self.headers["Message-Id"],
-                "Category": "personal",
-            }
-            | ({"Readers": ",".join(map(str, self.readers))} if self.readers else {})
-            | ({"File": to_attrs(self.file.dict)} if self.file else {})
-            | ({"Parent-Id": self.parent_id} if self.parent_id else {})
-            | (
-                {"Files": ",".join((to_attrs(a.dict)) for a in self.files)}
-                if self.files
-                else {}
-            )
-        ).encode("utf-8")
-
-        if self.readers:
-            self.access_key = crypto.random_bytes(32)
-
-            try:
-                message_access = await self._build_access(self.readers, self.access_key)
-            except ValueError as error:
-                msg = "Error building message: Building access failed"
-                raise ValueError(msg) from error
-
-            try:
-                self.content = crypto.encrypt_xchacha20poly1305(
-                    self.content, self.access_key
-                )
-                headers_bytes = crypto.encrypt_xchacha20poly1305(
-                    headers_bytes, self.access_key
-                )
-            except ValueError as error:
-                msg = "Error building message: Encryption failed"
-                raise ValueError(msg) from error
-
-            self.headers.update(
-                {
-                    "Message-Access": ",".join(message_access),
-                    "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
-                }
-            )
-
-        self.headers["Message-Headers"] = (
-            self.headers.get("Message-Headers", "")
-            + f"value={b64encode(headers_bytes).decode('utf-8')}"
-        )
-
-        checksum_fields = sorted(
-            ("Message-Id", "Message-Headers")
-            + (("Message-Encryption", "Message-Access") if self.readers else ())
-        )
-
-        try:
-            checksum, signature = _sign_headers(
-                tuple(self.headers[f] for f in checksum_fields)
-            )
-        except ValueError as error:
-            msg = "Error building message: Signing headers failed"
-            raise ValueError(msg) from error
-
-        self.headers.update(
-            {
-                "Content-Length": str(len(self.content)),
-                "Message-Checksum": to_attrs(
-                    {
-                        "algorithm": crypto.CHECKSUM_ALGORITHM,
-                        "order": ":".join(checksum_fields),
-                        "value": checksum.hexdigest(),
-                    }
-                ),
-                "Message-Signature": to_attrs(
-                    {
-                        "id": user.encryption_keys.public.key_id or 0,
-                        "algorithm": crypto.SIGNING_ALGORITHM,
-                        "value": signature,
-                    }
-                ),
-            }
-        )
-
-    @staticmethod
-    async def _build_access(
-        readers: Iterable[Address],
-        access_key: bytes,
-    ) -> tuple[str, ...]:
-        access = list[str]()
-        for reader in (*readers, user.address):
-            if not (
-                (profile := await fetch_profile(reader))
-                and (key := profile.encryption_key)
-                and (key_id := key.key_id)
-            ):
-                msg = "Failed fetching reader profiles"
-                raise ValueError(msg)
-
-            try:
-                encrypted = crypto.encrypt_anonymous(access_key, key)
-            except ValueError as error:
-                msg = "Failed to encrypt access key"
-                raise ValueError(msg) from error
-
-            access.append(
-                to_attrs(
-                    {
-                        "link": model.generate_link(user.address, reader),
-                        "fingerprint": crypto.fingerprint(profile.signing_key),
-                        "value": b64encode(encrypted).decode("utf-8"),
-                        "id": key_id,
-                    }
-                )
-            )
-
-        return tuple(access)
-
-
-class _Home:
-    def __init__(self, agent: str, address: Address):
-        self.home = f"https://{agent}/home/{address.host_part}/{address.local_part}"
-        self.links = f"{self.home}/links"
-        self.profile = f"{self.home}/profile"
-        self.image = f"{self.home}/image"
-        self.messages = f"{self.home}/messages"
-        self.notifications = f"{self.home}/notifications"
-
-
-class _Message(_Home):
-    def __init__(self, agent: str, address: Address, ident: str):
-        super().__init__(agent, address)
-        self.message = f"{self.messages}/{ident}"
-
-
-class _Mail:
-    def __init__(self, agent: str, address: Address):
-        self.host = f"https://{agent}/mail/{address.host_part}"
-        self.mail = f"{self.host}/{address.local_part}"
-        self.profile = f"{self.mail}/profile"
-        self.image = f"{self.mail}/image"
-        self.messages = f"{self.mail}/messages"
-
-
-class _Account:
-    def __init__(self, agent: str, address: Address):
-        self.account = (
-            f"https://{agent}/account/{address.host_part}/{address.local_part}"
-        )
-
-
-class _Link:
-    def __init__(self, agent: str, address: Address, link: str):
-        self.home = f"{_Home(agent, address).home}/links/{link}"
-        self.mail = f"{_Mail(agent, address).mail}/link/{link}"
-        self.messages = f"{self.mail}/messages"
-        self.notifications = f"{self.mail}/notifications"
+logger = getLogger(__name__)
 
 
 async def request(
@@ -441,7 +116,7 @@ async def get_agents(address: Address) -> tuple[str, ...]:
             stripped
             for line in contents.split("\n")
             if (stripped := line.strip()) and (not stripped.startswith("#"))
-            if await request(_Mail(stripped, address).host, method="HEAD")
+            if await request(urls.Mail(stripped, address).host, method="HEAD")
         ):
             if index > MAX_AGENTS:
                 break
@@ -455,13 +130,13 @@ async def get_agents(address: Address) -> tuple[str, ...]:
 
 
 async def try_auth() -> bool:
-    """Try authenticating with `client.user`.
+    """Try authenticating with `core.user`.
 
     Returns whether the attempt was successful.
     """
     logger.info("Authenticating…")
     for agent in await get_agents(user.address):
-        if await request(_Home(agent, user.address).home, auth=True, method="HEAD"):
+        if await request(urls.Home(agent, user.address).home, auth=True, method="HEAD"):
             logger.info("Authentication successful")
             return True
 
@@ -470,7 +145,7 @@ async def try_auth() -> bool:
 
 
 async def register() -> bool:
-    """Try registering `client.user` and return whether the attempt was successful."""
+    """Try registering `core.user` and return whether the attempt was successful."""
     logger.info("Registering…")
 
     data = to_fields(
@@ -494,7 +169,9 @@ async def register() -> bool:
     ).encode("utf-8")
 
     for agent in await get_agents(user.address):
-        if await request(_Account(agent, user.address).account, auth=True, data=data):
+        if await request(
+            urls.Account(agent, user.address).account, auth=True, data=data
+        ):
             logger.info("Authentication successful")
             return True
 
@@ -507,7 +184,7 @@ async def fetch_profile(address: Address) -> Profile | None:
     """Fetch the remote profile associated with a given `address`."""
     logger.debug("Fetching profile for %s…", address)
     for agent in await get_agents(address):
-        if not (response := await request(_Mail(agent, address).profile)):
+        if not (response := await request(urls.Mail(agent, address).profile)):
             continue
 
         with response:
@@ -524,7 +201,7 @@ async def fetch_profile(address: Address) -> Profile | None:
 
 
 async def update(values: dict[str, str]):
-    """Update `client.user`'s public profile with `values`."""
+    """Update `core.user`'s public profile with `values`."""
     logger.debug("Updating user profile…")
 
     values.update(
@@ -554,7 +231,7 @@ async def update(values: dict[str, str]):
 
     for agent in await get_agents(user.address):
         if await request(
-            _Home(agent, user.address).profile,
+            urls.Home(agent, user.address).profile,
             auth=True,
             method="PUT",
             data=data,
@@ -572,7 +249,7 @@ async def fetch_profile_image(address: Address) -> bytes | None:
     for agent in await get_agents(address):
         if not (
             response := await request(
-                _Mail(agent, address).image,
+                urls.Mail(agent, address).image,
                 max_length=MAX_PROFILE_IMAGE_SIZE,
             )
         ):
@@ -588,11 +265,11 @@ async def fetch_profile_image(address: Address) -> bytes | None:
 
 
 async def update_image(image: bytes):
-    """Upload `image` to be used as `client.user`'s profile image."""
+    """Upload `image` to be used as `core.user`'s profile image."""
     logger.debug("Updating profile image…")
     for agent in await get_agents(user.address):
         if await request(
-            _Home(agent, user.address).image,
+            urls.Home(agent, user.address).image,
             auth=True,
             method="PUT",
             data=image,
@@ -605,10 +282,12 @@ async def update_image(image: bytes):
 
 
 async def delete_image():
-    """Delete `client.user`'s profile image."""
+    """Delete `core.user`'s profile image."""
     logger.debug("Deleting profile image…")
     for agent in await get_agents(user.address):
-        if await request(_Home(agent, user.address).image, auth=True, method="DELETE"):
+        if await request(
+            urls.Home(agent, user.address).image, auth=True, method="DELETE"
+        ):
             logger.info("Deleted profile image.")
             return
 
@@ -617,7 +296,7 @@ async def delete_image():
 
 
 async def fetch_contacts() -> set[tuple[Address, bool]]:
-    """Fetch `client.user`'s contacts.
+    """Fetch `core.user`'s contacts.
 
     Returns their addresses and whether broadcasts should be received from them.
     """
@@ -625,7 +304,9 @@ async def fetch_contacts() -> set[tuple[Address, bool]]:
     addresses = list[tuple[Address, bool]]()
 
     for agent in await get_agents(user.address):
-        if not (response := await request(_Home(agent, user.address).links, auth=True)):
+        if not (
+            response := await request(urls.Home(agent, user.address).links, auth=True)
+        ):
             continue
 
         with response:
@@ -667,7 +348,7 @@ async def fetch_contacts() -> set[tuple[Address, bool]]:
 
 
 async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> Profile:
-    """Add `address` to `client.user`'s address book.
+    """Add `address` to `core.user`'s address book.
 
     Returns `address`'s profile on success.
     """
@@ -696,7 +377,7 @@ async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> P
     link = model.generate_link(address, user.address)
     for agent in await get_agents(address):
         if await request(
-            _Link(agent, user.address, link).home,
+            urls.Link(agent, user.address, link).home,
             auth=True,
             method="PUT",
             data=data,
@@ -709,12 +390,12 @@ async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> P
 
 
 async def delete_contact(address: Address):
-    """Delete `address` from `client.user`'s address book."""
+    """Delete `address` from `core.user`'s address book."""
     logger.debug("Deleting contact %s…", address)
     link = model.generate_link(address, user.address)
     for agent in await get_agents(address):
         if await request(
-            _Link(agent, user.address, link).home,
+            urls.Link(agent, user.address, link).home,
             auth=True,
             method="DELETE",
         ):
@@ -736,7 +417,7 @@ async def fetch_broadcasts(
 async def fetch_link_messages(
     author: Address, *, exclude: Iterable[str] = ()
 ) -> tuple[IncomingMessage, ...]:
-    """Fetch messages by `author`, addressed to `client.user`.
+    """Fetch messages by `author`, addressed to `core.user`.
 
     `exclude` are Message-Ids to ignore.
     """
@@ -745,7 +426,7 @@ async def fetch_link_messages(
 
 
 async def fetch_outbox() -> tuple[IncomingMessage, ...]:
-    """Fetch messages by `client.user`."""
+    """Fetch messages by `core.user`."""
     logger.debug("Fetching outbox…")
     return await _fetch_messages(user.address)
 
@@ -809,7 +490,7 @@ async def notify_readers(readers: Iterable[Address]):
         one_notified = False
         for agent in await get_agents(reader):
             if await request(
-                _Link(agent, reader, link).notifications,
+                urls.Link(agent, reader, link).notifications,
                 auth=True,
                 method="PUT",
                 data=address,
@@ -824,7 +505,7 @@ async def notify_readers(readers: Iterable[Address]):
 
 
 async def fetch_notifications() -> AsyncGenerator[Notification]:
-    """Fetch all of `client.user`'s new notifications.
+    """Fetch all of `core.user`'s new notifications.
 
     Note that this generator assumes that you process all notifications yielded by it.
     A subsequent iteration will not yield old notifications that were already processed.
@@ -834,7 +515,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification]:
     for agent in await get_agents(user.address):
         if not (
             response := await request(
-                _Home(agent, user.address).notifications,
+                urls.Home(agent, user.address).notifications,
                 auth=True,
             )
         ):
@@ -871,7 +552,7 @@ async def delete_message(ident: str):
     logger.debug("Deleting message %s…", ident[:_SHORT])
     for agent in await get_agents(user.address):
         if await request(
-            _Message(agent, user.address, ident).message,
+            urls.Message(agent, user.address, ident).message,
             auth=True,
             method="DELETE",
         ):
@@ -962,11 +643,11 @@ def delete_all_drafts():
 
 
 async def delete_account():
-    """Permanently deletes `client.user`'s account."""
+    """Permanently deletes `core.user`'s account."""
     logger.debug("Deleting account…")
     for agent in await get_agents(user.address):
         if await request(
-            _Account(agent, user.address).account,
+            urls.Account(agent, user.address).account,
             auth=True,
             method="DELETE",
         ):
@@ -1026,18 +707,6 @@ async def _process_notification(
         notifier,
         signing_key_fp,
     )
-
-
-def _sign_headers(fields: Sequence[str]) -> ...:
-    checksum = sha256(("".join(fields)).encode("utf-8"))
-
-    try:
-        signature = crypto.sign_data(user.signing_keys.private, checksum.digest())
-    except ValueError as error:
-        msg = f"Can't sign message: {error}"
-        raise ValueError(msg) from error
-
-    return checksum, signature
 
 
 async def _fetch_envelope(
@@ -1170,7 +839,7 @@ async def _fetch_message_from_agent(
 
 
 async def _fetch_idents(author: Address, *, broadcasts: bool = False) -> set[str]:
-    """Fetch link or broadcast message IDs by `author`, addressed to `client.user`."""
+    """Fetch link or broadcast message IDs by `author`, addressed to `core.user`."""
     logger.debug("Fetching message IDs from %s…", author)
 
     path = data_dir / "envelopes" / author.host_part / author.local_part
@@ -1189,11 +858,13 @@ async def _fetch_idents(author: Address, *, broadcasts: bool = False) -> set[str
         if not (
             response := await request(
                 (
-                    _Home(agent, author)
+                    urls.Home(agent, author)
                     if author == user.address
-                    else _Mail(agent, author)
+                    else urls.Mail(agent, author)
                     if broadcasts
-                    else _Link(agent, author, model.generate_link(user.address, author))
+                    else urls.Link(
+                        agent, author, model.generate_link(user.address, author)
+                    )
                 ).messages,
                 auth=not broadcasts,
             )
@@ -1226,11 +897,13 @@ async def _fetch_messages(
         for agent in await get_agents(user.address):
             if message := await _fetch_message_from_agent(
                 (
-                    _Home(agent, author)
+                    urls.Home(agent, author)
                     if author == user.address
-                    else _Mail(agent, author)
+                    else urls.Mail(agent, author)
                     if broadcasts
-                    else _Link(agent, author, model.generate_link(user.address, author))
+                    else urls.Link(
+                        agent, author, model.generate_link(user.address, author)
+                    )
                 ).messages
                 + f"/{ident}",
                 author,

@@ -20,6 +20,7 @@ from typing import Any
 
 from gi.repository import Gdk, Gio, GLib, GObject
 
+from . import core
 from .asyncio import create_task
 from .configuration import APP_ID
 from .core import client, model
@@ -35,7 +36,7 @@ settings = Gio.Settings.new(APP_ID)
 state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
 log_file = Path(GLib.get_user_state_dir(), "openemail.log")
-client.data_dir = Path(GLib.get_user_data_dir(), "openemail")
+core.data_dir = Path(GLib.get_user_data_dir(), "openemail")
 
 
 class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]

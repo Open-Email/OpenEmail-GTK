@@ -10,13 +10,19 @@ from typing import Any, override
 import keyring
 from gi.repository import Adw, Gio
 
-from .configuration import APP_ID, PREFIX
-from .core import client
-from .core.crypto import KeyPair
-from .core.model import Address
-from .store import log_file, secret_service, settings
-from .widgets.preferences import Preferences
-from .widgets.window import Window
+import openemail as app
+from openemail import (
+    APP_ID,
+    PREFIX,
+    Address,
+    KeyPair,
+    log_file,
+    secret_service,
+    settings,
+)
+
+from .preferences import Preferences
+from .window import Window
 
 
 class Application(Adw.Application):
@@ -62,9 +68,9 @@ class Application(Adw.Application):
             return
 
         try:
-            client.user.address = Address(address)
-            client.user.encryption_keys = KeyPair.from_b64(encryption_key)
-            client.user.signing_keys = KeyPair.from_b64(signing_key)
+            app.user.address = Address(address)
+            app.user.encryption_keys = KeyPair.from_b64(encryption_key)
+            app.user.signing_keys = KeyPair.from_b64(signing_key)
         except ValueError:
             return
 

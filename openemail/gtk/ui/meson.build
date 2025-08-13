@@ -28,9 +28,9 @@ blueprints = custom_target(
 )
 
 gnome.compile_resources(
-    'gtk',
+    'ui',
     configure_file(
-        input: 'gtk.gresource.xml.in',
+        input: 'ui.gresource.xml.in',
         output: '@BASENAME@',
         configuration: conf,
     ),

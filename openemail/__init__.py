@@ -12,13 +12,8 @@ import logging
 import signal
 import sys
 from logging.handlers import RotatingFileHandler
-from pathlib import Path
 
 import gi
-
-gi.require_versions({"Gdk": "4.0", "Gtk": "4.0", "Adw": "1"})
-
-from gi.repository import Gio
 
 from .configuration import APP_ID, LOCALEDIR, PKGDATADIR, PREFIX, PROFILE, VERSION
 from .core.client import WriteError, user
@@ -27,15 +22,13 @@ from .core.model import Address
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+gi.require_versions({"Gdk": "4.0", "Gtk": "4.0", "Adw": "1"})
+
 if sys.platform.startswith("linux"):
     locale.bindtextdomain("openemail", LOCALEDIR)
     locale.textdomain("openemail")
 
 gettext.install("openemail", LOCALEDIR)
-
-for resource in ("data", "gtk", "icons"):
-    resource_path = Path(PKGDATADIR, f"{resource}.gresource")
-    Gio.resources_register(Gio.Resource.load(str(resource_path)))
 
 from .account import delete as delete_account
 from .account import log_out, register, try_auth
