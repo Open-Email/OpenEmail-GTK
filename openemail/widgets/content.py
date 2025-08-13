@@ -11,10 +11,13 @@ import openemail as app
 from openemail import APP_ID, PREFIX, Notifier, Profile
 
 from .compose_sheet import ComposeSheet
-from .contacts import Contacts  # noqa: F401
-from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash  # noqa: F401
+from .contacts import Contacts
+from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash
 from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
+
+for t in (Contacts, Broadcasts, Drafts, Inbox, Outbox, Trash):
+    GObject.type_ensure(t)
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/content.ui")

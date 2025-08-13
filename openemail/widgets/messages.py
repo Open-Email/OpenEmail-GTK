@@ -10,8 +10,11 @@ import openemail as app
 from openemail import PREFIX, Message, empty_trash, settings
 
 from .compose_sheet import ComposeSheet
-from .page import Page  # noqa: TC001
-from .thread_view import ThreadView  # noqa: TC001
+from .page import Page
+from .thread_view import ThreadView
+
+GObject.type_ensure(Page)
+GObject.type_ensure(ThreadView)
 
 
 class _Messages(Adw.NavigationPage):

@@ -9,10 +9,12 @@ from gi.repository import Adw, Gio, GObject, Gtk
 import openemail as app
 from openemail import PREFIX, Address
 
-from .contact_row import ContactRow  # noqa: F401
+from .contact_row import ContactRow
 from .form import Form
 from .page import Page
 from .profile_view import ProfileView
+
+GObject.type_ensure(ContactRow)
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contacts.ui")

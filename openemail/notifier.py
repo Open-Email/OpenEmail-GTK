@@ -18,7 +18,8 @@ class Notifier(GObject.Object):
 
     _default = None
 
-    def __new__(cls, **kwargs: Any) -> Self:  # noqa: D102
+    def __new__(cls, **kwargs: Any) -> Self:
+        """Get the default instance of `cls`."""
         if not cls._default:
             cls._default = super().__new__(cls, **kwargs)
 

@@ -24,7 +24,8 @@ class Address(str):
 
     __slots__ = ("host_part", "local_part")
 
-    def __new__(cls, address: str) -> Self:  # noqa: D102
+    def __new__(cls, address: str) -> Self:
+        """Validate `address`."""
         if not re.match(
             r"^[a-z0-9][a-z0-9\.\-_\+]{2,}@[a-z0-9.-]+\.[a-z]{2,}|xn--[a-z0-9]{2,}$",
             address := address.lower(),
