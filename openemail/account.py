@@ -94,7 +94,7 @@ def log_out():
     settings.reset("trashed-messages")
     settings.reset("deleted-messages")
 
-    keyring.delete_password(secret_service, str(user.address))
+    keyring.delete_password(secret_service, user.address)
 
     rmtree(client.data_dir, ignore_errors=True)
 

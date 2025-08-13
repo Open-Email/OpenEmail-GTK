@@ -64,7 +64,7 @@ class Window(Adw.ApplicationWindow):
     def _on_auth(self, *_args):
         keyring.set_password(
             f"{APP_ID}.Keys",
-            str(app.user.address),
+            app.user.address,
             json.dumps(
                 {
                     "privateEncryptionKey": str(app.user.encryption_keys.private),
@@ -73,7 +73,7 @@ class Window(Adw.ApplicationWindow):
             ),
         )
 
-        settings.set_string("address", str(app.user.address))
+        settings.set_string("address", app.user.address)
 
         app.create_task(app.sync())
         self.visible_child_name = "content"

@@ -55,7 +55,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             self._changed = False
             return
 
-        self.address = str(profile.value_of("address") or "")
+        self.address = profile.value_of("address") or ""
         self.name.props.text = profile.value_of("name")
         self.away.props.enable_expansion = profile.value_of("away")
         self.away.props.expanded = self.away.props.enable_expansion

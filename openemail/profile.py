@@ -158,7 +158,7 @@ class Profile(GObject.Object):
             self.image = None
             return
 
-        self.address = str(profile.address)
+        self.address = profile.address
         self.name = profile.name
 
     @GObject.Property(type=bool, default=True)
@@ -228,7 +228,7 @@ class Profile(GObject.Object):
             case Address():
                 from .store import profiles
 
-                (profile := profiles[user]).address = str(user)
+                (profile := profiles[user]).address = user
                 return profile
 
             case User():

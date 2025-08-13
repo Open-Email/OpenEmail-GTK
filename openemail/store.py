@@ -318,10 +318,10 @@ class _InboxStore(MessageStore):
                 known_notifiers.add(notifier)
                 continue
 
-            if str(notifier) in (current := settings.get_strv("contact-requests")):
+            if notifier in (current := settings.get_strv("contact-requests")):
                 continue
 
-            settings.set_strv("contact-requests", [*current, str(notifier)])
+            settings.set_strv("contact-requests", [*current, notifier])
 
         deleted = settings.get_strv("deleted-messages")
         async for msg in self._process_messages(

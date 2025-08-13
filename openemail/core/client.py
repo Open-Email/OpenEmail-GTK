@@ -199,7 +199,7 @@ class OutgoingMessage:
         headers_bytes = to_fields(
             {
                 "Id": self.headers["Message-Id"],
-                "Author": str(user.address),
+                "Author": user.address,
                 "Date": self.date.isoformat(timespec="seconds"),
                 "Size": str(len(self.content)),
                 "Checksum": to_attrs(
@@ -794,7 +794,7 @@ async def notify_readers(readers: Iterable[Address]):
 
         try:
             address = b64encode(
-                crypto.encrypt_anonymous(str(user.address).encode("utf-8"), key)
+                crypto.encrypt_anonymous(user.address.encode("utf-8"), key)
             )
         except ValueError as error:
             logger.warning(

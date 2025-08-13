@@ -55,7 +55,7 @@ class ProfileView(Adw.Bin):
             return
 
         self.name = profile.value_of("name")
-        self.address = str(profile.value_of("address") or "")
+        self.address = profile.value_of("address") or ""
         self.away = profile.value_of("away") or False
 
         while self._groups:
