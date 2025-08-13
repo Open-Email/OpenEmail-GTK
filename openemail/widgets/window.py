@@ -30,7 +30,7 @@ class Window(Adw.ApplicationWindow):
 
     _quit: bool = False
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         state_settings.bind(
@@ -61,7 +61,7 @@ class Window(Adw.ApplicationWindow):
         self.visible_child_name = "content"
 
     @Gtk.Template.Callback()
-    def _on_auth(self, *_args: Any) -> None:
+    def _on_auth(self, *_args):
         keyring.set_password(
             f"{APP_ID}.Keys",
             str(app.user.address),
@@ -78,7 +78,7 @@ class Window(Adw.ApplicationWindow):
         app.create_task(app.sync())
         self.visible_child_name = "content"
 
-    def _on_send_notification(self, _obj: Any, toast: Adw.Toast) -> None:
+    def _on_send_notification(self, _obj, toast: Adw.Toast):
         if isinstance(dialog := self.props.visible_dialog, Adw.PreferencesDialog):
             dialog.add_toast(toast)
             return

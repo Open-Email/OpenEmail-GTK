@@ -50,7 +50,7 @@ class Content(Adw.BreakpointBin):
         ),
     )
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         ComposeSheet.default = self.compose_sheet
@@ -72,7 +72,7 @@ class Content(Adw.BreakpointBin):
             GObject.BindingFlags.SYNC_CREATE,
         )
 
-    def _header_func(self, row: NavigationRow, *_args: Any) -> None:
+    def _header_func(self, row: NavigationRow, *_args):
         row.set_header(
             Gtk.Separator(
                 margin_start=9,
@@ -83,7 +83,7 @@ class Content(Adw.BreakpointBin):
         )
 
     @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj: Any, row: NavigationRow | None) -> None:
+    def _on_row_selected(self, _obj, row: NavigationRow | None):
         if not row:
             return
 
@@ -94,5 +94,5 @@ class Content(Adw.BreakpointBin):
             self.split_view.props.show_sidebar = False
 
     @Gtk.Template.Callback()
-    def _on_profile_button_clicked(self, *_args: Any) -> None:
+    def _on_profile_button_clicked(self, *_args):
         self.profile_settings.present(self)

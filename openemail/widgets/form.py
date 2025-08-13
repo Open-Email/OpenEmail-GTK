@@ -33,18 +33,18 @@ class FormField(GObject.Object):
 
     @GObject.Property(type=Gtk.Widget)
     def field(self) -> Gtk.Editable | Gtk.TextView:
-        """Get the field containing the text."""
+        """The field containing the text."""
         return self._field
 
     @field.setter
-    def field(self, field: Gtk.Editable | Gtk.TextView) -> None:
+    def field(self, field: Gtk.Editable | Gtk.TextView):
         self._field = field
 
         buffer = field.props.buffer if isinstance(field, Gtk.TextView) else field
         buffer.bind_property("text", self, "text", GObject.BindingFlags.BIDIRECTIONAL)
         buffer.connect("notify::text", lambda *_: self.validate())
 
-    def validate(self) -> None:
+    def validate(self):
         """Validate the form field."""
         match cast("FormFieldType", self.type):
             case FormFieldType.PLAIN:
@@ -74,7 +74,7 @@ class FormField(GObject.Object):
                 else:
                     self.valid = True
 
-    def reset(self) -> None:
+    def reset(self):
         """Reset the form field."""
         self.text = ""
 
@@ -86,7 +86,7 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
 
     submit_widget = GObject.Property(type=Gtk.Widget)
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self._fields = list[FormField]()
@@ -96,7 +96,7 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
         """Whether all fields in the form are valid."""
         return all(field.valid for field in self._fields if field.active)
 
-    def do_add_child(self, _builder: Any, field: GObject.Object, _type: Any) -> None:
+    def do_add_child(self, _builder, field: GObject.Object, _type):
         """Add a child to `self`."""
         if not isinstance(field, FormField):
             msg = "Children of Form must be FormField"
@@ -104,14 +104,14 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
 
         self._fields.append(field)
 
-    def do_parser_finished(self, *_args: Any) -> None:
+    def do_parser_finished(self, *_args):
         """Call when a builder finishes the parsing of a UI definition."""
         for field in self._fields:
             field.connect("notify::valid", lambda *_: self._update_submit_widget())
             field.connect("notify::active", lambda *_: self._update_submit_widget())
             field.validate()
 
-    def _update_submit_widget(self) -> None:
+    def _update_submit_widget(self):
         if isinstance(self.submit_widget, Adw.AlertDialog):
             if not (default := self.submit_widget.props.default_response):
                 msg = "Form.submit-widget as Adw.AlertDialog must have default-response"
@@ -128,7 +128,7 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
         elif self.submit_widget:
             self.submit_widget.props.sensitive = self.valid
 
-    def reset(self) -> None:
+    def reset(self):
         """Reset the state of the form.
 
         Useful for reusable widgets after submission.

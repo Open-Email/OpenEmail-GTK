@@ -49,7 +49,7 @@ class ComposeSheet(Adw.BreakpointBin):
     _save: bool = True
     _completion_running = False
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.attachments.model = Gio.ListStore.new(OutgoingAttachment)
@@ -61,7 +61,7 @@ class ComposeSheet(Adw.BreakpointBin):
             GObject.BindingFlags.BIDIRECTIONAL,
         )
 
-    def new_message(self) -> None:
+    def new_message(self):
         """Open `self` with empty contents."""
         if self.bottom_sheet.props.reveal_bottom_bar:
             self._save_draft()
@@ -76,7 +76,7 @@ class ComposeSheet(Adw.BreakpointBin):
         self.bottom_sheet.props.reveal_bottom_bar = True
         self.readers.grab_focus()
 
-    def open_message(self, message: Message) -> None:
+    def open_message(self, message: Message):
         """Open `self` with `message`."""
         if self.bottom_sheet.props.reveal_bottom_bar:
             self._save_draft()
@@ -92,7 +92,7 @@ class ComposeSheet(Adw.BreakpointBin):
         self.bottom_sheet.props.open = True
         self.bottom_sheet.props.reveal_bottom_bar = True
 
-    def reply(self, message: Message) -> None:
+    def reply(self, message: Message):
         """Open `self`, replying to `message`."""
         if self.bottom_sheet.props.reveal_bottom_bar:
             self._save_draft()
@@ -124,11 +124,11 @@ class ComposeSheet(Adw.BreakpointBin):
         self.body_view.grab_focus()
 
     @Gtk.Template.Callback()
-    def _readers_insert_text(self, readers: Gtk.Text, *_args: Any) -> None:
+    def _readers_insert_text(self, readers: Gtk.Text, *_args):
         if self._completion_running:
             return
 
-        def complete(*_args: Any) -> None:
+        def complete(*_args):
             readers.disconnect_by_func(complete)
 
             pos = readers.props.cursor_position
@@ -153,7 +153,7 @@ class ComposeSheet(Adw.BreakpointBin):
         readers.connect("changed", complete)
 
     @Gtk.Template.Callback()
-    def _send_message(self, *_args: Any) -> None:
+    def _send_message(self, *_args):
         readers = list[Address]()
         warnings = dict[Address, str | None]()
         if self.privacy == "private":
@@ -195,7 +195,7 @@ class ComposeSheet(Adw.BreakpointBin):
 
         alert.present(self)
 
-    def _send(self, readers: Iterable[Address]) -> None:
+    def _send(self, readers: Iterable[Address]):
         if self.ident:
             app.drafts.delete(self.ident)
             self.ident = None
@@ -219,38 +219,38 @@ class ComposeSheet(Adw.BreakpointBin):
         self._cancel()
 
     @Gtk.Template.Callback()
-    def _attach_files(self, *_args: Any) -> None:
+    def _attach_files(self, *_args):
         app.create_task(self._attach_files_task())
 
     @Gtk.Template.Callback()
-    def _format_bold(self, *_args: Any) -> None:
+    def _format_bold(self, *_args):
         self._format_inline("**")
 
     @Gtk.Template.Callback()
-    def _format_italic(self, *_args: Any) -> None:
+    def _format_italic(self, *_args):
         self._format_inline("*")
 
     @Gtk.Template.Callback()
-    def _format_strikethrough(self, *_args: Any) -> None:
+    def _format_strikethrough(self, *_args):
         self._format_inline("~~")
 
     @Gtk.Template.Callback()
-    def _format_heading(self, *_args: Any) -> None:
+    def _format_heading(self, *_args):
         self._format_line("#")
 
     @Gtk.Template.Callback()
-    def _format_quote(self, *_args: Any) -> None:
+    def _format_quote(self, *_args):
         self._format_line(">", toggle=True)
 
     @Gtk.Template.Callback()
-    def _insert_emoji(self, *_args: Any) -> None:
+    def _insert_emoji(self, *_args):
         Gtk.TextView.do_insert_emoji(self.body_view)
 
-    async def _attach_files_task(self) -> None:
+    async def _attach_files_task(self):
         async for attachment in OutgoingAttachment.choose(self):
             self.attachments.model.append(attachment)
 
-    def _format_line(self, syntax: str, *, toggle: bool = False) -> None:
+    def _format_line(self, syntax: str, *, toggle: bool = False):
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)
         start.set_line_offset(0)
 
@@ -267,7 +267,7 @@ class ComposeSheet(Adw.BreakpointBin):
 
         self.body_view.grab_focus()
 
-    def _format_inline(self, syntax: str) -> None:
+    def _format_inline(self, syntax: str):
         self.body.begin_user_action()
         empty = False
 
@@ -311,14 +311,14 @@ class ComposeSheet(Adw.BreakpointBin):
         self.body_view.grab_focus()
 
     @Gtk.Template.Callback()
-    def _get_readers_field_active(self, _obj: Any, privacy: str) -> bool:
+    def _get_readers_field_active(self, _obj, privacy: str) -> bool:
         return privacy == "private"
 
     @Gtk.Template.Callback()
-    def _get_bottom_bar_label(self, _obj: Any, subject: str) -> str:
+    def _get_bottom_bar_label(self, _obj, subject: str) -> str:
         return subject or _("New Message")
 
-    def _save_draft(self) -> None:
+    def _save_draft(self):
         if not self._save:
             self._save = True
             return
@@ -338,7 +338,7 @@ class ComposeSheet(Adw.BreakpointBin):
         )
 
     @Gtk.Template.Callback()
-    def _cancel(self, *_args: Any) -> None:
+    def _cancel(self, *_args):
         self.bottom_sheet.props.reveal_bottom_bar = False
         self.bottom_sheet.props.open = False
         self._save_draft()

@@ -14,7 +14,7 @@ from gi.repository import Gio
 def create_task(
     coro: Coroutine[Any, Any, Any],
     callback: Callable[[bool], Any] | None = None,
-) -> None:
+):
     """Execute a coroutine in a task.
 
     Calls `callback` on finish with `True` if no exceptions were raised

@@ -39,36 +39,36 @@ class MessageView(Gtk.Box):
 
     @GObject.Property(type=Message)
     def message(self) -> Message | None:
-        """Get the `Message` that `self` represents."""
+        """The `Message` that `self` represents."""
         return self._message
 
     @message.setter
-    def message(self, message: Message | None) -> None:
+    def message(self, message: Message | None):
         self._message = message
 
         if message:
             self.attachments.model = message.attachments
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self._history = {}
 
     @Gtk.Template.Callback()
-    def _has_profile(self, *_args: Any) -> bool:
+    def _has_profile(self, *_args) -> bool:
         return self.message and self.message.profile
 
     @Gtk.Template.Callback()
-    def _show_profile_dialog(self, *_args: Any) -> None:
+    def _show_profile_dialog(self, *_args):
         self.profile_view.profile = self.message.profile
         self.profile_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _reply(self, *_args: Any) -> None:
+    def _reply(self, *_args):
         self.emit("reply")
 
     @Gtk.Template.Callback()
-    def _trash(self, *_args: Any) -> None:
+    def _trash(self, *_args):
         if not self.message:
             return
 
@@ -76,7 +76,7 @@ class MessageView(Gtk.Box):
         self._add_to_undo(_("Message moved to trash"), lambda: message.restore())
 
     @Gtk.Template.Callback()
-    def _restore(self, *_args: Any) -> None:
+    def _restore(self, *_args):
         if not self.message:
             return
 
@@ -84,16 +84,16 @@ class MessageView(Gtk.Box):
         self._add_to_undo(_("Message restored"), lambda: message.trash())
 
     @Gtk.Template.Callback()
-    def _discard(self, *_args: Any) -> None:
+    def _discard(self, *_args):
         self.confirm_discard_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _confirm_discard(self, *_args: Any) -> None:
+    def _confirm_discard(self, *_args):
         if self.message:
             app.create_task(self.message.discard())
 
     @Gtk.Template.Callback()
-    def _undo(self, *_args: Any) -> None:
+    def _undo(self, *_args):
         if not self._history:
             return
 
@@ -101,6 +101,6 @@ class MessageView(Gtk.Box):
         toast.dismiss()
         callback()
 
-    def _add_to_undo(self, title: str, undo: Callable[[], Any]) -> None:
+    def _add_to_undo(self, title: str, undo: Callable[[], Any]):
         toast = Notifier.send(title, lambda *_: self._history.pop(toast, lambda: ...)())  # pyright: ignore[reportUnknownArgumentType]
         self._history[toast] = undo

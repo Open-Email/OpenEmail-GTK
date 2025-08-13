@@ -15,7 +15,7 @@ from .thread_view import ThreadView  # noqa: TC001
 
 
 class _Messages(Adw.NavigationPage):
-    def __init__(self, model: Gio.ListModel, /, *, title: str, **kwargs: Any) -> None:
+    def __init__(self, model: Gio.ListModel, /, *, title: str, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.builder = Gtk.Builder.new_from_resource(f"{PREFIX}/messages.ui")
@@ -39,15 +39,15 @@ class _Messages(Adw.NavigationPage):
 
         self.props.child = self.content
 
-    def _get_object(self, name: str) -> Any:
+    def _get_object(self, name: str) -> Any:  # noqa: ANN401
         return self.builder.get_object(name)
 
-    def _on_trash_changed(self, _obj: Any, _key: Any) -> None:
+    def _on_trash_changed(self, *_args):
         m.autoselect = (m := self.content.model.props).selected != GLib.MAXUINT
         self.trashed.changed(Gtk.FilterChange.DIFFERENT)
         m.autoselect = False
 
-    def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+    def _on_selected(self, selection: Gtk.SingleSelection, *_args):
         self.thread_view.message = (message := selection.props.selected_item)
         if not isinstance(message, Message):
             return
@@ -60,7 +60,7 @@ class _Folder(_Messages):
     folder: Gio.ListModel
     title: str
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(self.folder, title=self.title, **kwargs)
 
         self.content.toolbar_button = self._get_object("toolbar_new")
@@ -97,7 +97,7 @@ class Drafts(_Messages):
 
     __gtype_name__ = "Drafts"
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(app.drafts, title=_("Drafts"), **kwargs)
 
         self.content.model.props.can_unselect = True
@@ -117,7 +117,7 @@ class Drafts(_Messages):
             GObject.BindingFlags.SYNC_CREATE,
         )
 
-    def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+    def _on_selected(self, selection: Gtk.SingleSelection, *_args):
         if not isinstance(msg := selection.props.selected_item, Message):
             return
 
@@ -130,7 +130,7 @@ class Trash(_Messages):
 
     __gtype_name__ = "Trash"
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(
             Gtk.FlattenListModel.new(folders := Gio.ListStore.new(Gio.ListModel)),
             title=_("Trash"),
@@ -158,7 +158,7 @@ class Trash(_Messages):
             GObject.BindingFlags.SYNC_CREATE,
         )
 
-        def set_loading(*_args: Any) -> None:
+        def set_loading(*_args):
             self.content.loading = app.inbox.updating or app.broadcasts.updating
 
         app.inbox.connect("notify::updating", set_loading)

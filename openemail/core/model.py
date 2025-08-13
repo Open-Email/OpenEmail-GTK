@@ -34,7 +34,7 @@ class Address(str):
 
         return super().__new__(cls, address)
 
-    def __init__(self, address: str) -> None:  # noqa: ARG002
+    def __init__(self, address: str):  # noqa: ARG002
         self.local_part, self.host_part = self.split("@")
 
 
@@ -72,7 +72,7 @@ class User:
         """Whether the user has valid credentials."""
         return all(hasattr(self, f.name) for f in fields(User))
 
-    def __init__(self) -> None: ...
+    def __init__(self): ...
 
 
 class AttachmentProperties(NamedTuple):
@@ -155,7 +155,7 @@ class IncomingMessage:
         headers: dict[str, str],
         private_key: Key,
         new: bool = False,
-    ) -> None:
+    ):
         self.ident = ident
         self.author = author
         self.original_author: Address
@@ -325,7 +325,7 @@ class IncomingMessage:
                 except ValueError:  # noqa: PERF203
                     continue
 
-    def add_child(self, child: Self) -> None:
+    def add_child(self, child: Self):
         """Add `child` to `self.children`, updating its properties accordingly."""
         self.children.append(child)
 
@@ -338,7 +338,7 @@ class IncomingMessage:
 
         child.file = props
 
-    def reconstruct_from_children(self) -> None:
+    def reconstruct_from_children(self):
         """Reconstruct the entire contents of this message from all of its children.
 
         Should only be called after all children have been fetched and added.
@@ -436,7 +436,7 @@ class Profile:
     public_links: bool = True
     public_access: bool = True
 
-    def __init__(self, address: Address, data: str) -> None:
+    def __init__(self, address: Address, data: str):
         parsed_fields = {
             (split := field.split(":", 1))[0].strip().lower(): split[1].strip()
             for field in (line.strip() for line in data.split("\n") if ":" in line)

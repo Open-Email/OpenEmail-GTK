@@ -36,11 +36,13 @@ class LoginView(Adw.Bin):
 
     authenticated = GObject.Signal()
 
-    def __init__(self, **_kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
         self.email_status_page.props.icon_name = APP_ID
 
     @Gtk.Template.Callback()
-    def _log_in(self, *_args: Any) -> None:
+    def _log_in(self, *_args):
         if not self.email_form.valid:
             return
 
@@ -48,11 +50,11 @@ class LoginView(Adw.Bin):
         self.signing_key_entry.grab_focus()
 
     @Gtk.Template.Callback()
-    def _sign_up(self, *_args: Any) -> None:
+    def _sign_up(self, *_args):
         self.navigation_view.push_by_tag("sign-up")
 
     @Gtk.Template.Callback()
-    def _register(self, *_args: Any) -> None:
+    def _register(self, *_args):
         try:
             app.user.address = Address(f"{self.user_name_entry.props.text}@open.email")
         except ValueError:
@@ -62,7 +64,7 @@ class LoginView(Adw.Bin):
         app.user.encryption_keys = KeyPair.for_encryption()
         app.user.signing_keys = KeyPair.for_signing()
 
-        def success() -> None:
+        def success():
             self.register_button_child_name = "label"
             self.emit("authenticated")
 
@@ -78,11 +80,11 @@ class LoginView(Adw.Bin):
         )
 
     @Gtk.Template.Callback()
-    def _focus_encryption_key_entry(self, *_args: Any) -> None:
+    def _focus_encryption_key_entry(self, *_args):
         self.encryption_key_entry.grab_focus()
 
     @Gtk.Template.Callback()
-    def _authenticate(self, *_args: Any) -> None:
+    def _authenticate(self, *_args):
         if not self.auth_form.valid:
             return
 
@@ -99,7 +101,7 @@ class LoginView(Adw.Bin):
             Notifier.send(_("Incorrect key format"))
             return
 
-        def success() -> None:
+        def success():
             self.button_child_name = "label"
             self.emit("authenticated")
 
@@ -114,7 +116,7 @@ class LoginView(Adw.Bin):
             ),
         )
 
-    def _reset(self) -> None:
+    def _reset(self):
         self.email_form.reset()
         self.register_form.reset()
         self.navigation_view.pop_to_tag("landing")

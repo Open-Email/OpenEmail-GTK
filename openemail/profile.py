@@ -23,7 +23,7 @@ class ProfileField(GObject.Object):
     ident = GObject.Property(type=str)
     name = GObject.Property(type=str)
 
-    def __init__(self, ident: str, name: str, **kwargs: Any) -> None:
+    def __init__(self, ident: str, name: str, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.ident = ident
@@ -42,7 +42,7 @@ class ProfileCategory(GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
         name: str,
         fields: dict[str, str],
         **kwargs: Any,
-    ) -> None:
+    ):
         super().__init__(**kwargs)
 
         self.ident = ident
@@ -150,7 +150,7 @@ class Profile(GObject.Object):
 
     _user: Self | None = None
 
-    def set_from_profile(self, profile: model.Profile | None) -> None:
+    def set_from_profile(self, profile: model.Profile | None):
         """Set the properties of `self` from `profile`."""
         self._profile = profile
 
@@ -170,8 +170,8 @@ class Profile(GObject.Object):
         return self._broadcasts
 
     @receive_broadcasts.setter
-    def receive_broadcasts(self, receive_broadcasts: bool) -> None:
-        from .store import broadcasts  # noqa: PLC0415
+    def receive_broadcasts(self, receive_broadcasts: bool):
+        from .store import broadcasts
 
         if self._broadcasts == receive_broadcasts or (not self._profile):
             return
@@ -188,31 +188,31 @@ class Profile(GObject.Object):
 
     @GObject.Property(type=str)
     def address(self) -> str | None:
-        """Get the profile owner's Mail/HTTPS address."""
+        """The profile owner's Mail/HTTPS address."""
         return self._address
 
     @address.setter
-    def address(self, address: str) -> None:
+    def address(self, address: str):
         self._address = address
         self.name = self.name or address
 
     @GObject.Property(type=str)
     def name(self) -> str | None:
-        """Get the profile owner's name."""
+        """The profile owner's name."""
         return self._name
 
     @name.setter
-    def name(self, name: str) -> None:
+    def name(self, name: str):
         self._name = name
         self.has_name = name != self.address
 
     @GObject.Property(type=Gdk.Paintable)
     def image(self) -> Gdk.Paintable | None:
-        """Get the profile owner's profile image."""
+        """The profile owner's profile image."""
         return self._image
 
     @image.setter
-    def image(self, image: Gdk.Paintable | None) -> None:
+    def image(self, image: Gdk.Paintable | None):
         self._image = image
         self.has_image = bool(image)
 
@@ -226,7 +226,7 @@ class Profile(GObject.Object):
         """
         match user:
             case Address():
-                from .store import profiles  # noqa: PLC0415
+                from .store import profiles
 
                 (profile := profiles[user]).address = str(user)
                 return profile
@@ -237,14 +237,14 @@ class Profile(GObject.Object):
 
                 return cls._user
 
-    def value_of(self, ident: str) -> Any:
+    def value_of(self, ident: str) -> Any:  # noqa: ANN401
         """Get the value of the field identified by `ident` in `self`."""
         try:
             return getattr(self._profile, ident.replace("-", "_"))
         except AttributeError:
             return None
 
-    def set_receives_broadcasts(self, value: bool) -> None:
+    def set_receives_broadcasts(self, value: bool):
         """Use this method to update the local state from remote data.
 
         Set `Profile.receive_broadcasts` to update the remote state as well.
@@ -257,7 +257,7 @@ class Profile(GObject.Object):
 
 
 # TODO: Maybe these could be methods of a sublcass of Profile specific to the user
-async def refresh() -> None:
+async def refresh():
     """Update the profile of the user by fetching new data remotely."""
     Profile.of(client.user).updating = True
     Profile.of(client.user).set_from_profile(
@@ -288,7 +288,7 @@ async def refresh() -> None:
     Profile.of(client.user).updating = False
 
 
-async def update(values: dict[str, str]) -> None:
+async def update(values: dict[str, str]):
     """Update the user's public profile with `values`."""
     try:
         await client.update(values)
@@ -299,7 +299,7 @@ async def update(values: dict[str, str]) -> None:
     await refresh()
 
 
-async def update_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
+async def update_image(pixbuf: GdkPixbuf.Pixbuf):
     """Upload `pixbuf` to be used as the user's profile image."""
     if (width := pixbuf.props.width) > (height := pixbuf.props.height):
         if width > MAX_IMAGE_DIMENSIONS:
@@ -366,7 +366,7 @@ async def update_image(pixbuf: GdkPixbuf.Pixbuf) -> None:
     await refresh()
 
 
-async def delete_image() -> None:
+async def delete_image():
     """Delete the user's profile image."""
     try:
         await client.delete_image()

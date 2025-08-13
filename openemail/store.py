@@ -50,7 +50,7 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
 
     _items: dict[K, V]
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self._items = {}
@@ -76,13 +76,13 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
         """Get the number of items in `self`."""
         return len(self._items)
 
-    async def update(self) -> None:
+    async def update(self):
         """Update `self` asynchronously."""
         self.updating = True
         await self._update()
         self.updating = False
 
-    def add(self, item: Any) -> None:
+    def add(self, item: Any):  # noqa: ANN401
         """Manually add `item` to `self`.
 
         Uses `self.__class__.key_for(item)` and `self.__class__.default_factory(item)`
@@ -98,7 +98,7 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
         self._items[key] = self.__class__.default_factory(item)
         self.items_changed(len(self._items) - 1, 0, 1)
 
-    def remove(self, item: K) -> None:
+    def remove(self, item: K):
         """Remove `item` from `self`.
 
         Note that this will not remove it from the underlying data store,
@@ -108,7 +108,7 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
         self._items.pop(item)
         self.items_changed(index, 1, 0)
 
-    def clear(self) -> None:
+    def clear(self):
         """Remove all items from `self`.
 
         Note that this will not remove items from the underlying data store,
@@ -120,7 +120,7 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
         self.items_changed(0, n, 0)
 
     @abstractmethod
-    async def _update(self) -> None: ...
+    async def _update(self): ...
 
 
 class ProfileStore(DictStore[Address, Profile]):
@@ -129,7 +129,7 @@ class ProfileStore(DictStore[Address, Profile]):
     item_type = Profile
     default_factory = Profile.of
 
-    async def update_profiles(self, *, trust_images: bool = True) -> None:
+    async def update_profiles(self, *, trust_images: bool = True):
         """Update the profiles of contacts in the user's address book.
 
         If `trust_images` is set to `False`, profile images will not be loaded.
@@ -140,11 +140,11 @@ class ProfileStore(DictStore[Address, Profile]):
                 create_task(self._update_profile_image(address))
 
     @staticmethod
-    async def _update_profile(address: Address) -> None:
+    async def _update_profile(address: Address):
         Profile.of(address).set_from_profile(await client.fetch_profile(address))
 
     @staticmethod
-    async def _update_profile_image(address: Address) -> None:
+    async def _update_profile_image(address: Address):
         try:
             Profile.of(address).image = (
                 Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))
@@ -158,7 +158,7 @@ class ProfileStore(DictStore[Address, Profile]):
 class _AddressBook(ProfileStore):
     """An implementation of `Gio.ListModel` for storing contacts."""
 
-    async def new(self, address: Address, *, receive_broadcasts: bool = True) -> None:
+    async def new(self, address: Address, *, receive_broadcasts: bool = True):
         """Add `address` to the user's address book."""
         Profile.of(address).contact_request = False
         self.add(address)
@@ -177,7 +177,7 @@ class _AddressBook(ProfileStore):
             Notifier.send(_("Failed to add contact"))
             raise
 
-    async def delete(self, address: Address) -> None:
+    async def delete(self, address: Address):
         """Delete `address` from the user's address book."""
         self.remove(address)
         create_task(broadcasts.update())
@@ -193,7 +193,7 @@ class _AddressBook(ProfileStore):
             Notifier.send(_("Failed to remove contact"))
             raise
 
-    async def _update(self) -> None:
+    async def _update(self):
         contacts = set[Address]()
 
         for contact, receives_broadcasts in await client.fetch_contacts():
@@ -209,7 +209,7 @@ class _AddressBook(ProfileStore):
 class _ContactRequests(ProfileStore):
     """An implementation of `Gio.ListModel` for storing contact requests."""
 
-    async def _update(self) -> None:
+    async def _update(self):
         for request in (requests := settings.get_strv("contact-requests")):
             try:
                 address = Address(request)
@@ -234,7 +234,7 @@ class MessageStore(DictStore[str, Message]):
     key_for = get_ident
     default_factory = Message
 
-    async def _update(self) -> None:
+    async def _update(self):
         idents = set[str]()
 
         async for msg in self._fetch():
@@ -355,7 +355,7 @@ class _DraftStore(MessageStore):
         subject: str | None = None,
         body: str | None = None,
         reply: str | None = None,
-    ) -> None:
+    ):
         """Save a draft to disk for future use.
 
         `ident` can be used to update a specific draft,
@@ -381,12 +381,12 @@ class _DraftStore(MessageStore):
         self.clear()  # TODO
         create_task(self.update())
 
-    def delete(self, ident: str) -> None:
+    def delete(self, ident: str):
         """Delete a draft saved using `save()`."""
         client.delete_draft(ident)
         self.remove(ident)
 
-    def delete_all(self) -> None:
+    def delete_all(self):
         """Delete all drafts saved using `save()`."""
         client.delete_all_drafts()
         self.clear()
@@ -396,7 +396,7 @@ class _DraftStore(MessageStore):
             yield msg
 
 
-async def sync(*, periodic: bool = False) -> None:
+async def sync(*, periodic: bool = False):
     """Populate the app's content by fetching the user's data."""
     Notifier().syncing = True
 
@@ -428,7 +428,7 @@ async def sync(*, periodic: bool = False) -> None:
         drafts.update(),
     }
 
-    def done(task: Coroutine[Any, Any, Any]) -> None:
+    def done(task: Coroutine[Any, Any, Any]):
         tasks.discard(task)
         if not tasks:
             Notifier().syncing = False
@@ -442,7 +442,7 @@ async def sync(*, periodic: bool = False) -> None:
     )
 
 
-def empty_trash() -> None:
+def empty_trash():
     """Empty the user's trash."""
     for msg in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
         msg.delete()

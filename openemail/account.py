@@ -28,14 +28,14 @@ from .store import (
 def try_auth(
     on_success: Callable[[], Any] | None = None,
     on_failure: Callable[[], Any] | None = None,
-) -> None:
+):
     """Try authenticating and call `on_success` or `on_failure` based on the result."""
 
-    async def auth() -> None:
+    async def auth():
         if not await client.try_auth():
             raise ValueError
 
-    def done(success: bool) -> None:
+    def done(success: bool):
         if success:
             if on_success:
                 on_success()
@@ -52,14 +52,14 @@ def try_auth(
 def register(
     on_success: Callable[[], Any] | None = None,
     on_failure: Callable[[], Any] | None = None,
-) -> None:
+):
     """Try authenticating and call `on_success` or `on_failure` based on the result."""
 
-    async def auth() -> None:
+    async def auth():
         if not await client.register():
             raise ValueError
 
-    def done(success: bool) -> None:
+    def done(success: bool):
         if success:
             if on_success:
                 on_success()
@@ -73,7 +73,7 @@ def register(
     create_task(auth(), done)
 
 
-def log_out() -> None:
+def log_out():
     """Remove the user's local account."""
     for profile in profiles.values():
         profile.set_from_profile(None)
@@ -102,7 +102,7 @@ def log_out() -> None:
         delattr(user, field.name)
 
 
-async def delete() -> None:
+async def delete():
     """Permanently delete the user's account."""
     try:
         await client.delete_account()

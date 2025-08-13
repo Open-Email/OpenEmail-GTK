@@ -32,10 +32,10 @@ class Page(Adw.BreakpointBin):
     model = GObject.Property(type=Gtk.SingleSelection)
     loading = GObject.Property(type=bool, default=False)
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
-        def on_syncing_changed(*_args: Any) -> None:
+        def on_syncing_changed(*_args):
             if Notifier().syncing:
                 self.sync_button.props.sensitive = False
                 self.sync_button.add_css_class("spinning")
@@ -47,7 +47,7 @@ class Page(Adw.BreakpointBin):
         Notifier().connect("notify::syncing", on_syncing_changed)
 
     @Gtk.Template.Callback()
-    def _show_sidebar(self, *_args: Any) -> None:
+    def _show_sidebar(self, *_args):
         if not isinstance(
             split_view := getattr(
                 getattr(self.props.root, "content", None),
@@ -61,12 +61,12 @@ class Page(Adw.BreakpointBin):
         split_view.props.show_sidebar = not split_view.props.show_sidebar
 
     @Gtk.Template.Callback()
-    def _sync(self, *_args: Any) -> None:
+    def _sync(self, *_args):
         app.create_task(app.sync())
 
     @Gtk.Template.Callback()
     def _get_sidebar_child_name(
-        self, _obj: Any, items: int, loading: bool, search_text: str
+        self, _obj, items: int, loading: bool, search_text: str
     ) -> str:
         return (
             "content"

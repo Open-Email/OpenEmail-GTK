@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
@@ -22,17 +21,17 @@ class NavigationRow(Gtk.ListBoxRow):
 
     @GObject.Property(type=Adw.ViewStackPage)
     def page(self) -> Adw.ViewStackPage:
-        """Get the `Adw.ViewStackPage` that `self` represents."""
+        """The `Adw.ViewStackPage` that `self` represents."""
         return self._page
 
     @page.setter
-    def page(self, page: Adw.ViewStackPage) -> None:  # HACK
+    def page(self, page: Adw.ViewStackPage):  # HACK
         self._page = page
 
         if not (content := getattr(self._page.props.child, "content", None)):
             return
 
-        def update_counter(*_args: Any) -> None:
+        def update_counter(*_args):
             count = 0
             for item in content.model:
                 if isinstance(item, Profile):

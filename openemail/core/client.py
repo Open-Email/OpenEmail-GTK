@@ -65,7 +65,7 @@ class DraftMessage:
         subject_id: str | None = None,
         readers: list[Address] | None = None,
         body: str | None = None,
-    ) -> None:
+    ):
         self.ident = ident or generate_ident(user.address)
         self.author = self.original_author = user.address
         self.date = date or datetime.now(UTC)
@@ -104,7 +104,7 @@ class OutgoingMessage:
         parent_id: str | None = None,
         body: str | None = None,
         content: bytes = b"",
-    ) -> None:
+    ):
         self.ident = generate_ident(user.address)
         self.author = self.original_author = user.address
         self.date = date or datetime.now(UTC)
@@ -155,7 +155,7 @@ class OutgoingMessage:
 
         self.content = self.body.encode("utf-8")
 
-    async def send(self) -> None:
+    async def send(self):
         """Send `self` to `self.readers`."""
         logger.debug("Sending message…")
         self.sending = True
@@ -187,7 +187,7 @@ class OutgoingMessage:
 
         self.sending = False
 
-    async def _build(self) -> None:
+    async def _build(self):
         if self.headers:
             return
 
@@ -323,7 +323,7 @@ class OutgoingMessage:
 
 
 class _Home:
-    def __init__(self, agent: str, address: Address) -> None:
+    def __init__(self, agent: str, address: Address):
         self.home = f"https://{agent}/home/{address.host_part}/{address.local_part}"
         self.links = f"{self.home}/links"
         self.profile = f"{self.home}/profile"
@@ -333,13 +333,13 @@ class _Home:
 
 
 class _Message(_Home):
-    def __init__(self, agent: str, address: Address, ident: str) -> None:
+    def __init__(self, agent: str, address: Address, ident: str):
         super().__init__(agent, address)
         self.message = f"{self.messages}/{ident}"
 
 
 class _Mail:
-    def __init__(self, agent: str, address: Address) -> None:
+    def __init__(self, agent: str, address: Address):
         self.host = f"https://{agent}/mail/{address.host_part}"
         self.mail = f"{self.host}/{address.local_part}"
         self.profile = f"{self.mail}/profile"
@@ -348,14 +348,14 @@ class _Mail:
 
 
 class _Account:
-    def __init__(self, agent: str, address: Address) -> None:
+    def __init__(self, agent: str, address: Address):
         self.account = (
             f"https://{agent}/account/{address.host_part}/{address.local_part}"
         )
 
 
 class _Link:
-    def __init__(self, agent: str, address: Address, link: str) -> None:
+    def __init__(self, agent: str, address: Address, link: str):
         self.home = f"{_Home(agent, address).home}/links/{link}"
         self.mail = f"{_Mail(agent, address).mail}/link/{link}"
         self.messages = f"{self.mail}/messages"
@@ -523,7 +523,7 @@ async def fetch_profile(address: Address) -> Profile | None:
     return None
 
 
-async def update(values: dict[str, str]) -> None:
+async def update(values: dict[str, str]):
     """Update `client.user`'s public profile with `values`."""
     logger.debug("Updating user profile…")
 
@@ -587,7 +587,7 @@ async def fetch_profile_image(address: Address) -> bytes | None:
     return None
 
 
-async def update_image(image: bytes) -> None:
+async def update_image(image: bytes):
     """Upload `image` to be used as `client.user`'s profile image."""
     logger.debug("Updating profile image…")
     for agent in await get_agents(user.address):
@@ -604,7 +604,7 @@ async def update_image(image: bytes) -> None:
     raise WriteError
 
 
-async def delete_image() -> None:
+async def delete_image():
     """Delete `client.user`'s profile image."""
     logger.debug("Deleting profile image…")
     for agent in await get_agents(user.address):
@@ -708,7 +708,7 @@ async def new_contact(address: Address, *, receive_broadcasts: bool = True) -> P
     raise WriteError
 
 
-async def delete_contact(address: Address) -> None:
+async def delete_contact(address: Address):
     """Delete `address` from `client.user`'s address book."""
     logger.debug("Deleting contact %s…", address)
     link = model.generate_link(address, user.address)
@@ -779,7 +779,7 @@ async def download_attachment(parts: Iterable[Message]) -> bytes | None:
     return data
 
 
-async def notify_readers(readers: Iterable[Address]) -> None:
+async def notify_readers(readers: Iterable[Address]):
     """Notify `readers` of a new message."""
     logger.debug("Notifying readers…")
     for reader in readers:
@@ -866,7 +866,7 @@ async def fetch_notifications() -> AsyncGenerator[Notification]:
     logger.debug("Notifications fetched")
 
 
-async def delete_message(ident: str) -> None:
+async def delete_message(ident: str):
     """Delete the message with `ident`."""
     logger.debug("Deleting message %s…", ident[:_SHORT])
     for agent in await get_agents(user.address):
@@ -882,7 +882,7 @@ async def delete_message(ident: str) -> None:
     raise WriteError
 
 
-def save_draft(draft: DraftMessage) -> None:
+def save_draft(draft: DraftMessage):
     """Serialize and save a message to disk for future use.
 
     See `OutgoingMessage.send()` for other parameters,
@@ -938,7 +938,7 @@ def load_drafts() -> Generator[DraftMessage]:
     logger.debug("Loaded all drafts")
 
 
-def delete_draft(ident: str) -> None:
+def delete_draft(ident: str):
     """Delete the draft saved using `ident`.
 
     See `save_draft()`, `load_drafts()`.
@@ -954,14 +954,14 @@ def delete_draft(ident: str) -> None:
     logger.debug("Deleted draft %s", ident)
 
 
-def delete_all_drafts() -> None:
+def delete_all_drafts():
     """Delete all drafts saved using `save_draft()`."""
     logger.debug("Deleting all drafts…")
     rmtree(data_dir / "drafts", ignore_errors=True)
     logger.debug("Deleted all drafts")
 
 
-async def delete_account() -> None:
+async def delete_account():
     """Permanently deletes `client.user`'s account."""
     logger.debug("Deleting account…")
     for agent in await get_agents(user.address):

@@ -37,11 +37,11 @@ class ProfileView(Adw.Bin):
 
     @GObject.Property(type=Profile)
     def profile(self) -> Profile | None:
-        """Profile of the user, if one was found."""
+        """The profile of the user, if one was found."""
         return self._profile
 
     @profile.setter
-    def profile(self, profile: Profile | None) -> None:
+    def profile(self, profile: Profile | None):
         self._profile = profile
 
         if not profile:
@@ -82,7 +82,7 @@ class ProfileView(Adw.Bin):
         if self._broadcasts_binding:
             self._broadcasts_binding.unbind()
 
-        self._broadcasts_binding = self.profile.bind_property(
+        self._broadcasts_binding = profile.bind_property(
             "receive-broadcasts",
             self,
             "broadcasts",
@@ -110,17 +110,17 @@ class ProfileView(Adw.Bin):
 
         return row
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self._groups = []
 
     @Gtk.Template.Callback()
-    def _remove_contact(self, *_args: Any) -> None:
+    def _remove_contact(self, *_args):
         self.confirm_remove_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _confirm_remove(self, *_args: Any) -> None:
+    def _confirm_remove(self, *_args):
         if not self.profile:
             return
 
@@ -130,7 +130,7 @@ class ProfileView(Adw.Bin):
             return
 
     @Gtk.Template.Callback()
-    def _show_image_dialog(self, *_args: Any) -> None:
+    def _show_image_dialog(self, *_args):
         if not self.profile.image:
             return
 

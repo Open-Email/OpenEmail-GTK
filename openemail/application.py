@@ -22,7 +22,7 @@ from .widgets.window import Window
 class Application(Adw.Application):
     """The main application singleton class."""
 
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__(application_id=APP_ID)
         self._create_action("preferences", self._preferences, ("<primary>comma",))
         self._create_action("about", self._about)
@@ -69,7 +69,7 @@ class Application(Adw.Application):
             return
 
     @override
-    def do_activate(self) -> None:
+    def do_activate(self):
         (self.props.active_window or Window(application=self)).present()
 
     def _create_action(
@@ -77,14 +77,14 @@ class Application(Adw.Application):
         name: str,
         callback: Callable[..., Any],
         shortcuts: Sequence[str] | None = None,
-    ) -> None:
+    ):
         action = Gio.SimpleAction.new(name, None)
         action.connect("activate", callback)
         self.add_action(action)
         if shortcuts:
             self.set_accels_for_action(f"app.{name}", shortcuts)
 
-    def _about(self, *_args: Any) -> None:
+    def _about(self, *_args):
         about = Adw.AboutDialog.new_from_appdata(f"{PREFIX}/{APP_ID}.metainfo.xml")
         about.props.developers = ["kramo https://kramo.page"]
         about.props.designers = [
@@ -105,7 +105,7 @@ class Application(Adw.Application):
 
         about.present(self.props.active_window)
 
-    def _preferences(self, *_args: Any) -> None:
+    def _preferences(self, *_args):
         if (
             isinstance(win := self.props.active_window, Adw.ApplicationWindow)
             and win.props.visible_dialog
@@ -114,7 +114,7 @@ class Application(Adw.Application):
 
         Preferences().present(win)
 
-    def _quit(self, *_args: Any) -> None:
+    def _quit(self, *_args):
         if not (win := self.props.active_window):
             return
 

@@ -31,11 +31,11 @@ class ThreadView(Adw.Bin):
 
     @GObject.Property(type=Message)
     def message(self) -> Message | None:
-        """Get the `Message` that `self` represents."""
+        """The `Message` that `self` represents."""
         return self._message
 
     @message.setter
-    def message(self, message: Message | None) -> None:
+    def message(self, message: Message | None):
         self._message = message
 
         self.box.remove_all()
@@ -68,7 +68,7 @@ class ThreadView(Adw.Bin):
 
         GLib.timeout_add(100, self.viewport.scroll_to, row)
 
-    def _reply(self, view: MessageView, *_args: Any) -> None:
+    def _reply(self, view: MessageView, *_args):
         self.emit("reply", view.message)
 
     def _append(self, message: Message | None) -> Gtk.ListBoxRow:
@@ -80,7 +80,7 @@ class ThreadView(Adw.Bin):
         self.box.append(row)
         return row
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)

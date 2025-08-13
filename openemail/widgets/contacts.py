@@ -30,7 +30,7 @@ class Contacts(Adw.NavigationPage):
 
     models: Gio.ListStore = Gtk.Template.Child()
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.models.append(app.contact_requests)
@@ -44,17 +44,17 @@ class Contacts(Adw.NavigationPage):
         )
 
     @Gtk.Template.Callback()
-    def _new_contact(self, *_args: Any) -> None:
+    def _new_contact(self, *_args):
         self.address_form.reset()
         self.add_contact_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _add_contact(self, *_args: Any) -> None:
+    def _add_contact(self, *_args):
         try:
             app.create_task(app.address_book.new(Address(self.address.props.text)))
         except ValueError:
             return
 
     @Gtk.Template.Callback()
-    def _on_selected(self, selection: Gtk.SingleSelection, *_args: Any) -> None:
+    def _on_selected(self, selection: Gtk.SingleSelection, *_args):
         self.content.split_view.props.show_content = bool(selection.props.selected_item)

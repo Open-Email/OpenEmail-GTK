@@ -41,7 +41,7 @@ class Attachment(GObject.Object):
     can_remove = GObject.Property(type=bool, default=False)
 
     @abstractmethod
-    def open(self) -> None:
+    def open(self):
         """Open `self` for viewing or saving."""
 
     @staticmethod
@@ -58,11 +58,11 @@ class OutgoingAttachment(Attachment):
 
     gfile = GObject.Property(type=Gio.File)
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(can_remove=True, **kwargs)
 
     @override
-    def open(self) -> None:
+    def open(self):
         """Open `self` for viewing."""
         if not self.gfile:
             return
@@ -135,7 +135,7 @@ class IncomingAttachment(Attachment):
 
     _parts: list[model.Message]
 
-    def __init__(self, name: str, parts: list[model.Message], **kwargs: Any) -> None:
+    def __init__(self, name: str, parts: list[model.Message], **kwargs: Any):
         super().__init__(**kwargs)
 
         self.name, self._parts = name, parts
@@ -153,11 +153,11 @@ class IncomingAttachment(Attachment):
         self.icon = Gio.content_type_get_icon(content_type)
 
     @override
-    def open(self, parent: Gtk.Widget | None = None) -> None:
+    def open(self, parent: Gtk.Widget | None = None):
         """Download and reconstruct `self` from its parts, then open for saving."""
         create_task(self._save(parent))
 
-    async def _save(self, parent: Gtk.Widget | None) -> None:
+    async def _save(self, parent: Gtk.Widget | None):
         msg = _("Failed to download attachment")
 
         try:
@@ -260,7 +260,7 @@ class Message(GObject.Object):
     @GObject.Property(type=bool, default=False)
     def trashed(self) -> bool:
         """Whether the item is in the trash."""
-        from .store import settings  # noqa: PLC0415
+        from .store import settings
 
         if not self._message:
             return False
@@ -270,13 +270,13 @@ class Message(GObject.Object):
             for msg in settings.get_strv("trashed-messages")
         )
 
-    def __init__(self, message: model.Message | None = None, **kwargs: Any) -> None:
+    def __init__(self, message: model.Message | None = None, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.attachments = Gio.ListStore.new(Attachment)
         self.set_from_message(message)
 
-    def set_from_message(self, message: model.Message | None) -> None:
+    def set_from_message(self, message: model.Message | None):
         """Set the properties of `self` from `message`."""
         self._message = message
 
@@ -369,9 +369,9 @@ class Message(GObject.Object):
             "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
-    def trash(self) -> None:
+    def trash(self):
         """Move `self` to the trash."""
-        from .store import settings  # noqa: PLC0415
+        from .store import settings
 
         if not self._message:
             return
@@ -386,9 +386,9 @@ class Message(GObject.Object):
 
         self._update_trashed_state()
 
-    def restore(self) -> None:
+    def restore(self):
         """Restore `self` from the trash."""
-        from .store import settings  # noqa: PLC0415
+        from .store import settings
 
         if not self._message:
             return
@@ -404,9 +404,9 @@ class Message(GObject.Object):
 
         self._update_trashed_state()
 
-    def delete(self) -> None:
+    def delete(self):
         """Remove `self` from the trash."""
-        from .store import broadcasts, inbox, settings  # noqa: PLC0415
+        from .store import broadcasts, inbox, settings
 
         if not self._message:
             return
@@ -445,9 +445,9 @@ class Message(GObject.Object):
         self.restore()
         self.set_from_message(None)
 
-    async def discard(self) -> None:
+    async def discard(self):
         """Discard `self` and its children."""
-        from .store import outbox  # noqa: PLC0415
+        from .store import outbox
 
         if not self._message:
             return
@@ -472,12 +472,12 @@ class Message(GObject.Object):
 
         await outbox.update()
 
-    def mark_read(self) -> None:
+    def mark_read(self):
         """Mark a message as read.
 
         Does nothing if the message is not unread.
         """
-        from .store import settings  # noqa: PLC0415
+        from .store import settings
 
         if not self.unread:
             return
@@ -495,7 +495,7 @@ class Message(GObject.Object):
             ),
         )
 
-    def _update_trashed_state(self) -> None:
+    def _update_trashed_state(self):
         self.can_trash = not (self.outgoing or self.trashed)
         self.can_reply = not self.trashed
         self.notify("trashed")
@@ -507,7 +507,7 @@ async def send(
     body: str,
     reply: str | None = None,
     attachments: Iterable[OutgoingAttachment] = (),
-) -> None:
+):
     """Send a message to `readers`.
 
     If `readers` is empty, send a broadcast.
@@ -516,7 +516,7 @@ async def send(
 
     `attachments` is a dictionary of `Gio.File`s and filenames.
     """
-    from .store import outbox  # noqa: PLC0415
+    from .store import outbox
 
     Notifier().sending = True
 

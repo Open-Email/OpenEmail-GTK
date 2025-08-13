@@ -40,11 +40,11 @@ class ProfileSettings(Adw.PreferencesDialog):
 
     @GObject.Property(type=Profile)
     def profile(self) -> Profile | None:
-        """Get the profile of the user, if one was found."""
+        """The profile of the user, if one was found."""
         return self._profile
 
     @profile.setter
-    def profile(self, profile: Profile | None) -> None:
+    def profile(self, profile: Profile | None):
         self._profile = profile
 
         while self._pages:
@@ -99,7 +99,7 @@ class ProfileSettings(Adw.PreferencesDialog):
 
         return row
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self._pages = []
@@ -117,11 +117,11 @@ class ProfileSettings(Adw.PreferencesDialog):
         )
 
     @Gtk.Template.Callback()
-    def _is_image(self, _obj: Any, image: Gdk.Paintable | None) -> bool:
+    def _is_image(self, _obj, image: Gdk.Paintable | None) -> bool:
         return bool(image)
 
     @Gtk.Template.Callback()
-    def _delete_image(self, *_args: Any) -> None:
+    def _delete_image(self, *_args):
         self.pending = True
         app.create_task(
             app.delete_profile_image(),
@@ -129,15 +129,15 @@ class ProfileSettings(Adw.PreferencesDialog):
         )
 
     @Gtk.Template.Callback()
-    def _replace_image(self, *_args: Any) -> None:
+    def _replace_image(self, *_args):
         app.create_task(self._replace_image_task())
 
     @Gtk.Template.Callback()
-    def _on_change(self, *_args: Any) -> None:
+    def _on_change(self, *_args):
         self._changed = True
 
     @Gtk.Template.Callback()
-    def _closed(self, *_args: Any) -> None:
+    def _closed(self, *_args):
         if not (self._changed and self.name_form.valid):
             return
 
@@ -149,7 +149,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             app.update_profile({key: f() for key, f in self._fields.items()})
         )
 
-    async def _replace_image_task(self) -> None:
+    async def _replace_image_task(self):
         try:
             gfile = await cast(
                 "Awaitable[Gio.File]",

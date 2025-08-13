@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any
 
 from gi.repository import GObject, Gtk
 
@@ -19,7 +18,7 @@ class ContactRow(Gtk.Box):
     profile = GObject.Property(type=Profile)
 
     @Gtk.Template.Callback()
-    def _accept(self, *_args: Any) -> None:
+    def _accept(self, *_args):
         self._remove_address()
 
         try:
@@ -28,10 +27,10 @@ class ContactRow(Gtk.Box):
             return
 
     @Gtk.Template.Callback()
-    def _decline(self, *_args: Any) -> None:
+    def _decline(self, *_args):
         self._remove_address()
 
-    def _remove_address(self) -> None:
+    def _remove_address(self):
         try:
             (requests := settings.get_strv("contact-requests")).remove(
                 self.profile.value_of("address")

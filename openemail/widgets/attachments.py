@@ -16,14 +16,14 @@ class RemoveAttachmentButton(Gtk.Button):
 
     item = GObject.Property(type=Gtk.ListItem)
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.props.icon_name = "remove-symbolic"
         self.props.tooltip_text = _("Remove")
 
     @override
-    def do_clicked(self) -> None:
+    def do_clicked(self):
         if not (
             (overlay := self.props.parent)
             and (list_item := overlay.props.parent)
@@ -44,7 +44,7 @@ class Attachments(Adw.Bin):
     model = GObject.Property(type=Gio.ListStore)
 
     @Gtk.Template.Callback()
-    def _open(self, _obj: Any, pos: int) -> None:
+    def _open(self, _obj, pos: int):
         if not (attachment := self.model.get_item(pos)):
             return
 

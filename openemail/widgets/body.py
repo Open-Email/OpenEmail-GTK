@@ -20,11 +20,11 @@ class Body(Gtk.TextView):
 
     @GObject.Property(type=str)
     def text(self) -> str | None:
-        """Get the message's formatted body."""
+        """The message's formatted body."""
         return self.props.buffer.props.text
 
     @text.setter
-    def text(self, text: str | None) -> None:
+    def text(self, text: str | None):
         text = text or ""
 
         if self.summary:
@@ -100,7 +100,7 @@ class Body(Gtk.TextView):
                     buffer.get_iter_at_offset(match.end()),
                 )
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
@@ -122,10 +122,10 @@ class Body(Gtk.TextView):
         buffer.create_tag("bold italic", style=Pango.Style.ITALIC)
         buffer.create_tag("escape", invisible=True)
 
-        def edited(*_args: Any) -> None:
+        def edited(*_args):
             self.text = buffer.props.text
 
-        def editable_changed(*_args: Any) -> None:
+        def editable_changed(*_args):
             if self.get_editable():
                 buffer.connect("changed", edited)
             else:
@@ -135,7 +135,7 @@ class Body(Gtk.TextView):
         editable_changed()
 
         # HACK: Fix for some nasty behavior TextView has with height calculations
-        def resize(*_args: Any) -> None:
+        def resize(*_args):
             GLib.timeout_add(10, self.queue_resize)
             GLib.timeout_add(20, self.queue_resize)
             GLib.timeout_add(30, self.queue_resize)

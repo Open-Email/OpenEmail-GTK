@@ -39,7 +39,7 @@ class Preferences(Adw.PreferencesDialog):
     _trash_intervals = (0, 1, 7, 14, 30)
     _domain_rows: list[Adw.PreferencesRow]
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self._domain_rows = []
@@ -60,34 +60,34 @@ class Preferences(Adw.PreferencesDialog):
             )
 
     @Gtk.Template.Callback()
-    def _sync_interval_selected(self, row: Adw.ComboRow, *_args: Any) -> None:
+    def _sync_interval_selected(self, row: Adw.ComboRow, *_args):
         settings.set_uint(
             "sync-interval",
             self._sync_intervals[row.props.selected],
         )
 
     @Gtk.Template.Callback()
-    def _trash_interval_selected(self, row: Adw.ComboRow, *_args: Any) -> None:
+    def _trash_interval_selected(self, row: Adw.ComboRow, *_args):
         settings.set_uint(
             "empty-trash-interval",
             self._trash_intervals[row.props.selected],
         )
 
     @Gtk.Template.Callback()
-    def _remove_account(self, *_args: Any) -> None:
+    def _remove_account(self, *_args):
         self.confirm_remove_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _delete_account(self, *_args: Any) -> None:
+    def _delete_account(self, *_args):
         self.confirm_delete_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _confirm_delete(self, *_args: Any) -> None:
+    def _confirm_delete(self, *_args):
         self.force_close()
         app.create_task(app.delete_account())
 
     @Gtk.Template.Callback()
-    def _confirm_remove(self, *_args: Any) -> None:
+    def _confirm_remove(self, *_args):
         self.force_close()
         app.log_out()
 
@@ -97,12 +97,12 @@ class Preferences(Adw.PreferencesDialog):
         win.visible_child_name = "auth"
 
     @Gtk.Template.Callback()
-    def _new_domain(self, *_args: Any) -> None:
+    def _new_domain(self, *_args):
         self.domain_form.reset()
         self.add_domain_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _add_domain(self, *_args: Any) -> None:
+    def _add_domain(self, *_args):
         if (domain := self.domain_entry.props.text) in (
             current := settings.get_strv("trusted-domains")
         ):
@@ -111,7 +111,7 @@ class Preferences(Adw.PreferencesDialog):
         settings.set_strv("trusted-domains", (domain, *current))
         self._build_domains()
 
-    def _remove_domain(self, domain: str) -> None:
+    def _remove_domain(self, domain: str):
         try:
             (current := settings.get_strv("trusted-domains")).remove(domain)
         except ValueError:
@@ -119,7 +119,7 @@ class Preferences(Adw.PreferencesDialog):
 
         settings.set_strv("trusted-domains", current)
 
-    def _build_domains(self, *_args: Any) -> None:
+    def _build_domains(self, *_args):
         while self._domain_rows:
             self.domains.remove(self._domain_rows.pop())
 
