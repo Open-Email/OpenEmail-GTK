@@ -575,16 +575,18 @@ def save_draft(draft: DraftMessage):
     message_path = messages_path / f"{draft.ident}.json"
     message_path.parent.mkdir(parents=True, exist_ok=True)
 
-    json.dump(
-        (
-            draft.date.isoformat(timespec="seconds"),
-            draft.subject,
-            draft.subject_id,
-            list(map(str, draft.readers)),
-            draft.body,
-        ),
-        (message_path).open("w"),
-    )
+    with message_path.open("w") as file:
+        json.dump(
+            (
+                draft.date.isoformat(timespec="seconds"),
+                draft.subject,
+                draft.subject_id,
+                list(map(str, draft.readers)),
+                draft.body,
+            ),
+            file,
+        )
+
     logger.debug("Draft saved as %s.json", draft.ident)
 
 
@@ -600,7 +602,9 @@ def load_drafts() -> Generator[DraftMessage]:
 
     for path in messages_path.iterdir():
         try:
-            fields = tuple(json.load(path.open("r")))
+            with path.open("r") as file:
+                fields = tuple(json.load(file))
+
         except (JSONDecodeError, ValueError):
             continue
 
@@ -731,7 +735,8 @@ async def _fetch_envelope(
         return None, False
 
     try:
-        headers = dict(json.load(envelope_path.open("r")))
+        with envelope_path.open("r") as file:
+            headers = dict(json.load(file))
 
     except (FileNotFoundError, JSONDecodeError, ValueError):
         if not (response := await request(url, auth=not broadcast, method="HEAD")):
@@ -742,7 +747,8 @@ async def _fetch_envelope(
         headers = dict(response.getheaders())
 
         envelope_path.parent.mkdir(parents=True, exist_ok=True)
-        json.dump(headers, envelope_path.open("w"))
+        with envelope_path.open("w") as file:
+            json.dump(headers, file)
 
     else:
         new = False
