@@ -1,1 +1,1 @@
-"""GTK Widgets for OpenEmail."""
+"""GTK widgets for OpenEmail."""
