@@ -27,7 +27,7 @@ class _Messages(Adw.NavigationPage):
         self.thread_view: ThreadView = self._get_object("thread_view")
         self.thread_view.connect(
             "reply",
-            lambda _, msg: ComposeSheet.default.reply(msg),  # pyright: ignore[reportUnknownArgumentType]
+            lambda _, msg: ComposeSheet.default.reply(msg),
         )
 
         self.content: Page = self._get_object("content")

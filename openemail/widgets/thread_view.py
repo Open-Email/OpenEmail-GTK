@@ -86,11 +86,11 @@ class ThreadView(Adw.Bin):
         self.box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         self.box.add_css_class("background")
         self.box.set_sort_func(
-            lambda a, b: b.props.child.message.unix - a.props.child.message.unix  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+            lambda a, b: b.props.child.message.unix - a.props.child.message.unix
         )
 
         self.box.set_header_func(
-            lambda row, before: row.set_header(  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+            lambda row, before: row.set_header(
                 Gtk.Separator(margin_bottom=12, margin_start=18, margin_end=18)
                 if before
                 else None

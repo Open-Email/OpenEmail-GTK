@@ -74,7 +74,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             self.add(page)
 
             group = Adw.PreferencesGroup()
-            group.bind_model(category, self._create_row, profile)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+            group.bind_model(category, self._create_row, profile)  # pyright: ignore[reportAttributeAccessIssue]
             page.add(group)
 
         self.visible_child_name = "profile"
@@ -113,7 +113,7 @@ class ProfileSettings(Adw.PreferencesDialog):
 
         Profile.of(app.user).connect(
             "notify::updating",
-            lambda p, _: self.set_property("profile", None if p.updating else p),  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+            lambda p, _: self.set_property("profile", None if p.updating else p),
         )
 
     @Gtk.Template.Callback()

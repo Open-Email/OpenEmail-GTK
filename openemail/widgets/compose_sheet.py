@@ -144,7 +144,7 @@ class ComposeSheet(Adw.BreakpointBin):
                 end = contact.address[len(start) :]
 
                 self._completion_running = True
-                readers.insert_text(end, pos)  # pyright: ignore[reportUnknownMemberType]
+                readers.insert_text(end, pos)
                 self._completion_running = False
 
                 readers.select_region(pos, pos + len(end))

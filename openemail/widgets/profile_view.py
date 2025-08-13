@@ -75,7 +75,7 @@ class ProfileView(Adw.Bin):
                 continue
 
             group = Adw.PreferencesGroup(title=category.name, separate_rows=True)
-            group.bind_model(filtered, self._create_row, profile)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+            group.bind_model(filtered, self._create_row, profile)  # pyright: ignore[reportAttributeAccessIssue]
             self._groups.append(group)
             self.page.add(group)
 

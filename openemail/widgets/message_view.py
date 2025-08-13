@@ -102,5 +102,5 @@ class MessageView(Gtk.Box):
         callback()
 
     def _add_to_undo(self, title: str, undo: Callable[[], Any]):
-        toast = Notifier.send(title, lambda *_: self._history.pop(toast, lambda: ...)())  # pyright: ignore[reportUnknownArgumentType]
+        toast = Notifier.send(title, lambda *_: self._history.pop(toast, lambda: ...)())
         self._history[toast] = undo

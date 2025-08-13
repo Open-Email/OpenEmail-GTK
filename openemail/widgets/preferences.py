@@ -133,7 +133,7 @@ class Preferences(Adw.PreferencesDialog):
 
             remove_button.connect(
                 "clicked",
-                lambda _obj, domain: self._remove_domain(domain),  # pyright: ignore[reportUnknownArgumentType]
+                lambda _obj, domain: self._remove_domain(domain),
                 domain,
             )
 

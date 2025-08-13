@@ -24,7 +24,7 @@ def create_task(
         msg = "create_task() called before Application finished initializing"
         raise RuntimeError(msg)
 
-    task = cast("Task[Any]", app.create_asyncio_task(coro))  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+    task = cast("Task[Any]", app.create_asyncio_task(coro))  # pyright: ignore[reportAttributeAccessIssue]
     task.add_done_callback(
         lambda task: callback(not task.exception()) if callback else None
     )
