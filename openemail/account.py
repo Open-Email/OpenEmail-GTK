@@ -78,21 +78,20 @@ def log_out():
     for profile in profiles.values():
         profile.set_from_profile(None)
 
-    profiles.clear()
-    address_book.clear()
-    contact_requests.clear()
-    broadcasts.clear()
-    inbox.clear()
-    outbox.clear()
+    for store in (profiles, address_book, contact_requests, broadcasts, inbox, outbox):
+        store.clear()
 
-    settings.reset("address")
-    settings.reset("sync-interval")
-    settings.reset("empty-trash-interval")
-    settings.reset("trusted-domains")
-    settings.reset("contact-requests")
-    settings.reset("unread-messages")
-    settings.reset("trashed-messages")
-    settings.reset("deleted-messages")
+    for key in (
+        "address",
+        "sync-interval",
+        "empty-trash-interval",
+        "trusted-domains",
+        "contact-requests",
+        "unread-messages",
+        "trashed-messages",
+        "deleted-messages",
+    ):
+        settings.reset(key)
 
     keyring.delete_password(secret_service, user.address)
 
