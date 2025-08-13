@@ -35,8 +35,8 @@ class Address(str):
 
         return super().__new__(cls, address)
 
-    def __init__(self, address: str):  # noqa: ARG002
-        self.local_part, self.host_part = self.split("@")
+    def __init__(self, address: str):
+        self.local_part, self.host_part = address.split("@")
 
 
 def generate_link(first: Address, second: Address) -> str:
