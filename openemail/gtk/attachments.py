@@ -9,32 +9,6 @@ from gi.repository import Adw, Gio, GObject, Gtk
 from openemail import PREFIX
 
 
-class RemoveAttachmentButton(Gtk.Button):
-    """A button in a list of attachments, used to remove one."""
-
-    __gtype_name__ = "RemoveAttachmentButton"
-
-    item = GObject.Property(type=Gtk.ListItem)
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self.props.icon_name = "remove-symbolic"
-        self.props.tooltip_text = _("Remove")
-
-    @override
-    def do_clicked(self):
-        if not (
-            (overlay := self.props.parent)
-            and (list_item := overlay.props.parent)
-            and (grid := list_item.props.parent)
-            and isinstance(attachments := grid.props.parent, Attachments)
-        ):
-            return
-
-        attachments.model.remove(self.item.props.position)
-
-
 @Gtk.Template.from_resource(f"{PREFIX}/attachments.ui")
 class Attachments(Adw.Bin):
     """A grid of files attached to a message."""
@@ -49,3 +23,24 @@ class Attachments(Adw.Bin):
             return
 
         attachment.open(self)
+
+
+class RemoveAttachmentButton(Gtk.Button):
+    """A button in a list of attachments, used to remove one."""
+
+    __gtype_name__ = "RemoveAttachmentButton"
+
+    position = GObject.Property(type=int)
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.props.icon_name = "remove-symbolic"
+        self.props.tooltip_text = _("Remove")
+
+    @override
+    def do_clicked(self):
+        if not (attachments := self.get_ancestor(Attachments)):
+            return
+
+        attachments.model.remove(self.position)

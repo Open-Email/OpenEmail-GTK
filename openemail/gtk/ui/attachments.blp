@@ -21,7 +21,7 @@ template $Attachments: Adw.Bin {
             visible: bind template.item as <$Attachment>.can-remove;
             halign: end;
             valign: start;
-            item: bind template;
+            position: bind template.position;
 
             styles [
               "circular",
