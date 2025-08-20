@@ -2,12 +2,15 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from gi.repository import Adw, GObject, Gtk
 
 import openemail as app
 from openemail import PREFIX, Notifier
+
+if TYPE_CHECKING:
+    from .window import Window
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/page.ui")
@@ -39,25 +42,15 @@ class Page(Adw.BreakpointBin):
             if Notifier().syncing:
                 self.sync_button.props.sensitive = False
                 self.sync_button.add_css_class("spinning")
-                return
-
-            self.sync_button.remove_css_class("spinning")
-            self.sync_button.props.sensitive = True
+            else:
+                self.sync_button.remove_css_class("spinning")
+                self.sync_button.props.sensitive = True
 
         Notifier().connect("notify::syncing", on_syncing_changed)
 
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args):
-        if not isinstance(
-            split_view := getattr(
-                getattr(self.props.root, "content", None),
-                "split_view",
-                None,
-            ),
-            Adw.OverlaySplitView,
-        ):
-            return
-
+        split_view = cast("Window", self.props.root).content.split_view
         split_view.props.show_sidebar = not split_view.props.show_sidebar
 
     @Gtk.Template.Callback()

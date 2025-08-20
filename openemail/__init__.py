@@ -52,11 +52,13 @@ from .store import (
     drafts,
     empty_trash,
     inbox,
-    log_file,
+    log_path,
     outbox,
     profiles,
     secret_service,
     settings,
+    settings_add,
+    settings_discard,
     state_settings,
     sync,
 )
@@ -67,7 +69,7 @@ logging.basicConfig(
     handlers=(
         (
             logging.StreamHandler(),
-            RotatingFileHandler(log_file, maxBytes=1_000_000),
+            RotatingFileHandler(log_path, maxBytes=1_000_000),
         )
     ),
 )

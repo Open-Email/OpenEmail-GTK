@@ -16,7 +16,7 @@ from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash
 from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
-for t in (Contacts, Broadcasts, Drafts, Inbox, Outbox, Trash):
+for t in Contacts, Broadcasts, Drafts, Inbox, Outbox, Trash:
     GObject.type_ensure(t)
 
 
@@ -65,10 +65,7 @@ class Content(Adw.BreakpointBin):
         )
 
         Profile.of(app.user).bind_property(
-            "image",
-            self,
-            "profile-image",
-            GObject.BindingFlags.SYNC_CREATE,
+            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
         )
 
         self.get_settings().connect(

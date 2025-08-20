@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
+from contextlib import suppress
 from typing import Any
 
 from gi.repository import Adw, Gio, GObject, Gtk
@@ -39,10 +40,7 @@ class Contacts(Adw.NavigationPage):
         self.models.append(app.address_book)
 
         app.address_book.bind_property(
-            "updating",
-            self.content,
-            "loading",
-            GObject.BindingFlags.SYNC_CREATE,
+            "updating", self.content, "loading", GObject.BindingFlags.SYNC_CREATE
         )
 
     @Gtk.Template.Callback()
@@ -52,10 +50,8 @@ class Contacts(Adw.NavigationPage):
 
     @Gtk.Template.Callback()
     def _add_contact(self, *_args):
-        try:
+        with suppress(ValueError):
             app.create_task(app.address_book.new(Address(self.address.props.text)))
-        except ValueError:
-            return
 
     @Gtk.Template.Callback()
     def _on_selected(self, selection: Gtk.SingleSelection, *_args):

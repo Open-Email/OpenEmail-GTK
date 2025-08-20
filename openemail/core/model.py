@@ -399,7 +399,7 @@ class OutgoingMessage:
         from . import client, user
 
         access = list[str]()
-        for reader in (*readers, user.address):
+        for reader in *readers, user.address:
             if not (
                 (profile := await client.fetch_profile(reader))
                 and (key := profile.encryption_key)
@@ -498,9 +498,6 @@ class IncomingMessage:
 
                 case "message-checksum":
                     self.checksum = value
-
-                case _:
-                    pass
 
         if not message_headers:
             msg = "Empty message headers"

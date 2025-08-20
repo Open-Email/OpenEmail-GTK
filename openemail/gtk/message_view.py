@@ -30,9 +30,7 @@ class MessageView(Gtk.Box):
     confirm_discard_dialog: Adw.AlertDialog = Gtk.Template.Child()
 
     reply = GObject.Signal()
-    undo = GObject.Signal(
-        flags=GObject.SignalFlags.RUN_FIRST | GObject.SignalFlags.ACTION
-    )
+    undo = GObject.Signal(flags=GObject.SignalFlags.ACTION)
 
     _history: dict[Adw.Toast, Callable[[], Any]]
     _message: Message | None = None
@@ -77,11 +75,9 @@ class MessageView(Gtk.Box):
 
     @Gtk.Template.Callback()
     def _restore(self, *_args):
-        if not self.message:
-            return
-
-        (message := self.message).restore()
-        self._add_to_undo(_("Message restored"), lambda: message.trash())
+        if self.message:
+            (message := self.message).restore()
+            self._add_to_undo(_("Message restored"), lambda: message.trash())
 
     @Gtk.Template.Callback()
     def _discard(self, *_args):

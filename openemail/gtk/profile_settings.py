@@ -68,14 +68,16 @@ class ProfileSettings(Adw.PreferencesDialog):
                 continue
 
             page = Adw.PreferencesPage(
-                title=category.name, icon_name=f"{category.ident}-symbolic"
+                title=category.name,
+                icon_name=f"{category.ident}-symbolic",
             )
-            self._pages.append(page)
-            self.add(page)
 
             group = Adw.PreferencesGroup()
             group.bind_model(category, self._create_row, profile)  # pyright: ignore[reportAttributeAccessIssue]
             page.add(group)
+
+            self._pages.append(page)
+            self.add(page)
 
         self.visible_child_name = "profile"
         self._changed = False
@@ -87,7 +89,6 @@ class ProfileSettings(Adw.PreferencesDialog):
             row = Adw.SwitchRow(active=value)
             row.connect("notify::active", self._on_change)
             self._fields[field.ident] = lambda r=row: "Yes" if r.props.active else "No"
-
         else:
             row = Adw.EntryRow(text=str(value or ""))
             row.add_css_class("property")

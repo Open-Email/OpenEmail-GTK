@@ -13,6 +13,7 @@ from collections.abc import (
     Iterable,
     Iterator,
 )
+from contextlib import suppress
 from functools import partial
 from itertools import chain
 from pathlib import Path
@@ -35,7 +36,7 @@ ADDRESS_SPLIT_PATTERN = ",|;| "
 settings = Gio.Settings.new(APP_ID)
 state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
-log_file = Path(GLib.get_user_state_dir(), "openemail.log")
+log_path = Path(GLib.get_user_state_dir(), "openemail.log")
 core.data_dir = Path(GLib.get_user_data_dir(), "openemail")
 
 
@@ -276,10 +277,7 @@ class MessageStore(DictStore[str, Message]):
 
                 yield msg
 
-        settings.set_strv(
-            "unread-messages",
-            tuple(set(settings.get_strv("unread-messages")) | unread),
-        )
+        settings_add("unread-messages", *unread)
 
 
 class _BroadcastStore(MessageStore):
@@ -319,10 +317,7 @@ class _InboxStore(MessageStore):
                 known_notifiers.add(notifier)
                 continue
 
-            if notifier in (current := settings.get_strv("contact-requests")):
-                continue
-
-            settings.set_strv("contact-requests", [*current, notifier])
+            settings_add("contact_requests", notifier)
 
         deleted = settings.get_strv("deleted-messages")
         async for msg in self._process_messages(
@@ -443,12 +438,6 @@ async def sync(*, periodic: bool = False):
     )
 
 
-def empty_trash():
-    """Empty the user's trash."""
-    for msg in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
-        msg.delete()
-
-
 profiles: defaultdict[Address, Profile] = defaultdict(Profile)
 address_book = _AddressBook()
 contact_requests = _ContactRequests()
@@ -457,3 +446,25 @@ broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
 drafts = _DraftStore()
+
+
+def empty_trash():
+    """Empty the user's trash."""
+    for msg in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
+        msg.delete()
+
+
+def settings_add(key: str, *items: str):
+    """Add `items` to a strv settings `key`."""
+    value = settings.get_strv(key)
+    settings.set_strv(key, (*value, *(i for i in items if i not in value)))
+
+
+def settings_discard(key: str, *items: str):
+    """Discard `items` from a strv settings `key`."""
+    value = settings.get_strv(key)
+    for item in items:
+        with suppress(ValueError):
+            value.remove(item)
+
+    settings.set_strv(key, value)

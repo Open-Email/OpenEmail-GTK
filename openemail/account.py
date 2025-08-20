@@ -78,7 +78,7 @@ def log_out():
     for profile in profiles.values():
         profile.set_from_profile(None)
 
-    for store in (profiles, address_book, contact_requests, broadcasts, inbox, outbox):
+    for store in profiles, address_book, contact_requests, broadcasts, inbox, outbox:
         store.clear()
 
     for key in (

@@ -1,5 +1,8 @@
 [tool.pyright]
 exclude = ["**/__pycache__", "**/.*", "_build/**"]
+typeCheckingMode = "strict"
+
+reportMatchNotExhaustive = "none"
 reportMissingModuleSource = "none"
 reportMissingParameterType = "none"
 reportMissingTypeStubs = "none"
@@ -9,7 +12,7 @@ reportUnknownLambdaType = "none"
 reportUnknownMemberType = "none"
 reportUnknownParameterType = "none"
 reportUnusedImport = "none"
-typeCheckingMode = "strict"
+reportUnusedVariable = "none"
 
 [tool.ruff]
 builtins = ["_"]

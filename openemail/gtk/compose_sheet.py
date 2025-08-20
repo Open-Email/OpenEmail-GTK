@@ -46,7 +46,6 @@ class ComposeSheet(Adw.BreakpointBin):
     content = GObject.Property(type=Gtk.Widget)
     privacy = GObject.Property(type=str, default="private")
 
-    _save: bool = True
     _completion_running = False
 
     def __init__(self, **kwargs: Any):
@@ -55,22 +54,13 @@ class ComposeSheet(Adw.BreakpointBin):
         self.attachments.model = Gio.ListStore.new(OutgoingAttachment)
         self.body = self.body_view.props.buffer
         self.bind_property(
-            "content",
-            self.bottom_sheet,
-            "content",
-            GObject.BindingFlags.BIDIRECTIONAL,
+            "content", self.bottom_sheet, "content", GObject.BindingFlags.BIDIRECTIONAL
         )
 
     def new_message(self):
         """Open `self` with empty contents."""
         if self.bottom_sheet.props.reveal_bottom_bar:
-            self._save_draft()
-
-        self.subject_id = None
-        self.ident = None
-        self.privacy = "private"
-        self.attachments.model.remove_all()
-        self.compose_form.reset()
+            self._cancel()
 
         self.bottom_sheet.props.open = True
         self.bottom_sheet.props.reveal_bottom_bar = True
@@ -79,9 +69,8 @@ class ComposeSheet(Adw.BreakpointBin):
     def open_message(self, message: Message):
         """Open `self` with `message`."""
         if self.bottom_sheet.props.reveal_bottom_bar:
-            self._save_draft()
+            self._cancel()
 
-        self.attachments.model.remove_all()
         self.privacy = "public" if message.broadcast else "private"
         self.subject_id = message.subject_id
         self.ident = message.draft_id
@@ -95,29 +84,13 @@ class ComposeSheet(Adw.BreakpointBin):
     def reply(self, message: Message):
         """Open `self`, replying to `message`."""
         if self.bottom_sheet.props.reveal_bottom_bar:
-            self._save_draft()
+            self._cancel()
 
-        self.attachments.model.remove_all()
-        self.compose_form.reset()
-        self.privacy = (
-            "public" if (message.broadcast and message.outgoing) else "private"
-        )
+        own_broadcast = message.broadcast and message.outgoing
+        self.privacy = "public" if own_broadcast else "private"
         self.readers.props.text = message.reader_addresses
-
-        # Discuss whether this is needed
-
-        # if body := message.body:
-        #     self.body.props.text = (
-        #         # Date and time, author
-        #         _("On {}, {} wrote:").format(message.datetime, message.name)
-        #         + "\n"
-        #         + re.sub(r"^(?!>)", r"> ", body, flags=re.MULTILINE)
-        #         + "\n\n"
-        #     )
-
         self.subject.props.text = message.subject
         self.subject_id = message.subject_id
-        self.ident = None
 
         self.bottom_sheet.props.open = True
         self.bottom_sheet.props.reveal_bottom_bar = True
@@ -154,51 +127,43 @@ class ComposeSheet(Adw.BreakpointBin):
 
     @Gtk.Template.Callback()
     def _send_message(self, *_args):
-        readers = list[Address]()
-        warnings = dict[Address, str | None]()
-        if self.privacy == "private":
-            for reader in re.split(ADDRESS_SPLIT_PATTERN, self.readers.props.text):
-                if not reader:
-                    continue
+        if self.privacy == "public":
+            self._confirm_send(())
+            return
 
-                try:
-                    readers.append(address := Address(reader))
-                except ValueError:
-                    return
-
-                if Profile.of(address).value_of("away"):
-                    warnings[address] = Profile.of(address).value_of("away-warning")
+        split = re.split(ADDRESS_SPLIT_PATTERN, self.readers.props.text)
+        readers = tuple(Address(reader) for reader in split)
+        warnings = {
+            reader: Profile.of(reader).value_of("away-warning")
+            for reader in readers
+            if Profile.of(reader).value_of("away")
+        }
 
         if not warnings:
-            self._send(readers)
+            self._confirm_send(readers)
             return
 
         alert = Adw.AlertDialog.new(
             _("Send Message?"),
             _("The following readers indicated that they are away and may not see it:")
-            + "\n",
+            + "\n"
+            + "".join(
+                f"\n{Profile.of(address).name}{f': “{warning}”' if warning else ''}"
+                for address, warning in warnings.items()
+            ),
         )
-
-        for address, warning in warnings.items():
-            alert.props.body += f"\n{Profile.of(address).name}"
-            if not warning:
-                continue
-
-            alert.props.body += f": “{warning}”"
 
         alert.add_response("close", _("Cancel"))
         alert.add_response("send", _("Send"))
         alert.set_response_appearance("send", Adw.ResponseAppearance.SUGGESTED)
         alert.set_default_response("send")
-
-        alert.connect("response::send", lambda *_: self._send(readers))
+        alert.connect("response::send", lambda *_: self._confirm_send(readers))
 
         alert.present(self)
 
-    def _send(self, readers: Iterable[Address]):
+    def _confirm_send(self, readers: Iterable[Address]):
         if self.ident:
             app.drafts.delete(self.ident)
-            self.ident = None
 
         app.create_task(
             app.send_message(
@@ -214,9 +179,7 @@ class ComposeSheet(Adw.BreakpointBin):
             )
         )
 
-        self.subject_id = None
-        self._save = False
-        self._cancel()
+        self._close()
 
     @Gtk.Template.Callback()
     def _attach_files(self, *_args):
@@ -310,6 +273,27 @@ class ComposeSheet(Adw.BreakpointBin):
         self.body.end_user_action()
         self.body_view.grab_focus()
 
+    def _close(self):
+        self.bottom_sheet.props.reveal_bottom_bar = False
+        self.bottom_sheet.props.open = False
+
+        self.subject_id = None
+        self.ident = None
+        self.privacy = "private"
+
+        self.compose_form.reset()
+        self.attachments.model.remove_all()
+
+    @Gtk.Template.Callback()
+    def _cancel(self, *_args):
+        subject = self.subject.props.text
+        body = self.body.props.text
+        if subject or body:
+            readers = self.readers.props.text
+            app.drafts.save(self.ident, readers, subject, body, self.subject_id)
+
+        self._close()
+
     @Gtk.Template.Callback()
     def _get_readers_field_active(self, _obj, privacy: str) -> bool:
         return privacy == "private"
@@ -317,28 +301,3 @@ class ComposeSheet(Adw.BreakpointBin):
     @Gtk.Template.Callback()
     def _get_bottom_bar_label(self, _obj, subject: str) -> str:
         return subject or _("New Message")
-
-    def _save_draft(self):
-        if not self._save:
-            self._save = True
-            return
-
-        subject = self.subject.props.text
-        body = self.body.props.text
-
-        if not (subject or body):
-            return
-
-        app.drafts.save(
-            self.ident,
-            self.readers.props.text,
-            subject,
-            body,
-            self.subject_id,
-        )
-
-    @Gtk.Template.Callback()
-    def _cancel(self, *_args):
-        self.bottom_sheet.props.reveal_bottom_bar = False
-        self.bottom_sheet.props.open = False
-        self._save_draft()

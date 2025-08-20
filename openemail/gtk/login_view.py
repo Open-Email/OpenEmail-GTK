@@ -67,7 +67,6 @@ class LoginView(Adw.Bin):
         def success():
             self.register_button_child_name = "label"
             self.emit("authenticated")
-
             GLib.timeout_add_seconds(1, self._reset)
 
         self.register_button_child_name = "loading"
@@ -88,15 +87,14 @@ class LoginView(Adw.Bin):
         if not self.auth_form.valid:
             return
 
-        try:
-            app.user.address = Address(self.email_entry.props.text)
-            app.user.encryption_keys = KeyPair.from_b64(
-                self.encryption_key_entry.props.text,
-            )
-            app.user.signing_keys = KeyPair.from_b64(
-                self.signing_key_entry.props.text,
-            )
+        address = self.email_entry.props.text
+        encryption_keys = self.encryption_key_entry.props.text
+        signing_keys = self.signing_key_entry.props.text
 
+        try:
+            app.user.address = Address(address)
+            app.user.encryption_keys = KeyPair.from_b64(encryption_keys)
+            app.user.signing_keys = KeyPair.from_b64(signing_keys)
         except ValueError:
             Notifier.send(_("Incorrect key format"))
             return
@@ -104,7 +102,6 @@ class LoginView(Adw.Bin):
         def success():
             self.button_child_name = "label"
             self.emit("authenticated")
-
             GLib.timeout_add_seconds(1, self._reset)
 
         self.button_child_name = "loading"

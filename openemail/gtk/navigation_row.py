@@ -5,7 +5,8 @@
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import PREFIX, Message, Profile, settings
+import openemail as app
+from openemail import PREFIX, Message, Profile
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/navigation-row.ui")
@@ -34,15 +35,15 @@ class NavigationRow(Gtk.ListBoxRow):
         def update_counter(*_args):
             count = 0
             for item in content.model:
-                if isinstance(item, Profile):
-                    count += int(item.contact_request)
-
-                elif isinstance(item, Message):
-                    count += int(item.unread or bool(item.draft_id))
+                match item:
+                    case Profile():
+                        count += int(item.contact_request)
+                    case Message():
+                        count += int(item.unread or bool(item.draft_id))
 
             self.counter = str(count or "")
 
         content.model.connect("items-changed", update_counter)
-        settings.connect("changed::unread-messages", update_counter)
-        settings.connect("changed::contact-requests", update_counter)
+        for key in ("unread-messages", "contact-requests"):
+            app.settings.connect(f"changed::{key}", update_counter)
         update_counter()

@@ -107,7 +107,6 @@ class ProfileView(Adw.Bin):
                 margin_top=18,
             )
         )
-
         return row
 
     def __init__(self, **kwargs: Any):

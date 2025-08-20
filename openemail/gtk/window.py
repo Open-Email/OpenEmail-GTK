@@ -9,7 +9,7 @@ import keyring
 from gi.repository import Adw, Gio, GObject, Gtk
 
 import openemail as app
-from openemail import APP_ID, PREFIX, Notifier, settings, state_settings
+from openemail import APP_ID, PREFIX, Notifier
 
 from .content import Content
 from .login_view import LoginView
@@ -33,19 +33,19 @@ class Window(Adw.ApplicationWindow):
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
-        state_settings.bind(
+        app.state_settings.bind(
             "width",
             self,
             "default-width",
             Gio.SettingsBindFlags.DEFAULT,
         )
-        state_settings.bind(
+        app.state_settings.bind(
             "height",
             self,
             "default-height",
             Gio.SettingsBindFlags.DEFAULT,
         )
-        state_settings.bind(
+        app.state_settings.bind(
             "show-sidebar",
             self.content.split_view,
             "show-sidebar",
@@ -73,7 +73,7 @@ class Window(Adw.ApplicationWindow):
             ),
         )
 
-        settings.set_string("address", app.user.address)
+        app.settings.set_string("address", app.user.address)
 
         app.create_task(app.sync())
         self.visible_child_name = "content"
