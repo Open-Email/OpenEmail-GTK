@@ -44,7 +44,7 @@ class Content(Adw.BreakpointBin):
         """The layout to use based on window controls."""
         if not platform.startswith("darwin"):
             layout = self.get_settings().props.gtk_decoration_layout
-            if layout.split(":")[0].replace("appmenu", ""):
+            if layout.replace("appmenu", "").startswith(":"):
                 return "title"
 
         return "no-title"
@@ -69,6 +69,11 @@ class Content(Adw.BreakpointBin):
             self,
             "profile-image",
             GObject.BindingFlags.SYNC_CREATE,
+        )
+
+        self.get_settings().connect(
+            "notify::gtk-decoration-layout",
+            lambda *_: self.notify("header-bar-layout"),
         )
 
     def _header_func(self, row: NavigationRow, *_args):
