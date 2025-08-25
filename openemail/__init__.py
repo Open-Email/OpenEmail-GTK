@@ -45,6 +45,7 @@ from .store import (
     ADDRESS_SPLIT_PATTERN,
     DictStore,
     MessageStore,
+    People,
     ProfileStore,
     address_book,
     broadcasts,

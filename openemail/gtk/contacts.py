@@ -3,19 +3,19 @@
 # SPDX-FileContributor: kramo
 
 from contextlib import suppress
-from typing import Any
 
-from gi.repository import Adw, Gio, GObject, Gtk
+from gi.repository import Adw, GObject, Gtk
 
 import openemail as app
-from openemail import PREFIX, Address
+from openemail import PREFIX, Address, DictStore, People
 
 from .contact_row import ContactRow
 from .form import Form
 from .page import Page
 from .profile_view import ProfileView
 
-GObject.type_ensure(ContactRow)
+for t in DictStore, People, ContactRow, ProfileView:
+    GObject.type_ensure(t)
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contacts.ui")
@@ -25,23 +25,10 @@ class Contacts(Adw.NavigationPage):
     __gtype_name__ = "Contacts"
 
     content: Page = Gtk.Template.Child()
-    profile_view: ProfileView = Gtk.Template.Child()
 
     add_contact_dialog: Adw.AlertDialog = Gtk.Template.Child()
     address: Adw.EntryRow = Gtk.Template.Child()
     address_form: Form = Gtk.Template.Child()
-
-    models: Gio.ListStore = Gtk.Template.Child()
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self.models.append(app.contact_requests)
-        self.models.append(app.address_book)
-
-        app.address_book.bind_property(
-            "updating", self.content, "loading", GObject.BindingFlags.SYNC_CREATE
-        )
 
     @Gtk.Template.Callback()
     def _new_contact(self, *_args):

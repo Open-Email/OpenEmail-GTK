@@ -19,7 +19,7 @@ from itertools import chain
 from pathlib import Path
 from typing import Any
 
-from gi.repository import Gdk, Gio, GLib, GObject
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
 from . import core
 from .asyncio import create_task
@@ -42,6 +42,8 @@ core.data_dir = Path(GLib.get_user_data_dir(), "openemail")
 
 class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
+
+    __gtype_name__ = "DictStore"
 
     item_type: type
 
@@ -158,8 +160,6 @@ class ProfileStore(DictStore[Address, Profile]):
 
 
 class _AddressBook(ProfileStore):
-    """An implementation of `Gio.ListModel` for storing contacts."""
-
     async def new(self, address: Address, *, receive_broadcasts: bool = True):
         """Add `address` to the user's address book."""
         Profile.of(address).contact_request = False
@@ -209,8 +209,6 @@ class _AddressBook(ProfileStore):
 
 
 class _ContactRequests(ProfileStore):
-    """An implementation of `Gio.ListModel` for storing contact requests."""
-
     async def _update(self):
         for request in (requests := settings.get_strv("contact-requests")):
             try:
@@ -227,6 +225,22 @@ class _ContactRequests(ProfileStore):
                 self.remove(request.address)
 
         create_task(self.update_profiles(trust_images=False))
+
+
+class People(GObject.Object):
+    """The global GObject address store. Mostly useful in a `Gtk.Builder` context."""
+
+    __gtype_name__ = "People"
+
+    @GObject.Property(type=_AddressBook)
+    def address_book(self) -> _AddressBook:
+        """The global model for contacts."""
+        return address_book
+
+    @GObject.Property(type=Gtk.FlattenListModel)
+    def all(self) -> Gtk.FlattenListModel:
+        """The global model for both the address book and contact requests."""
+        return all_contacts
 
 
 class MessageStore(DictStore[str, Message]):
@@ -441,6 +455,11 @@ async def sync(*, periodic: bool = False):
 profiles: defaultdict[Address, Profile] = defaultdict(Profile)
 address_book = _AddressBook()
 contact_requests = _ContactRequests()
+
+_models = Gio.ListStore.new(Gio.ListModel)
+_models.append(address_book)
+_models.append(contact_requests)
+all_contacts = Gtk.FlattenListModel.new(_models)
 
 broadcasts = _BroadcastStore()
 inbox = _InboxStore()

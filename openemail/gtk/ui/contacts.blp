@@ -1,12 +1,14 @@
 using Gtk 4.0;
 using Adw 1;
-using Gio 2.0;
+
+$People people {}
 
 template $Contacts: Adw.NavigationPage {
   title: _("Contacts");
 
   child: $Page content {
     title: bind template.title;
+    loading: bind people.address_book as <$DictStore>.updating;
 
     model: SingleSelection selection {
       autoselect: false;
@@ -25,11 +27,7 @@ template $Contacts: Adw.NavigationPage {
             }
           };
 
-          model: FlattenListModel {
-            model: Gio.ListStore models {
-              item-type: typeof<Gio.ListModel>;
-            };
-          };
+          model: bind people.all;
         };
 
         filter: AnyFilter {
