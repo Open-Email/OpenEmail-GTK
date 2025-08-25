@@ -58,7 +58,7 @@ class Attachment(GObject.Object):
 class OutgoingAttachment(Attachment):
     """An attachment that has not yet been sent."""
 
-    gfile = GObject.Property(type=Gio.File)
+    file = GObject.Property(type=Gio.File)
 
     def __init__(self, **kwargs: Any):
         super().__init__(can_remove=True, **kwargs)
@@ -66,21 +66,21 @@ class OutgoingAttachment(Attachment):
     @override
     def open(self):
         """Open `self` for viewing."""
-        if not self.gfile:
+        if not self.file:
             return
 
-        Gio.AppInfo.launch_default_for_uri(self.gfile.get_uri())
+        Gio.AppInfo.launch_default_for_uri(self.file.get_uri())
 
     @classmethod
-    async def from_file(cls, gfile: Gio.File) -> Self:
-        """Create an outgoing attachment from `gfile`.
+    async def from_file(cls, file: Gio.File) -> Self:
+        """Create an outgoing attachment from `file`.
 
-        Raises ValueError if `gfile` doesn't have all required attributes.
+        Raises ValueError if `file` doesn't have all required attributes.
         """
         try:
             info = await cast(
                 "Awaitable[Gio.FileInfo]",
-                gfile.query_info_async(
+                file.query_info_async(
                     ",".join(
                         (
                             Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
@@ -99,7 +99,7 @@ class OutgoingAttachment(Attachment):
             raise ValueError(msg) from error
 
         return cls(
-            gfile=gfile,
+            file=file,
             name=info.get_display_name(),
             type=Gio.content_type_get_mime_type(content_type)
             if (content_type := info.get_content_type())
@@ -115,19 +115,19 @@ class OutgoingAttachment(Attachment):
     async def choose(cls, parent: Gtk.Widget | None = None) -> AsyncGenerator[Self]:
         """Prompt the user to choose a attachments using the file picker."""
         try:
-            gfiles = await cast(
+            files = await cast(
                 "Awaitable[Gio.ListModel]",
                 Gtk.FileDialog().open_multiple(cls._get_window(parent)),
             )
         except GLib.Error:
             return
 
-        for gfile in gfiles:
-            if not isinstance(gfile, Gio.File):
+        for file in files:
+            if not isinstance(file, Gio.File):
                 return
 
             try:
-                yield await cls.from_file(gfile)
+                yield await cls.from_file(file)
             except ValueError:
                 continue
 
@@ -163,7 +163,7 @@ class IncomingAttachment(Attachment):
         msg = _("Failed to download attachment")
 
         try:
-            gfile = await cast(
+            file = await cast(
                 "Awaitable[Gio.File]",
                 Gtk.FileDialog(
                     initial_name=self.name,
@@ -184,7 +184,7 @@ class IncomingAttachment(Attachment):
             return
 
         try:
-            stream = gfile.replace(
+            stream = file.replace(
                 etag=None,
                 make_backup=False,
                 flags=Gio.FileCreateFlags.REPLACE_DESTINATION,
@@ -207,11 +207,11 @@ class IncomingAttachment(Attachment):
         ):
             info = Gio.FileInfo()
             info.set_modification_date_time(datetime)
-            gfile.set_attributes_from_info(
+            file.set_attributes_from_info(
                 info, Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS
             )
 
-        Gio.AppInfo.launch_default_for_uri(gfile.get_uri())
+        Gio.AppInfo.launch_default_for_uri(file.get_uri())
 
 
 class Message(GObject.Object):
@@ -498,7 +498,7 @@ async def send(
         try:
             _success, data, _etag = await cast(
                 "Awaitable[tuple[bool, bytes, str]]",
-                attachment.gfile.load_contents_async(),
+                attachment.file.load_contents_async(),
             )
         except GLib.Error as error:
             Notifier.send(_("Failed to send message"))

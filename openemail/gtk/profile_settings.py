@@ -152,7 +152,7 @@ class ProfileSettings(Adw.PreferencesDialog):
 
     async def _replace_image_task(self):
         try:
-            gfile = await cast(
+            file = await cast(
                 "Awaitable[Gio.File]",
                 Gtk.FileDialog(
                     initial_name=_("Select an Image"),
@@ -169,7 +169,7 @@ class ProfileSettings(Adw.PreferencesDialog):
         except GLib.Error:
             return
 
-        if not (gfile and (path := gfile.get_path())):
+        if not (file and (path := file.get_path())):
             return
 
         try:
