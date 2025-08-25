@@ -1,74 +1,74 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <gresources>
   <gresource prefix="@PREFIX@/icons/scalable/actions">
-    <file preprocess="xml-stripblanks">accept-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">contact-new-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">decline-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">dot-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">edit-delete-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">edit-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">emoji-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">empty-trash-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">fire-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">key-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">list-add-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">mail-attachment-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">mail-message-new-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">mail-reply-sender-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">mailbox-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">open-menu-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">private-message-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">remove-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">restore-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">search-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">settings-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">sidebar-show-symbolic-rtl.svg</file>
-    <file preprocess="xml-stripblanks">sidebar-show-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">sync-symbolic.svg</file>
+    <file>accept-symbolic.svg</file>
+    <file>contact-new-symbolic.svg</file>
+    <file>decline-symbolic.svg</file>
+    <file>dot-symbolic.svg</file>
+    <file>edit-delete-symbolic.svg</file>
+    <file>edit-symbolic.svg</file>
+    <file>emoji-symbolic.svg</file>
+    <file>empty-trash-symbolic.svg</file>
+    <file>fire-symbolic.svg</file>
+    <file>key-symbolic.svg</file>
+    <file>list-add-symbolic.svg</file>
+    <file>mail-attachment-symbolic.svg</file>
+    <file>mail-message-new-symbolic.svg</file>
+    <file>mail-reply-sender-symbolic.svg</file>
+    <file>mailbox-symbolic.svg</file>
+    <file>open-menu-symbolic.svg</file>
+    <file>private-message-symbolic.svg</file>
+    <file>remove-symbolic.svg</file>
+    <file>restore-symbolic.svg</file>
+    <file>search-symbolic.svg</file>
+    <file>settings-symbolic.svg</file>
+    <file>sidebar-show-symbolic-rtl.svg</file>
+    <file>sidebar-show-symbolic.svg</file>
+    <file>sync-symbolic.svg</file>
     <!-- Text Editing -->
-    <file preprocess="xml-stripblanks">quotation-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">text-bold-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">text-heading-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">text-italic-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">text-strikethrough-symbolic.svg</file>
+    <file>quotation-symbolic.svg</file>
+    <file>text-bold-symbolic.svg</file>
+    <file>text-heading-symbolic.svg</file>
+    <file>text-italic-symbolic.svg</file>
+    <file>text-strikethrough-symbolic.svg</file>
     <!-- Sidebar -->
-    <file preprocess="xml-stripblanks">broadcasts-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">contacts-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">drafts-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">inbox-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">outbox-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">trash-symbolic.svg</file>
+    <file>broadcasts-symbolic.svg</file>
+    <file>contacts-symbolic.svg</file>
+    <file>drafts-symbolic.svg</file>
+    <file>inbox-symbolic.svg</file>
+    <file>outbox-symbolic.svg</file>
+    <file>trash-symbolic.svg</file>
     <!-- Profiles -->
-    <file preprocess="xml-stripblanks">about-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">address-expansion-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">away-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">birthday-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">books-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">configuration-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">department-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">education-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">gender-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">general-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">interests-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">job-title-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">languages-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">last-seen-public-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">location-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">mailing-address-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">movies-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">music-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">notes-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">organization-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">personal-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">phone-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">places-lived-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">public-access-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">public-links-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">relationship-status-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">sports-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">status-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">streams-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">website-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">work-symbolic.svg</file>
+    <file>about-symbolic.svg</file>
+    <file>address-expansion-symbolic.svg</file>
+    <file>away-symbolic.svg</file>
+    <file>birthday-symbolic.svg</file>
+    <file>books-symbolic.svg</file>
+    <file>configuration-symbolic.svg</file>
+    <file>department-symbolic.svg</file>
+    <file>education-symbolic.svg</file>
+    <file>gender-symbolic.svg</file>
+    <file>general-symbolic.svg</file>
+    <file>interests-symbolic.svg</file>
+    <file>job-title-symbolic.svg</file>
+    <file>languages-symbolic.svg</file>
+    <file>last-seen-public-symbolic.svg</file>
+    <file>location-symbolic.svg</file>
+    <file>mailing-address-symbolic.svg</file>
+    <file>movies-symbolic.svg</file>
+    <file>music-symbolic.svg</file>
+    <file>notes-symbolic.svg</file>
+    <file>organization-symbolic.svg</file>
+    <file>personal-symbolic.svg</file>
+    <file>phone-symbolic.svg</file>
+    <file>places-lived-symbolic.svg</file>
+    <file>public-access-symbolic.svg</file>
+    <file>public-links-symbolic.svg</file>
+    <file>relationship-status-symbolic.svg</file>
+    <file>sports-symbolic.svg</file>
+    <file>status-symbolic.svg</file>
+    <file>streams-symbolic.svg</file>
+    <file>website-symbolic.svg</file>
+    <file>work-symbolic.svg</file>
   </gresource>
 </gresources>
