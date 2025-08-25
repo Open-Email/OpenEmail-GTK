@@ -380,7 +380,7 @@ class _DraftStore(MessageStore):
     def delete(self, ident: str):
         """Delete a draft saved using `save()`."""
         client.delete_draft(ident)
-        self.remove(ident)
+        self.remove(f"{client.user.address.host_part} {ident}")
 
     def delete_all(self):
         """Delete all drafts saved using `save()`."""
