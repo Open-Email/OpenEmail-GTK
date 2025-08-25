@@ -7,7 +7,7 @@ from typing import Any
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 import openemail as app
-from openemail import PREFIX, Message, empty_trash, settings
+from openemail import PREFIX, Message
 
 from .compose_sheet import ComposeSheet
 from .page import Page
@@ -24,13 +24,12 @@ class _Messages(Adw.NavigationPage):
         self.builder = Gtk.Builder.new_from_resource(f"{PREFIX}/messages.ui")
 
         self.trashed: Gtk.BoolFilter = self._get_object("trashed")
-        settings.connect("changed::trashed-messages", self._on_trash_changed)
+        app.settings.connect("changed::trashed-messages", self._on_trash_changed)
         self._get_object("sort_model").props.model = model
 
         self.thread_view: ThreadView = self._get_object("thread_view")
         self.thread_view.connect(
-            "reply",
-            lambda _, msg: ComposeSheet.default.reply(msg),
+            "reply", lambda _, msg: ComposeSheet.default.reply(msg)
         )
 
         self.content: Page = self._get_object("content")
@@ -52,11 +51,9 @@ class _Messages(Adw.NavigationPage):
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args):
         self.thread_view.message = (message := selection.props.selected_item)
-        if not isinstance(message, Message):
-            return
-
-        message.mark_read()
-        self.content.split_view.props.show_content = True
+        if isinstance(message, Message):
+            message.mark_read()
+            self.content.split_view.props.show_content = True
 
 
 class _Folder(_Messages):
@@ -70,14 +67,11 @@ class _Folder(_Messages):
         self.content.empty_page = self._get_object("no_messages")
         self.content.model.bind_property("selected-item", self.thread_view, "message")
 
-        for button in (self.content.toolbar_button, self._get_object("new_button")):
+        for button in self.content.toolbar_button, self._get_object("new_button"):
             button.connect("clicked", lambda *_: ComposeSheet.default.new_message())
 
         self.folder.bind_property(
-            "updating",
-            self.content,
-            "loading",
-            GObject.BindingFlags.SYNC_CREATE,
+            "updating", self.content, "loading", GObject.BindingFlags.SYNC_CREATE
         )
 
 
@@ -114,18 +108,13 @@ class Drafts(_Messages):
 
         self.content.empty_page = self._get_object("no_drafts")
         self.content.model.bind_property(
-            "n-items",
-            delete_button,
-            "sensitive",
-            GObject.BindingFlags.SYNC_CREATE,
+            "n-items", delete_button, "sensitive", GObject.BindingFlags.SYNC_CREATE
         )
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args):
-        if not isinstance(msg := selection.props.selected_item, Message):
-            return
-
-        selection.unselect_all()
-        ComposeSheet.default.open_message(msg)
+        if isinstance(msg := selection.props.selected_item, Message):
+            selection.unselect_all()
+            ComposeSheet.default.open_message(msg)
 
 
 class Trash(_Messages):
@@ -146,7 +135,7 @@ class Trash(_Messages):
         folders.append(app.inbox)
 
         empty_dialog: Adw.AlertDialog = self._get_object("empty_dialog")
-        empty_dialog.connect("response::empty", lambda *_: empty_trash())
+        empty_dialog.connect("response::empty", lambda *_: app.empty_trash())
 
         empty_button: Gtk.Button = self._get_object("empty_button")
         empty_button.connect("clicked", lambda *_: empty_dialog.present(self))
@@ -155,10 +144,7 @@ class Trash(_Messages):
         self.content.empty_page = self._get_object("empty_trash")
         self.content.model.bind_property("selected-item", self.thread_view, "message")
         self.content.model.bind_property(
-            "n-items",
-            empty_button,
-            "sensitive",
-            GObject.BindingFlags.SYNC_CREATE,
+            "n-items", empty_button, "sensitive", GObject.BindingFlags.SYNC_CREATE
         )
 
         def set_loading(*_args):

@@ -19,10 +19,8 @@ class Attachments(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _open(self, _obj, pos: int):
-        if not (attachment := self.model.get_item(pos)):
-            return
-
-        attachment.open(self)
+        if attachment := self.model.get_item(pos):
+            attachment.open(self)
 
 
 class RemoveAttachmentButton(Gtk.Button):
@@ -40,7 +38,5 @@ class RemoveAttachmentButton(Gtk.Button):
 
     @override
     def do_clicked(self):
-        if not (attachments := self.get_ancestor(Attachments)):
-            return
-
-        attachments.model.remove(self.position)
+        if attachments := self.get_ancestor(Attachments):
+            attachments.model.remove(self.position)

@@ -6,6 +6,7 @@ from abc import abstractmethod
 from collections.abc import AsyncGenerator, Awaitable, Iterable
 from datetime import UTC, datetime
 from gettext import ngettext
+from pathlib import Path
 from typing import Any, Self, cast, override
 
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
@@ -235,6 +236,7 @@ class Message(GObject.Object):
     incoming = GObject.Property(type=bool, default=True)
     can_trash = GObject.Property(type=bool, default=False)
 
+    author = GObject.Property(type=str)
     original_author = GObject.Property(type=str)
     different_author = GObject.Property(type=bool, default=False)
     readers = GObject.Property(type=str)
@@ -252,11 +254,6 @@ class Message(GObject.Object):
     _image_binding: GObject.Binding | None = None
 
     _message: model.Message | None = None
-
-    @property
-    def author(self) -> Address | None:
-        """The author of `self`."""
-        return self._message.author if self._message else None
 
     @GObject.Property(type=bool, default=False)
     def trashed(self) -> bool:
@@ -284,10 +281,7 @@ class Message(GObject.Object):
         if not message:
             return
 
-        local_date = message.date.astimezone(
-            datetime.now(UTC).astimezone().tzinfo,
-        )
-
+        local_date = message.date.astimezone(datetime.now(UTC).astimezone().tzinfo)
         self.date = local_date.strftime("%x")
         # Localized date format, time in H:M
         self.datetime = _("{} at {}").format(self.date, local_date.strftime("%H:%M"))
@@ -302,6 +296,7 @@ class Message(GObject.Object):
 
         self._update_trashed_state()
 
+        self.author = message.author
         self.original_author = f"{_('Original Author:')} {message.original_author}"
         self.different_author = message.author != message.original_author
 
@@ -327,10 +322,8 @@ class Message(GObject.Object):
                 self.subject_id = message.subject_id
             case client.DraftMessage():
                 self.draft_id = message.ident
-            case _:
-                pass
 
-        for binding in (self._name_binding, self._image_binding):
+        for binding in self._name_binding, self._image_binding:
             if binding:
                 binding.unbind()
 
@@ -372,17 +365,14 @@ class Message(GObject.Object):
 
     def trash(self):
         """Move `self` to the trash."""
-        from .store import settings
+        from .store import settings_add
 
         if not self._message:
             return
 
-        settings.set_strv(
+        settings_add(
             "trashed-messages",
-            (
-                *settings.get_strv("trashed-messages"),
-                f"{get_ident(self._message)} {datetime.now(UTC).date().isoformat()}",
-            ),
+            f"{get_ident(self._message)} {datetime.now(UTC).date().isoformat()}",
         )
 
         self._update_trashed_state()
@@ -407,36 +397,17 @@ class Message(GObject.Object):
 
     def delete(self):
         """Remove `self` from the trash."""
-        from .store import broadcasts, inbox, settings
+        from .store import broadcasts, inbox, settings_add
 
         if not self._message:
             return
 
-        settings.set_strv(
-            "deleted-messages",
-            tuple(
-                set(settings.get_strv("deleted-messages")) | {get_ident(self._message)}
-            ),
-        )
+        settings_add("deleted-messages", get_ident(self._message))
 
-        envelopes_dir = (
-            client.data_dir
-            / "envelopes"
-            / self._message.author.host_part
-            / self._message.author.local_part
-        )
-        messages_dir = (
-            client.data_dir
-            / "messages"
-            / self._message.author.host_part
-            / self._message.author.local_part
-        )
+        envelopes_dir = self._get_data_dir("envelopes", self._message)
+        messages_dir = self._get_data_dir("messages", self._message)
 
-        if self._message.is_broadcast:
-            envelopes_dir /= "broadcasts"
-            messages_dir /= "broadcasts"
-
-        for child in (self._message, *self._message.children):
+        for child in self._message, *self._message.children:
             (envelopes_dir / f"{child.ident}.json").unlink(missing_ok=True)
             (messages_dir / child.ident).unlink(missing_ok=True)
 
@@ -461,7 +432,7 @@ class Message(GObject.Object):
         outbox.remove(get_ident(self._message))
 
         failed = False
-        for msg in (self._message, *self._message.children):
+        for msg in self._message, *self._message.children:
             try:
                 await client.delete_message(msg.ident)
             except WriteError:  # noqa: PERF203
@@ -478,7 +449,7 @@ class Message(GObject.Object):
 
         Does nothing if the message is not unread.
         """
-        from .store import settings
+        from .store import settings_discard
 
         if not self.unread:
             return
@@ -489,17 +460,18 @@ class Message(GObject.Object):
             return
 
         self._message.new = False
-        settings.set_strv(
-            "unread-messages",
-            tuple(
-                set(settings.get_strv("unread-messages")) - {get_ident(self._message)}
-            ),
-        )
+        settings_discard("unread-messages", get_ident(self._message))
 
     def _update_trashed_state(self):
         self.can_trash = not (self.outgoing or self.trashed)
         self.can_reply = not self.trashed
         self.notify("trashed")
+
+    @staticmethod
+    def _get_data_dir(name: str, message: model.Message) -> Path:
+        host, local = message.author.host_part, message.author.local_part
+        suffix = "broadcasts" if message.is_broadcast else ""
+        return client.data_dir / name / host / local / suffix
 
 
 async def send(

@@ -3,10 +3,12 @@
 # SPDX-FileContributor: kramo
 
 
+from contextlib import suppress
+
 from gi.repository import GObject, Gtk
 
 import openemail as app
-from openemail import PREFIX, Profile, settings
+from openemail import PREFIX, Profile
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contact-row.ui")
@@ -19,23 +21,12 @@ class ContactRow(Gtk.Box):
 
     @Gtk.Template.Callback()
     def _accept(self, *_args):
-        self._remove_address()
+        address = self.profile.value_of("address")
+        app.settings_discard("contact-requests", address)
 
-        try:
-            app.create_task(app.address_book.new(self.profile.value_of("address")))
-        except ValueError:
-            return
+        with suppress(ValueError):
+            app.create_task(app.address_book.new(address))
 
     @Gtk.Template.Callback()
     def _decline(self, *_args):
-        self._remove_address()
-
-    def _remove_address(self):
-        try:
-            (requests := settings.get_strv("contact-requests")).remove(
-                self.profile.value_of("address")
-            )
-        except ValueError:
-            return
-
-        settings.set_strv("contact-requests", requests)
+        app.settings_discard("contact-requests", self.profile.value_of("address"))

@@ -67,15 +67,13 @@ class FormField(GObject.Object):
                     for address in addresses:
                         if address:
                             Address(address)
-
                 except ValueError:
                     self.valid = False
-
                 else:
                     self.valid = True
 
     def reset(self):
-        """Reset the form field."""
+        """Reset the form field to be empty."""
         self.text = ""
 
 
@@ -107,26 +105,28 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
     def do_parser_finished(self, *_args):
         """Call when a builder finishes the parsing of a UI definition."""
         for field in self._fields:
-            field.connect("notify::valid", lambda *_: self._update_submit_widget())
-            field.connect("notify::active", lambda *_: self._update_submit_widget())
+            for signal in "notify::valid", "notify::active":
+                field.connect(signal, lambda *_: self._update_submit_widget())
+
             field.validate()
 
     def _update_submit_widget(self):
-        if isinstance(self.submit_widget, Adw.AlertDialog):
-            if not (default := self.submit_widget.props.default_response):
-                msg = "Form.submit-widget as Adw.AlertDialog must have default-response"
-                raise AttributeError(msg)
+        match widget := self.submit_widget:
+            case Adw.AlertDialog():
+                if not (default := widget.props.default_response):
+                    msg = "submit-widget must have Adw.AlertDialog:default-response"
+                    raise ValueError(msg)
 
-            self.submit_widget.set_response_enabled(default, self.valid)
+                widget.set_response_enabled(default, self.valid)
 
-        elif isinstance(self.submit_widget, Adw.EntryRow):
-            if self.valid:
-                self.submit_widget.remove_css_class("error")
-            else:
-                self.submit_widget.add_css_class("error")
+            case Adw.EntryRow():
+                if self.valid:
+                    widget.remove_css_class("error")
+                else:
+                    widget.add_css_class("error")
 
-        elif self.submit_widget:
-            self.submit_widget.props.sensitive = self.valid
+            case Gtk.Widget():
+                widget.props.sensitive = self.valid
 
     def reset(self):
         """Reset the state of the form.
