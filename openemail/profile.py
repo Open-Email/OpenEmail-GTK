@@ -257,7 +257,7 @@ class Profile(GObject.Object):
         self.notify("receive-broadcasts")
 
 
-# TODO: Maybe these could be methods of a sublcass of Profile specific to the user
+# TODO: Maybe these could be methods of a subclass of Profile specific to the user
 async def refresh():
     """Update the profile of the user by fetching new data remotely."""
     Profile.of(core.user).updating = True
