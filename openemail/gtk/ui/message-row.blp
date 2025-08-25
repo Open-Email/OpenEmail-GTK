@@ -7,18 +7,14 @@ template ListItem {
       transition-type: crossfade;
       reveal-child: bind template.item as <$Message>.unread;
 
-      child: Label {
+      child: Image {
         valign: start;
         margin-top: 6;
-        label: "•";
+        icon-name: "dot-symbolic";
 
         styles [
           "accent",
         ]
-
-        accessibility {
-          label: _("Unread");
-        }
       };
     }
 

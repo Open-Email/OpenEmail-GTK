@@ -4,6 +4,7 @@
     <file preprocess="xml-stripblanks">accept-symbolic.svg</file>
     <file preprocess="xml-stripblanks">contact-new-symbolic.svg</file>
     <file preprocess="xml-stripblanks">decline-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">dot-symbolic.svg</file>
     <file preprocess="xml-stripblanks">edit-delete-symbolic.svg</file>
     <file preprocess="xml-stripblanks">edit-symbolic.svg</file>
     <file preprocess="xml-stripblanks">emoji-symbolic.svg</file>
