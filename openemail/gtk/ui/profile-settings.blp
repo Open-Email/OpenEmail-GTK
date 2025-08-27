@@ -93,13 +93,6 @@ template $ProfileSettings: Adw.PreferencesDialog {
             }
 
             Adw.PreferencesGroup {
-              Adw.EntryRow name {
-                title: _("Name");
-                changed => $_on_change();
-              }
-            }
-
-            Adw.PreferencesGroup {
               Adw.EntryRow status {
                 title: _("Status");
                 changed => $_on_change();
@@ -123,6 +116,11 @@ template $ProfileSettings: Adw.PreferencesDialog {
             }
 
             Adw.PreferencesGroup {
+              Adw.EntryRow name {
+                title: _("Name");
+                changed => $_on_change();
+              }
+
               Adw.EntryRow about {
                 title: _("About");
                 changed => $_on_change();
