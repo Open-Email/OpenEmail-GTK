@@ -6,7 +6,9 @@ import re
 from re import Match
 from typing import Any
 
-from gi.repository import GLib, GObject, Gtk, Pango
+from gi.repository import GLib, Gtk, Pango
+
+from openemail import Property
 
 MAX_LINES = 5
 MAX_CHARS = 100
@@ -27,9 +29,9 @@ class Body(Gtk.TextView):
 
     __gtype_name__ = "Body"
 
-    summary = GObject.Property(type=bool, default=False)
+    summary = Property(bool)
 
-    @GObject.Property(type=str)
+    @Property(str)
     def text(self) -> str | None:
         """The message's formatted body."""
         return self.props.buffer.props.text

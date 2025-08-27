@@ -4,13 +4,16 @@
 
 from typing import TYPE_CHECKING, Any, cast
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, Gtk
 
 import openemail as app
-from openemail import PREFIX, Notifier
+from openemail import PREFIX, Notifier, Property
 
 if TYPE_CHECKING:
     from .window import Window
+
+
+child = Gtk.Template.Child()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/page.ui")
@@ -19,21 +22,21 @@ class Page(Adw.BreakpointBin):
 
     __gtype_name__ = "Page"
 
-    split_view: Adw.NavigationSplitView = Gtk.Template.Child()
-    sync_button: Gtk.Button = Gtk.Template.Child()
+    split_view: Adw.NavigationSplitView = child
+    sync_button: Gtk.Button = child
 
-    factory = GObject.Property(type=Gtk.ListItemFactory)
+    factory = Property(Gtk.ListItemFactory)
 
-    sidebar_child_name = GObject.Property(type=str, default="empty")
-    search_text = GObject.Property(type=str)
+    sidebar_child_name = Property(str, default="empty")
+    search_text = Property(str)
 
-    title = GObject.Property(type=str, default=_("Content"))
-    details = GObject.Property(type=Gtk.Widget)
-    toolbar_button = GObject.Property(type=Gtk.Widget)
-    empty_page = GObject.Property(type=Gtk.Widget)
+    title = Property(str, default=_("Content"))
+    details = Property(Gtk.Widget)
+    toolbar_button = Property(Gtk.Widget)
+    empty_page = Property(Gtk.Widget)
 
-    model = GObject.Property(type=Gtk.SingleSelection)
-    loading = GObject.Property(type=bool, default=False)
+    model = Property(Gtk.SingleSelection)
+    loading = Property(bool)
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)

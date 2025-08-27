@@ -5,13 +5,15 @@
 from contextlib import suppress
 from typing import Any
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, Gtk
 
 import openemail as app
-from openemail import PREFIX
+from openemail import PREFIX, Property
 
 from .form import Form
 from .window import Window
+
+child = Gtk.Template.Child()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/preferences.ui")
@@ -20,20 +22,20 @@ class Preferences(Adw.PreferencesDialog):
 
     __gtype_name__ = "Preferences"
 
-    confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()
-    confirm_delete_dialog: Adw.AlertDialog = Gtk.Template.Child()
-    sync_interval_combo_row: Adw.ComboRow = Gtk.Template.Child()
-    empty_trash_combo_row: Adw.ComboRow = Gtk.Template.Child()
+    confirm_remove_dialog: Adw.AlertDialog = child
+    confirm_delete_dialog: Adw.AlertDialog = child
+    sync_interval_combo_row: Adw.ComboRow = child
+    empty_trash_combo_row: Adw.ComboRow = child
 
-    domains: Adw.PreferencesGroup = Gtk.Template.Child()
-    add_domain_dialog: Adw.AlertDialog = Gtk.Template.Child()
-    domain_entry: Adw.EntryRow = Gtk.Template.Child()
-    domain_form: Form = Gtk.Template.Child()
+    domains: Adw.PreferencesGroup = child
+    add_domain_dialog: Adw.AlertDialog = child
+    domain_entry: Adw.EntryRow = child
+    domain_form: Form = child
 
-    private_signing_key = GObject.Property(type=str)
-    private_encryption_key = GObject.Property(type=str)
-    public_signing_key = GObject.Property(type=str)
-    public_encryption_key = GObject.Property(type=str)
+    private_signing_key = Property(str)
+    private_encryption_key = Property(str)
+    public_signing_key = Property(str)
+    public_encryption_key = Property(str)
 
     _sync_intervals = (0, 60, 300, 900, 1800, 3600)
     _trash_intervals = (0, 1, 7, 14, 30)

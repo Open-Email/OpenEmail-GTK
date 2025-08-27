@@ -7,7 +7,9 @@ from typing import Any
 from gi.repository import Adw, GObject, Gtk
 
 import openemail as app
-from openemail import APP_ID, PREFIX, Address, Profile, ProfileField
+from openemail import APP_ID, PREFIX, Address, Profile, ProfileField, Property
+
+child = Gtk.Template.Child()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/profile-view.ui")
@@ -18,24 +20,24 @@ class ProfileView(Adw.Bin):
 
     _groups: list[Adw.PreferencesGroup]
 
-    page: Adw.PreferencesPage = Gtk.Template.Child()
+    page: Adw.PreferencesPage = child
 
-    image_dialog: Adw.Dialog = Gtk.Template.Child()
-    confirm_remove_dialog: Adw.AlertDialog = Gtk.Template.Child()
+    image_dialog: Adw.Dialog = child
+    confirm_remove_dialog: Adw.AlertDialog = child
 
-    name = GObject.Property(type=str)
-    address = GObject.Property(type=str)
-    away = GObject.Property(type=bool, default=False)
-    is_contact = GObject.Property(type=bool, default=False)
-    app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
-    broadcasts = GObject.Property(type=bool, default=True)
+    name = Property(str)
+    address = Property(str)
+    away = Property(bool)
+    is_contact = Property(bool)
+    app_icon_name = Property(str, default=f"{APP_ID}-symbolic")
+    broadcasts = Property(bool)
 
-    visible_child_name = GObject.Property(type=str, default="empty")
+    visible_child_name = Property(str, default="empty")
 
     _profile: Profile | None = None
     _broadcasts_binding: GObject.Binding | None = None
 
-    @GObject.Property(type=Profile)
+    @Property(Profile)
     def profile(self) -> Profile | None:
         """The profile of the user, if one was found."""
         return self._profile
@@ -82,11 +84,8 @@ class ProfileView(Adw.Bin):
         if self._broadcasts_binding:
             self._broadcasts_binding.unbind()
 
-        self._broadcasts_binding = profile.bind_property(
-            "receive-broadcasts",
-            self,
-            "broadcasts",
-            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
+        self._broadcasts_binding = Property.bind(
+            profile, "receive-broadcasts", self, "broadcasts", bidirectional=True
         )
 
         self.visible_child_name = "profile"

@@ -18,6 +18,7 @@ from .core.client import WriteError, user
 from .core.model import Address
 from .notifier import Notifier
 from .profile import Profile
+from .property import Property
 
 
 def get_ident(message: model.Message) -> str:
@@ -30,17 +31,14 @@ class Attachment(GObject.Object):
 
     __gtype_name__ = "Attachment"
 
-    name = GObject.Property(type=str)
-    type = GObject.Property(type=str)
-    size = GObject.Property(type=str)
-    modified = GObject.Property(type=str)
+    name = Property(str)
+    type = Property(str)
+    size = Property(str)
+    modified = Property(str)
 
-    icon = GObject.Property(
-        type=Gio.Icon,
-        default=Gio.ThemedIcon.new("application-x-generic"),
-    )
+    icon = Property(Gio.Icon, default=Gio.ThemedIcon.new("application-x-generic"))
 
-    can_remove = GObject.Property(type=bool, default=False)
+    can_remove = Property(bool)
 
     @abstractmethod
     def open(self):
@@ -58,7 +56,7 @@ class Attachment(GObject.Object):
 class OutgoingAttachment(Attachment):
     """An attachment that has not yet been sent."""
 
-    file = GObject.Property(type=Gio.File)
+    file = Property(Gio.File)
 
     def __init__(self, **kwargs: Any):
         super().__init__(can_remove=True, **kwargs)
@@ -219,43 +217,43 @@ class Message(GObject.Object):
 
     __gtype_name__ = "Message"
 
-    date = GObject.Property(type=str)
-    datetime = GObject.Property(type=str)
-    unix = GObject.Property(type=int)
+    date = Property(str)
+    datetime = Property(str)
+    unix = Property(int)
 
-    subject = GObject.Property(type=str)
-    body = GObject.Property(type=str)
-    unread = GObject.Property(type=bool, default=False)
+    subject = Property(str)
+    body = Property(str)
+    unread = Property(bool)
 
-    subject_id = GObject.Property(type=str)
-    draft_id = GObject.Property(type=str)
-    broadcast = GObject.Property(type=bool, default=False)
+    subject_id = Property(str)
+    draft_id = Property(str)
+    broadcast = Property(bool)
 
-    can_reply = GObject.Property(type=bool, default=False)
-    outgoing = GObject.Property(type=bool, default=False)
-    incoming = GObject.Property(type=bool, default=True)
-    can_trash = GObject.Property(type=bool, default=False)
+    can_reply = Property(bool)
+    outgoing = Property(bool)
+    incoming = Property(bool, default=True)
+    can_trash = Property(bool)
 
-    author = GObject.Property(type=str)
-    original_author = GObject.Property(type=str)
-    different_author = GObject.Property(type=bool, default=False)
-    readers = GObject.Property(type=str)
-    reader_addresses = GObject.Property(type=str)
+    author = Property(str)
+    original_author = Property(str)
+    different_author = Property(bool)
+    readers = Property(str)
+    reader_addresses = Property(str)
 
-    attachments = GObject.Property(type=Gio.ListStore)
+    attachments = Property(Gio.ListStore)
 
-    name = GObject.Property(type=str)
-    icon_name = GObject.Property(type=str)
-    profile_image = GObject.Property(type=Gdk.Paintable)
-    show_initials = GObject.Property(type=bool, default=False)
-    profile = GObject.Property(type=Profile)
+    name = Property(str)
+    icon_name = Property(str)
+    profile_image = Property(Gdk.Paintable)
+    show_initials = Property(bool)
+    profile = Property(Profile)
 
     _name_binding: GObject.Binding | None = None
     _image_binding: GObject.Binding | None = None
 
     _message: model.Message | None = None
 
-    @GObject.Property(type=bool, default=False)
+    @Property(bool)
     def trashed(self) -> bool:
         """Whether the item is in the trash."""
         from .store import settings
@@ -350,17 +348,15 @@ class Message(GObject.Object):
             self.icon_name = "contacts-symbolic"
             return
 
+        self.show_initials = True
+
         self.profile = Profile.of(
             readers[0] if (self.outgoing and readers) else message.author
         )
 
-        self._name_binding = self.profile.bind_property(
-            "name", self, "name", GObject.BindingFlags.SYNC_CREATE
-        )
-
-        self.show_initials = True
-        self._image_binding = self.profile.bind_property(
-            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
+        self._name_binding = Property.bind(self.profile, "name", self)
+        self._image_binding = Property.bind(
+            self.profile, "image", self, "profile-image"
         )
 
     def trash(self):

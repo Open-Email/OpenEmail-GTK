@@ -5,10 +5,10 @@
 
 from contextlib import suppress
 
-from gi.repository import GObject, Gtk
+from gi.repository import Gtk
 
 import openemail as app
-from openemail import PREFIX, Profile
+from openemail import PREFIX, Profile, Property
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contact-row.ui")
@@ -17,7 +17,7 @@ class ContactRow(Gtk.Box):
 
     __gtype_name__ = "ContactRow"
 
-    profile = GObject.Property(type=Profile)
+    profile = Property(Profile)
 
     @Gtk.Template.Callback()
     def _accept(self, *_args):

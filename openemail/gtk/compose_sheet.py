@@ -6,7 +6,7 @@ import re
 from collections.abc import Iterable
 from typing import Any, Self
 
-from gi.repository import Adw, Gio, GObject, Gtk
+from gi.repository import Adw, Gio, Gtk
 
 import openemail as app
 from openemail import (
@@ -16,11 +16,14 @@ from openemail import (
     Message,
     OutgoingAttachment,
     Profile,
+    Property,
 )
 
 from .attachments import Attachments
 from .body import Body
 from .form import Form
+
+child = Gtk.Template.Child()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/compose-sheet.ui")
@@ -31,20 +34,20 @@ class ComposeSheet(Adw.BreakpointBin):
 
     default: Self
 
-    bottom_sheet: Adw.BottomSheet = Gtk.Template.Child()
-    readers: Gtk.Text = Gtk.Template.Child()
-    subject: Gtk.Text = Gtk.Template.Child()
-    body_view: Body = Gtk.Template.Child()
-    compose_form: Form = Gtk.Template.Child()
+    bottom_sheet: Adw.BottomSheet = child
+    readers: Gtk.Text = child
+    subject: Gtk.Text = child
+    body_view: Body = child
+    compose_form: Form = child
 
-    attachments: Attachments = Gtk.Template.Child()
+    attachments: Attachments = child
 
     body: Gtk.TextBuffer
     subject_id: str | None = None
     ident: str | None = None
 
-    content = GObject.Property(type=Gtk.Widget)
-    privacy = GObject.Property(type=str, default="private")
+    content = Property(Gtk.Widget)
+    privacy = Property(str, default="private")
 
     _completion_running = False
 
@@ -53,9 +56,7 @@ class ComposeSheet(Adw.BreakpointBin):
 
         self.attachments.model = Gio.ListStore.new(OutgoingAttachment)
         self.body = self.body_view.props.buffer
-        self.bind_property(
-            "content", self.bottom_sheet, "content", GObject.BindingFlags.BIDIRECTIONAL
-        )
+        Property.bind(self, "content", self.bottom_sheet, bidirectional=True)
 
     def new_message(self):
         """Open `self` with empty contents."""

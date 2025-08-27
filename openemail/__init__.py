@@ -41,6 +41,7 @@ from .profile import delete_image as delete_profile_image
 from .profile import refresh as refresh_profile
 from .profile import update as update_profile
 from .profile import update_image as update_profile_image
+from .property import Property
 from .store import (
     ADDRESS_SPLIT_PATTERN,
     DictStore,

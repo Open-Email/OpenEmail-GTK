@@ -30,6 +30,7 @@ from .core.model import Address
 from .message import Message, get_ident
 from .notifier import Notifier
 from .profile import Profile, refresh
+from .property import Property
 
 ADDRESS_SPLIT_PATTERN = ",|;| "
 
@@ -50,7 +51,7 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
     key_for: Callable[[Any], K] = lambda k: k
     default_factory: Callable[[Any], V]
 
-    updating = GObject.Property(type=bool, default=False)
+    updating = Property(bool)
 
     _items: dict[K, V]
 
@@ -232,12 +233,12 @@ class People(GObject.Object):
 
     __gtype_name__ = "People"
 
-    @GObject.Property(type=_AddressBook)
+    @Property(_AddressBook)
     def address_book(self) -> _AddressBook:
         """The global model for contacts."""
         return address_book
 
-    @GObject.Property(type=Gtk.FlattenListModel)
+    @Property(Gtk.FlattenListModel)
     def all(self) -> Gtk.FlattenListModel:
         """The global model for both the address book and contact requests."""
         return all_contacts

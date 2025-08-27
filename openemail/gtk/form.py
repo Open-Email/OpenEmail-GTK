@@ -4,11 +4,11 @@
 # SPDX-FileContributor: Jamie Gravendeel
 
 import re
-from typing import Any, cast
+from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import ADDRESS_SPLIT_PATTERN, Address
+from openemail import ADDRESS_SPLIT_PATTERN, Address, Property
 
 
 class FormFieldType(GObject.GEnum):
@@ -24,14 +24,14 @@ class FormField(GObject.Object):
 
     __gtype_name__ = "FormField"
 
-    type = GObject.Property(type=FormFieldType, default=FormFieldType.PLAIN)
+    type = Property(FormFieldType, default=FormFieldType.PLAIN)
 
-    active = GObject.Property(type=bool, default=True)
-    valid = GObject.Property(type=bool, default=False)
+    active = Property(bool, default=True)
+    valid = Property(bool)
 
-    text = GObject.Property(type=str)
+    text = Property(str)
 
-    @GObject.Property(type=Gtk.Widget)
+    @Property(Gtk.Widget)
     def field(self) -> Gtk.Editable | Gtk.TextView:
         """The field containing the text."""
         return self._field
@@ -41,12 +41,12 @@ class FormField(GObject.Object):
         self._field = field
 
         buffer = field.props.buffer if isinstance(field, Gtk.TextView) else field
-        buffer.bind_property("text", self, "text", GObject.BindingFlags.BIDIRECTIONAL)
+        Property.bind(buffer, "text", self, bidirectional=True)  # pyright: ignore[reportArgumentType]
         buffer.connect("notify::text", lambda *_: self.validate())
 
     def validate(self):
         """Validate the form field."""
-        match cast("FormFieldType", self.type):
+        match self.type:
             case FormFieldType.PLAIN:
                 self.valid = bool(self.text)
 
@@ -82,7 +82,7 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
 
     __gtype_name__ = "Form"
 
-    submit_widget = GObject.Property(type=Gtk.Widget)
+    submit_widget = Property(Gtk.Widget)
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)

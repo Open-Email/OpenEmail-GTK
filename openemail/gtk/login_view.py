@@ -7,9 +7,11 @@ from typing import Any
 from gi.repository import Adw, GLib, GObject, Gtk
 
 import openemail as app
-from openemail import APP_ID, PREFIX, Address, KeyPair, Notifier
+from openemail import APP_ID, PREFIX, Address, KeyPair, Notifier, Property
 
 from .form import Form
+
+child = Gtk.Template.Child()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/login-view.ui")
@@ -18,21 +20,21 @@ class LoginView(Adw.Bin):
 
     __gtype_name__ = "LoginView"
 
-    navigation_view: Adw.NavigationView = Gtk.Template.Child()
+    navigation_view: Adw.NavigationView = child
 
-    email_status_page: Adw.StatusPage = Gtk.Template.Child()
-    email_entry: Adw.EntryRow = Gtk.Template.Child()
-    email_form: Form = Gtk.Template.Child()
+    email_status_page: Adw.StatusPage = child
+    email_entry: Adw.EntryRow = child
+    email_form: Form = child
 
-    user_name_entry: Adw.EntryRow = Gtk.Template.Child()
-    register_form: Form = Gtk.Template.Child()
+    user_name_entry: Adw.EntryRow = child
+    register_form: Form = child
 
-    signing_key_entry: Adw.EntryRow = Gtk.Template.Child()
-    encryption_key_entry: Adw.EntryRow = Gtk.Template.Child()
-    auth_form: Form = Gtk.Template.Child()
+    signing_key_entry: Adw.EntryRow = child
+    encryption_key_entry: Adw.EntryRow = child
+    auth_form: Form = child
 
-    button_child_name = GObject.Property(type=str, default="label")
-    register_button_child_name = GObject.Property(type=str, default="label")
+    button_child_name = Property(str, default="label")
+    register_button_child_name = Property(str, default="label")
 
     authenticated = GObject.Signal()
 

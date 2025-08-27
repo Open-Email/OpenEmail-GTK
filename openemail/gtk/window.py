@@ -6,13 +6,15 @@ import json
 from typing import Any
 
 import keyring
-from gi.repository import Adw, Gio, GObject, Gtk
+from gi.repository import Adw, Gio, Gtk
 
 import openemail as app
-from openemail import APP_ID, PREFIX, Notifier
+from openemail import APP_ID, PREFIX, Notifier, Property
 
 from .content import Content
 from .login_view import LoginView
+
+child = Gtk.Template.Child()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/window.ui")
@@ -21,12 +23,12 @@ class Window(Adw.ApplicationWindow):
 
     __gtype_name__ = "Window"
 
-    toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
+    toast_overlay: Adw.ToastOverlay = child
 
-    login_view: LoginView = Gtk.Template.Child()
-    content: Content = Gtk.Template.Child()
+    login_view: LoginView = child
+    content: Content = child
 
-    visible_child_name = GObject.Property(type=str, default="auth")
+    visible_child_name = Property(str, default="auth")
 
     _quit: bool = False
 

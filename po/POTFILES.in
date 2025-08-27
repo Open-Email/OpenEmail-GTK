@@ -47,4 +47,5 @@ openemail/configuration.py.in
 openemail/message.py
 openemail/notifier.py
 openemail/profile.py
+openemail/property.py
 openemail/store.py

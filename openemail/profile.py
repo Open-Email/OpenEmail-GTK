@@ -14,6 +14,7 @@ from .core.client import WriteError, user
 from .core.crypto import KeyPair
 from .core.model import Address, User
 from .notifier import Notifier
+from .property import Property
 
 MAX_IMAGE_DIMENSIONS = 800
 
@@ -21,8 +22,8 @@ MAX_IMAGE_DIMENSIONS = 800
 class ProfileField(GObject.Object):
     """A field for information on a user."""
 
-    ident = GObject.Property(type=str)
-    name = GObject.Property(type=str)
+    ident = Property(str)
+    name = Property(str)
 
     def __init__(self, ident: str, name: str, **kwargs: Any):
         super().__init__(**kwargs)
@@ -34,8 +35,8 @@ class ProfileField(GObject.Object):
 class ProfileCategory(GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]
     """A category of profile fields."""
 
-    ident = GObject.Property(type=str)
-    name = GObject.Property(type=str)
+    ident = Property(str)
+    name = Property(str)
 
     def __init__(
         self,
@@ -71,11 +72,11 @@ class Profile(GObject.Object):
 
     __gtype_name__ = "Profile"
 
-    updating = GObject.Property(type=bool, default=False)
+    updating = Property(bool)
 
-    contact_request = GObject.Property(type=bool, default=False)
-    has_name = GObject.Property(type=bool, default=False)
-    has_image = GObject.Property(type=bool, default=False)
+    contact_request = Property(bool)
+    has_name = Property(bool)
+    has_image = Property(bool)
 
     categories = (
         ProfileCategory(
@@ -162,7 +163,7 @@ class Profile(GObject.Object):
         self.address = profile.address
         self.name = profile.name
 
-    @GObject.Property(type=bool, default=True)
+    @Property(bool, default=True)
     def receive_broadcasts(self) -> bool:
         """Whether to receive broadcasts from the owner of the profile.
 
@@ -187,7 +188,7 @@ class Profile(GObject.Object):
             )
         )
 
-    @GObject.Property(type=str)
+    @Property(str)
     def address(self) -> str | None:
         """The profile owner's Mail/HTTPS address."""
         return self._address
@@ -197,7 +198,7 @@ class Profile(GObject.Object):
         self._address = address
         self.name = self.name or address
 
-    @GObject.Property(type=str)
+    @Property(str)
     def name(self) -> str | None:
         """The profile owner's name."""
         return self._name
@@ -207,7 +208,7 @@ class Profile(GObject.Object):
         self._name = name
         self.has_name = name != self.address
 
-    @GObject.Property(type=Gdk.Paintable)
+    @Property(Gdk.Paintable)
     def image(self) -> Gdk.Paintable | None:
         """The profile owner's profile image."""
         return self._image

@@ -63,4 +63,8 @@ suppress-dummy-args = true
 suppress-none-returning = true
 
 [tool.ruff.lint.pydocstyle]
-property-decorators = ["gi.repository.GObject.Property"]
+property-decorators = [
+  "openemail.Property",
+  "openemail.property.Property",
+  "gi.repository.GObject.Property",
+]

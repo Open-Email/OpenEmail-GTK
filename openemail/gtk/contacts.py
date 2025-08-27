@@ -18,17 +18,20 @@ for t in DictStore, People, ContactRow, ProfileView:
     GObject.type_ensure(t)
 
 
+child = Gtk.Template.Child()
+
+
 @Gtk.Template.from_resource(f"{PREFIX}/contacts.ui")
 class Contacts(Adw.NavigationPage):
     """A page with the contents of the user's address book."""
 
     __gtype_name__ = "Contacts"
 
-    content: Page = Gtk.Template.Child()
+    content: Page = child
 
-    add_contact_dialog: Adw.AlertDialog = Gtk.Template.Child()
-    address: Adw.EntryRow = Gtk.Template.Child()
-    address_form: Form = Gtk.Template.Child()
+    add_contact_dialog: Adw.AlertDialog = child
+    address: Adw.EntryRow = child
+    address_form: Form = child
 
     @Gtk.Template.Callback()
     def _new_contact(self, *_args):

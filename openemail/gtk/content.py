@@ -8,7 +8,7 @@ from typing import Any
 from gi.repository import Adw, Gdk, GObject, Gtk
 
 import openemail as app
-from openemail import APP_ID, PREFIX, Notifier, Profile
+from openemail import APP_ID, PREFIX, Notifier, Profile, Property
 
 from .compose_sheet import ComposeSheet
 from .contacts import Contacts
@@ -20,26 +20,29 @@ for t in Contacts, Broadcasts, Drafts, Inbox, Outbox, Trash:
     GObject.type_ensure(t)
 
 
+child = Gtk.Template.Child()
+
+
 @Gtk.Template.from_resource(f"{PREFIX}/content.ui")
 class Content(Adw.BreakpointBin):
     """The main content of the application."""
 
     __gtype_name__ = "Content"
 
-    compose_sheet: ComposeSheet = Gtk.Template.Child()
-    split_view: Adw.OverlaySplitView = Gtk.Template.Child()
+    compose_sheet: ComposeSheet = child
+    split_view: Adw.OverlaySplitView = child
 
-    sidebar_toolbar_view: Adw.ToolbarView = Gtk.Template.Child()
-    sidebar: Gtk.ListBox = Gtk.Template.Child()
-    stack: Adw.ViewStack = Gtk.Template.Child()
-    profile_settings: ProfileSettings = Gtk.Template.Child()
+    sidebar_toolbar_view: Adw.ToolbarView = child
+    sidebar: Gtk.ListBox = child
+    stack: Adw.ViewStack = child
+    profile_settings: ProfileSettings = child
 
-    content_child_name = GObject.Property(type=str, default="inbox")
-    profile_stack_child_name = GObject.Property(type=str, default="loading")
-    profile_image = GObject.Property(type=Gdk.Paintable)
-    app_icon_name = GObject.Property(type=str, default=f"{APP_ID}-symbolic")
+    content_child_name = Property(str, default="inbox")
+    profile_stack_child_name = Property(str, default="loading")
+    profile_image = Property(Gdk.Paintable)
+    app_icon_name = Property(str, default=f"{APP_ID}-symbolic")
 
-    @GObject.Property(type=str)
+    @Property(str)
     def header_bar_layout(self) -> str:
         """The layout to use based on window controls."""
         if not platform.startswith("darwin"):
@@ -57,15 +60,9 @@ class Content(Adw.BreakpointBin):
         self.sidebar.set_header_func(self._header_func)
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
-        Notifier().bind_property(
-            "sending",
-            self.sidebar_toolbar_view,
-            "reveal-bottom-bars",
-            GObject.BindingFlags.SYNC_CREATE,
-        )
-
-        Profile.of(app.user).bind_property(
-            "image", self, "profile-image", GObject.BindingFlags.SYNC_CREATE
+        Property.bind(Profile.of(app.user), "image", self, "profile-image")
+        Property.bind(
+            Notifier(), "sending", self.sidebar_toolbar_view, "reveal-bottom-bars"
         )
 
         self.get_settings().connect(

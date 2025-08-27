@@ -8,11 +8,13 @@ from typing import Any
 from gi.repository import Adw, GObject, Gtk
 
 import openemail as app
-from openemail import PREFIX, Message, Notifier
+from openemail import PREFIX, Message, Notifier, Property
 
 from .attachments import Attachments
 from .body import Body
 from .profile_view import ProfileView
+
+child = Gtk.Template.Child()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/message-view.ui")
@@ -21,13 +23,13 @@ class MessageView(Gtk.Box):
 
     __gtype_name__ = "MessageView"
 
-    reply_button: Gtk.Button = Gtk.Template.Child()
-    body_view: Body = Gtk.Template.Child()
-    attachments: Attachments = Gtk.Template.Child()
+    reply_button: Gtk.Button = child
+    body_view: Body = child
+    attachments: Attachments = child
 
-    profile_dialog: Adw.Dialog = Gtk.Template.Child()
-    profile_view: ProfileView = Gtk.Template.Child()
-    confirm_discard_dialog: Adw.AlertDialog = Gtk.Template.Child()
+    profile_dialog: Adw.Dialog = child
+    profile_view: ProfileView = child
+    confirm_discard_dialog: Adw.AlertDialog = child
 
     reply = GObject.Signal()
     undo = GObject.Signal(flags=GObject.SignalFlags.ACTION)
@@ -35,7 +37,7 @@ class MessageView(Gtk.Box):
     _history: dict[Adw.Toast, Callable[[], Any]]
     _message: Message | None = None
 
-    @GObject.Property(type=Message)
+    @Property(Message)
     def message(self) -> Message | None:
         """The `Message` that `self` represents."""
         return self._message

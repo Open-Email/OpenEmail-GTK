@@ -7,12 +7,14 @@ from typing import Any, Self
 
 from gi.repository import Adw, GObject
 
+from .property import Property
+
 
 class Notifier(GObject.Object):
     """Used for sending user-facing information throughout the application."""
 
-    sending = GObject.Property(type=bool, default=False)
-    syncing = GObject.Property(type=bool, default=False)
+    sending = Property(bool)
+    syncing = Property(bool)
 
     send_notification = GObject.Signal("send", arg_types=(Adw.Toast,))
 

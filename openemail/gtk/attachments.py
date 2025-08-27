@@ -4,9 +4,9 @@
 
 from typing import Any, override
 
-from gi.repository import Adw, Gio, GObject, Gtk
+from gi.repository import Adw, Gio, Gtk
 
-from openemail import PREFIX
+from openemail import PREFIX, IncomingAttachment, OutgoingAttachment, Property
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/attachments.ui")
@@ -15,12 +15,15 @@ class Attachments(Adw.Bin):
 
     __gtype_name__ = "Attachments"
 
-    model = GObject.Property(type=Gio.ListStore)
+    model = Property(Gio.ListStore)
 
     @Gtk.Template.Callback()
     def _open(self, _obj, pos: int):
-        if attachment := self.model.get_item(pos):
-            attachment.open(self)
+        match attachment := self.model.get_item(pos):
+            case OutgoingAttachment():
+                attachment.open()
+            case IncomingAttachment():
+                attachment.open(self)
 
 
 class RemoveAttachmentButton(Gtk.Button):
@@ -28,7 +31,7 @@ class RemoveAttachmentButton(Gtk.Button):
 
     __gtype_name__ = "RemoveAttachmentButton"
 
-    position = GObject.Property(type=int)
+    position = Property(int)
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)

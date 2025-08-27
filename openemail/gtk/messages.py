@@ -7,7 +7,8 @@ from typing import Any
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 import openemail as app
-from openemail import PREFIX, Message
+from openemail import PREFIX, Message, Property
+from openemail.store import DictStore
 
 from .compose_sheet import ComposeSheet
 from .page import Page
@@ -57,7 +58,7 @@ class _Messages(Adw.NavigationPage):
 
 
 class _Folder(_Messages):
-    folder: Gio.ListModel
+    folder: DictStore[str, Message]
     title: str
 
     def __init__(self, **kwargs: Any):
@@ -65,14 +66,12 @@ class _Folder(_Messages):
 
         self.content.toolbar_button = self._get_object("toolbar_new")
         self.content.empty_page = self._get_object("no_messages")
-        self.content.model.bind_property("selected-item", self.thread_view, "message")
+        Property.bind(self.content.model, "selected-item", self.thread_view, "message")
 
         for button in self.content.toolbar_button, self._get_object("new_button"):
             button.connect("clicked", lambda *_: ComposeSheet.default.new_message())
 
-        self.folder.bind_property(
-            "updating", self.content, "loading", GObject.BindingFlags.SYNC_CREATE
-        )
+        Property.bind(self.folder, "updating", self.content, "loading")
 
 
 class Inbox(_Folder):
@@ -107,9 +106,7 @@ class Drafts(_Messages):
         self.content.toolbar_button = delete_button
 
         self.content.empty_page = self._get_object("no_drafts")
-        self.content.model.bind_property(
-            "n-items", delete_button, "sensitive", GObject.BindingFlags.SYNC_CREATE
-        )
+        Property.bind(self.content.model, "n-items", delete_button, "sensitive")
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args):
         if isinstance(msg := selection.props.selected_item, Message):
@@ -142,10 +139,8 @@ class Trash(_Messages):
         self.content.toolbar_button = empty_button
 
         self.content.empty_page = self._get_object("empty_trash")
-        self.content.model.bind_property("selected-item", self.thread_view, "message")
-        self.content.model.bind_property(
-            "n-items", empty_button, "sensitive", GObject.BindingFlags.SYNC_CREATE
-        )
+        Property.bind(self.content.model, "selected-item", self.thread_view, "message")
+        Property.bind(self.content.model, "n-items", empty_button, "sensitive")
 
         def set_loading(*_args):
             self.content.loading = app.inbox.updating or app.broadcasts.updating

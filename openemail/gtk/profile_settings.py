@@ -6,12 +6,14 @@ from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from typing import Any, cast
 
-from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk
 
 import openemail as app
-from openemail import PREFIX, Profile, ProfileField, WriteError
+from openemail import PREFIX, Profile, ProfileField, Property, WriteError
 
 from .form import Form
+
+child = Gtk.Template.Child()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/profile-settings.ui")
@@ -20,17 +22,17 @@ class ProfileSettings(Adw.PreferencesDialog):
 
     __gtype_name__ = "ProfileSettings"
 
-    name: Adw.EntryRow = Gtk.Template.Child()
-    away: Adw.ExpanderRow = Gtk.Template.Child()
-    away_warning: Adw.EntryRow = Gtk.Template.Child()
-    status: Adw.EntryRow = Gtk.Template.Child()
-    about: Adw.EntryRow = Gtk.Template.Child()
-    name_form: Form = Gtk.Template.Child()
+    name: Adw.EntryRow = child
+    away: Adw.ExpanderRow = child
+    away_warning: Adw.EntryRow = child
+    status: Adw.EntryRow = child
+    about: Adw.EntryRow = child
+    name_form: Form = child
 
-    address = GObject.Property(type=str)
+    address = Property(str)
 
-    pending = GObject.Property(type=bool, default=False)
-    visible_child_name = GObject.Property(type=str, default="loading")
+    pending = Property(bool)
+    visible_child_name = Property(str, default="loading")
 
     _pages: list[Adw.PreferencesPage]
     _fields: dict[str, Callable[[], str]]
@@ -38,7 +40,7 @@ class ProfileSettings(Adw.PreferencesDialog):
 
     _profile: Profile | None = None
 
-    @GObject.Property(type=Profile)
+    @Property(Profile)
     def profile(self) -> Profile | None:
         """The profile of the user, if one was found."""
         return self._profile

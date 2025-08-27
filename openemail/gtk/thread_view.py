@@ -8,7 +8,7 @@ from typing import Any
 from gi.repository import Adw, GLib, GObject, Gtk
 
 import openemail as app
-from openemail import APP_ID, Message
+from openemail import APP_ID, Message, Property
 
 from .message_view import MessageView
 
@@ -29,7 +29,7 @@ class ThreadView(Adw.Bin):
 
     _message: Message | None = None
 
-    @GObject.Property(type=Message)
+    @Property(Message)
     def message(self) -> Message | None:
         """The `Message` that `self` represents."""
         return self._message

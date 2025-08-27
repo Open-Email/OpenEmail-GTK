@@ -3,10 +3,10 @@
 # SPDX-FileContributor: kramo
 
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, Gtk
 
 import openemail as app
-from openemail import PREFIX, Message, Profile
+from openemail import PREFIX, Message, Profile, Property
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/navigation-row.ui")
@@ -15,12 +15,12 @@ class NavigationRow(Gtk.ListBoxRow):
 
     __gtype_name__ = "NavigationRow"
 
-    counter = GObject.Property(type=str)
-    separator = GObject.Property(type=bool, default=False)
+    counter = Property(str)
+    separator = Property(bool)
 
     _page: Adw.ViewStackPage
 
-    @GObject.Property(type=Adw.ViewStackPage)
+    @Property(Adw.ViewStackPage)
     def page(self) -> Adw.ViewStackPage:
         """The `Adw.ViewStackPage` that `self` represents."""
         return self._page
