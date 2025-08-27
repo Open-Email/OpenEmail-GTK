@@ -60,11 +60,14 @@ class ThreadView(Adw.Bin):
 
         row = self._append(message)
 
-        for current in chain(app.inbox, app.outbox):
-            if (current == message) or (current.subject_id != message.subject_id):
-                continue
+        # TODO: Instead of this check,
+        # subject_id should just always be set for outgoing messages
+        if not message.subject_id:
+            return
 
-            self._append(current)
+        for current in chain(app.inbox, app.outbox):
+            if (current != message) and (current.subject_id == message.subject_id):
+                self._append(current)
 
         GLib.timeout_add(100, self.viewport.scroll_to, row)
 
