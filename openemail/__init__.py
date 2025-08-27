@@ -69,9 +69,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(levelname)s: %(name)s:%(lineno)d %(message)s",
     handlers=(
-        (
-            logging.StreamHandler(),
-            RotatingFileHandler(log_path, maxBytes=1_000_000),
-        )
+        logging.StreamHandler(),
+        RotatingFileHandler(log_path, maxBytes=1_000_000),
     ),
 )
