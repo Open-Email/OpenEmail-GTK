@@ -1,9 +1,11 @@
 using Gtk 4.0;
 using Adw 1;
+using Gio 2.0;
 
 template $ComposeSheet: Adw.BreakpointBin {
   width-request: 360;
   height-request: 294;
+  body: bind body_view.buffer;
 
   Adw.Breakpoint {
     condition ("max-width: 900")
@@ -14,6 +16,7 @@ template $ComposeSheet: Adw.BreakpointBin {
   }
 
   child: Adw.BottomSheet bottom_sheet {
+    content: bind template.content bidirectional;
     reveal-bottom-bar: false;
     show-drag-handle: false;
     full-width: false;
@@ -169,6 +172,10 @@ template $ComposeSheet: Adw.BreakpointBin {
             $Attachments attachments {
               margin-start: 12;
               margin-end: 12;
+
+              model: Gio.ListStore {
+                item-type: typeof<$OutgoingAttachment>;
+              };
             }
           };
         };
@@ -267,6 +274,17 @@ template $ComposeSheet: Adw.BreakpointBin {
       };
     };
   };
+}
+
+Adw.AlertDialog confirm_send_dialog {
+  heading: _("Send Message?");
+  default-response: "send";
+  response::send => $_confirm_send();
+
+  responses [
+    close: _("Cancel"),
+    send: _("Send") suggested,
+  ]
 }
 
 $Form compose_form {

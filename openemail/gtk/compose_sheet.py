@@ -4,9 +4,9 @@
 
 import re
 from collections.abc import Iterable
-from typing import Any, Self
+from typing import Self
 
-from gi.repository import Adw, Gio, Gtk
+from gi.repository import Adw, Gtk
 
 import openemail as app
 from openemail import (
@@ -42,21 +42,17 @@ class ComposeSheet(Adw.BreakpointBin):
 
     attachments: Attachments = child
 
-    body: Gtk.TextBuffer
+    confirm_send_dialog: Adw.AlertDialog = child
+
     subject_id: str | None = None
     ident: str | None = None
 
+    body = Property(Gtk.TextBuffer)
     content = Property(Gtk.Widget)
     privacy = Property(str, default="private")
 
     _completion_running = False
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self.attachments.model = Gio.ListStore.new(OutgoingAttachment)
-        self.body = self.body_view.props.buffer
-        Property.bind(self, "content", self.bottom_sheet, bidirectional=True)
+    _readers: Iterable[Address]
 
     def new_message(self):
         """Open `self` with empty contents."""
@@ -129,46 +125,41 @@ class ComposeSheet(Adw.BreakpointBin):
     @Gtk.Template.Callback()
     def _send_message(self, *_args):
         if self.privacy == "public":
-            self._confirm_send(())
+            self._readers = ()
+            self._confirm_send()
             return
 
         split = re.split(ADDRESS_SPLIT_PATTERN, self.readers.props.text)
-        readers = tuple(Address(reader) for reader in split)
+        self._readers = tuple(Address(reader) for reader in split)
         warnings = {
             reader: Profile.of(reader).value_of("away-warning")
-            for reader in readers
+            for reader in self._readers
             if Profile.of(reader).value_of("away")
         }
 
         if not warnings:
-            self._confirm_send(readers)
+            self._confirm_send()
             return
 
-        alert = Adw.AlertDialog.new(
-            _("Send Message?"),
+        self.confirm_send_dialog.props.body = (
             _("The following readers indicated that they are away and may not see it:")
             + "\n"
             + "".join(
                 f"\n{Profile.of(address).name}{f': “{warning}”' if warning else ''}"
                 for address, warning in warnings.items()
-            ),
+            )
         )
 
-        alert.add_response("close", _("Cancel"))
-        alert.add_response("send", _("Send"))
-        alert.set_response_appearance("send", Adw.ResponseAppearance.SUGGESTED)
-        alert.set_default_response("send")
-        alert.connect("response::send", lambda *_: self._confirm_send(readers))
+        self.confirm_send_dialog.present(self)
 
-        alert.present(self)
-
-    def _confirm_send(self, readers: Iterable[Address]):
+    @Gtk.Template.Callback()
+    def _confirm_send(self, *_args):
         if self.ident:
             app.drafts.delete(self.ident)
 
         app.create_task(
             app.send_message(
-                readers,
+                self._readers,
                 self.subject.props.text,
                 self.body.props.text,
                 self.subject_id,
@@ -281,6 +272,7 @@ class ComposeSheet(Adw.BreakpointBin):
         self.subject_id = None
         self.ident = None
         self.privacy = "private"
+        del self._readers
 
         self.compose_form.reset()
         self.attachments.model.remove_all()
