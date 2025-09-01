@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="@PREFIX@">
-    <file preprocess="xml-stripblanks">attachments.ui</file>
-    <file preprocess="xml-stripblanks">compose-sheet.ui</file>
-    <file preprocess="xml-stripblanks">contact-row.ui</file>
-    <file preprocess="xml-stripblanks">contacts.ui</file>
-    <file preprocess="xml-stripblanks">content.ui</file>
-    <file preprocess="xml-stripblanks">login-view.ui</file>
-    <file preprocess="xml-stripblanks">message-row.ui</file>
-    <file preprocess="xml-stripblanks">message-view.ui</file>
-    <file preprocess="xml-stripblanks">messages.ui</file>
-    <file preprocess="xml-stripblanks">navigation-row.ui</file>
-    <file preprocess="xml-stripblanks">page.ui</file>
-    <file preprocess="xml-stripblanks">preferences.ui</file>
-    <file preprocess="xml-stripblanks">profile-settings.ui</file>
-    <file preprocess="xml-stripblanks">profile-view.ui</file>
-    <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
-    <file preprocess="xml-stripblanks">window.ui</file>
+    <file>attachments.ui</file>
+    <file>compose-sheet.ui</file>
+    <file>contact-row.ui</file>
+    <file>contacts.ui</file>
+    <file>content.ui</file>
+    <file>login-view.ui</file>
+    <file>message-row.ui</file>
+    <file>message-view.ui</file>
+    <file>messages.ui</file>
+    <file>navigation-row.ui</file>
+    <file>page.ui</file>
+    <file>preferences.ui</file>
+    <file>profile-settings.ui</file>
+    <file>profile-view.ui</file>
+    <file>shortcuts-dialog.ui</file>
+    <file>window.ui</file>
     <file>style.css</file>
   </gresource>
 </gresources>

@@ -21,6 +21,7 @@ blueprints = custom_target(
     command: [
         find_program('blueprint-compiler'),
         'batch-compile',
+        '--minify',
         '@OUTPUT@',
         '@CURRENT_SOURCE_DIR@',
         '@INPUT@',
