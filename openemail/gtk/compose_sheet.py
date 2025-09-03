@@ -63,17 +63,17 @@ class ComposeSheet(Adw.BreakpointBin):
         self.bottom_sheet.props.reveal_bottom_bar = True
         self.readers.grab_focus()
 
-    def open_message(self, message: Message):
-        """Open `self` with `message`."""
+    def open_draft(self, draft: Message):
+        """Open `self` with `draft`."""
         if self.bottom_sheet.props.reveal_bottom_bar:
             self._cancel()
 
-        self.privacy = "public" if message.broadcast else "private"
-        self.subject_id = message.subject_id
-        self.ident = message.draft_id
-        self.readers.props.text = message.readers
-        self.subject.props.text = message.subject
-        self.body.props.text = message.body
+        self.privacy = "public" if draft.is_broadcast else "private"
+        self.subject_id = draft.subject_id
+        self.ident = draft.draft_id
+        self.readers.props.text = draft.readers
+        self.subject.props.text = draft.subject
+        self.body.props.text = draft.body
 
         self.bottom_sheet.props.open = True
         self.bottom_sheet.props.reveal_bottom_bar = True
@@ -83,7 +83,7 @@ class ComposeSheet(Adw.BreakpointBin):
         if self.bottom_sheet.props.reveal_bottom_bar:
             self._cancel()
 
-        own_broadcast = message.broadcast and message.outgoing
+        own_broadcast = message.is_broadcast and message.is_outgoing
         self.privacy = "public" if own_broadcast else "private"
         self.readers.props.text = message.readers
         self.subject.props.text = message.subject
@@ -285,7 +285,14 @@ class ComposeSheet(Adw.BreakpointBin):
         body = self.body.props.text
         if subject or body:
             readers = self.readers.props.text
-            app.drafts.save(self.ident, readers, subject, body, self.subject_id)
+            app.drafts.save(
+                self.ident,
+                readers,
+                subject,
+                body,
+                self.subject_id,
+                self.privacy == "public",
+            )
 
         self._close()
 

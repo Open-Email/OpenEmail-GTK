@@ -583,6 +583,7 @@ def save_draft(draft: DraftMessage):
                 draft.subject_id,
                 list(map(str, draft.readers)),
                 draft.body,
+                draft.is_broadcast,
             ),
             file,
         )
@@ -616,6 +617,7 @@ def load_drafts() -> Generator[DraftMessage]:
                 subject_id=fields[2],
                 readers=[Address(r) for r in fields[3]],
                 body=fields[4],
+                broadcast=fields[5],
             )
         except (KeyError, ValueError):
             continue

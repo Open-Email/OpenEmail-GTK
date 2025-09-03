@@ -111,7 +111,7 @@ class Drafts(_Messages):
     def _on_selected(self, selection: Gtk.SingleSelection, *_args):
         if isinstance(msg := selection.props.selected_item, Message):
             selection.unselect_all()
-            ComposeSheet.default.open_message(msg)
+            ComposeSheet.default.open_draft(msg)
 
 
 class Trash(_Messages):

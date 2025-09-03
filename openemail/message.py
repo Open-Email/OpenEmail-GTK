@@ -231,7 +231,7 @@ class Message(GObject.Object):
     attachments = Property(Gio.ListStore)
     body = Property(str)
     unread = Property(bool)
-    broadcast = Property(bool)
+    is_broadcast = Property(bool)
 
     display_date = Property(str)
     display_datetime = Property(str)
@@ -242,7 +242,7 @@ class Message(GObject.Object):
     icon_name = Property(str)
     show_initials = Property(bool)
 
-    outgoing, incoming = Property(bool), Property(bool, default=True)
+    is_outgoing, is_incoming = Property(bool), Property(bool, default=True)
     different_author = Property(bool)
     can_reply = Property(bool)
     can_trash = Property(bool)
@@ -287,9 +287,10 @@ class Message(GObject.Object):
         self.subject = message.subject
         self.body = message.body or ""
         self.unread = message.new
+        self.is_broadcast = message.is_broadcast
 
-        self.outgoing = message.author == user.address
-        self.incoming = not self.outgoing
+        self.is_outgoing = message.author == user.address
+        self.is_incoming = not self.is_outgoing
 
         self._update_trashed_state()
 
@@ -298,7 +299,7 @@ class Message(GObject.Object):
         self.different_author = message.author != message.original_author
 
         readers = tuple(r for r in message.readers if r != user.address)
-        if message.is_broadcast:
+        if self.is_broadcast:
             self.display_readers = _("Public Message")
         else:
             # Others will be appended to this string in the format: ", reader1, reader2"
@@ -307,7 +308,7 @@ class Message(GObject.Object):
                 self.display_readers += f", {Profile.of(reader).name or reader}"
 
         self.readers = ", ".join(
-            map(str, readers if self.outgoing else (*readers, message.author))
+            map(str, readers if self.is_outgoing else (*readers, message.author))
         )
 
         self.attachments.remove_all()
@@ -333,12 +334,12 @@ class Message(GObject.Object):
             self.icon_name = "public-access-symbolic"
             return
 
-        if self.outgoing and message.is_broadcast:
+        if self.is_outgoing and message.is_broadcast:
             self.display_name = _("Public Message")
             self.icon_name = "broadcasts-symbolic"
             return
 
-        if self.outgoing and (len(readers) > 1):
+        if self.is_outgoing and (len(readers) > 1):
             self.display_name = ngettext(
                 "{} Reader",
                 "{} Readers",
@@ -349,7 +350,7 @@ class Message(GObject.Object):
 
         self.show_initials = True
         self.profile = Profile.of(
-            readers[0] if (self.outgoing and readers) else message.author
+            readers[0] if (self.is_outgoing and readers) else message.author
         )
 
         self._bindings = (
@@ -457,7 +458,7 @@ class Message(GObject.Object):
         settings_discard("unread-messages", get_ident(self._message))
 
     def _update_trashed_state(self):
-        self.can_trash = not (self.outgoing or self.trashed)
+        self.can_trash = not (self.is_outgoing or self.trashed)
         self.can_reply = not self.trashed
         self.notify("trashed")
 
@@ -472,14 +473,14 @@ async def send(
     readers: Iterable[Address],
     subject: str,
     body: str,
-    reply: str | None = None,
+    subject_id: str | None = None,
     attachments: Iterable[OutgoingAttachment] = (),
 ):
     """Send a message to `readers`.
 
     If `readers` is empty, send a broadcast.
 
-    `reply` is an optional `Subject-ID` of a thread that the message should be part of.
+    `subject_id` is an optional thread that the message is a part of.
 
     `attachments` is a dictionary of `Gio.File`s and filenames.
     """
@@ -513,7 +514,7 @@ async def send(
             readers=list(readers),
             subject=subject,
             body=body,
-            subject_id=reply,
+            subject_id=subject_id,
             files=files,
         )
     )

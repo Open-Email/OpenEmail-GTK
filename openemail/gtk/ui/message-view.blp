@@ -67,7 +67,7 @@ template $MessageView: Box {
 
       Label {
         halign: start;
-        visible: bind template.message as <$Message>.incoming;
+        visible: bind template.message as <$Message>.is_incoming;
         label: bind template.message as <$Message>.display-name;
         wrap: true;
         wrap-mode: word_char;
@@ -116,7 +116,7 @@ template $MessageView: Box {
       }
 
       Button {
-        visible: bind template.message as <$Message>.outgoing;
+        visible: bind template.message as <$Message>.is-outgoing;
         icon-name: "trash-symbolic";
         tooltip-text: _("Discard");
         clicked => $_discard();

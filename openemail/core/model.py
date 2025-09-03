@@ -151,7 +151,7 @@ class DraftMessage:
     @property
     def is_broadcast(self) -> bool:
         """Whether `self` is a broadcast."""
-        return False
+        return self._broadcast
 
     def __init__(
         self,
@@ -161,6 +161,7 @@ class DraftMessage:
         subject_id: str | None = None,
         readers: list[Address] | None = None,
         body: str | None = None,
+        broadcast: bool = False,
     ):
         from . import user
 
@@ -180,6 +181,8 @@ class DraftMessage:
 
         self.body = body
         self.new: bool = False
+
+        self._broadcast = broadcast
 
 
 class OutgoingMessage:

@@ -365,7 +365,8 @@ class _DraftStore(MessageStore):
         readers: str | None = None,
         subject: str | None = None,
         body: str | None = None,
-        reply: str | None = None,
+        subject_id: str | None = None,
+        broadcast: bool = False,
     ):
         """Save a draft to disk for future use.
 
@@ -385,7 +386,8 @@ class _DraftStore(MessageStore):
             readers=readers_list,
             subject=subject or "",
             body=body,
-            subject_id=reply,
+            subject_id=subject_id,
+            broadcast=broadcast,
         )
 
         client.save_draft(draft(ident=ident) if ident else draft())
