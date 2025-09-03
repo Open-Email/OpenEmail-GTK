@@ -35,7 +35,7 @@ template $MessageView: Box {
         margin-start: 6;
         margin-end: 6;
         size: 48;
-        text: bind template.message as <$Message>.name;
+        text: bind template.message as <$Message>.display-name;
         icon-name: bind template.message as <$Message>.icon-name;
         custom-image: bind template.message as <$Message>.profile-image;
         show-initials: bind template.message as <$Message>.show-initials;
@@ -54,7 +54,7 @@ template $MessageView: Box {
 
       Label {
         halign: start;
-        label: bind template.message as <$Message>.datetime;
+        label: bind template.message as <$Message>.display-datetime;
         wrap: true;
         wrap-mode: word;
         justify: right;
@@ -68,7 +68,7 @@ template $MessageView: Box {
       Label {
         halign: start;
         visible: bind template.message as <$Message>.incoming;
-        label: bind template.message as <$Message>.name;
+        label: bind template.message as <$Message>.display-name;
         wrap: true;
         wrap-mode: word_char;
 
@@ -92,7 +92,7 @@ template $MessageView: Box {
 
       Label {
         halign: start;
-        label: bind template.message as <$Message>.readers;
+        label: bind template.message as <$Message>.display-readers;
         wrap: true;
         wrap-mode: word_char;
         selectable: true;

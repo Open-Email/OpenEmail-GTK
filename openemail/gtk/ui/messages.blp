@@ -11,7 +11,7 @@ $Page content {
     model: FilterListModel {
       model: SortListModel sort_model {
         sorter: NumericSorter {
-          expression: expr item as <$Message>.unix;
+          expression: expr item as <$Message>.date;
           sort-order: descending;
         };
       };

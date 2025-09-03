@@ -89,7 +89,7 @@ class ThreadView(Adw.Bin):
         self.box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         self.box.add_css_class("background")
         self.box.set_sort_func(
-            lambda a, b: b.props.child.message.unix - a.props.child.message.unix
+            lambda a, b: b.props.child.message.date - a.props.child.message.date
         )
 
         self.box.set_header_func(

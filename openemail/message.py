@@ -221,40 +221,34 @@ class Message(GObject.Object):
 
     __gtype_name__ = "Message"
 
-    date = Property(str)
-    datetime = Property(str)
-    unix = Property(int)
-
-    subject = Property(str)
-    body = Property(str)
-    unread = Property(bool)
-
-    subject_id = Property(str)
     draft_id = Property(str)
-    broadcast = Property(bool)
-
-    can_reply = Property(bool)
-    outgoing = Property(bool)
-    incoming = Property(bool, default=True)
-    can_trash = Property(bool)
-
     author = Property(str)
     original_author = Property(str)
-    different_author = Property(bool)
+    date = Property(int)
+    subject = Property(str)
+    subject_id = Property(str)
     readers = Property(str)
-    reader_addresses = Property(str)
-
     attachments = Property(Gio.ListStore)
+    body = Property(str)
+    unread = Property(bool)
+    broadcast = Property(bool)
 
-    name = Property(str)
-    icon_name = Property(str)
-    profile_image = Property(Gdk.Paintable)
-    show_initials = Property(bool)
+    display_date = Property(str)
+    display_datetime = Property(str)
+    display_readers = Property(str)
+    display_name = Property(str)
     profile = Property(Profile)
+    profile_image = Property(Gdk.Paintable)
+    icon_name = Property(str)
+    show_initials = Property(bool)
 
-    _name_binding: GObject.Binding | None = None
-    _image_binding: GObject.Binding | None = None
+    outgoing = Property(bool)
+    incoming = Property(bool, default=True)
+    different_author = Property(bool)
+    can_reply = Property(bool)
+    can_trash = Property(bool)
 
+    _bindings: tuple[GObject.Binding, ...] = ()
     _message: model.Message | None = None
 
     @Property(bool)
@@ -284,10 +278,12 @@ class Message(GObject.Object):
             return
 
         local_date = message.date.astimezone(datetime.now(UTC).astimezone().tzinfo)
-        self.date = local_date.strftime("%x")
+        self.date = int(local_date.timestamp())
+        self.display_date = local_date.strftime("%x")
         # Localized date format, time in H:M
-        self.datetime = _("{} at {}").format(self.date, local_date.strftime("%H:%M"))
-        self.unix = int(local_date.timestamp())
+        self.display_datetime = _("{} at {}").format(
+            self.display_date, local_date.strftime("%H:%M")
+        )
 
         self.subject = message.subject
         self.body = message.body or ""
@@ -304,14 +300,14 @@ class Message(GObject.Object):
 
         readers = tuple(r for r in message.readers if r != user.address)
         if message.is_broadcast:
-            self.readers = _("Public Message")
+            self.display_readers = _("Public Message")
         else:
             # Others will be appended to this string in the format: ", reader1, reader2"
-            self.readers = _("Readers: Me")
+            self.display_readers = _("Readers: Me")
             for reader in readers:
-                self.readers += f", {Profile.of(reader).name or reader}"
+                self.display_readers += f", {Profile.of(reader).name or reader}"
 
-        self.reader_addresses = ", ".join(
+        self.readers = ", ".join(
             map(str, readers if self.outgoing else (*readers, message.author))
         )
 
@@ -325,26 +321,26 @@ class Message(GObject.Object):
             case client.DraftMessage():
                 self.draft_id = message.ident
 
-        for binding in self._name_binding, self._image_binding:
-            if binding:
-                binding.unbind()
+        for binding in self._bindings:
+            binding.unbind()
 
-        self._name_binding = self._image_binding = None
+        self._bindings = ()
+
         self.profile = self.profile_image = None
         self.show_initials = False
 
         if not (message.readers or message.is_broadcast):
-            self.name = _("No Readers")
+            self.display_name = _("No Readers")
             self.icon_name = "public-access-symbolic"
             return
 
         if self.outgoing and message.is_broadcast:
-            self.name = _("Public Message")
+            self.display_name = _("Public Message")
             self.icon_name = "broadcasts-symbolic"
             return
 
         if self.outgoing and (len(readers) > 1):
-            self.name = ngettext(
+            self.display_name = ngettext(
                 "{} Reader",
                 "{} Readers",
                 len(readers),
@@ -353,14 +349,13 @@ class Message(GObject.Object):
             return
 
         self.show_initials = True
-
         self.profile = Profile.of(
             readers[0] if (self.outgoing and readers) else message.author
         )
 
-        self._name_binding = Property.bind(self.profile, "name", self)
-        self._image_binding = Property.bind(
-            self.profile, "image", self, "profile-image"
+        self._bindings = (
+            Property.bind(self.profile, "name", self, "display-name"),
+            Property.bind(self.profile, "image", self, "profile-image"),
         )
 
     def trash(self):

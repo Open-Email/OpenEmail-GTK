@@ -71,7 +71,7 @@ class ComposeSheet(Adw.BreakpointBin):
         self.privacy = "public" if message.broadcast else "private"
         self.subject_id = message.subject_id
         self.ident = message.draft_id
-        self.readers.props.text = message.reader_addresses
+        self.readers.props.text = message.readers
         self.subject.props.text = message.subject
         self.body.props.text = message.body
 
@@ -85,7 +85,7 @@ class ComposeSheet(Adw.BreakpointBin):
 
         own_broadcast = message.broadcast and message.outgoing
         self.privacy = "public" if own_broadcast else "private"
-        self.readers.props.text = message.reader_addresses
+        self.readers.props.text = message.readers
         self.subject.props.text = message.subject
         self.subject_id = message.subject_id
 
@@ -272,7 +272,9 @@ class ComposeSheet(Adw.BreakpointBin):
         self.subject_id = None
         self.ident = None
         self.privacy = "private"
-        del self._readers
+
+        if hasattr(self, "_redaers"):
+            del self._readers
 
         self.compose_form.reset()
         self.attachments.model.remove_all()

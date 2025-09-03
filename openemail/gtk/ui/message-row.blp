@@ -28,7 +28,7 @@ template ListItem {
         valign: start;
         margin-top: 3;
         size: 32;
-        text: bind template.item as <$Message>.name;
+        text: bind template.item as <$Message>.display-name;
         icon-name: bind template.item as <$Message>.icon-name;
         custom-image: bind template.item as <$Message>.profile-image;
         show-initials: bind template.item as <$Message>.show-initials;
@@ -44,7 +44,7 @@ template ListItem {
           Label {
             hexpand: true;
             halign: start;
-            label: bind template.item as <$Message>.name;
+            label: bind template.item as <$Message>.display-name;
             ellipsize: end;
 
             styles [
@@ -54,7 +54,7 @@ template ListItem {
 
           Label {
             halign: end;
-            label: bind template.item as <$Message>.date;
+            label: bind template.item as <$Message>.display-date;
             ellipsize: end;
 
             styles [
