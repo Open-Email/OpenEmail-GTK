@@ -242,8 +242,7 @@ class Message(GObject.Object):
     icon_name = Property(str)
     show_initials = Property(bool)
 
-    outgoing = Property(bool)
-    incoming = Property(bool, default=True)
+    outgoing, incoming = Property(bool), Property(bool, default=True)
     different_author = Property(bool)
     can_reply = Property(bool)
     can_trash = Property(bool)
