@@ -2,7 +2,7 @@ using Gtk 4.0;
 using Adw 1;
 
 /* Messages */
-$Page content {
+$Page page {
   details: $ThreadView thread_view {};
 
   model: SingleSelection selection {
@@ -25,12 +25,12 @@ $Page content {
         AnyFilter {
           StringFilter {
             expression: expr item as <$Message>.subject;
-            search: bind content.search_text;
+            search: bind page.search_text;
           }
 
           StringFilter {
             expression: expr item as <$Message>.body;
-            search: bind content.search_text;
+            search: bind page.search_text;
           }
         }
       };
@@ -92,7 +92,7 @@ Button delete_button {
 Adw.StatusPage no_drafts {
   icon-name: "drafts-symbolic";
   title: _("No Drafts");
-  description: _("New unsent messages will appear here");
+  description: _("New messages you choose not to send will appear here");
 
   styles [
     "compact",
@@ -102,7 +102,7 @@ Adw.StatusPage no_drafts {
 /* Trash */
 Adw.AlertDialog empty_dialog {
   heading: _("Empty Trash?");
-  body: _("All items in the trash will be permanently deleted");
+  body: _("All trashed messages will be permanently deleted from this device. This will not remove them for other people.");
   default-response: "empty";
 
   responses [

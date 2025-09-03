@@ -14,7 +14,8 @@ template $Page: Adw.BreakpointBin {
   }
 
   child: Adw.NavigationSplitView split_view {
-    max-sidebar-width: 500;
+    min-sidebar-width: 400;
+    max-sidebar-width: 600;
     sidebar-width-fraction: 0.4;
 
     sidebar: Adw.NavigationPage {
@@ -23,6 +24,11 @@ template $Page: Adw.BreakpointBin {
       child: Adw.ToolbarView {
         [top]
         Adw.HeaderBar {
+          title-widget: Adw.WindowTitle {
+            title: bind template.title;
+            subtitle: bind template.subtitle;
+          };
+
           [start]
           Button {
             icon-name: "sidebar-show-symbolic";

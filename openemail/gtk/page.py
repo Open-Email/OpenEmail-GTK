@@ -31,6 +31,7 @@ class Page(Adw.BreakpointBin):
     search_text = Property(str)
 
     title = Property(str, default=_("Content"))
+    subtitle = Property(str)
     details = Property(Gtk.Widget)
     toolbar_button = Property(Gtk.Widget)
     empty_page = Property(Gtk.Widget)
