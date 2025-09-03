@@ -56,6 +56,8 @@ class Attachment(GObject.Object):
 class OutgoingAttachment(Attachment):
     """An attachment that has not yet been sent."""
 
+    __gtype_name__ = "OutgoingAttachment"
+
     file = Property(Gio.File)
 
     def __init__(self, **kwargs: Any):
@@ -132,6 +134,8 @@ class OutgoingAttachment(Attachment):
 
 class IncomingAttachment(Attachment):
     """An attachment received by the user."""
+
+    __gtype_name__ = "IncomingAttachment"
 
     _parts: list[model.Message]
 
