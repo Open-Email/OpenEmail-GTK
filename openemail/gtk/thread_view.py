@@ -60,11 +60,6 @@ class ThreadView(Adw.Bin):
 
         row = self._append(message)
 
-        # TODO: Instead of this check,
-        # subject_id should just always be set for outgoing messages
-        if not message.subject_id:
-            return
-
         for current in chain(app.inbox, app.sent):
             if (current != message) and (current.subject_id == message.subject_id):
                 self._append(current)

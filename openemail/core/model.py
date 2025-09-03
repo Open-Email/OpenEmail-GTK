@@ -212,7 +212,7 @@ class OutgoingMessage:
         self.author = self.original_author = user.address
         self.date = date or datetime.now(UTC)
         self.subject = subject
-        self.subject_id = subject_id
+        self.subject_id = subject_id or self.ident
         self.headers = dict[str, str]()
 
         self.readers = readers or []
@@ -316,7 +316,7 @@ class OutgoingMessage:
                     }
                 ),
                 "Subject": self.subject,
-                "Subject-Id": self.subject_id or self.headers["Message-Id"],
+                "Subject-Id": self.subject_id,
                 "Category": "personal",
             }
             | ({"Readers": ",".join(map(str, self.readers))} if self.readers else {})
