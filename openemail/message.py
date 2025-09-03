@@ -4,6 +4,7 @@
 
 from abc import abstractmethod
 from collections.abc import AsyncGenerator, Awaitable, Iterable
+from contextlib import suppress
 from datetime import UTC, datetime
 from gettext import ngettext
 from pathlib import Path
@@ -441,9 +442,9 @@ class Message(GObject.Object):
             Notifier.send(_("Cannot discard message while sending"))
             return
 
-        ident = get_ident(self._message)
-        outbox.remove(ident)
-        sent.remove(ident)
+        outbox.remove(ident := get_ident(self._message))
+        with suppress(ValueError):
+            sent.remove(ident)
 
         failed = False
         for msg in self._message, *self._message.children:
