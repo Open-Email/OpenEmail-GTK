@@ -68,7 +68,7 @@ async def request(
         )
     except (InvalidURL, URLError, HTTPError, TimeoutError, ValueError) as error:
         logger.debug(
-            "%s, URL: %s, Method: %s, Authorization: %s",
+            "%s, URL: %s, Method: %s, Auth: %s",
             error,
             url,
             method or ("POST" if data else "GET"),
