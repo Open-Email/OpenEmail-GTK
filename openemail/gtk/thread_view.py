@@ -65,7 +65,7 @@ class ThreadView(Adw.Bin):
         if not message.subject_id:
             return
 
-        for current in chain(app.inbox, app.outbox):
+        for current in chain(app.inbox, app.sent):
             if (current != message) and (current.subject_id == message.subject_id):
                 self._append(current)
 

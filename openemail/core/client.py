@@ -426,9 +426,15 @@ async def fetch_link_messages(
 
 
 async def fetch_outbox() -> tuple[IncomingMessage, ...]:
-    """Fetch messages by `core.user`."""
+    """Fetch messages by `core.user` that are currently available to be retrieved."""
     logger.debug("Fetching outbox…")
-    return await _fetch_messages(user.address)
+    return await _fetch_messages(user.address, remote_only=True)
+
+
+async def fetch_sent(exclude: Iterable[str] = ()) -> tuple[IncomingMessage, ...]:
+    """Fetch messages sent by `core.user`."""
+    logger.debug("Fetching sent messages…")
+    return await _fetch_messages(user.address, exclude=exclude)
 
 
 async def download_attachment(parts: Iterable[Message]) -> bytes | None:
@@ -846,21 +852,23 @@ async def _fetch_message_from_agent(
     return message
 
 
-async def _fetch_idents(author: Address, *, broadcasts: bool = False) -> set[str]:
-    """Fetch link or broadcast message IDs by `author`, addressed to `core.user`."""
+async def _fetch_idents(
+    author: Address, *, broadcasts: bool = False
+) -> tuple[set[str], set[str]]:
+    """Fetch link or broadcast message IDs by `author`, addressed to `core.user`.
+
+    Returns a touple of two sets: local and remote IDs.
+    """
     logger.debug("Fetching message IDs from %s…", author)
 
     path = data_dir / "envelopes" / author.host_part / author.local_part
     if broadcasts:
         path /= "broadcasts"
 
-    if author == user.address:
+    try:
+        local_ids = {p.stem for p in path.iterdir() if p.suffix == ".json"}
+    except FileNotFoundError:
         local_ids = set[str]()
-    else:
-        try:
-            local_ids = {p.stem for p in path.iterdir() if p.suffix == ".json"}
-        except FileNotFoundError:
-            local_ids = set[str]()
 
     for agent in await get_agents(user.address):
         if not (
@@ -886,22 +894,24 @@ async def _fetch_idents(author: Address, *, broadcasts: bool = False) -> set[str
                 continue
 
         logger.debug("Fetched message IDs from %s", author)
-        return local_ids | {
+        return local_ids, {
             stripped for line in contents.split("\n") if (stripped := line.strip())
         }
 
     logger.warning("Could not fetch message IDs from %s", author)
-    return local_ids
+    return local_ids, set()
 
 
 async def _fetch_messages(
     author: Address,
     *,
     broadcasts: bool = False,
+    remote_only: bool = False,
     exclude: Iterable[str] = (),
 ) -> tuple[IncomingMessage, ...]:
     messages = dict[str, IncomingMessage]()
-    for ident in await _fetch_idents(author, broadcasts=broadcasts):
+    local, remote = await _fetch_idents(author, broadcasts=broadcasts)
+    for ident in remote if remote_only else local | remote:
         for agent in await get_agents(user.address):
             if message := await _fetch_message_from_agent(
                 (

@@ -116,7 +116,7 @@ template $MessageView: Box {
       }
 
       Button {
-        visible: bind template.message as <$Message>.is-outgoing;
+        visible: bind template.message as <$Message>.can-discard;
         icon-name: "trash-symbolic";
         tooltip-text: _("Discard");
         clicked => $_discard();

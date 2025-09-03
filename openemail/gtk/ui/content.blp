@@ -133,6 +133,10 @@ template $Content: Adw.BreakpointBin {
               }
 
               $NavigationRow {
+                page: bind sent_page;
+              }
+
+              $NavigationRow {
                 page: bind drafts_page;
               }
 
@@ -175,6 +179,13 @@ template $Content: Adw.BreakpointBin {
             title: bind outbox.title;
 
             child: $Outbox outbox {};
+          }
+
+          Adw.ViewStackPage sent_page {
+            icon-name: "sent-symbolic";
+            title: bind sent.title;
+
+            child: $Sent sent {};
           }
 
           Adw.ViewStackPage drafts_page {

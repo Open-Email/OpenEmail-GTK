@@ -12,11 +12,11 @@ from openemail import APP_ID, PREFIX, Notifier, Profile, Property
 
 from .compose_sheet import ComposeSheet
 from .contacts import Contacts
-from .messages import Broadcasts, Drafts, Inbox, Outbox, Trash
+from .messages import Broadcasts, Drafts, Inbox, Outbox, Sent, Trash
 from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
-for t in Contacts, Broadcasts, Drafts, Inbox, Outbox, Trash:
+for t in Contacts, Broadcasts, Drafts, Inbox, Outbox, Sent, Trash:
     GObject.type_ensure(t)
 
 

@@ -246,6 +246,7 @@ class Message(GObject.Object):
     different_author = Property(bool)
     can_reply = Property(bool)
     can_trash = Property(bool)
+    can_discard = Property(bool)
 
     _bindings: tuple[GObject.Binding, ...] = ()
     _message: model.Message | None = None
@@ -255,7 +256,7 @@ class Message(GObject.Object):
         """Whether the item is in the trash."""
         from .store import settings
 
-        if not self._message:
+        if self.can_discard or (not self._message):
             return False
 
         return any(
@@ -268,6 +269,19 @@ class Message(GObject.Object):
 
         self.attachments = Gio.ListStore.new(Attachment)
         self.set_from_message(message)
+
+    def __hash__(self) -> int:
+        return hash(self._message.ident) if self._message else super().__hash__()
+
+    def __eq__(self, value: object, /) -> bool:
+        if isinstance(value, Message) and self._message and value._message:
+            return self._message.ident == value._message.ident
+        return super().__eq__(value)
+
+    def __ne__(self, value: object, /) -> bool:
+        if isinstance(value, Message) and self._message and value._message:
+            return self._message.ident != value._message.ident
+        return super().__ne__(value)
 
     def set_from_message(self, message: model.Message | None):
         """Set the properties of `self` from `message`."""
@@ -291,7 +305,6 @@ class Message(GObject.Object):
 
         self.is_outgoing = message.author == user.address
         self.is_incoming = not self.is_outgoing
-
         self._update_trashed_state()
 
         self.author = message.author
@@ -392,7 +405,7 @@ class Message(GObject.Object):
 
     def delete(self):
         """Remove `self` from the trash."""
-        from .store import broadcasts, inbox, settings_add
+        from .store import broadcasts, inbox, sent, settings_add
 
         if not self._message:
             return
@@ -406,15 +419,19 @@ class Message(GObject.Object):
             (envelopes_dir / f"{child.ident}.json").unlink(missing_ok=True)
             (messages_dir / child.ident).unlink(missing_ok=True)
 
-        (broadcasts if self._message.is_broadcast else inbox).remove(
-            get_ident(self._message)
-        )
+        (
+            sent
+            if self._message.author == client.user.address
+            else broadcasts
+            if self._message.is_broadcast
+            else inbox
+        ).remove(get_ident(self._message))
         self.restore()
         self.set_from_message(None)
 
     async def discard(self):
         """Discard `self` and its children."""
-        from .store import outbox
+        from .store import outbox, sent
 
         if not self._message:
             return
@@ -424,7 +441,9 @@ class Message(GObject.Object):
             Notifier.send(_("Cannot discard message while sending"))
             return
 
-        outbox.remove(get_ident(self._message))
+        ident = get_ident(self._message)
+        outbox.remove(ident)
+        sent.remove(ident)
 
         failed = False
         for msg in self._message, *self._message.children:
@@ -438,6 +457,7 @@ class Message(GObject.Object):
                 continue
 
         await outbox.update()
+        await sent.update()
 
     def mark_read(self):
         """Mark a message as read.
@@ -458,8 +478,8 @@ class Message(GObject.Object):
         settings_discard("unread-messages", get_ident(self._message))
 
     def _update_trashed_state(self):
-        self.can_trash = not (self.is_outgoing or self.trashed)
-        self.can_reply = not self.trashed
+        self.can_trash = not self.trashed
+        self.can_reply = self.can_discard or self.can_trash
         self.notify("trashed")
 
     @staticmethod
@@ -484,7 +504,7 @@ async def send(
 
     `attachments` is a dictionary of `Gio.File`s and filenames.
     """
-    from .store import outbox
+    from .store import outbox, sent
 
     Notifier().sending = True
 
@@ -527,4 +547,5 @@ async def send(
         Notifier().sending = False
         raise
 
+    sent.add(message)
     Notifier().sending = False

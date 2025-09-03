@@ -21,6 +21,7 @@ from .store import (
     outbox,
     profiles,
     secret_service,
+    sent,
     settings,
 )
 
@@ -78,7 +79,15 @@ def log_out():
     for profile in profiles.values():
         profile.set_from_profile(None)
 
-    for store in profiles, address_book, contact_requests, broadcasts, inbox, outbox:
+    for store in (
+        profiles,
+        address_book,
+        contact_requests,
+        broadcasts,
+        inbox,
+        outbox,
+        sent,
+    ):
         store.clear()
 
     for key in (

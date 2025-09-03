@@ -245,11 +245,16 @@ class People(GObject.Object):
 
 
 class MessageStore(DictStore[str, Message]):
-    """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
+    """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages.
+
+    `can_discard` indicates whether messages inside this store can be discarded.
+    """
 
     item_type = Message
     key_for = get_ident
     default_factory = Message
+
+    can_discard: bool = False
 
     async def _update(self):
         idents = set[str]()
@@ -261,7 +266,11 @@ class MessageStore(DictStore[str, Message]):
             if ident in self._items:
                 continue
 
-            self._items[ident] = Message(msg)
+            item = Message(msg)
+            if self.can_discard:
+                item.can_discard, item.can_trash = True, False
+
+            self._items[ident] = item
             self.items_changed(len(self._items) - 1, 0, 1)
 
         removed = 0
@@ -352,9 +361,25 @@ class _InboxStore(MessageStore):
 
 
 class _OutboxStore(MessageStore):
+    can_discard = True
+
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         for msg in await client.fetch_outbox():
-            msg.new = False  # New outbox messages should be marked read
+            msg.new = False  # New outbox messages should be marked read automatically
+            yield msg
+
+
+class _SentStore(MessageStore):
+    async def _fetch(self) -> AsyncGenerator[model.Message]:
+        deleted = settings.get_strv("deleted-messages")
+        for msg in await client.fetch_sent(
+            exclude=tuple(  # TODO: This should really be a reusable function
+                split[1]
+                for ident in deleted
+                if (split := ident.split(" "))[0] == client.user.address.host_part
+            )
+        ):
+            msg.new = False  # New sent messages should be marked read automatically
             yield msg
 
 
@@ -428,6 +453,7 @@ async def sync(*, periodic: bool = False):
     broadcasts.updating = True
     inbox.updating = True
     outbox.updating = True
+    sent.updating = True
 
     await address_book.update()
 
@@ -438,6 +464,7 @@ async def sync(*, periodic: bool = False):
         broadcasts.update(),
         inbox.update(),
         outbox.update(),
+        sent.update(),
         drafts.update(),
     }
 
@@ -467,12 +494,13 @@ all_contacts = Gtk.FlattenListModel.new(_models)
 broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
+sent = _SentStore()
 drafts = _DraftStore()
 
 
 def empty_trash():
     """Empty the user's trash."""
-    for msg in tuple(m for m in chain(inbox, broadcasts) if m.trashed):
+    for msg in tuple(m for m in chain(inbox, broadcasts, sent) if m.trashed):
         msg.delete()
 
 

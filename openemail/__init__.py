@@ -58,6 +58,7 @@ from .store import (
     outbox,
     profiles,
     secret_service,
+    sent,
     settings,
     settings_add,
     settings_discard,

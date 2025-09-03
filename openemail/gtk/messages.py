@@ -88,6 +88,13 @@ class Outbox(_Folder):
     folder, title = app.outbox, _("Outbox")
 
 
+class Sent(_Folder):
+    """A navigation page displaying the user's sent messages."""
+
+    __gtype_name__ = "Sent"
+    folder, title = app.sent, _("Sent")
+
+
 class Drafts(_Messages):
     """A navigation page displaying the user's drafts."""
 
@@ -130,6 +137,7 @@ class Trash(_Messages):
 
         folders.append(app.broadcasts)
         folders.append(app.inbox)
+        folders.append(app.sent)
 
         empty_dialog: Adw.AlertDialog = self._get_object("empty_dialog")
         empty_dialog.connect("response::empty", lambda *_: app.empty_trash())
