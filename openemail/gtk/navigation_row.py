@@ -39,7 +39,7 @@ class NavigationRow(Gtk.ListBoxRow):
                     case Profile():
                         count += int(item.contact_request)
                     case Message():
-                        count += int(item.unread or bool(item.draft_id))
+                        count += int(item.new or bool(item.draft_id))
 
             self.counter = str(count or "")
 

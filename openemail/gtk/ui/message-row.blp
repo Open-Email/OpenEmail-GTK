@@ -5,7 +5,7 @@ template ListItem {
   child: Box {
     Revealer {
       transition-type: crossfade;
-      reveal-child: bind template.item as <$Message>.unread;
+      reveal-child: bind template.item as <$Message>.new;
 
       child: Image {
         valign: start;

@@ -230,7 +230,7 @@ class Message(GObject.Object):
     readers = Property(str)
     attachments = Property(Gio.ListStore)
     body = Property(str)
-    unread = Property(bool)
+    new = Property(bool)
     is_broadcast = Property(bool)
 
     display_date = Property(str)
@@ -286,7 +286,7 @@ class Message(GObject.Object):
 
         self.subject = message.subject
         self.body = message.body or ""
-        self.unread = message.new
+        self.new = message.new
         self.is_broadcast = message.is_broadcast
 
         self.is_outgoing = message.author == user.address
@@ -442,14 +442,14 @@ class Message(GObject.Object):
     def mark_read(self):
         """Mark a message as read.
 
-        Does nothing if the message is not unread.
+        Does nothing if `message.new` is already `False`.
         """
         from .store import settings_discard
 
-        if not self.unread:
+        if not self.new:
             return
 
-        self.unread = False
+        self.new = False
 
         if not self._message:
             return
