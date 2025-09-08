@@ -15,8 +15,9 @@ template $Content: Adw.BreakpointBin {
 
   child: $ComposeSheet compose_sheet {
     content: Adw.OverlaySplitView split_view {
-      max-sidebar-width: 260;
-      sidebar-width-fraction: 0.22;
+      sidebar-width-unit: px;
+      min-sidebar-width: 200;
+      max-sidebar-width: 200;
 
       sidebar: Adw.NavigationPage {
         title: _("OpenEmail");
