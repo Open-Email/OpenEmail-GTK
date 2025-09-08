@@ -14,15 +14,17 @@ from openemail import Property
 MAX_SUMMARY_LINES = 5
 MAX_SUMMARY_CHARS = 100
 
+# fmt: off
 MARKDOWN_PATTERNS = (
-    (r"(?m)^(?=>)[(?<!\\)> ]*(.*)$", "blockquote"),
-    (r"(?m)^(?:(?=>)[(?<!\\)> ]*)?(?<!\\)#+ (.*)$", "heading"),
-    (r"(?<!\\)~~(.+?)(?<!\\)~~", "strikethrough"),
-    (r"(?<!\*)(?<!\\)\*(.+?)(?<!\\)\*", "italic"),
-    (r"(?<!\\)\*\*(.+?)(?<!\\)\*\*", "bold"),
-    (r"(?<!\\)\*\*\*(.+?)(?<!\\)\*\*\*", "bold italic"),
-    (r"(?<!\\)(\\)[>#~*]", "escape"),
+    ("blockquote",    r"(?m)^(?=>)[(?<!\\)> ]*(.*)$"),
+    ("heading",       r"(?m)^(?:(?=>)[(?<!\\)> ]*)?(?<!\\)#+ (.*)$"),
+    ("strikethrough", r"(?<!\\)~~(.+?)(?<!\\)~~"),
+    ("italic",        r"(?<!\*)(?<!\\)\*(.+?)(?<!\\)\*"),
+    ("bold",          r"(?<!\\)\*\*(.+?)(?<!\\)\*\*"),
+    ("bold italic",   r"(?<!\\)\*\*\*(.+?)(?<!\\)\*\*\*"),
+    ("escape",        r"(?<!\\)(\\)[>#~*]"),
 )
+# fmt: on
 
 
 class Body(Gtk.TextView):
@@ -58,7 +60,7 @@ class Body(Gtk.TextView):
                 else text
             )
 
-        for pattern, name in MARKDOWN_PATTERNS:
+        for name, pattern in MARKDOWN_PATTERNS:
             for match in re.finditer(pattern, text):
                 self._on_match(match, name)
 
