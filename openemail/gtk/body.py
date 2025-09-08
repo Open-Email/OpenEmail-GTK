@@ -4,14 +4,15 @@
 
 import re
 from re import Match
+from textwrap import shorten
 from typing import Any
 
 from gi.repository import GLib, Gtk, Pango
 
 from openemail import Property
 
-MAX_LINES = 5
-MAX_CHARS = 100
+MAX_SUMMARY_LINES = 5
+MAX_SUMMARY_CHARS = 100
 
 MARKDOWN_PATTERNS = (
     (r"(?m)^(?=>)[(?<!\\)> ]*(.*)$", "blockquote"),
@@ -44,19 +45,17 @@ class Body(Gtk.TextView):
             text = (
                 "\n".join(lines)
                 if len(lines := tuple(line for line in text.split("\n") if line))
-                <= MAX_LINES
-                else "\n".join(lines[:5]) + "…"
+                <= MAX_SUMMARY_LINES
+                else "\n".join(lines[:MAX_SUMMARY_LINES]) + "…"
             )
 
         buffer = self.props.buffer
         buffer.remove_all_tags(buffer.get_start_iter(), buffer.get_end_iter())
         if not self.props.editable:
             buffer.props.text = (
-                text
-                if not self.summary
-                else summary
-                if len(summary := text.replace("\n", " ")) <= MAX_CHARS
-                else summary[:100] + "…"
+                shorten(text, MAX_SUMMARY_CHARS, placeholder="…")
+                if self.summary
+                else text
             )
 
         for pattern, name in MARKDOWN_PATTERNS:
