@@ -330,7 +330,7 @@ class Message(GObject.Object):
             self.attachments.append(IncomingAttachment(name, parts))
 
         match message:
-            case client.IncomingMessage():
+            case client.IncomingMessage() | model.OutgoingMessage():
                 self.subject_id = message.subject_id
             case client.DraftMessage():
                 self.draft_id = message.ident
