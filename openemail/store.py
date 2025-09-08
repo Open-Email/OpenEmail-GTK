@@ -261,7 +261,7 @@ class MessageStore(DictStore[str, Message]):
             if ident in self._items:
                 continue
 
-            self._items[ident] = self.default_factory(msg)
+            self._items[ident] = self.__class__.default_factory(msg)
             self.items_changed(len(self._items) - 1, 0, 1)
 
         removed = 0
@@ -351,7 +351,7 @@ class _InboxStore(MessageStore):
             yield msg
 
 
-def _default_outbox_factory(msg: model.Message) -> Message:
+def _default_outbox_factory(msg: model.Message | None = None) -> Message:
     item = Message(msg)
     item.can_discard, item.can_trash = True, False
     return item
