@@ -19,6 +19,7 @@ openemail/gtk/ui/preferences.blp
 openemail/gtk/ui/profile-settings.blp
 openemail/gtk/ui/profile-view.blp
 openemail/gtk/ui/shortcuts-dialog.blp
+openemail/gtk/ui/thread-view.blp
 openemail/gtk/ui/window.blp
 
 openemail/gtk/body.py

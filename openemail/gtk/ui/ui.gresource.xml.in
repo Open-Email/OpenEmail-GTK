@@ -16,6 +16,7 @@
     <file>profile-settings.ui</file>
     <file>profile-view.ui</file>
     <file>shortcuts-dialog.ui</file>
+    <file>thread-view.ui</file>
     <file>window.ui</file>
     <file>style.css</file>
   </gresource>

@@ -1,0 +1,47 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $ThreadView: Adw.Bin {
+  child: Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      show-title: false;
+    }
+
+    content: ScrolledWindow {
+      child: Viewport viewport {
+        child: ListBox box {
+          selection-mode: none;
+
+          [placeholder]
+          Adw.StatusPage {
+            icon-name: bind template.app-icon-name;
+
+            styles [
+              "compact",
+              "dimmed",
+            ]
+          }
+        };
+      };
+    };
+  };
+}
+
+SortListModel sort_model {
+  model: FilterListModel filter_model {
+    filter: StringFilter {
+      match-mode: exact;
+      ignore-case: false;
+      expression: expr item as <$Message>.subject-id;
+      search: bind template.subject-id;
+    };
+
+    model: bind template.model;
+  };
+  
+  sorter: NumericSorter {
+    expression: expr item as <$Message>.date;
+    sort-order: descending;
+  };
+}

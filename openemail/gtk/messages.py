@@ -55,14 +55,17 @@ class _Messages(Adw.NavigationPage):
         return self.builder.get_object(name)
 
     def _on_trash_changed(self, *_args):
-        m.autoselect = (m := self.page.model.props).selected != GLib.MAXUINT
+        props.autoselect = (props := self.page.model.props).selected != GLib.MAXUINT
         self.trashed.changed(Gtk.FilterChange.DIFFERENT)
-        m.autoselect = False
+        props.autoselect = False
 
     def _on_selected(self, selection: Gtk.SingleSelection, *_args):
-        self.thread_view.message = (message := selection.props.selected_item)
-        if isinstance(message, Message):
-            message.mark_read()
+        if (msg := selection.props.selected_item) and not isinstance(msg, Message):
+            return
+
+        self.thread_view.message = msg
+        if isinstance(msg, Message):
+            msg.mark_read()
             self.page.split_view.props.show_content = True
 
 
