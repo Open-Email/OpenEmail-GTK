@@ -245,16 +245,11 @@ class People(GObject.Object):
 
 
 class MessageStore(DictStore[str, Message]):
-    """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages.
-
-    `can_discard` indicates whether messages inside this store can be discarded.
-    """
+    """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
     item_type = Message
     key_for = get_ident
     default_factory = Message
-
-    can_discard: bool = False
 
     async def _update(self):
         idents = set[str]()
@@ -266,11 +261,7 @@ class MessageStore(DictStore[str, Message]):
             if ident in self._items:
                 continue
 
-            item = Message(msg)
-            if self.can_discard:
-                item.can_discard, item.can_trash = True, False
-
-            self._items[ident] = item
+            self._items[ident] = self.default_factory(msg)
             self.items_changed(len(self._items) - 1, 0, 1)
 
         removed = 0
@@ -360,8 +351,14 @@ class _InboxStore(MessageStore):
             yield msg
 
 
+def _default_outbox_factory(msg: model.Message) -> Message:
+    item = Message(msg)
+    item.can_discard, item.can_trash = True, False
+    return item
+
+
 class _OutboxStore(MessageStore):
-    can_discard = True
+    default_factory = _default_outbox_factory
 
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         for msg in await client.fetch_outbox():
