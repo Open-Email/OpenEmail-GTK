@@ -6,7 +6,8 @@ from typing import Any, override
 
 from gi.repository import Adw, Gio, Gtk
 
-from openemail import PREFIX, IncomingAttachment, OutgoingAttachment, Property
+from openemail import PREFIX, Property
+from openemail.message import IncomingAttachment, OutgoingAttachment
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/attachments.ui")

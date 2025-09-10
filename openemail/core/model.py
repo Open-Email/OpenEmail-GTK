@@ -47,26 +47,6 @@ class Address(str):
         self.local_part, self.host_part = address.split("@")
 
 
-def generate_link(first: Address, second: Address) -> str:
-    """Generate a connection identifier for `address_1` and `address_2`."""
-    return sha256(
-        f"{min(first, second)}{max(first, second)}".encode("ascii")
-    ).hexdigest()
-
-
-def generate_ident(author: Address) -> str:
-    """Generate a unique ID for a new message."""
-    return sha256(
-        "".join(
-            (
-                crypto.random_string(length=24),
-                author.host_part,
-                author.local_part,
-            )
-        ).encode("utf-8")
-    ).hexdigest()
-
-
 @dataclass(slots=True)
 class User:
     """A local user."""
@@ -162,7 +142,7 @@ class DraftMessage:
         body: str | None = None,
         broadcast: bool = False,
     ):
-        from . import user
+        from .client import user
 
         self.ident = ident or generate_ident(user.address)
         self.author = self.original_author = user.address
@@ -205,7 +185,7 @@ class OutgoingMessage:
         body: str | None = None,
         content: bytes = b"",
     ):
-        from . import user
+        from .client import user
 
         self.ident = generate_ident(user.address)
         self.author = self.original_author = user.address
@@ -502,17 +482,6 @@ class Notification(NamedTuple):
         return (self.received_on - datetime.now(UTC)).days >= MESSAGE_LIFETIME
 
 
-def parse_headers(data: str) -> dict[str, str]:
-    """Parse `data` into a dictionary of headers."""
-    try:
-        return {
-            (split := attr.strip().split("=", 1))[0].lower(): split[1]
-            for attr in data.split(";")
-        }
-    except (IndexError, ValueError):
-        return {}
-
-
 @dataclass(slots=True)
 class Profile:
     """A user's profile."""
@@ -619,6 +588,37 @@ class Profile:
             setattr(self, f.name, value)
 
         self.address = address
+
+
+def parse_headers(data: str) -> dict[str, str]:
+    """Parse `data` into a dictionary of headers."""
+    try:
+        return {
+            (split := attr.strip().split("=", 1))[0].lower(): split[1]
+            for attr in data.split(";")
+        }
+    except (IndexError, ValueError):
+        return {}
+
+
+def generate_link(first: Address, second: Address) -> str:
+    """Generate a connection identifier for `address_1` and `address_2`."""
+    return sha256(
+        f"{min(first, second)}{max(first, second)}".encode("ascii")
+    ).hexdigest()
+
+
+def generate_ident(author: Address) -> str:
+    """Generate a unique ID for a new message."""
+    return sha256(
+        "".join(
+            (
+                crypto.random_string(length=24),
+                author.host_part,
+                author.local_part,
+            )
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def to_fields(dictionary: dict[Any, Any]) -> str:

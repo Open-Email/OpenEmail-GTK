@@ -5,8 +5,9 @@
 
 from gi.repository import Adw, Gtk
 
-import openemail as app
-from openemail import PREFIX, Message, Profile, Property
+from openemail import PREFIX, Property, store
+from openemail.message import Message
+from openemail.profile import Profile
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/navigation-row.ui")
@@ -29,8 +30,9 @@ class NavigationRow(Gtk.ListBoxRow):
     def page(self, page: Adw.ViewStackPage):  # HACK
         self._page = page
 
-        if not (content := getattr(self._page.props.child, "content", None)):
-            return
+        if not (content := getattr(self._page.props.child, "page", None)):
+            msg = f"{type(self._page.props.child)} does not have a page property"
+            raise AttributeError(msg)
 
         def update_counter(*_args):
             count = 0
@@ -45,5 +47,5 @@ class NavigationRow(Gtk.ListBoxRow):
 
         content.model.connect("items-changed", update_counter)
         for key in ("unread-messages", "contact-requests"):
-            app.settings.connect(f"changed::{key}", update_counter)
+            store.settings.connect(f"changed::{key}", update_counter)
         update_counter()

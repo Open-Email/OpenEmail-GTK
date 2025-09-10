@@ -7,7 +7,7 @@ from typing import Any, Self
 
 from gi.repository import Adw, GObject
 
-from .property import Property
+from ._property import Property
 
 
 class Notifier(GObject.Object):

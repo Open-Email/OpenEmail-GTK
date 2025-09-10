@@ -21,23 +21,19 @@ from typing import Any
 
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
-from . import core
-from .asyncio import create_task
-from .configuration import APP_ID
-from .core import client, model
-from .core.client import WriteError
-from .core.model import Address
-from .message import Message, get_ident
-from .notifier import Notifier
-from .profile import Profile, refresh
-from .property import Property
+from . import APP_ID, Notifier, Property, core, message, profile, tasks
+from .core import client, contacts, messages, model
+from .core import drafts as core_drafts
+from .core import profile as core_profile
+from .core.model import Address, WriteError
+from .message import Message
+from .profile import Profile
 
 ADDRESS_SPLIT_PATTERN = ",|;| "
 
 settings = Gio.Settings.new(APP_ID)
 state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
-log_path = Path(GLib.get_user_state_dir(), "openemail.log")
 core.data_dir = Path(GLib.get_user_data_dir(), "openemail")  # TODO: This may not work?
 
 
@@ -140,20 +136,20 @@ class ProfileStore(DictStore[Address, Profile]):
         If `trust_images` is set to `False`, profile images will not be loaded.
         """
         for address in (Address(contact.address) for contact in self):
-            create_task(self._update_profile(address))
+            tasks.create(self._update_profile(address))
             if trust_images:
-                create_task(self._update_profile_image(address))
+                tasks.create(self._update_profile_image(address))
 
     @staticmethod
     async def _update_profile(address: Address):
-        Profile.of(address).set_from_profile(await client.fetch_profile(address))
+        Profile.of(address).set_from_profile(await core_profile.fetch(address))
 
     @staticmethod
     async def _update_profile_image(address: Address):
         try:
             Profile.of(address).image = (
                 Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))
-                if (image := await client.fetch_profile_image(address))
+                if (image := await core_profile.fetch_image(address))
                 else None
             )
         except GLib.Error:
@@ -166,16 +162,16 @@ class _AddressBook(ProfileStore):
         Profile.of(address).contact_request = False
         self.add(address)
 
-        create_task(self.update_profiles())
-        create_task(broadcasts.update())
-        create_task(inbox.update())
+        tasks.create(self.update_profiles())
+        tasks.create(broadcasts.update())
+        tasks.create(inbox.update())
 
         try:
-            await client.new_contact(address, receive_broadcasts=receive_broadcasts)
+            await contacts.new(address, receive_broadcasts=receive_broadcasts)
         except WriteError:
             self.remove(address)
-            create_task(broadcasts.update())
-            create_task(inbox.update())
+            tasks.create(broadcasts.update())
+            tasks.create(inbox.update())
 
             Notifier.send(_("Failed to add contact"))
             raise
@@ -183,29 +179,29 @@ class _AddressBook(ProfileStore):
     async def delete(self, address: Address):
         """Delete `address` from the user's address book."""
         self.remove(address)
-        create_task(broadcasts.update())
-        create_task(inbox.update())
+        tasks.create(broadcasts.update())
+        tasks.create(inbox.update())
 
         try:
-            await client.delete_contact(address)
+            await contacts.delete(address)
         except WriteError:
             self.add(address)
-            create_task(broadcasts.update())
-            create_task(inbox.update())
+            tasks.create(broadcasts.update())
+            tasks.create(inbox.update())
 
             Notifier.send(_("Failed to remove contact"))
             raise
 
     async def _update(self):
-        contacts = set[Address]()
+        addresses = set[Address]()
 
-        for contact, receives_broadcasts in await client.fetch_contacts():
-            Profile.of(contact).set_receives_broadcasts(receives_broadcasts)
-            contacts.add(contact)
-            self.add(contact)
+        for address, receives_broadcasts in await contacts.fetch():
+            Profile.of(address).set_receives_broadcasts(receives_broadcasts)
+            addresses.add(address)
+            self.add(address)
 
         for address in self._items.copy():
-            if address not in contacts:
+            if address not in addresses:
                 self.remove(address)
 
 
@@ -225,7 +221,7 @@ class _ContactRequests(ProfileStore):
                 request.contact_request = False
                 self.remove(request.address)
 
-        create_task(self.update_profiles(trust_images=False))
+        tasks.create(self.update_profiles(trust_images=False))
 
 
 class People(GObject.Object):
@@ -248,14 +244,14 @@ class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
     item_type = Message
-    key_for = get_ident
+    key_for = message.get_ident
     default_factory = Message
 
     async def _update(self):
         idents = set[str]()
 
         async for msg in self._fetch():
-            ident = get_ident(msg)
+            ident = message.get_ident(msg)
 
             idents.add(ident)
             if ident in self._items:
@@ -280,14 +276,14 @@ class MessageStore(DictStore[str, Message]):
         self, futures: AsyncIterable[Iterable[model.Message]]
     ) -> AsyncGenerator[model.Message]:
         unread = set[str]()
-        async for messages in futures:
+        async for msgs in futures:
             current_unread = settings.get_strv("unread-messages")
 
-            for msg in messages:
+            for msg in msgs:
                 if msg.new:
-                    unread.add(get_ident(msg))
+                    unread.add(message.get_ident(msg))
 
-                elif get_ident(msg) in current_unread:
+                elif message.get_ident(msg) in current_unread:
                     msg.new = True
 
                 yield msg
@@ -299,7 +295,7 @@ class _BroadcastStore(MessageStore):
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         deleted = settings.get_strv("deleted-messages")
         async for msg in self._process_messages(
-            await client.fetch_broadcasts(
+            await messages.fetch_broadcasts(
                 address := Address(contact.address),
                 exclude=tuple(
                     split[1]
@@ -318,7 +314,7 @@ class _InboxStore(MessageStore):
         known_notifiers = set[Address]()
         other_contacts = {Address(contact.address) for contact in address_book}
 
-        async for notification in client.fetch_notifications():
+        async for notification in messages.fetch_notifications():
             if notification.is_expired:
                 continue
 
@@ -337,7 +333,7 @@ class _InboxStore(MessageStore):
         deleted = settings.get_strv("deleted-messages")
         async for msg in self._process_messages(
             (
-                await client.fetch_link_messages(
+                await messages.fetch_link_messages(
                     contact,
                     exclude=tuple(
                         split[1]
@@ -361,7 +357,7 @@ class _OutboxStore(MessageStore):
     default_factory = _default_outbox_factory
 
     async def _fetch(self) -> AsyncGenerator[model.Message]:
-        for msg in await client.fetch_outbox():
+        for msg in await messages.fetch_outbox():
             msg.new = False  # New outbox messages should be marked read automatically
             yield msg
 
@@ -369,7 +365,7 @@ class _OutboxStore(MessageStore):
 class _SentStore(MessageStore):
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         deleted = settings.get_strv("deleted-messages")
-        for msg in await client.fetch_sent(
+        for msg in await messages.fetch_sent(
             exclude=tuple(  # TODO: This should really be a reusable function
                 split[1]
                 for ident in deleted
@@ -404,7 +400,7 @@ class _DraftStore(MessageStore):
                     continue
 
         draft = partial(
-            client.DraftMessage,
+            model.DraftMessage,
             readers=readers_list,
             subject=subject or "",
             body=body,
@@ -412,22 +408,22 @@ class _DraftStore(MessageStore):
             broadcast=broadcast,
         )
 
-        client.save_draft(draft(ident=ident) if ident else draft())
+        core_drafts.save(draft(ident=ident) if ident else draft())
         self.clear()  # TODO
-        create_task(self.update())
+        tasks.create(self.update())
 
     def delete(self, ident: str):
         """Delete a draft saved using `save()`."""
-        client.delete_draft(ident)
+        core_drafts.delete(ident)
         self.remove(f"{client.user.address.host_part} {ident}")
 
     def delete_all(self):
         """Delete all drafts saved using `save()`."""
-        client.delete_all_drafts()
+        core_drafts.delete_all()
         self.clear()
 
     async def _fetch(self) -> AsyncGenerator[model.Message]:
-        for msg in tuple(client.load_drafts()):
+        for msg in tuple(core_drafts.load()):
             yield msg
 
 
@@ -437,7 +433,7 @@ async def sync(*, periodic: bool = False):
 
     if periodic:
         interval = settings.get_uint("sync-interval")
-        GLib.timeout_add_seconds(interval or 60, create_task, sync(periodic=True))
+        GLib.timeout_add_seconds(interval or 60, tasks.create, sync(periodic=True))
 
         # The user chose manual sync, check again in a minute
         if not interval:
@@ -454,8 +450,8 @@ async def sync(*, periodic: bool = False):
 
     await address_book.update()
 
-    tasks: set[Coroutine[Any, Any, Any]] = {
-        refresh(),
+    task_set: set[Coroutine[Any, Any, Any]] = {
+        profile.refresh(),
         address_book.update_profiles(),
         contact_requests.update(),
         broadcasts.update(),
@@ -466,16 +462,16 @@ async def sync(*, periodic: bool = False):
     }
 
     def done(task: Coroutine[Any, Any, Any]):
-        tasks.discard(task)
+        task_set.discard(task)
         if not tasks:
             Notifier().syncing = False
 
-    for task in tasks:
-        create_task(task, lambda _, t=task: done(t))
+    for task in task_set:
+        tasks.create(task, lambda _, t=task: done(t))
 
     settings.connect(
         "changed::contact-requests",
-        lambda *_: create_task(contact_requests.update()),
+        lambda *_: tasks.create(contact_requests.update()),
     )
 
 

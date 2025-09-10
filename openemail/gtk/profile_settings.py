@@ -8,8 +8,10 @@ from typing import Any, cast
 
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk
 
-import openemail as app
-from openemail import PREFIX, Profile, ProfileField, Property, WriteError
+from openemail import PREFIX, Property, profile, tasks
+from openemail.core import client
+from openemail.core.model import WriteError
+from openemail.profile import Profile, ProfileField
 
 from .form import Form
 
@@ -114,7 +116,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             "about": self.about.get_text,
         }
 
-        Profile.of(app.user).connect(
+        Profile.of(client.user).connect(
             "notify::updating",
             lambda p, _: self.set_property("profile", None if p.updating else p),
         )
@@ -126,14 +128,14 @@ class ProfileSettings(Adw.PreferencesDialog):
     @Gtk.Template.Callback()
     def _delete_image(self, *_args):
         self.pending = True
-        app.create_task(
-            app.delete_profile_image(),
+        tasks.create(
+            profile.delete_image(),
             lambda _: self.set_property("pending", False),
         )
 
     @Gtk.Template.Callback()
     def _replace_image(self, *_args):
-        app.create_task(self._replace_image_task())
+        tasks.create(self._replace_image_task())
 
     @Gtk.Template.Callback()
     def _on_change(self, *_args):
@@ -148,9 +150,7 @@ class ProfileSettings(Adw.PreferencesDialog):
             self.away_warning.props.text = ""
 
         self._changed = False
-        app.create_task(
-            app.update_profile({key: f() for key, f in self._fields.items()})
-        )
+        tasks.create(profile.update({key: f() for key, f in self._fields.items()}))
 
     async def _replace_image_task(self):
         try:
@@ -185,6 +185,6 @@ class ProfileSettings(Adw.PreferencesDialog):
         self.pending = True
 
         with suppress(WriteError):
-            await app.update_profile_image(pixbuf)
+            await profile.update_image(pixbuf)
 
         self.pending = False

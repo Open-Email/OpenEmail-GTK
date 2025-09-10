@@ -41,12 +41,12 @@ openemail/gtk/window.py
 
 openemail/__init__.py
 openemail/__main__.py
+openemail/_config.py.in
+openemail/_notifier.py
+openemail/_property.py
 openemail/account.py
 openemail/application.py
-openemail/asyncio.py
-openemail/configuration.py.in
 openemail/message.py
-openemail/notifier.py
 openemail/profile.py
-openemail/property.py
 openemail/store.py
+openemail/tasks.py

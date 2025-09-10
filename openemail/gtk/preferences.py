@@ -7,8 +7,8 @@ from typing import Any
 
 from gi.repository import Adw, Gtk
 
-import openemail as app
-from openemail import PREFIX, Property
+from openemail import PREFIX, Property, account, store, tasks
+from openemail.core import client
 
 from .form import Form
 from .window import Window
@@ -45,32 +45,32 @@ class Preferences(Adw.PreferencesDialog):
         super().__init__(**kwargs)
 
         self._domain_rows = []
-        app.settings.connect("changed::trusted-domains", self._build_domains)
+        store.settings.connect("changed::trusted-domains", self._build_domains)
         self._build_domains()
 
-        self.private_signing_key = str(app.user.signing_keys)
-        self.private_encryption_key = str(app.user.encryption_keys.private)
-        self.public_signing_key = str(app.user.signing_keys.public)
-        self.public_encryption_key = str(app.user.encryption_keys.public)
+        self.private_signing_key = str(client.user.signing_keys)
+        self.private_encryption_key = str(client.user.encryption_keys.private)
+        self.public_signing_key = str(client.user.signing_keys.public)
+        self.public_encryption_key = str(client.user.encryption_keys.public)
 
         with suppress(ValueError):
             self.sync_interval_combo_row.props.selected = self._sync_intervals.index(
-                app.settings.get_uint("sync-interval")
+                store.settings.get_uint("sync-interval")
             )
             self.empty_trash_combo_row.props.selected = self._trash_intervals.index(
-                app.settings.get_uint("empty-trash-interval")
+                store.settings.get_uint("empty-trash-interval")
             )
 
     @Gtk.Template.Callback()
     def _sync_interval_selected(self, row: Adw.ComboRow, *_args):
-        app.settings.set_uint(
+        store.settings.set_uint(
             "sync-interval",
             self._sync_intervals[row.props.selected],
         )
 
     @Gtk.Template.Callback()
     def _trash_interval_selected(self, row: Adw.ComboRow, *_args):
-        app.settings.set_uint(
+        store.settings.set_uint(
             "empty-trash-interval",
             self._trash_intervals[row.props.selected],
         )
@@ -86,12 +86,12 @@ class Preferences(Adw.PreferencesDialog):
     @Gtk.Template.Callback()
     def _confirm_delete(self, *_args):
         self.force_close()
-        app.create_task(app.delete_account())
+        tasks.create(account.delete())
 
     @Gtk.Template.Callback()
     def _confirm_remove(self, *_args):
         self.force_close()
-        app.log_out()
+        account.log_out()
 
         if not isinstance(win := self.props.root, Window):
             return
@@ -105,13 +105,13 @@ class Preferences(Adw.PreferencesDialog):
 
     @Gtk.Template.Callback()
     def _add_domain(self, *_args):
-        app.settings_add("trusted-domains", self.domain_entry.props.text)
+        store.settings_add("trusted-domains", self.domain_entry.props.text)
 
     def _build_domains(self, *_args):
         while self._domain_rows:
             self.domains.remove(self._domain_rows.pop())
 
-        for domain in app.settings.get_strv("trusted-domains"):
+        for domain in store.settings.get_strv("trusted-domains"):
             remove_button = Gtk.Button(
                 icon_name="edit-delete-symbolic",
                 tooltip_text=_("Remove"),
@@ -121,7 +121,7 @@ class Preferences(Adw.PreferencesDialog):
 
             remove_button.connect(
                 "clicked",
-                lambda _obj, domain: app.settings_discard("trusted-domains", domain),
+                lambda _obj, domain: store.settings_discard("trusted-domains", domain),
                 domain,
             )
 

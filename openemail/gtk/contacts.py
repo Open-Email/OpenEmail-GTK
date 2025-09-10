@@ -6,8 +6,9 @@ from contextlib import suppress
 
 from gi.repository import Adw, GObject, Gtk
 
-import openemail as app
-from openemail import PREFIX, Address, DictStore, People
+from openemail import PREFIX, store, tasks
+from openemail.core.model import Address
+from openemail.store import DictStore, People
 
 from .contact_row import ContactRow
 from .form import Form
@@ -27,7 +28,7 @@ class Contacts(Adw.NavigationPage):
 
     __gtype_name__ = "Contacts"
 
-    content: Page = child
+    page: Page = child
 
     add_contact_dialog: Adw.AlertDialog = child
     address: Adw.EntryRow = child
@@ -41,8 +42,8 @@ class Contacts(Adw.NavigationPage):
     @Gtk.Template.Callback()
     def _add_contact(self, *_args):
         with suppress(ValueError):
-            app.create_task(app.address_book.new(Address(self.address.props.text)))
+            tasks.create(store.address_book.new(Address(self.address.props.text)))
 
     @Gtk.Template.Callback()
     def _on_selected(self, selection: Gtk.SingleSelection, *_args):
-        self.content.split_view.props.show_content = bool(selection.props.selected_item)
+        self.page.split_view.props.show_content = bool(selection.props.selected_item)

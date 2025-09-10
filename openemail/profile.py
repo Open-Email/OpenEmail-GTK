@@ -7,14 +7,10 @@ from typing import Any, Self
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
 
-from . import core
-from .asyncio import create_task
-from .core import client, model
-from .core.client import WriteError, user
+from . import Notifier, Property, tasks
+from .core import client, contacts, model, profile
 from .core.crypto import KeyPair
-from .core.model import Address, User
-from .notifier import Notifier
-from .property import Property
+from .core.model import Address, User, WriteError
 
 MAX_IMAGE_DIMENSIONS = 800
 
@@ -152,16 +148,16 @@ class Profile(GObject.Object):
 
     _user: Self | None = None
 
-    def set_from_profile(self, profile: model.Profile | None):
+    def set_from_profile(self, prof: model.Profile | None):
         """Set the properties of `self` from `profile`."""
-        self._profile = profile
+        self._profile = prof
 
-        if not profile:
+        if not prof:
             self.image = None
             return
 
-        self.address = profile.address
-        self.name = profile.name
+        self.address = prof.address
+        self.name = prof.name
 
     @Property(bool, default=True)
     def receive_broadcasts(self) -> bool:
@@ -180,9 +176,9 @@ class Profile(GObject.Object):
 
         self._broadcasts = receive_broadcasts
 
-        create_task(broadcasts.update())
-        create_task(
-            client.new_contact(
+        tasks.create(broadcasts.update())
+        tasks.create(
+            contacts.new(
                 self._profile.address,
                 receive_broadcasts=receive_broadcasts,
             )
@@ -261,39 +257,39 @@ class Profile(GObject.Object):
 # TODO: Maybe these could be methods of a subclass of Profile specific to the user
 async def refresh():
     """Update the profile of the user by fetching new data remotely."""
-    Profile.of(core.user).updating = True
-    Profile.of(core.user).set_from_profile(
-        profile := await client.fetch_profile(user.address)
+    Profile.of(client.user).updating = True
+    Profile.of(client.user).set_from_profile(
+        prof := await profile.fetch(client.user.address)
     )
 
-    if profile:
-        user.signing_keys = KeyPair(
-            user.signing_keys.private,
-            profile.signing_key,
+    if prof:
+        client.user.signing_keys = KeyPair(
+            client.user.signing_keys.private,
+            prof.signing_key,
         )
 
-        if profile.encryption_key:
-            user.encryption_keys = KeyPair(
-                user.encryption_keys.private,
-                profile.encryption_key,
+        if prof.encryption_key:
+            client.user.encryption_keys = KeyPair(
+                client.user.encryption_keys.private,
+                prof.encryption_key,
             )
 
     try:
-        Profile.of(core.user).image = Gdk.Texture.new_from_bytes(
-            GLib.Bytes.new(await client.fetch_profile_image(user.address))
+        Profile.of(client.user).image = Gdk.Texture.new_from_bytes(
+            GLib.Bytes.new(await profile.fetch_image(client.user.address))
         )
     except GLib.Error:
-        Profile.of(core.user).image = None
+        Profile.of(client.user).image = None
 
-    Profile.of(user.address).image = Profile.of(core.user).image
-    Profile.of(user.address).set_from_profile(profile)
-    Profile.of(core.user).updating = False
+    Profile.of(client.user.address).image = Profile.of(client.user).image
+    Profile.of(client.user.address).set_from_profile(prof)
+    Profile.of(client.user).updating = False
 
 
 async def update(values: dict[str, str]):
     """Update the user's public profile with `values`."""
     try:
-        await client.update_profile(values)
+        await profile.update(values)
     except WriteError:
         Notifier.send(_("Failed to update profile"))
         raise
@@ -360,7 +356,7 @@ async def update_image(pixbuf: GdkPixbuf.Pixbuf):
         raise WriteError
 
     try:
-        await client.update_profile_image(data)
+        await profile.update_image(data)
     except WriteError:
         Notifier.send(_("Failed to update profile image"))
         raise
@@ -371,7 +367,7 @@ async def update_image(pixbuf: GdkPixbuf.Pixbuf):
 async def delete_image():
     """Delete the user's profile image."""
     try:
-        await client.delete_profile_image()
+        await profile.delete_image()
     except WriteError:
         Notifier.send(_("Failed to delete profile image"))
         raise

@@ -6,8 +6,8 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-import openemail as app
-from openemail import APP_ID, PREFIX, Message, Property
+from openemail import APP_ID, PREFIX, Property, store
+from openemail.message import Message
 
 from .message_view import MessageView
 
@@ -32,9 +32,9 @@ class ThreadView(Adw.Bin):
     reply = GObject.Signal(arg_types=(Message,))
 
     _models = Gio.ListStore.new(item_type=Gio.ListModel)
-    _models.append(app.inbox)
-    _models.append(app.sent)
-    _models.append(app.broadcasts)
+    _models.append(store.inbox)
+    _models.append(store.sent)
+    _models.append(store.broadcasts)
 
     model = Property(Gio.ListModel, default=Gtk.FlattenListModel.new(_models))
 

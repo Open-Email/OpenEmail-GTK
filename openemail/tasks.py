@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 from gi.repository import Gio
 
 
-def create_task(
+def create(
     coro: Coroutine[Any, Any, Any],
     callback: Callable[[bool], Any] | None = None,
 ):
@@ -21,7 +21,7 @@ def create_task(
     and `False` otherwise.
     """
     if not (app := Gio.Application.get_default()):
-        msg = "create_task() called before Application finished initializing"
+        msg = "tasks.create() called before Application finished initializing"
         raise RuntimeError(msg)
 
     task = cast("Task[Any]", app.create_asyncio_task(coro))  # pyright: ignore[reportAttributeAccessIssue]

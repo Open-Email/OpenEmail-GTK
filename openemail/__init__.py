@@ -2,27 +2,26 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-# ruff: noqa: F401
 
 """A Mail/HTTPS client."""
 
 import gettext
 import locale
 import logging
-import signal
 import sys
+from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from signal import SIG_DFL, SIGINT, signal
 
 import gi
 
-from .configuration import APP_ID, LOCALEDIR, PKGDATADIR, PREFIX, PROFILE, VERSION
-from .core.client import WriteError, user
-from .core.crypto import KeyPair
-from .core.model import Address
-
-signal.signal(signal.SIGINT, signal.SIG_DFL)
-
 gi.require_versions({"Gdk": "4.0", "Gtk": "4.0", "Adw": "1"})
+from gi.repository import GLib
+
+from ._config import APP_ID, LOCALEDIR, PKGDATADIR, PREFIX, PROFILE, VERSION
+
+signal(SIGINT, SIG_DFL)
 
 if sys.platform.startswith("linux"):
     locale.bindtextdomain("openemail", LOCALEDIR)
@@ -30,47 +29,26 @@ if sys.platform.startswith("linux"):
 
 gettext.install("openemail", LOCALEDIR)
 
-from .account import delete as delete_account
-from .account import log_out, register, try_auth
-from .asyncio import create_task
-from .message import Attachment, IncomingAttachment, Message, OutgoingAttachment
-from .message import send as send_message
-from .notifier import Notifier
-from .profile import Profile, ProfileCategory, ProfileField
-from .profile import delete_image as delete_profile_image
-from .profile import refresh as refresh_profile
-from .profile import update as update_profile
-from .profile import update_image as update_profile_image
-from .property import Property
-from .store import (
-    ADDRESS_SPLIT_PATTERN,
-    DictStore,
-    MessageStore,
-    People,
-    ProfileStore,
-    address_book,
-    broadcasts,
-    contact_requests,
-    drafts,
-    empty_trash,
-    inbox,
-    log_path,
-    outbox,
-    profiles,
-    secret_service,
-    sent,
-    settings,
-    settings_add,
-    settings_discard,
-    state_settings,
-    sync,
-)
-
+log_path = Path(GLib.get_user_state_dir(), "openemail.log")
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(levelname)s: %(name)s:%(lineno)d %(message)s",
     handlers=(
-        logging.StreamHandler(),
+        StreamHandler(),
         RotatingFileHandler(log_path, maxBytes=1_000_000),
     ),
+)
+
+from ._notifier import Notifier
+from ._property import Property
+
+__all__ = (
+    "APP_ID",
+    "LOCALEDIR",
+    "PKGDATADIR",
+    "PREFIX",
+    "PROFILE",
+    "VERSION",
+    "Notifier",
+    "Property",
 )

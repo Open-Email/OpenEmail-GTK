@@ -6,7 +6,7 @@ $People people {}
 template $Contacts: Adw.NavigationPage {
   title: _("Contacts");
 
-  child: $Page content {
+  child: $Page page {
     title: bind template.title;
     loading: bind people.address_book as <$DictStore>.updating;
 
@@ -33,12 +33,12 @@ template $Contacts: Adw.NavigationPage {
         filter: AnyFilter {
           StringFilter {
             expression: expr item as <$Profile>.address;
-            search: bind content.search-text;
+            search: bind page.search-text;
           }
 
           StringFilter {
             expression: expr item as <$Profile>.name;
-            search: bind content.search-text;
+            search: bind page.search-text;
           }
         };
       };

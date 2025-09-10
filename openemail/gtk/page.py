@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from gi.repository import Adw, Gtk
 
-import openemail as app
-from openemail import PREFIX, Notifier, Property
+from openemail import PREFIX, Notifier, Property, store, tasks
 
 if TYPE_CHECKING:
     from .window import Window
@@ -59,7 +58,7 @@ class Page(Adw.BreakpointBin):
 
     @Gtk.Template.Callback()
     def _sync(self, *_args):
-        app.create_task(app.sync())
+        tasks.create(store.sync())
 
     @Gtk.Template.Callback()
     def _get_sidebar_child_name(

@@ -12,7 +12,10 @@ import keyring
 from gi.repository import Adw, Gio
 
 import openemail as app
-from openemail import APP_ID, PREFIX, Address, KeyPair
+from openemail import APP_ID, PREFIX, store
+from openemail.core import client
+from openemail.core.crypto import KeyPair
+from openemail.core.model import Address
 
 from .preferences import Preferences
 from .window import Window
@@ -27,22 +30,22 @@ class Application(Adw.Application):
         self._add_action("about", self._about)
         self._add_action("quit", self._quit, ("<primary>q",))
 
-        if interval := app.settings.get_uint("empty-trash-interval"):
+        if interval := store.settings.get_uint("empty-trash-interval"):
             expired = tuple(self._get_expired_trash_items(interval))
-            app.settings_discard("trashed-messages", *expired)
-            app.settings_add("deleted-messages", *expired)
+            store.settings_discard("trashed-messages", *expired)
+            store.settings_add("deleted-messages", *expired)
 
         if (
-            (address := app.settings.get_string("address"))
-            and (keys := keyring.get_password(app.secret_service, address))
+            (address := store.settings.get_string("address"))
+            and (keys := keyring.get_password(store.secret_service, address))
             and (keys := json.loads(keys))
             and (encryption_key := keys.get("privateEncryptionKey"))
             and (signing_key := keys.get("privateSigningKey"))
         ):
             with suppress(ValueError):
-                app.user.address = Address(address)
-                app.user.encryption_keys = KeyPair.from_b64(encryption_key)
-                app.user.signing_keys = KeyPair.from_b64(signing_key)
+                client.user.address = Address(address)
+                client.user.encryption_keys = KeyPair.from_b64(encryption_key)
+                client.user.signing_keys = KeyPair.from_b64(signing_key)
 
     @override
     def do_activate(self):
@@ -87,7 +90,7 @@ class Application(Adw.Application):
     @staticmethod
     def _get_expired_trash_items(interval: int) -> Generator[str]:
         today = datetime.now(UTC).date()
-        for message in app.settings.get_strv("trashed-messages"):
+        for message in store.settings.get_strv("trashed-messages"):
             ident, timestamp = message.rsplit(maxsplit=1)
             with suppress(ValueError):
                 if (today - date.fromisoformat(timestamp)).days >= interval:

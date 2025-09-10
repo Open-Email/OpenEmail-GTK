@@ -12,14 +12,10 @@ from typing import Any, Self, cast, override
 
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
-from . import core
-from .asyncio import create_task
-from .core import client, model
-from .core.client import WriteError, user
-from .core.model import Address
-from .notifier import Notifier
+from . import Notifier, Property, core, tasks
+from .core import client, messages, model
+from .core.model import Address, WriteError
 from .profile import Profile
-from .property import Property
 
 
 def get_ident(message: model.Message) -> str:
@@ -160,7 +156,7 @@ class IncomingAttachment(Attachment):
     @override
     def open(self, parent: Gtk.Widget | None = None):
         """Download and reconstruct `self` from its parts, then open for saving."""
-        create_task(self._save(parent))
+        tasks.create(self._save(parent))
 
     async def _save(self, parent: Gtk.Widget | None):
         msg = _("Failed to download attachment")
@@ -182,7 +178,7 @@ class IncomingAttachment(Attachment):
         except GLib.Error:
             return
 
-        if not (data := await client.download_attachment(self._parts)):
+        if not (data := await messages.download_attachment(self._parts)):
             Notifier.send(msg)
             return
 
@@ -284,14 +280,14 @@ class Message(GObject.Object):
             return self._message.ident != value._message.ident
         return super().__ne__(value)
 
-    def set_from_message(self, message: model.Message | None):
+    def set_from_message(self, msg: model.Message | None, /):
         """Set the properties of `self` from `message`."""
-        self._message = message
+        self._message = msg
 
-        if not message:
+        if not msg:
             return
 
-        local_date = message.date.astimezone(datetime.now(UTC).astimezone().tzinfo)
+        local_date = msg.date.astimezone(datetime.now(UTC).astimezone().tzinfo)
         self.date = int(local_date.timestamp())
         self.display_date = local_date.strftime("%x")
         # Localized date format, time in H:M
@@ -299,20 +295,20 @@ class Message(GObject.Object):
             self.display_date, local_date.strftime("%H:%M")
         )
 
-        self.subject = message.subject
-        self.body = message.body or ""
-        self.new = message.new
-        self.is_broadcast = message.is_broadcast
+        self.subject = msg.subject
+        self.body = msg.body or ""
+        self.new = msg.new
+        self.is_broadcast = msg.is_broadcast
 
-        self.is_outgoing = message.author == user.address
+        self.is_outgoing = msg.author == client.user.address
         self.is_incoming = not self.is_outgoing
         self._update_trashed_state()
 
-        self.author = message.author
-        self.original_author = f"{_('Original Author:')} {message.original_author}"
-        self.different_author = message.author != message.original_author
+        self.author = msg.author
+        self.original_author = f"{_('Original Author:')} {msg.original_author}"
+        self.different_author = msg.author != msg.original_author
 
-        readers = tuple(r for r in message.readers if r != user.address)
+        readers = tuple(r for r in msg.readers if r != client.user.address)
         if self.is_broadcast:
             self.display_readers = _("Public Message")
         else:
@@ -322,18 +318,18 @@ class Message(GObject.Object):
                 self.display_readers += f", {Profile.of(reader).name or reader}"
 
         self.readers = ", ".join(
-            map(str, readers if self.is_outgoing else (*readers, message.author))
+            map(str, readers if self.is_outgoing else (*readers, msg.author))
         )
 
         self.attachments.remove_all()
-        for name, parts in message.attachments.items():
+        for name, parts in msg.attachments.items():
             self.attachments.append(IncomingAttachment(name, parts))
 
-        match message:
-            case client.IncomingMessage() | model.OutgoingMessage():
-                self.subject_id = message.subject_id
-            case client.DraftMessage():
-                self.draft_id = message.ident
+        match msg:
+            case model.IncomingMessage() | model.OutgoingMessage():
+                self.subject_id = msg.subject_id
+            case model.DraftMessage():
+                self.draft_id = msg.ident
 
         for binding in self._bindings:
             binding.unbind()
@@ -343,12 +339,12 @@ class Message(GObject.Object):
         self.profile = self.profile_image = None
         self.show_initials = False
 
-        if not (message.readers or message.is_broadcast):
+        if not (msg.readers or msg.is_broadcast):
             self.display_name = _("No Readers")
             self.icon_name = "public-access-symbolic"
             return
 
-        if self.is_outgoing and message.is_broadcast:
+        if self.is_outgoing and msg.is_broadcast:
             self.display_name = _("Public Message")
             self.icon_name = "broadcasts-symbolic"
             return
@@ -364,7 +360,7 @@ class Message(GObject.Object):
 
         self.show_initials = True
         self.profile = Profile.of(
-            readers[0] if (self.is_outgoing and readers) else message.author
+            readers[0] if (self.is_outgoing and readers) else msg.author
         )
 
         self._bindings = (
@@ -449,7 +445,7 @@ class Message(GObject.Object):
         failed = False
         for msg in self._message, *self._message.children:
             try:
-                await client.delete_message(msg.ident)
+                await messages.delete(msg.ident)
             except WriteError:  # noqa: PERF203
                 if not failed:
                     Notifier.send(_("Failed to discard message"))
@@ -487,7 +483,7 @@ class Message(GObject.Object):
     def _get_data_dir(name: str, message: model.Message) -> Path:
         host, local = message.author.host_part, message.author.local_part
         suffix = "broadcasts" if message.is_broadcast else ""
-        return client.data_dir / name / host / local / suffix
+        return core.data_dir / name / host / local / suffix
 
 
 async def send(
@@ -524,7 +520,7 @@ async def send(
         files[
             model.AttachmentProperties(
                 name=attachment.name,
-                ident=model.generate_ident(core.user.address),
+                ident=model.generate_ident(client.user.address),
                 type=attachment.type,
                 modified=attachment.modified,
             )
@@ -541,7 +537,7 @@ async def send(
     )
 
     try:
-        await client.send(message)
+        await messages.send(message)
     except WriteError:
         outbox.remove(message.ident)
         Notifier.send(_("Failed to send message"))

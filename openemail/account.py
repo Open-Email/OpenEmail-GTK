@@ -9,21 +9,9 @@ from typing import Any
 
 import keyring
 
-from .asyncio import create_task
-from .core import client, model
-from .core.client import WriteError, user
-from .notifier import Notifier
-from .store import (
-    address_book,
-    broadcasts,
-    contact_requests,
-    inbox,
-    outbox,
-    profiles,
-    secret_service,
-    sent,
-    settings,
-)
+from . import Notifier, core, store, tasks
+from .core import account, client, model
+from .core.model import WriteError
 
 
 def try_auth(
@@ -33,7 +21,7 @@ def try_auth(
     """Try authenticating and call `on_success` or `on_failure` based on the result."""
 
     async def auth():
-        if not await client.try_auth():
+        if not await account.try_auth():
             raise ValueError
 
     def done(success: bool):
@@ -47,7 +35,7 @@ def try_auth(
         if on_failure:
             on_failure()
 
-    create_task(auth(), done)
+    tasks.create(auth(), done)
 
 
 def register(
@@ -57,7 +45,7 @@ def register(
     """Try authenticating and call `on_success` or `on_failure` based on the result."""
 
     async def auth():
-        if not await client.register():
+        if not await account.register():
             raise ValueError
 
     def done(success: bool):
@@ -71,24 +59,24 @@ def register(
         if on_failure:
             on_failure()
 
-    create_task(auth(), done)
+    tasks.create(auth(), done)
 
 
 def log_out():
     """Remove the user's local account."""
-    for profile in profiles.values():
+    for profile in store.profiles.values():
         profile.set_from_profile(None)
 
-    for store in (
-        profiles,
-        address_book,
-        contact_requests,
-        broadcasts,
-        inbox,
-        outbox,
-        sent,
+    for data in (
+        store.profiles,
+        store.address_book,
+        store.contact_requests,
+        store.broadcasts,
+        store.inbox,
+        store.outbox,
+        store.sent,
     ):
-        store.clear()
+        data.clear()
 
     for key in (
         "address",
@@ -100,20 +88,20 @@ def log_out():
         "trashed-messages",
         "deleted-messages",
     ):
-        settings.reset(key)
+        store.settings.reset(key)
 
-    keyring.delete_password(secret_service, user.address)
+    keyring.delete_password(store.secret_service, client.user.address)
 
-    rmtree(client.data_dir, ignore_errors=True)
+    rmtree(core.data_dir, ignore_errors=True)
 
     for field in fields(model.User):
-        delattr(user, field.name)
+        delattr(client.user, field.name)
 
 
 async def delete():
     """Permanently delete the user's account."""
     try:
-        await client.delete_account()
+        await account.delete()
     except WriteError:
         Notifier.send(_("Failed to delete account"))
         return

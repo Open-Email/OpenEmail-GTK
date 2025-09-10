@@ -7,8 +7,8 @@ from contextlib import suppress
 
 from gi.repository import Gtk
 
-import openemail as app
-from openemail import PREFIX, Profile, Property
+from openemail import PREFIX, Property, store, tasks
+from openemail.profile import Profile
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contact-row.ui")
@@ -22,11 +22,11 @@ class ContactRow(Gtk.Box):
     @Gtk.Template.Callback()
     def _accept(self, *_args):
         address = self.profile.value_of("address")
-        app.settings_discard("contact-requests", address)
+        store.settings_discard("contact-requests", address)
 
         with suppress(ValueError):
-            app.create_task(app.address_book.new(address))
+            tasks.create(store.address_book.new(address))
 
     @Gtk.Template.Callback()
     def _decline(self, *_args):
-        app.settings_discard("contact-requests", self.profile.value_of("address"))
+        store.settings_discard("contact-requests", self.profile.value_of("address"))

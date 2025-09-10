@@ -6,8 +6,10 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-import openemail as app
-from openemail import APP_ID, PREFIX, Address, KeyPair, Notifier, Property
+from openemail import APP_ID, PREFIX, Notifier, Property, account
+from openemail.core import client
+from openemail.core.crypto import KeyPair
+from openemail.core.model import Address
 
 from .form import Form
 
@@ -58,13 +60,15 @@ class LoginView(Adw.Bin):
     @Gtk.Template.Callback()
     def _register(self, *_args):
         try:
-            app.user.address = Address(f"{self.user_name_entry.props.text}@open.email")
+            client.user.address = Address(
+                f"{self.user_name_entry.props.text}@open.email"
+            )
         except ValueError:
             Notifier.send(_("Invalid name, try another one"))
             return
 
-        app.user.encryption_keys = KeyPair.for_encryption()
-        app.user.signing_keys = KeyPair.for_signing()
+        client.user.encryption_keys = KeyPair.for_encryption()
+        client.user.signing_keys = KeyPair.for_signing()
 
         def success():
             self.register_button_child_name = "label"
@@ -72,7 +76,7 @@ class LoginView(Adw.Bin):
             GLib.timeout_add_seconds(1, self._reset)
 
         self.register_button_child_name = "loading"
-        app.register(
+        account.register(
             success,
             lambda: self.set_property(
                 "register-button-child-name",
@@ -94,9 +98,9 @@ class LoginView(Adw.Bin):
         signing_keys = self.signing_key_entry.props.text
 
         try:
-            app.user.address = Address(address)
-            app.user.encryption_keys = KeyPair.from_b64(encryption_keys)
-            app.user.signing_keys = KeyPair.from_b64(signing_keys)
+            client.user.address = Address(address)
+            client.user.encryption_keys = KeyPair.from_b64(encryption_keys)
+            client.user.signing_keys = KeyPair.from_b64(signing_keys)
         except ValueError:
             Notifier.send(_("Incorrect key format"))
             return
@@ -107,7 +111,7 @@ class LoginView(Adw.Bin):
             GLib.timeout_add_seconds(1, self._reset)
 
         self.button_child_name = "loading"
-        app.try_auth(
+        account.try_auth(
             success,
             lambda: self.set_property(
                 "button-child-name",

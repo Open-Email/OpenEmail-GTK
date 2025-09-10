@@ -7,8 +7,9 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-import openemail as app
-from openemail import APP_ID, PREFIX, Notifier, Profile, Property
+from openemail import APP_ID, PREFIX, Notifier, Property
+from openemail.core import client
+from openemail.store import Profile
 
 from .compose_sheet import ComposeSheet
 from .contacts import Contacts
@@ -60,7 +61,7 @@ class Content(Adw.BreakpointBin):
         self.sidebar.set_header_func(self._header_func)
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))
 
-        Property.bind(Profile.of(app.user), "image", self, "profile-image")
+        Property.bind(Profile.of(client.user), "image", self, "profile-image")
         Property.bind(
             Notifier(), "sending", self.sidebar_toolbar_view, "reveal-bottom-bars"
         )

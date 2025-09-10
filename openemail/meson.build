@@ -3,7 +3,7 @@ moduledir = py_installation.get_install_dir() / 'openemail'
 subdir('gtk/ui')
 
 init = configure_file(
-    input: 'configuration.py.in',
+    input: '_config.py.in',
     output: '@BASENAME@',
     configuration: conf,
     install_dir: moduledir,
@@ -15,8 +15,8 @@ install_subdir(
     exclude_directories: ['gtk' /'ui'],
     exclude_files: [
         '__builtins__.pyi',
-        'configuration.py',
-        'configuration.py.in',
+        '_config.py',
+        '_config.py.in',
         'meson.build',
     ],
 )

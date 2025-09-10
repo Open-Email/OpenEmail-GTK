@@ -6,8 +6,9 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-import openemail as app
-from openemail import APP_ID, PREFIX, Address, Profile, ProfileField, Property
+from openemail import APP_ID, PREFIX, Property, store, tasks
+from openemail.core.model import Address
+from openemail.profile import Profile, ProfileField
 
 child = Gtk.Template.Child()
 
@@ -50,7 +51,7 @@ class ProfileView(Adw.Bin):
             self.visible_child_name = "empty"
             return
 
-        self.is_contact = profile in app.address_book if profile.address else False
+        self.is_contact = profile in store.address_book if profile.address else False
 
         if not profile.value_of("address"):
             self.visible_child_name = "not-found"
@@ -123,7 +124,7 @@ class ProfileView(Adw.Bin):
             return
 
         try:
-            app.create_task(app.address_book.delete(Address(self.profile.address)))
+            tasks.create(store.address_book.delete(Address(self.profile.address)))
         except ValueError:
             return
 

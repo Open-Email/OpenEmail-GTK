@@ -6,8 +6,8 @@ from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-import openemail as app
-from openemail import PREFIX, Message, Property
+from openemail import PREFIX, Property, store
+from openemail.message import Message
 from openemail.store import DictStore
 
 from .compose_sheet import ComposeSheet
@@ -33,7 +33,7 @@ class _Messages(Adw.NavigationPage):
         self.builder = Gtk.Builder.new_from_resource(f"{PREFIX}/messages.ui")
 
         self.trashed: Gtk.BoolFilter = self._get_object("trashed")
-        app.settings.connect("changed::trashed-messages", self._on_trash_changed)
+        store.settings.connect("changed::trashed-messages", self._on_trash_changed)
         self._get_object("sort_model").props.model = model
 
         self.thread_view: ThreadView = self._get_object("thread_view")
@@ -96,21 +96,21 @@ class Inbox(_Folder):
     """A navigation page displaying the user's inbox."""
 
     __gtype_name__ = "Inbox"
-    folder, title = app.inbox, _("Inbox")
+    folder, title = store.inbox, _("Inbox")
 
 
 class Outbox(_Folder):
     """A navigation page displaying the user's outbox."""
 
     __gtype_name__ = "Outbox"
-    folder, title, subtitle = app.outbox, _("Outbox"), _("Can be discarded")
+    folder, title, subtitle = store.outbox, _("Outbox"), _("Can be discarded")
 
 
 class Sent(_Folder):
     """A navigation page displaying the user's sent messages."""
 
     __gtype_name__ = "Sent"
-    folder, title, subtitle = app.sent, _("Sent"), _("From this device")
+    folder, title, subtitle = store.sent, _("Sent"), _("From this device")
 
 
 class Drafts(_Messages):
@@ -119,12 +119,12 @@ class Drafts(_Messages):
     __gtype_name__ = "Drafts"
 
     def __init__(self, **kwargs: Any):
-        super().__init__(app.drafts, title=_("Drafts"), **kwargs)
+        super().__init__(store.drafts, title=_("Drafts"), **kwargs)
 
         self.page.model.props.can_unselect = True
 
         delete_dialog: Adw.AlertDialog = self._get_object("delete_dialog")
-        delete_dialog.connect("response::delete", lambda *_: app.drafts.delete_all())
+        delete_dialog.connect("response::delete", lambda *_: store.drafts.delete_all())
 
         delete_button: Gtk.Button = self._get_object("delete_button")
         delete_button.connect("clicked", lambda *_: delete_dialog.present(self))
@@ -154,12 +154,12 @@ class Trash(_Messages):
 
         self.trashed.props.invert = False
 
-        folders.append(app.broadcasts)
-        folders.append(app.inbox)
-        folders.append(app.sent)
+        folders.append(store.broadcasts)
+        folders.append(store.inbox)
+        folders.append(store.sent)
 
         empty_dialog: Adw.AlertDialog = self._get_object("empty_dialog")
-        empty_dialog.connect("response::empty", lambda *_: app.empty_trash())
+        empty_dialog.connect("response::empty", lambda *_: store.empty_trash())
 
         empty_button: Gtk.Button = self._get_object("empty_button")
         empty_button.connect("clicked", lambda *_: empty_dialog.present(self))
@@ -170,14 +170,14 @@ class Trash(_Messages):
         Property.bind(self.page.model, "n-items", empty_button, "sensitive")
 
         def set_loading(*_args):
-            self.page.loading = app.inbox.updating or app.broadcasts.updating
+            self.page.loading = store.inbox.updating or store.broadcasts.updating
 
-        app.inbox.connect("notify::updating", set_loading)
-        app.broadcasts.connect("notify::updating", set_loading)
+        store.inbox.connect("notify::updating", set_loading)
+        store.broadcasts.connect("notify::updating", set_loading)
 
 
 class Broadcasts(_Folder):
     """A navigation page displaying the user's broadcasts folder."""
 
     __gtype_name__ = "Broadcasts"
-    folder, title = app.broadcasts, _("Public")
+    folder, title = store.broadcasts, _("Public")

@@ -8,16 +8,11 @@ from typing import Self
 
 from gi.repository import Adw, Gtk
 
-import openemail as app
-from openemail import (
-    ADDRESS_SPLIT_PATTERN,
-    PREFIX,
-    Address,
-    Message,
-    OutgoingAttachment,
-    Profile,
-    Property,
-)
+from openemail import PREFIX, Property, message, store, tasks
+from openemail.core.model import Address
+from openemail.message import Message, OutgoingAttachment
+from openemail.profile import Profile
+from openemail.store import ADDRESS_SPLIT_PATTERN
 
 from .attachments import Attachments
 from .body import Body
@@ -107,7 +102,7 @@ class ComposeSheet(Adw.BreakpointBin):
             if not start:
                 return
 
-            for contact in app.address_book:
+            for contact in store.address_book:
                 if not (contact.address and contact.address.startswith(start)):
                     continue
 
@@ -155,10 +150,10 @@ class ComposeSheet(Adw.BreakpointBin):
     @Gtk.Template.Callback()
     def _confirm_send(self, *_args):
         if self.ident:
-            app.drafts.delete(self.ident)
+            store.drafts.delete(self.ident)
 
-        app.create_task(
-            app.send_message(
+        tasks.create(
+            message.send(
                 self._readers,
                 self.subject.props.text,
                 self.body.props.text,
@@ -175,7 +170,7 @@ class ComposeSheet(Adw.BreakpointBin):
 
     @Gtk.Template.Callback()
     def _attach_files(self, *_args):
-        app.create_task(self._attach_files_task())
+        tasks.create(self._attach_files_task())
 
     @Gtk.Template.Callback()
     def _format_bold(self, *_args):
@@ -285,7 +280,7 @@ class ComposeSheet(Adw.BreakpointBin):
         body = self.body.props.text
         if subject or body:
             readers = self.readers.props.text
-            app.drafts.save(
+            store.drafts.save(
                 self.ident,
                 readers,
                 subject,

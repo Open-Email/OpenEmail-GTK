@@ -8,8 +8,8 @@ from typing import Any
 import keyring
 from gi.repository import Adw, Gio, Gtk
 
-import openemail as app
-from openemail import APP_ID, PREFIX, Notifier, Property
+from openemail import APP_ID, PREFIX, Notifier, Property, store, tasks
+from openemail.core import client
 
 from .content import Content
 from .login_view import LoginView
@@ -35,19 +35,19 @@ class Window(Adw.ApplicationWindow):
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
-        app.state_settings.bind(
+        store.state_settings.bind(
             "width",
             self,
             "default-width",
             Gio.SettingsBindFlags.DEFAULT,
         )
-        app.state_settings.bind(
+        store.state_settings.bind(
             "height",
             self,
             "default-height",
             Gio.SettingsBindFlags.DEFAULT,
         )
-        app.state_settings.bind(
+        store.state_settings.bind(
             "show-sidebar",
             self.content.split_view,
             "show-sidebar",
@@ -55,9 +55,9 @@ class Window(Adw.ApplicationWindow):
         )
 
         Notifier().connect("send", self._on_send_notification)
-        app.create_task(app.sync(periodic=True))
+        tasks.create(store.sync(periodic=True))
 
-        if not app.user.logged_in:
+        if not client.user.logged_in:
             return
 
         self.visible_child_name = "content"
@@ -66,18 +66,18 @@ class Window(Adw.ApplicationWindow):
     def _on_auth(self, *_args):
         keyring.set_password(
             f"{APP_ID}.Keys",
-            app.user.address,
+            client.user.address,
             json.dumps(
                 {
-                    "privateEncryptionKey": str(app.user.encryption_keys.private),
-                    "privateSigningKey": str(app.user.signing_keys),
+                    "privateEncryptionKey": str(client.user.encryption_keys.private),
+                    "privateSigningKey": str(client.user.signing_keys),
                 }
             ),
         )
 
-        app.settings.set_string("address", app.user.address)
+        store.settings.set_string("address", client.user.address)
 
-        app.create_task(app.sync())
+        tasks.create(store.sync())
         self.visible_child_name = "content"
 
     def _on_send_notification(self, _obj, toast: Adw.Toast):

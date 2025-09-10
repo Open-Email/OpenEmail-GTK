@@ -7,8 +7,8 @@ from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
-import openemail as app
-from openemail import PREFIX, Message, Notifier, Property
+from openemail import PREFIX, Notifier, Property, tasks
+from openemail.message import Message
 
 from .attachments import Attachments
 from .body import Body
@@ -88,7 +88,7 @@ class MessageView(Gtk.Box):
     @Gtk.Template.Callback()
     def _confirm_discard(self, *_args):
         if self.message:
-            app.create_task(self.message.discard())
+            tasks.create(self.message.discard())
 
     @Gtk.Template.Callback()
     def _undo(self, *_args):
