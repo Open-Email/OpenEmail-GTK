@@ -36,7 +36,12 @@ class ThreadView(Adw.Bin):
 
         self.box.set_header_func(
             lambda row, before: row.set_header(
-                Gtk.Separator(margin_bottom=12, margin_start=18, margin_end=18)
+                Gtk.Separator(
+                    margin_top=6,
+                    margin_bottom=6,
+                    margin_start=18,
+                    margin_end=18,
+                )
                 if before
                 else None
             )
@@ -62,13 +67,23 @@ class ThreadView(Adw.Bin):
         (self.add_css_class if msg else self.remove_css_class)("view")
         (self.box.remove_css_class if msg else self.box.add_css_class)("background")
 
-        if self.message:
-            GLib.timeout_add(100, self.viewport.scroll_to, self._rows[self.message])
+        if self.message and (len(self.sort_model) > 1):
+            GLib.timeout_add(100, self._scroll_to, self.message)
 
     def _create_widget(self, item: Message) -> Gtk.Widget:
         view = MessageView(message=item)
         view.connect("reply", lambda *_: self.emit("reply", view.message))
-        row = Gtk.ListBoxRow(focusable=False, activatable=False, child=view)
+        row = Gtk.ListBoxRow(activatable=False, child=view)
 
         self._rows[item] = row
         return row
+
+    def _scroll_to(self, msg: Message):
+        if self.message != msg:
+            return
+
+        row = self._rows[msg]
+        self.viewport.scroll_to(row)
+
+        row.add_css_class("selected-message")
+        GLib.timeout_add_seconds(1, row.remove_css_class, "selected-message")

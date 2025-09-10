@@ -11,6 +11,7 @@ template $ThreadView: Adw.Bin {
     content: ScrolledWindow {
       child: Viewport viewport {
         child: ListBox box {
+          margin-bottom: 6;
           selection-mode: none;
 
           [placeholder]
@@ -22,6 +23,10 @@ template $ThreadView: Adw.Bin {
               "dimmed",
             ]
           }
+
+          styles [
+            "message-list",
+          ]
         };
       };
     };
@@ -29,7 +34,7 @@ template $ThreadView: Adw.Bin {
 }
 
 SortListModel sort_model {
-  model: FilterListModel filter_model {
+  model: FilterListModel {
     filter: StringFilter {
       match-mode: exact;
       ignore-case: false;

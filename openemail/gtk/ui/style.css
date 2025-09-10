@@ -44,3 +44,27 @@ button.spinning > image {
   transform-origin: 50% 53.125%; /* The icon is off-center by half a pixel */
   animation: spinning 1s linear infinite;
 }
+
+.message-list > row {
+  margin: 0 6px;
+  border-radius: 9px;
+  background-color: var(--view-bg-color);
+}
+
+@keyframes message-highlight {
+  15% {
+    filter: brightness(90%);
+  }
+}
+
+.selected-message {
+  animation: message-highlight 1s;
+}
+
+@media (prefers-color-scheme: dark) {
+  @keyframes message-highlight {
+    15% {
+      filter: brightness(150%);
+    }
+  }
+}
