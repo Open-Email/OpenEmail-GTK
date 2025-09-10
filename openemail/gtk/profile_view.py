@@ -30,8 +30,8 @@ class ProfileView(Adw.Bin):
     address = Property(str)
     away = Property(bool)
     is_contact = Property(bool)
-    app_icon_name = Property(str, default=f"{APP_ID}-symbolic")
     broadcasts = Property(bool)
+    app_icon_name = Property(str, default=f"{APP_ID}-symbolic")
 
     visible_child_name = Property(str, default="empty")
 

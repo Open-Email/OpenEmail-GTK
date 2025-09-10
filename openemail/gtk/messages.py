@@ -146,17 +146,13 @@ class Trash(_Messages):
 
     def __init__(self, **kwargs: Any):
         super().__init__(
-            Gtk.FlattenListModel.new(folders := Gio.ListStore.new(Gio.ListModel)),
+            store.messages,
             title=_("Trash"),
             subtitle=_("On this device"),
             **kwargs,
         )
 
         self.trashed.props.invert = False
-
-        folders.append(store.broadcasts)
-        folders.append(store.inbox)
-        folders.append(store.sent)
 
         empty_dialog: Adw.AlertDialog = self._get_object("empty_dialog")
         empty_dialog.connect("response::empty", lambda *_: store.empty_trash())

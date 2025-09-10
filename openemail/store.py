@@ -22,8 +22,9 @@ from typing import Any
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
 from . import APP_ID, Notifier, Property, core, message, profile, tasks
-from .core import client, contacts, messages, model
+from .core import client, contacts, model
 from .core import drafts as core_drafts
+from .core import messages as core_messages
 from .core import profile as core_profile
 from .core.model import Address, WriteError
 from .message import Message
@@ -295,7 +296,7 @@ class _BroadcastStore(MessageStore):
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         deleted = settings.get_strv("deleted-messages")
         async for msg in self._process_messages(
-            await messages.fetch_broadcasts(
+            await core_messages.fetch_broadcasts(
                 address := Address(contact.address),
                 exclude=tuple(
                     split[1]
@@ -314,7 +315,7 @@ class _InboxStore(MessageStore):
         known_notifiers = set[Address]()
         other_contacts = {Address(contact.address) for contact in address_book}
 
-        async for notification in messages.fetch_notifications():
+        async for notification in core_messages.fetch_notifications():
             if notification.is_expired:
                 continue
 
@@ -333,7 +334,7 @@ class _InboxStore(MessageStore):
         deleted = settings.get_strv("deleted-messages")
         async for msg in self._process_messages(
             (
-                await messages.fetch_link_messages(
+                await core_messages.fetch_link_messages(
                     contact,
                     exclude=tuple(
                         split[1]
@@ -357,7 +358,7 @@ class _OutboxStore(MessageStore):
     default_factory = _default_outbox_factory
 
     async def _fetch(self) -> AsyncGenerator[model.Message]:
-        for msg in await messages.fetch_outbox():
+        for msg in await core_messages.fetch_outbox():
             msg.new = False  # New outbox messages should be marked read automatically
             yield msg
 
@@ -365,7 +366,7 @@ class _OutboxStore(MessageStore):
 class _SentStore(MessageStore):
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         deleted = settings.get_strv("deleted-messages")
-        for msg in await messages.fetch_sent(
+        for msg in await core_messages.fetch_sent(
             exclude=tuple(  # TODO: This should really be a reusable function
                 split[1]
                 for ident in deleted
@@ -475,20 +476,25 @@ async def sync(*, periodic: bool = False):
     )
 
 
-profiles: defaultdict[Address, Profile] = defaultdict(Profile)
+def _flatten(*models: GObject.Object) -> Gtk.FlattenListModel:
+    store = Gio.ListStore.new(Gio.ListModel)
+    for m in models:
+        store.append(m)
+
+    return Gtk.FlattenListModel.new(store)
+
+
+profiles = defaultdict[Address, Profile](Profile)
 address_book = _AddressBook()
 contact_requests = _ContactRequests()
+all_contacts = _flatten(address_book, contact_requests)
 
-_models = Gio.ListStore.new(Gio.ListModel)
-_models.append(address_book)
-_models.append(contact_requests)
-all_contacts = Gtk.FlattenListModel.new(_models)
-
-broadcasts = _BroadcastStore()
 inbox = _InboxStore()
 outbox = _OutboxStore()
 sent = _SentStore()
 drafts = _DraftStore()
+broadcasts = _BroadcastStore()
+messages = _flatten(inbox, sent, broadcasts)
 
 
 def empty_trash():

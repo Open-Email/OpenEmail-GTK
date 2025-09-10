@@ -24,19 +24,12 @@ class ThreadView(Adw.Bin):
     viewport: Gtk.Viewport = child
     sort_model: Gtk.SortListModel = child
 
-    app_icon_name = Property(str, default=f"{APP_ID}-symbolic")
-
     message = Property[Message | None](Message)
     subject_id = Property(str)
+    model = Property(Gio.ListModel, default=store.messages)
+    app_icon_name = Property(str, default=f"{APP_ID}-symbolic")
 
     reply = GObject.Signal(arg_types=(Message,))
-
-    _models = Gio.ListStore.new(item_type=Gio.ListModel)
-    _models.append(store.inbox)
-    _models.append(store.sent)
-    _models.append(store.broadcasts)
-
-    model = Property(Gio.ListModel, default=Gtk.FlattenListModel.new(_models))
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
