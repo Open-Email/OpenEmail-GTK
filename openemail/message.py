@@ -541,7 +541,7 @@ async def send(
     )
 
     try:
-        await message.send()
+        await client.send(message)
     except WriteError:
         outbox.remove(message.ident)
         Notifier.send(_("Failed to send message"))

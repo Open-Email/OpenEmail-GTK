@@ -5,9 +5,11 @@
 import asyncio
 import json
 from base64 import b64encode
-from collections.abc import AsyncGenerator, Generator, Iterable
+from collections.abc import AsyncGenerator, Generator, Iterable, Sequence
 from datetime import UTC, datetime
+from hashlib import sha256
 from http.client import HTTPResponse, InvalidURL
+from itertools import chain
 from json import JSONDecodeError
 from logging import getLogger
 from shutil import rmtree
@@ -22,6 +24,7 @@ from .model import (
     IncomingMessage,
     Message,
     Notification,
+    OutgoingMessage,
     Profile,
     WriteError,
     to_attrs,
@@ -200,7 +203,7 @@ async def fetch_profile(address: Address) -> Profile | None:
     return None
 
 
-async def update(values: dict[str, str]):
+async def update_profile(values: dict[str, str]):
     """Update `core.user`'s public profile with `values`."""
     logger.debug("Updating user profile…")
 
@@ -264,7 +267,7 @@ async def fetch_profile_image(address: Address) -> bytes | None:
     return None
 
 
-async def update_image(image: bytes):
+async def update_profile_image(image: bytes):
     """Upload `image` to be used as `core.user`'s profile image."""
     logger.debug("Updating profile image…")
     for agent in await get_agents(user.address):
@@ -281,7 +284,7 @@ async def update_image(image: bytes):
     raise WriteError
 
 
-async def delete_image():
+async def delete_profile_image():
     """Delete `core.user`'s profile image."""
     logger.debug("Deleting profile image…")
     for agent in await get_agents(user.address):
@@ -553,6 +556,39 @@ async def fetch_notifications() -> AsyncGenerator[Notification]:
     logger.debug("Notifications fetched")
 
 
+async def send(message: OutgoingMessage, /):
+    """Send `message` to `message.readers`."""
+    logger.debug("Sending message…")
+    message.sending = True
+
+    try:
+        await _build(message)
+
+        for agent in await get_agents(user.address):
+            if not await request(
+                urls.Home(agent, user.address).messages,
+                auth=True,
+                headers=message.headers,
+                data=message.content,
+            ):
+                logger.error("Failed sending message")
+                message.sending = False
+                raise WriteError
+
+            await notify_readers(message.readers)
+            break
+
+        for part in chain.from_iterable(message.attachments.values()):
+            await send(part)
+
+    except ValueError as error:
+        logger.exception("Error sending message")
+        message.sending = False
+        raise WriteError from error
+
+    message.sending = False
+
+
 async def delete_message(ident: str):
     """Delete the message with `ident`."""
     logger.debug("Deleting message %s…", ident[:_SHORT])
@@ -572,7 +608,7 @@ async def delete_message(ident: str):
 def save_draft(draft: DraftMessage):
     """Serialize and save a message to disk for future use.
 
-    See `OutgoingMessage.send()` for other parameters,
+    See `send()` for other parameters,
     `load_drafts()` on how to retrieve it.
     """
     logger.debug("Saving draft…")
@@ -941,3 +977,152 @@ async def _fetch_messages(
 
     logger.debug("Fetched messages from %s", author)
     return tuple(messages.values())
+
+
+async def _build(message: OutgoingMessage):
+    from . import user
+
+    if message.headers:
+        return
+
+    message.headers = {
+        "Message-Id": message.ident,
+        "Content-Type": "application/octet-stream",
+    }
+
+    headers_bytes = to_fields(
+        {
+            "Id": message.headers["Message-Id"],
+            "Author": user.address,
+            "Date": message.date.isoformat(timespec="seconds"),
+            "Size": str(len(message.content)),
+            "Checksum": to_attrs(
+                {
+                    "algorithm": crypto.CHECKSUM_ALGORITHM,
+                    "value": sha256(message.content).hexdigest(),
+                }
+            ),
+            "Subject": message.subject,
+            "Subject-Id": message.subject_id,
+            "Category": "personal",
+        }
+        | ({"Readers": ",".join(map(str, message.readers))} if message.readers else {})
+        | ({"File": to_attrs(message.file.dict)} if message.file else {})
+        | ({"Parent-Id": message.parent_id} if message.parent_id else {})
+        | (
+            {"Files": ",".join((to_attrs(a.dict)) for a in message.files)}
+            if message.files
+            else {}
+        )
+    ).encode("utf-8")
+
+    if message.readers:
+        message.access_key = crypto.random_bytes(32)
+
+        try:
+            access = await _build_access(message.readers, message.access_key)
+        except ValueError as error:
+            msg = "Error building message: Building access failed"
+            raise ValueError(msg) from error
+
+        try:
+            message.content = crypto.encrypt_xchacha20poly1305(
+                message.content, message.access_key
+            )
+            headers_bytes = crypto.encrypt_xchacha20poly1305(
+                headers_bytes, message.access_key
+            )
+        except ValueError as error:
+            msg = "Error building message: Encryption failed"
+            raise ValueError(msg) from error
+
+        message.headers.update(
+            {
+                "Message-Access": ",".join(access),
+                "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
+            }
+        )
+
+    message.headers["Message-Headers"] = (
+        message.headers.get("Message-Headers", "")
+        + f"value={b64encode(headers_bytes).decode('utf-8')}"
+    )
+
+    checksum_fields = sorted(
+        ("Message-Id", "Message-Headers")
+        + (("Message-Encryption", "Message-Access") if message.readers else ())
+    )
+
+    try:
+        checksum, signature = _sign_headers(
+            tuple(message.headers[f] for f in checksum_fields)
+        )
+    except ValueError as error:
+        msg = "Error building message: Signing headers failed"
+        raise ValueError(msg) from error
+
+    message.headers.update(
+        {
+            "Content-Length": str(len(message.content)),
+            "Message-Checksum": to_attrs(
+                {
+                    "algorithm": crypto.CHECKSUM_ALGORITHM,
+                    "order": ":".join(checksum_fields),
+                    "value": checksum.hexdigest(),
+                }
+            ),
+            "Message-Signature": to_attrs(
+                {
+                    "id": user.encryption_keys.public.key_id or 0,
+                    "algorithm": crypto.SIGNING_ALGORITHM,
+                    "value": signature,
+                }
+            ),
+        }
+    )
+
+
+async def _build_access(
+    readers: Iterable[Address],
+    access_key: bytes,
+) -> tuple[str, ...]:
+    access = list[str]()
+    for reader in *readers, user.address:
+        if not (
+            (profile := await fetch_profile(reader))
+            and (key := profile.encryption_key)
+            and (key_id := key.key_id)
+        ):
+            msg = "Failed fetching reader profiles"
+            raise ValueError(msg)
+
+        try:
+            encrypted = crypto.encrypt_anonymous(access_key, key)
+        except ValueError as error:
+            msg = "Failed to encrypt access key"
+            raise ValueError(msg) from error
+
+        access.append(
+            to_attrs(
+                {
+                    "link": model.generate_link(user.address, reader),
+                    "fingerprint": crypto.fingerprint(profile.signing_key),
+                    "value": b64encode(encrypted).decode("utf-8"),
+                    "id": key_id,
+                }
+            )
+        )
+
+    return tuple(access)
+
+
+def _sign_headers(fields: Sequence[str]) -> ...:
+    checksum = sha256(("".join(fields)).encode("utf-8"))
+
+    try:
+        signature = crypto.sign_data(user.signing_keys.private, checksum.digest())
+    except ValueError as error:
+        msg = f"Can't sign message: {error}"
+        raise ValueError(msg) from error
+
+    return checksum, signature

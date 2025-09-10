@@ -293,7 +293,7 @@ async def refresh():
 async def update(values: dict[str, str]):
     """Update the user's public profile with `values`."""
     try:
-        await client.update(values)
+        await client.update_profile(values)
     except WriteError:
         Notifier.send(_("Failed to update profile"))
         raise
@@ -360,7 +360,7 @@ async def update_image(pixbuf: GdkPixbuf.Pixbuf):
         raise WriteError
 
     try:
-        await client.update_image(data)
+        await client.update_profile_image(data)
     except WriteError:
         Notifier.send(_("Failed to update profile image"))
         raise
@@ -371,7 +371,7 @@ async def update_image(pixbuf: GdkPixbuf.Pixbuf):
 async def delete_image():
     """Delete the user's profile image."""
     try:
-        await client.delete_image()
+        await client.delete_profile_image()
     except WriteError:
         Notifier.send(_("Failed to delete profile image"))
         raise
