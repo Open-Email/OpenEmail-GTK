@@ -37,6 +37,8 @@ state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
 core.data_dir = Path(GLib.get_user_data_dir(), "openemail")  # TODO: This may not work?
 
+profiles = defaultdict[Address, Profile](Profile)
+
 
 class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
@@ -84,7 +86,7 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
         await self._update()
         self.updating = False
 
-    def add(self, item: Any):  # noqa: ANN401
+    def add(self, item: Any) -> V:  # noqa: ANN401
         """Manually add `item` to `self`.
 
         Uses `self.__class__.key_for(item)` and `self.__class__.default_factory(item)`
@@ -94,11 +96,12 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
         only the client's version. It may be removed after `update()` is called.
         """
         key = self.__class__.key_for(item)
-        if key in self._items:
-            return
+        if value := self._items.get(key):
+            return value
 
-        self._items[key] = self.__class__.default_factory(item)
+        value = self._items[key] = self.__class__.default_factory(item)
         self.items_changed(len(self._items) - 1, 0, 1)
+        return value
 
     def remove(self, item: K):
         """Remove `item` from `self`.
@@ -141,27 +144,27 @@ class ProfileStore(DictStore[Address, Profile]):
             if trust_images:
                 tasks.create(self._update_profile_image(address))
 
-    @staticmethod
-    async def _update_profile(address: Address):
-        Profile.of(address).set_from_profile(await core_profile.fetch(address))
+    @classmethod
+    async def _update_profile(cls, address: Address):
+        cls.default_factory(address).set_from_profile(await core_profile.fetch(address))
 
-    @staticmethod
-    async def _update_profile_image(address: Address):
+    @classmethod
+    async def _update_profile_image(cls, address: Address):
+        profile = cls.default_factory(address)
         try:
-            Profile.of(address).image = (
+            profile.image = (
                 Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))
                 if (image := await core_profile.fetch_image(address))
                 else None
             )
         except GLib.Error:
-            Profile.of(address).image = None
+            profile.image = None
 
 
 class _AddressBook(ProfileStore):
     async def new(self, address: Address, *, receive_broadcasts: bool = True):
         """Add `address` to the user's address book."""
-        Profile.of(address).contact_request = False
-        self.add(address)
+        self.add(address).contact_request = False
 
         tasks.create(self.update_profiles())
         tasks.create(broadcasts.update())
@@ -197,13 +200,16 @@ class _AddressBook(ProfileStore):
         addresses = set[Address]()
 
         for address, receives_broadcasts in await contacts.fetch():
-            Profile.of(address).set_receives_broadcasts(receives_broadcasts)
             addresses.add(address)
-            self.add(address)
+            # TODO: Test if this works
+            self.add(address).set_receives_broadcasts(receives_broadcasts)
 
         for address in self._items.copy():
             if address not in addresses:
                 self.remove(address)
+
+
+address_book = _AddressBook()
 
 
 class _ContactRequests(ProfileStore):
@@ -214,8 +220,8 @@ class _ContactRequests(ProfileStore):
             except ValueError:
                 continue
 
-            Profile.of(address).contact_request = True
-            self.add(address)
+            # TODO: Test if this works, both ways
+            self.add(address).contact_request = True
 
         for request in self:
             if request.address not in requests:
@@ -223,6 +229,9 @@ class _ContactRequests(ProfileStore):
                 self.remove(request.address)
 
         tasks.create(self.update_profiles(trust_images=False))
+
+
+contact_requests = _ContactRequests()
 
 
 class People(GObject.Object):
@@ -252,23 +261,12 @@ class MessageStore(DictStore[str, Message]):
         idents = set[str]()
 
         async for msg in self._fetch():
-            ident = message.get_ident(msg)
+            idents.add(message.get_ident(msg))
+            self.add(msg)
 
-            idents.add(ident)
-            if ident in self._items:
-                continue
-
-            self._items[ident] = self.__class__.default_factory(msg)
-            self.items_changed(len(self._items) - 1, 0, 1)
-
-        removed = 0
-        for index, ident in enumerate(self._items.copy()):
-            if ident in idents:
-                continue
-
-            self._items.pop(ident)
-            self.items_changed(index - removed, 1, 0)
-            removed += 1
+        for ident in self._items:
+            if ident not in idents:
+                self.remove(ident)
 
     @abstractmethod
     def _fetch(self) -> AsyncGenerator[model.Message]: ...
@@ -305,6 +303,9 @@ class _BroadcastStore(MessageStore):
             yield msg
 
 
+broadcasts = _BroadcastStore()
+
+
 class _InboxStore(MessageStore):
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         known_notifiers = set[Address]()
@@ -337,20 +338,7 @@ class _InboxStore(MessageStore):
             yield msg
 
 
-def _default_outbox_factory(msg: model.Message | None = None) -> Message:
-    item = Message(msg)
-    # TODO: This could just be in kwargs I think?
-    item.can_discard, item.can_trash = True, False
-    return item
-
-
-class _OutboxStore(MessageStore):
-    default_factory = _default_outbox_factory
-
-    async def _fetch(self) -> AsyncGenerator[model.Message]:
-        for msg in await core_messages.fetch_outbox():
-            msg.new = False  # New outbox messages should be marked read automatically
-            yield msg
+inbox = _InboxStore()
 
 
 class _SentStore(MessageStore):
@@ -358,6 +346,28 @@ class _SentStore(MessageStore):
         for msg in await core_messages.fetch_sent(_exclude(client.user.address)):
             msg.new = False  # New sent messages should be marked read automatically
             yield msg
+
+
+sent = _SentStore()
+
+
+class _OutboxStore(MessageStore):
+    default_factory = partial(Message, can_discard=True, can_trash=False)
+
+    only_in_sent = Property(
+        Gtk.FilterListModel,
+        default=Gtk.FilterListModel.new(
+            sent, Gtk.CustomFilter.new(lambda msg: msg.ident not in outbox._items)
+        ),
+    )
+
+    async def _fetch(self) -> AsyncGenerator[model.Message]:
+        for msg in await core_messages.fetch_outbox():
+            msg.new = False  # New outbox messages should be marked read automatically
+            yield msg
+
+
+outbox = _OutboxStore()
 
 
 class _DraftStore(MessageStore):
@@ -411,6 +421,9 @@ class _DraftStore(MessageStore):
             yield msg
 
 
+drafts = _DraftStore()
+
+
 async def sync(*, periodic: bool = False):
     """Populate the app's content by fetching the user's data."""
     Notifier().syncing = True
@@ -459,7 +472,11 @@ async def sync(*, periodic: bool = False):
     )
 
 
-def _flatten(*models: GObject.Object) -> Gtk.FlattenListModel:
+def flatten(*models: GObject.Object) -> Gtk.FlattenListModel:
+    """Flatten `models` into a `Gtk.FlattenListModel`.
+
+    All `models` must be `Gio.ListModel` implementations.
+    """
     store = Gio.ListStore.new(Gio.ListModel)
     for m in models:
         store.append(m)
@@ -467,17 +484,8 @@ def _flatten(*models: GObject.Object) -> Gtk.FlattenListModel:
     return Gtk.FlattenListModel.new(store)
 
 
-profiles = defaultdict[Address, Profile](Profile)
-address_book = _AddressBook()
-contact_requests = _ContactRequests()
-all_contacts = _flatten(address_book, contact_requests)
-
-inbox = _InboxStore()
-outbox = _OutboxStore()
-sent = _SentStore()
-drafts = _DraftStore()
-broadcasts = _BroadcastStore()
-messages = _flatten(inbox, sent, broadcasts)
+all_contacts = flatten(address_book, contact_requests)
+messages = flatten(inbox, sent, broadcasts)
 
 
 def empty_trash():

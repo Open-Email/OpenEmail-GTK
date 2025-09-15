@@ -105,6 +105,16 @@ class Outbox(_Folder):
     __gtype_name__ = "Outbox"
     folder, title, subtitle = store.outbox, _("Outbox"), _("Can be discarded")
 
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.thread_view.model = store.flatten(
+            store.inbox,
+            store.outbox,
+            store.outbox.only_in_sent,
+            store.broadcasts,
+        )
+
 
 class Sent(_Folder):
     """A navigation page displaying the user's sent messages."""

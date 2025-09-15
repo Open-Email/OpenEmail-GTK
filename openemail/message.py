@@ -268,16 +268,16 @@ class Message(GObject.Object):
         self.set_from_message(message)
 
     def __hash__(self) -> int:
-        return hash(self._message.ident) if self._message else super().__hash__()
+        return hash(get_ident(self._message)) if self._message else super().__hash__()
 
     def __eq__(self, value: object, /) -> bool:
         if isinstance(value, Message) and self._message and value._message:
-            return self._message.ident == value._message.ident
+            return get_ident(self._message) == get_ident(value._message)
         return super().__eq__(value)
 
     def __ne__(self, value: object, /) -> bool:
         if isinstance(value, Message) and self._message and value._message:
-            return self._message.ident != value._message.ident
+            return get_ident(self._message) != get_ident(value._message)
         return super().__ne__(value)
 
     def set_from_message(self, msg: model.Message | None, /):
@@ -475,7 +475,7 @@ class Message(GObject.Object):
         settings_discard("unread-messages", get_ident(self._message))
 
     def _update_trashed_state(self):
-        self.can_trash = not self.trashed
+        self.can_trash = not (self.can_discard or self.trashed)
         self.can_reply = self.can_discard or self.can_trash
         self.notify("trashed")
 
