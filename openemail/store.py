@@ -294,15 +294,10 @@ class MessageStore(DictStore[str, Message]):
 
 class _BroadcastStore(MessageStore):
     async def _fetch(self) -> AsyncGenerator[model.Message]:
-        deleted = settings.get_strv("deleted-messages")
         async for msg in self._process_messages(
             await core_messages.fetch_broadcasts(
                 address := Address(contact.address),
-                exclude=tuple(
-                    split[1]
-                    for ident in deleted
-                    if (split := ident.split(" "))[0] == address.host_part
-                ),
+                exclude=_exclude(address),
             )
             for contact in address_book
             if contact.receive_broadcasts
@@ -331,18 +326,12 @@ class _InboxStore(MessageStore):
 
             settings_add("contact_requests", notifier)
 
-        deleted = settings.get_strv("deleted-messages")
         async for msg in self._process_messages(
             (
                 await core_messages.fetch_link_messages(
-                    contact,
-                    exclude=tuple(
-                        split[1]
-                        for ident in deleted
-                        if (split := ident.split(" "))[0] == contact.host_part
-                    ),
+                    address, exclude=_exclude(address)
                 )
-                for contact in chain(known_notifiers, other_contacts)
+                for address in chain(known_notifiers, other_contacts)
             ),
         ):
             yield msg
@@ -350,6 +339,7 @@ class _InboxStore(MessageStore):
 
 def _default_outbox_factory(msg: model.Message | None = None) -> Message:
     item = Message(msg)
+    # TODO: This could just be in kwargs I think?
     item.can_discard, item.can_trash = True, False
     return item
 
@@ -365,14 +355,7 @@ class _OutboxStore(MessageStore):
 
 class _SentStore(MessageStore):
     async def _fetch(self) -> AsyncGenerator[model.Message]:
-        deleted = settings.get_strv("deleted-messages")
-        for msg in await core_messages.fetch_sent(
-            exclude=tuple(  # TODO: This should really be a reusable function
-                split[1]
-                for ident in deleted
-                if (split := ident.split(" "))[0] == client.user.address.host_part
-            )
-        ):
+        for msg in await core_messages.fetch_sent(_exclude(client.user.address)):
             msg.new = False  # New sent messages should be marked read automatically
             yield msg
 
@@ -517,3 +500,11 @@ def settings_discard(key: str, *items: str):
             value.remove(item)
 
     settings.set_strv(key, value)
+
+
+def _exclude(address: Address) -> tuple[str, ...]:
+    return tuple(
+        split[1]
+        for ident in settings.get_strv("deleted-messages")
+        if (split := ident.split(" "))[0] == address.host_part
+    )
