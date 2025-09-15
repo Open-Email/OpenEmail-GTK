@@ -183,10 +183,11 @@ template $ComposeSheet: Adw.BreakpointBin {
         [bottom]
         ActionBar {
           [start]
-          Button {
+          $_FormatButton {
             icon-name: "text-bold-symbolic";
             tooltip-text: _("Bold");
-            clicked => $_format_bold();
+            string: "**";
+            clicked => $_format_inline();
 
             ShortcutController {
               scope: managed;
@@ -199,10 +200,11 @@ template $ComposeSheet: Adw.BreakpointBin {
           }
 
           [start]
-          Button {
+          $_FormatButton {
             icon-name: "text-italic-symbolic";
             tooltip-text: _("Italic");
-            clicked => $_format_italic();
+            string: "*";
+            clicked => $_format_inline();
 
             ShortcutController {
               scope: managed;
@@ -215,24 +217,28 @@ template $ComposeSheet: Adw.BreakpointBin {
           }
 
           [start]
-          Button {
+          $_FormatButton {
             icon-name: "text-strikethrough-symbolic";
             tooltip-text: _("Strikethrough");
-            clicked => $_format_strikethrough();
+            string: "~~";
+            clicked => $_format_inline();
           }
 
           [start]
-          Button {
+          $_FormatButton {
             icon-name: "text-heading-symbolic";
             tooltip-text: _("Increase Heading Level");
-            clicked => $_format_heading();
+            string: "#";
+            clicked => $_format_line();
           }
 
           [start]
-          Button {
+          $_FormatButton {
             icon-name: "quotation-symbolic";
             tooltip-text: _("Quote");
-            clicked => $_format_quote();
+            string: ">";
+            toggle: true;
+            clicked => $_format_line();
           }
 
           [end]

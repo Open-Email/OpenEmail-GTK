@@ -21,6 +21,13 @@ from .form import Form
 child = Gtk.Template.Child()
 
 
+class _FormatButton(Gtk.Button):
+    __gtype_name__ = "_FormatButton"
+
+    string = Property(str)
+    toggle = Property(bool)
+
+
 @Gtk.Template.from_resource(f"{PREFIX}/compose-sheet.ui")
 class ComposeSheet(Adw.BreakpointBin):
     """A page listing a subset of the user's messages."""
@@ -169,56 +176,39 @@ class ComposeSheet(Adw.BreakpointBin):
         self._close()
 
     @Gtk.Template.Callback()
-    def _attach_files(self, *_args):
-        tasks.create(self._attach_files_task())
-
-    @Gtk.Template.Callback()
-    def _format_bold(self, *_args):
-        self._format_inline("**")
-
-    @Gtk.Template.Callback()
-    def _format_italic(self, *_args):
-        self._format_inline("*")
-
-    @Gtk.Template.Callback()
-    def _format_strikethrough(self, *_args):
-        self._format_inline("~~")
-
-    @Gtk.Template.Callback()
-    def _format_heading(self, *_args):
-        self._format_line("#")
-
-    @Gtk.Template.Callback()
-    def _format_quote(self, *_args):
-        self._format_line(">", toggle=True)
-
-    @Gtk.Template.Callback()
     def _insert_emoji(self, *_args):
         Gtk.TextView.do_insert_emoji(self.body_view)
 
-    async def _attach_files_task(self):
+    @tasks.callback
+    async def _attach_files(self):
         async for attachment in OutgoingAttachment.choose(self):
             self.attachments.model.append(attachment)
 
-    def _format_line(self, syntax: str, *, toggle: bool = False):
+    @Gtk.Template.Callback()
+    def _format_line(self, button: _FormatButton):
+        string, toggle = button.string, button.toggle
+
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)
         start.set_line_offset(0)
 
-        lookup = f"{syntax} " if toggle else syntax
-        syntax_start = self.body.get_iter_at_offset(start.get_offset() + len(lookup))
+        lookup = f"{string} " if toggle else string
+        string_start = self.body.get_iter_at_offset(start.get_offset() + len(lookup))
 
-        if lookup == self.body.get_text(start, syntax_start, include_hidden_chars=True):
+        if lookup == self.body.get_text(start, string_start, include_hidden_chars=True):
             if toggle:
-                self.body.delete(start, syntax_start)
+                self.body.delete(start, string_start)
             else:
-                self.body.insert(start, syntax)
+                self.body.insert(start, string)
         else:
-            self.body.insert(start, f"{syntax} ")
+            self.body.insert(start, f"{string} ")
 
         self.body_view.grab_focus()
 
-    def _format_inline(self, syntax: str):
+    @Gtk.Template.Callback()
+    def _format_inline(self, button: _FormatButton):
         self.body.begin_user_action()
+
+        string = button.string
         empty = False
 
         if bounds := self.body.get_selection_bounds():
@@ -238,23 +228,23 @@ class ComposeSheet(Adw.BreakpointBin):
 
         text = self.body.get_text(start, end, include_hidden_chars=True)
 
-        syntax_start = self.body.get_iter_at_offset(start.get_offset() - len(syntax))
-        syntax_end = self.body.get_iter_at_offset(end.get_offset() + len(syntax))
+        string_start = self.body.get_iter_at_offset(start.get_offset() - len(string))
+        string_end = self.body.get_iter_at_offset(end.get_offset() + len(string))
 
         if (
-            syntax
-            == self.body.get_text(start, syntax_start, include_hidden_chars=True)
-            == self.body.get_text(end, syntax_end, include_hidden_chars=True)
+            string
+            == self.body.get_text(start, string_start, include_hidden_chars=True)
+            == self.body.get_text(end, string_end, include_hidden_chars=True)
         ):
-            self.body.delete(syntax_start, syntax_end)
-            self.body.insert(syntax_start, text)
+            self.body.delete(string_start, string_end)
+            self.body.insert(string_start, text)
         else:
             self.body.delete(start, end)
-            self.body.insert(start, f"{syntax}{text}{syntax}")
+            self.body.insert(start, f"{string}{text}{string}")
 
             if empty:
                 self.body.place_cursor(
-                    self.body.get_iter_at_offset(start.get_offset() - len(syntax))
+                    self.body.get_iter_at_offset(start.get_offset() - len(string))
                 )
 
         self.body.end_user_action()

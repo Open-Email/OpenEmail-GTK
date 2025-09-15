@@ -1,14 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
+# SPDX-FileContributor: Jamie Gravendeel
 
 from collections.abc import Callable, Coroutine
+from functools import wraps
 from typing import TYPE_CHECKING, Any, cast
+
+from gi._gtktemplate import CallThing
+from gi.repository import Gio, Gtk
 
 if TYPE_CHECKING:
     from asyncio import Task
-
-from gi.repository import Gio
 
 
 def create(
@@ -28,3 +31,14 @@ def create(
     task.add_done_callback(
         lambda task: callback(not task.exception()) if callback else None
     )
+
+
+def callback[**P](func: Callable[P, Coroutine[Any, Any, Any]]) -> CallThing:
+    """Create an async `Gtk.Template.Callback`."""
+
+    @Gtk.Template.Callback()
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
+        create(func(*args, **kwargs))
+
+    return wrapper

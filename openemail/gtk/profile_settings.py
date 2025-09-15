@@ -134,10 +134,6 @@ class ProfileSettings(Adw.PreferencesDialog):
         )
 
     @Gtk.Template.Callback()
-    def _replace_image(self, *_args):
-        tasks.create(self._replace_image_task())
-
-    @Gtk.Template.Callback()
     def _on_change(self, *_args):
         self._changed = True
 
@@ -152,7 +148,8 @@ class ProfileSettings(Adw.PreferencesDialog):
         self._changed = False
         tasks.create(profile.update({key: f() for key, f in self._fields.items()}))
 
-    async def _replace_image_task(self):
+    @tasks.callback
+    async def _replace_image(self):
         try:
             file = await cast(
                 "Awaitable[Gio.File]",
