@@ -7,12 +7,11 @@ from collections.abc import AsyncGenerator, Awaitable, Iterable
 from contextlib import suppress
 from datetime import UTC, datetime
 from gettext import ngettext
-from pathlib import Path
 from typing import Any, Self, cast, override
 
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
-from . import Notifier, Property, core, tasks
+from . import Notifier, Property, tasks
 from .core import client, messages, model
 from .core.model import Address, WriteError
 from .profile import Profile
@@ -255,14 +254,14 @@ class Message(GObject.Object):
     @Property(bool)
     def trashed(self) -> bool:
         """Whether the item is in the trash."""
-        from .store import settings
-
         if self.can_discard or (not self._message):
             return False
 
+        from . import store
+
         return any(
             msg.rsplit(maxsplit=1)[0] == self.unique_id
-            for msg in settings.get_strv("trashed-messages")
+            for msg in store.settings.get_strv("trashed-messages")
         )
 
     def __init__(self, message: model.Message | None = None, **kwargs: Any):
@@ -380,12 +379,12 @@ class Message(GObject.Object):
 
     def trash(self):
         """Move `self` to the trash."""
-        from .store import settings_add
-
         if not self._message:
             return
 
-        settings_add(
+        from . import store
+
+        store.settings_add(
             "trashed-messages",
             f"{self.unique_id} {datetime.now(UTC).date().isoformat()}",
         )
@@ -394,16 +393,16 @@ class Message(GObject.Object):
 
     def restore(self):
         """Restore `self` from the trash."""
-        from .store import settings
-
         if not self._message:
             return
 
-        settings.set_strv(
+        from . import store
+
+        store.settings.set_strv(
             "trashed-messages",
             tuple(
                 msg
-                for msg in settings.get_strv("trashed-messages")
+                for msg in store.settings.get_strv("trashed-messages")
                 if msg.rsplit(maxsplit=1)[0] != self.unique_id
             ),
         )
@@ -412,34 +411,29 @@ class Message(GObject.Object):
 
     def delete(self):
         """Remove `self` from the trash."""
-        from .store import broadcasts, inbox, sent, settings_add
-
         if not self._message:
             return
 
-        settings_add("deleted-messages", self.unique_id)
+        from . import store
 
-        envelopes_dir = self._get_data_dir("envelopes", self._message)
-        messages_dir = self._get_data_dir("messages", self._message)
+        model = (
+            store.sent
+            if self._message.author == client.user.address
+            else store.broadcasts
+            if self._message.is_broadcast
+            else store.inbox
+        )
 
         for child in self._message, *self._message.children:
-            (envelopes_dir / f"{child.ident}.json").unlink(missing_ok=True)
-            (messages_dir / child.ident).unlink(missing_ok=True)
+            messages.remove_from_disk(child)
 
-        (
-            sent
-            if self._message.author == client.user.address
-            else broadcasts
-            if self._message.is_broadcast
-            else inbox
-        ).remove(self.unique_id)
-        self.restore()
+        store.settings_add("deleted-messages", self.unique_id)
+        model.remove(self.unique_id)
+        self.restore()  # Since it is deleted, there is no reason to keep it in trash
         self.set_from_message(None)
 
     async def discard(self):
         """Discard `self` and its children."""
-        from .store import outbox, sent
-
         if not self._message:
             return
 
@@ -448,9 +442,11 @@ class Message(GObject.Object):
             Notifier.send(_("Cannot discard message while sending"))
             return
 
-        outbox.remove(ident := self.unique_id)
+        from . import store
+
+        store.outbox.remove(ident := self.unique_id)
         with suppress(ValueError):
-            sent.remove(ident)
+            store.sent.remove(ident)
 
         failed = False
         for msg in self._message, *self._message.children:
@@ -463,16 +459,14 @@ class Message(GObject.Object):
                 failed = True
                 continue
 
-        await outbox.update()
-        await sent.update()
+        await store.outbox.update()
+        await store.sent.update()
 
     def mark_read(self):
         """Mark a message as read.
 
         Does nothing if `message.new` is already `False`.
         """
-        from .store import settings_discard
-
         if not self.new:
             return
 
@@ -481,19 +475,15 @@ class Message(GObject.Object):
         if not self._message:
             return
 
+        from . import store
+
         self._message.new = False
-        settings_discard("unread-messages", self.unique_id)
+        store.settings_discard("unread-messages", self.unique_id)
 
     def _update_trashed_state(self):
         self.can_trash = not (self.can_discard or self.trashed)
         self.can_reply = self.can_discard or self.can_trash
         self.notify("trashed")
-
-    @staticmethod
-    def _get_data_dir(name: str, message: model.Message) -> Path:
-        host, local = message.author.host_part, message.author.local_part
-        suffix = "broadcasts" if message.is_broadcast else ""
-        return core.data_dir / name / host / local / suffix
 
 
 async def send(
@@ -511,8 +501,6 @@ async def send(
 
     `attachments` is a dictionary of `Gio.File`s and filenames.
     """
-    from .store import outbox, sent
-
     Notifier().sending = True
 
     files = dict[model.AttachmentProperties, bytes]()
@@ -536,7 +524,9 @@ async def send(
             )
         ] = data
 
-    outbox.add(
+    from . import store
+
+    store.outbox.add(
         message := model.OutgoingMessage(
             readers=list(readers),
             subject=subject,
@@ -549,10 +539,10 @@ async def send(
     try:
         await messages.send(message)
     except WriteError:
-        outbox.remove(message.ident)
+        store.outbox.remove(message.ident)
         Notifier.send(_("Failed to send message"))
         Notifier().sending = False
         raise
 
-    sent.add(message)
+    store.sent.add(message)
     Notifier().sending = False

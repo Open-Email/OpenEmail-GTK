@@ -10,6 +10,7 @@ from hashlib import sha256
 from itertools import chain
 from json import JSONDecodeError
 from logging import getLogger
+from pathlib import Path
 
 from . import client, crypto, data_dir, model, urls
 from .model import (
@@ -207,7 +208,11 @@ async def send(message: OutgoingMessage, /):
 
 
 async def delete(ident: str):
-    """Delete the message with `ident`."""
+    """Delete the message with `ident`.
+
+    Note that this will not delete children of the message,
+    nor will it remove the message from disk. For that, see remove_from_disk().
+    """
     logger.debug("Deleting message %s…", ident[:_SHORT])
     for agent in await client.get_agents(client.user.address):
         if await client.request(
@@ -220,6 +225,20 @@ async def delete(ident: str):
 
     logger.error("Deleting message %s failed", ident[:_SHORT])
     raise WriteError
+
+
+def remove_from_disk(message: Message):
+    """Remove `message` from disk if it has been downloaded before.
+
+    Note that this will not remove children of `message`.
+    """
+    logger.debug("Removing message %s from disk…", message.ident[:_SHORT])
+    host, local = message.author.host_part, message.author.local_part
+    path = Path(host, local, "broadcasts" if message.is_broadcast else "")
+
+    (data_dir / "envelopes" / path / f"{message.ident}.json").unlink(missing_ok=True)
+    (data_dir / "messages" / path / message.ident).unlink(True)
+    logger.debug("Removed message %s from disk", message.ident[:_SHORT])
 
 
 async def _process_notification(

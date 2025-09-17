@@ -169,14 +169,14 @@ class Profile(GObject.Object):
 
     @receive_broadcasts.setter
     def receive_broadcasts(self, receive_broadcasts: bool):
-        from .store import broadcasts
+        from . import store
 
         if self._broadcasts == receive_broadcasts or (not self._profile):
             return
 
         self._broadcasts = receive_broadcasts
 
-        tasks.create(broadcasts.update())
+        tasks.create(store.broadcasts.update())
         tasks.create(
             contacts.new(
                 self._profile.address,
@@ -224,9 +224,9 @@ class Profile(GObject.Object):
         """
         match user:
             case Address():
-                from .store import profiles
+                from . import store
 
-                (profile := profiles[user]).address = user
+                (profile := store.profiles[user]).address = user
                 return profile
 
             case User():
