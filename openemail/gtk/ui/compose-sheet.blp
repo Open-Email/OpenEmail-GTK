@@ -183,11 +183,11 @@ template $ComposeSheet: Adw.BreakpointBin {
         [bottom]
         ActionBar {
           [start]
-          $_FormatButton {
+          Button {
             icon-name: "text-bold-symbolic";
             tooltip-text: _("Bold");
-            string: "**";
-            clicked => $_format_inline();
+            action-name: "compose.format";
+            action-target: "('inline', '**')";
 
             ShortcutController {
               scope: managed;
@@ -200,11 +200,11 @@ template $ComposeSheet: Adw.BreakpointBin {
           }
 
           [start]
-          $_FormatButton {
+          Button {
             icon-name: "text-italic-symbolic";
             tooltip-text: _("Italic");
-            string: "*";
-            clicked => $_format_inline();
+            action-name: "compose.format";
+            action-target: "('inline', '*')";
 
             ShortcutController {
               scope: managed;
@@ -217,28 +217,27 @@ template $ComposeSheet: Adw.BreakpointBin {
           }
 
           [start]
-          $_FormatButton {
+          Button {
             icon-name: "text-strikethrough-symbolic";
             tooltip-text: _("Strikethrough");
-            string: "~~";
-            clicked => $_format_inline();
+            action-name: "compose.format";
+            action-target: "('inline', '~~')";
           }
 
           [start]
-          $_FormatButton {
+          Button {
             icon-name: "text-heading-symbolic";
             tooltip-text: _("Increase Heading Level");
-            string: "#";
-            clicked => $_format_line();
+            action-name: "compose.format";
+            action-target: "('always-prepend', '#')";
           }
 
           [start]
-          $_FormatButton {
+          Button {
             icon-name: "quotation-symbolic";
             tooltip-text: _("Quote");
-            string: ">";
-            toggle: true;
-            clicked => $_format_line();
+            action-name: "compose.format";
+            action-target: "('line', '>')";
           }
 
           [end]

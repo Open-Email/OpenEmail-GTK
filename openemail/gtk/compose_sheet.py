@@ -6,7 +6,7 @@ import re
 from collections.abc import Iterable
 from typing import Self
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, GLib, Gtk
 
 from openemail import PREFIX, Property, message, store, tasks
 from openemail.core.model import Address
@@ -19,13 +19,6 @@ from .body import Body
 from .form import Form
 
 child = Gtk.Template.Child()
-
-
-class _FormatButton(Gtk.Button):
-    __gtype_name__ = "_FormatButton"
-
-    string = Property(str)
-    toggle = Property(bool)
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/compose-sheet.ui")
@@ -184,33 +177,36 @@ class ComposeSheet(Adw.BreakpointBin):
         async for attachment in OutgoingAttachment.choose(self):
             self.attachments.model.append(attachment)
 
-    @Gtk.Template.Callback()
-    def _format_line(self, button: _FormatButton):
-        string, toggle = button.string, button.toggle
+    def format_line(self, string: str, /, always_prepend: bool = False):
+        """Prepend the current line with `string`.
 
+        Unless `always_prepend` is `True`,
+        `string` is removed instead if it is already there.
+        """
         start = self.body.get_iter_at_offset(self.body.props.cursor_position)
         start.set_line_offset(0)
 
-        lookup = f"{string} " if toggle else string
+        lookup = string if always_prepend else f"{string} "
         string_start = self.body.get_iter_at_offset(start.get_offset() + len(lookup))
 
         if lookup == self.body.get_text(start, string_start, include_hidden_chars=True):
-            if toggle:
-                self.body.delete(start, string_start)
-            else:
+            if always_prepend:
                 self.body.insert(start, string)
+            else:
+                self.body.delete(start, string_start)
         else:
             self.body.insert(start, f"{string} ")
 
         self.body_view.grab_focus()
 
-    @Gtk.Template.Callback()
-    def _format_inline(self, button: _FormatButton):
+    def format_inline(self, string: str):
+        """Wrap the selected text (or cursor if nothing is selected) with `string`.
+
+        If the selection is already wrapped with `string`, it is removed instead.
+        """
         self.body.begin_user_action()
 
-        string = button.string
         empty = False
-
         if bounds := self.body.get_selection_bounds():
             start, end = bounds
         else:
@@ -288,3 +284,20 @@ class ComposeSheet(Adw.BreakpointBin):
     @Gtk.Template.Callback()
     def _get_bottom_bar_label(self, _obj, subject: str) -> str:
         return subject or _("New Message")
+
+
+def _format(sheet: Gtk.Widget, _name, param: GLib.Variant | None):
+    if not (isinstance(sheet, ComposeSheet) and param):
+        return
+
+    kind, string = param.unpack()
+    match kind:
+        case "inline":
+            sheet.format_inline(string)
+        case "line":
+            sheet.format_line(string)
+        case "always-prepend":
+            sheet.format_line(string, always_prepend=True)
+
+
+ComposeSheet.install_action("compose.format", "(ss)", _format)
