@@ -459,7 +459,7 @@ async def sync(*, periodic: bool = False):
 
     def done(task: Coroutine[Any, Any, Any]):
         task_set.discard(task)
-        if not tasks:
+        if not task_set:
             Notifier().syncing = False
 
     for task in task_set:
