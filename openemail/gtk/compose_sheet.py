@@ -180,7 +180,7 @@ class ComposeSheet(Adw.BreakpointBin):
         Gtk.TextView.do_insert_emoji(self.body_view)
 
     @tasks.callback
-    async def _attach_files(self):
+    async def _attach_files(self, *_args):
         async for attachment in OutgoingAttachment.choose(self):
             self.attachments.model.append(attachment)
 

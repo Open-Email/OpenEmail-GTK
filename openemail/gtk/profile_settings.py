@@ -149,7 +149,7 @@ class ProfileSettings(Adw.PreferencesDialog):
         tasks.create(profile.update({key: f() for key, f in self._fields.items()}))
 
     @tasks.callback
-    async def _replace_image(self):
+    async def _replace_image(self, *_args):
         try:
             file = await cast(
                 "Awaitable[Gio.File]",
