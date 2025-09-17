@@ -18,7 +18,7 @@ from .core.model import Address, WriteError
 from .profile import Profile
 
 
-def get_ident(message: model.Message) -> str:
+def get_unique_id(message: model.Message) -> str:
     """Get a globally unique identifier for `message`."""
     return f"{message.author.host_part} {message.ident}"
 
@@ -230,20 +230,24 @@ class Message(GObject.Object):
     new = Property(bool)
     is_broadcast = Property(bool)
 
+    profile = Property(Profile)
     display_date = Property(str)
     display_datetime = Property(str)
     display_readers = Property(str)
-    display_name = Property(str)
-    profile = Property(Profile)
-    profile_image = Property(Gdk.Paintable)
-    icon_name = Property(str)
-    show_initials = Property(bool)
+
+    list_name = Property(str)
+    list_image = Property(Gdk.Paintable)
+    list_icon_name = Property(str)
+    list_initials = Property(bool)
 
     is_outgoing, is_incoming = Property(bool), Property(bool, default=True)
     different_author = Property(bool)
+    has_other_readers = Property(bool)
     can_reply = Property(bool)
     can_trash = Property(bool)
     can_discard = Property(bool)
+
+    unique_id: str
 
     _bindings: tuple[GObject.Binding, ...] = ()
     _message: model.Message | None = None
@@ -257,7 +261,7 @@ class Message(GObject.Object):
             return False
 
         return any(
-            msg.rsplit(maxsplit=1)[0] == get_ident(self._message)
+            msg.rsplit(maxsplit=1)[0] == self.unique_id
             for msg in settings.get_strv("trashed-messages")
         )
 
@@ -268,17 +272,21 @@ class Message(GObject.Object):
         self.set_from_message(message)
 
     def __hash__(self) -> int:
-        return hash(get_ident(self._message)) if self._message else super().__hash__()
+        return hash(self.unique_id) if self._message else super().__hash__()
 
     def __eq__(self, value: object, /) -> bool:
-        if isinstance(value, Message) and self._message and value._message:
-            return get_ident(self._message) == get_ident(value._message)
-        return super().__eq__(value)
+        return (
+            self.unique_id == value.unique_id
+            if isinstance(value, Message)
+            else super().__eq__(value)
+        )
 
     def __ne__(self, value: object, /) -> bool:
-        if isinstance(value, Message) and self._message and value._message:
-            return get_ident(self._message) != get_ident(value._message)
-        return super().__ne__(value)
+        return (
+            self.unique_id != value.unique_id
+            if isinstance(value, Message)
+            else super().__ne__(value)
+        )
 
     def set_from_message(self, msg: model.Message | None, /):
         """Set the properties of `self` from `message`."""
@@ -286,6 +294,8 @@ class Message(GObject.Object):
 
         if not msg:
             return
+
+        self.unique_id = f"{msg.author.host_part} {msg.ident}"
 
         local_date = msg.date.astimezone(datetime.now(UTC).astimezone().tzinfo)
         self.date = int(local_date.timestamp())
@@ -309,21 +319,24 @@ class Message(GObject.Object):
         self.different_author = msg.author != msg.original_author
 
         readers = tuple(r for r in msg.readers if r != client.user.address)
-        if self.is_broadcast:
-            self.display_readers = _("Public Message")
-        else:
-            # Others will be appended to this string in the format: ", reader1, reader2"
-            self.display_readers = _("Readers: Me")
-            for reader in readers:
-                self.display_readers += f", {Profile.of(reader).name or reader}"
-
+        self.display_readers = (
+            _("Public Message")
+            if self.is_broadcast
+            # Translators: Readers will be appended to this string"
+            else f"{_('Readers:')} {', '.join(Profile.of(r).name for r in readers)}"
+            if readers
+            else None
+        )
+        self.has_other_readers = bool(self.display_readers)
         self.readers = ", ".join(
-            map(str, readers if self.is_outgoing else (*readers, msg.author))
+            readers if self.is_outgoing else (*readers, msg.author)
         )
 
         self.attachments.remove_all()
         for name, parts in msg.attachments.items():
             self.attachments.append(IncomingAttachment(name, parts))
+
+        self.profile = Profile.of(msg.author)
 
         match msg:
             case model.IncomingMessage() | model.OutgoingMessage():
@@ -336,36 +349,33 @@ class Message(GObject.Object):
 
         self._bindings = ()
 
-        self.profile = self.profile_image = None
-        self.show_initials = False
+        self.list_image, self.list_initials = None, False
 
         if not (msg.readers or msg.is_broadcast):
-            self.display_name = _("No Readers")
-            self.icon_name = "public-access-symbolic"
+            self.list_name = _("No Readers")
+            self.list_icon_name = "public-access-symbolic"
             return
 
         if self.is_outgoing and msg.is_broadcast:
-            self.display_name = _("Public Message")
-            self.icon_name = "broadcasts-symbolic"
+            self.list_name = _("Public Message")
+            self.list_icon_name = "broadcasts-symbolic"
             return
 
         if self.is_outgoing and (len(readers) > 1):
-            self.display_name = ngettext(
+            self.list_name = ngettext(
                 "{} Reader",
                 "{} Readers",
                 len(readers),
             ).format(len(readers))
-            self.icon_name = "contacts-symbolic"
+            self.list_icon_name = "contacts-symbolic"
             return
 
-        self.show_initials = True
-        self.profile = Profile.of(
-            readers[0] if (self.is_outgoing and readers) else msg.author
-        )
+        self.list_initials = True
 
+        p = Profile.of(readers[0]) if (self.is_outgoing and readers) else self.profile
         self._bindings = (
-            Property.bind(self.profile, "name", self, "display-name"),
-            Property.bind(self.profile, "image", self, "profile-image"),
+            Property.bind(p, "name", self, "list-name"),
+            Property.bind(p, "image", self, "list-image"),
         )
 
     def trash(self):
@@ -377,7 +387,7 @@ class Message(GObject.Object):
 
         settings_add(
             "trashed-messages",
-            f"{get_ident(self._message)} {datetime.now(UTC).date().isoformat()}",
+            f"{self.unique_id} {datetime.now(UTC).date().isoformat()}",
         )
 
         self._update_trashed_state()
@@ -394,7 +404,7 @@ class Message(GObject.Object):
             tuple(
                 msg
                 for msg in settings.get_strv("trashed-messages")
-                if msg.rsplit(maxsplit=1)[0] != get_ident(self._message)
+                if msg.rsplit(maxsplit=1)[0] != self.unique_id
             ),
         )
 
@@ -407,7 +417,7 @@ class Message(GObject.Object):
         if not self._message:
             return
 
-        settings_add("deleted-messages", get_ident(self._message))
+        settings_add("deleted-messages", self.unique_id)
 
         envelopes_dir = self._get_data_dir("envelopes", self._message)
         messages_dir = self._get_data_dir("messages", self._message)
@@ -422,7 +432,7 @@ class Message(GObject.Object):
             else broadcasts
             if self._message.is_broadcast
             else inbox
-        ).remove(get_ident(self._message))
+        ).remove(self.unique_id)
         self.restore()
         self.set_from_message(None)
 
@@ -438,7 +448,7 @@ class Message(GObject.Object):
             Notifier.send(_("Cannot discard message while sending"))
             return
 
-        outbox.remove(ident := get_ident(self._message))
+        outbox.remove(ident := self.unique_id)
         with suppress(ValueError):
             sent.remove(ident)
 
@@ -472,7 +482,7 @@ class Message(GObject.Object):
             return
 
         self._message.new = False
-        settings_discard("unread-messages", get_ident(self._message))
+        settings_discard("unread-messages", self.unique_id)
 
     def _update_trashed_state(self):
         self.can_trash = not (self.can_discard or self.trashed)

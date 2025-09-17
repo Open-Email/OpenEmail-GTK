@@ -55,10 +55,6 @@ class MessageView(Gtk.Box):
         self._history = {}
 
     @Gtk.Template.Callback()
-    def _has_profile(self, *_args) -> bool:
-        return self.message and self.message.profile
-
-    @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args):
         self.profile_view.profile = self.message.profile
         self.profile_dialog.present(self)

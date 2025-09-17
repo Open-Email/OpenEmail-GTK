@@ -26,7 +26,6 @@ template $MessageView: Box {
     Button {
       valign: start;
       tooltip-text: _("Profile");
-      can-target: bind $_has_profile(template.message as <$Message>.profile) as <bool>;
       clicked => $_show_profile_dialog();
 
       child: Adw.Avatar {
@@ -35,10 +34,9 @@ template $MessageView: Box {
         margin-start: 6;
         margin-end: 6;
         size: 48;
-        text: bind template.message as <$Message>.display-name;
-        icon-name: bind template.message as <$Message>.icon-name;
-        custom-image: bind template.message as <$Message>.profile-image;
-        show-initials: bind template.message as <$Message>.show-initials;
+        text: bind template.message as <$Message>.profile as <$Profile>.name;
+        custom-image: bind template.message as <$Message>.profile as <$Profile>.image;
+        show-initials: true;
       };
 
       styles [
@@ -67,19 +65,18 @@ template $MessageView: Box {
 
       Label {
         halign: start;
-        visible: bind template.message as <$Message>.is_incoming;
-        label: bind template.message as <$Message>.display-name;
+        label: bind template.message as <$Message>.profile as <$Profile>.name;
         wrap: true;
         wrap-mode: word_char;
 
         styles [
-          "title-4",
+          "heading",
         ]
       }
 
       Label {
         halign: start;
-        label: bind template.message as <$Message>.original_author;
+        label: bind template.message as <$Message>.original-author;
         visible: bind template.message as <$Message>.different-author;
         wrap: true;
         wrap-mode: word_char;
@@ -92,6 +89,7 @@ template $MessageView: Box {
 
       Label {
         halign: start;
+        visible: bind template.message as <$Message>.has-other-readers;
         label: bind template.message as <$Message>.display-readers;
         wrap: true;
         wrap-mode: word_char;

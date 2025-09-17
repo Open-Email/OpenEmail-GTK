@@ -28,10 +28,10 @@ template ListItem {
         valign: start;
         margin-top: 3;
         size: 32;
-        text: bind template.item as <$Message>.display-name;
-        icon-name: bind template.item as <$Message>.icon-name;
-        custom-image: bind template.item as <$Message>.profile-image;
-        show-initials: bind template.item as <$Message>.show-initials;
+        text: bind template.item as <$Message>.list-name;
+        icon-name: bind template.item as <$Message>.list-icon-name;
+        custom-image: bind template.item as <$Message>.list-image;
+        show-initials: bind template.item as <$Message>.list-initials;
       }
 
       Box {
@@ -44,7 +44,7 @@ template ListItem {
           Label {
             hexpand: true;
             halign: start;
-            label: bind template.item as <$Message>.display-name;
+            label: bind template.item as <$Message>.list-name;
             ellipsize: end;
 
             styles [

@@ -254,15 +254,14 @@ class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
     item_type = Message
-    key_for = message.get_ident
+    key_for = message.get_unique_id
     default_factory = Message
 
     async def _update(self):
         idents = set[str]()
 
         async for msg in self._fetch():
-            idents.add(message.get_ident(msg))
-            self.add(msg)
+            idents.add(self.add(msg).unique_id)
 
         for ident in self._items:
             if ident not in idents:
@@ -280,9 +279,9 @@ class MessageStore(DictStore[str, Message]):
 
             for msg in msgs:
                 if msg.new:
-                    unread.add(message.get_ident(msg))
+                    unread.add(message.get_unique_id(msg))
 
-                elif message.get_ident(msg) in current_unread:
+                elif message.get_unique_id(msg) in current_unread:
                     msg.new = True
 
                 yield msg
@@ -357,7 +356,7 @@ class _OutboxStore(MessageStore):
     only_in_sent = Property(
         Gtk.FilterListModel,
         default=Gtk.FilterListModel.new(
-            sent, Gtk.CustomFilter.new(lambda msg: msg.ident not in outbox._items)
+            sent, Gtk.CustomFilter.new(lambda msg: msg.unique_id not in outbox._items)
         ),
     )
 
