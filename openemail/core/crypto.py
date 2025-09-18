@@ -4,7 +4,8 @@
 
 from base64 import b64decode, b64encode
 from hashlib import sha256
-from secrets import choice, token_bytes
+from secrets import SystemRandom, token_bytes
+from string import ascii_letters, digits
 from typing import NamedTuple, Self
 
 from nacl.bindings import (
@@ -100,14 +101,8 @@ def random_bytes(length: int) -> bytes:
 
 
 def random_string(length: int) -> str:
-    """Generate a random string of a given `length`.
-
-    Generated from characters 0..9, A..Z, and a..z.
-    """
-    return "".join(
-        choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
-        for _ in range(length)
-    )
+    """Generate a random string from characters 0..9, a..z, and A..Z."""
+    return "".join(SystemRandom().choices(digits + ascii_letters, k=length))
 
 
 def get_nonce(agent: str, keys: KeyPair) -> str:
