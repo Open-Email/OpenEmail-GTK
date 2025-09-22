@@ -353,17 +353,27 @@ sent = _SentStore()
 class _OutboxStore(MessageStore):
     default_factory = partial(Message, can_discard=True, can_trash=False)
 
-    only_in_sent = Property(
-        Gtk.FilterListModel,
-        default=Gtk.FilterListModel.new(
-            sent, Gtk.CustomFilter.new(lambda msg: msg.unique_id not in outbox._items)
-        ),
-    )
+    _filter = Gtk.CustomFilter.new(lambda msg: msg.unique_id not in outbox._items)
+    only_in_sent = Gtk.FilterListModel.new(sent, _filter)
 
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         for msg in await core_messages.fetch_outbox():
             msg.new = False  # New outbox messages should be marked read automatically
             yield msg
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.connect("items-changed", self._on_items_changed)
+
+    def _on_items_changed(self, _list, _pos, removed: int, added: int):
+        self._filter.changed(
+            Gtk.FilterChange.MORE_STRICT
+            if added and (not removed)
+            else Gtk.FilterChange.LESS_STRICT
+            if removed and (not added)
+            else Gtk.FilterChange.DIFFERENT
+        )
 
 
 outbox = _OutboxStore()
