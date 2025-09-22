@@ -111,8 +111,8 @@ class Outbox(_Folder):
         self.thread_view.model = store.flatten(
             store.inbox,
             store.outbox,
-            store.outbox.only_in_sent,
             store.broadcasts,
+            Gtk.FilterListModel.new(store.sent, store.outbox.filter),
         )
 
 
