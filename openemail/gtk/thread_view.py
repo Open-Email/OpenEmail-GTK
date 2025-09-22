@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from gi.repository import Adw, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from openemail import APP_ID, PREFIX, Property, store
 from openemail.message import Message
@@ -24,12 +24,18 @@ class ThreadView(Adw.Bin):
     viewport: Gtk.Viewport = child
     sort_model: Gtk.SortListModel = child
 
+    app_icon_name = Property(str, default=f"{APP_ID}-symbolic")
     message = Property[Message | None](Message)
     subject_id = Property(str)
-    model = Property(Gio.ListModel, default=store.messages)
-    app_icon_name = Property(str, default=f"{APP_ID}-symbolic")
-
-    reply = GObject.Signal(arg_types=(Message,))
+    model = Property(
+        Gio.ListModel,
+        default=store.flatten(
+            store.inbox,
+            store.outbox,
+            store.broadcasts,
+            Gtk.FilterListModel.new(store.sent, store.outbox.filter),
+        ),
+    )
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
@@ -71,10 +77,7 @@ class ThreadView(Adw.Bin):
             GLib.timeout_add(100, self._scroll_to, self.message)
 
     def _create_widget(self, item: Message) -> Gtk.Widget:
-        view = MessageView(message=item)
-        view.connect("reply", lambda *_: self.emit("reply", view.message))
-        row = Gtk.ListBoxRow(activatable=False, child=view)
-
+        row = Gtk.ListBoxRow(activatable=False, child=MessageView(message=item))
         self._rows[item] = row
         return row
 

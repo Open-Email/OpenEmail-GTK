@@ -4,9 +4,9 @@
 
 import re
 from collections.abc import Iterable
-from typing import Self
+from typing import Any
 
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from openemail import PREFIX, Property, message, store, tasks
 from openemail.core.model import Address
@@ -27,8 +27,6 @@ class ComposeSheet(Adw.BreakpointBin):
 
     __gtype_name__ = "ComposeSheet"
 
-    default: Self
-
     bottom_sheet: Adw.BottomSheet = child
     readers: Gtk.Text = child
     subject: Gtk.Text = child
@@ -39,15 +37,28 @@ class ComposeSheet(Adw.BreakpointBin):
 
     confirm_send_dialog: Adw.AlertDialog = child
 
-    subject_id: str | None = None
-    ident: str | None = None
-
     body = Property(Gtk.TextBuffer)
     content = Property(Gtk.Widget)
     privacy = Property(str, default="private")
 
+    subject_id: str | None = None
+    ident: str | None = None
+
     _completion_running = False
     _readers: Iterable[Address]
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.insert_action_group("compose", group := Gio.SimpleActionGroup())
+        group.add_action_entries(
+            (
+                ("format", self._format, "(ss)"),
+                ("new", lambda *_: self.new_message()),
+                ("draft", self._draft, "s"),
+                ("reply", self._reply, "s"),
+            )
+        )
 
     def new_message(self):
         """Open `self` with empty contents."""
@@ -65,7 +76,7 @@ class ComposeSheet(Adw.BreakpointBin):
 
         self.privacy = "public" if draft.is_broadcast else "private"
         self.subject_id = draft.subject_id
-        self.ident = draft.draft_id
+        self.ident = draft.unique_id.split()[1]
         self.readers.props.text = draft.readers
         self.subject.props.text = draft.subject
         self.body.props.text = draft.body
@@ -246,6 +257,27 @@ class ComposeSheet(Adw.BreakpointBin):
         self.body.end_user_action()
         self.body_view.grab_focus()
 
+    def _format(self, _name, param: GLib.Variant, *_args):
+        kind, string = param.unpack()
+        match kind:
+            case "inline":
+                self.format_inline(string)
+            case "line":
+                self.format_line(string)
+            case "always-prepend":
+                self.format_line(string, always_prepend=True)
+
+    def _draft(self, _name, param: GLib.Variant, *_args):
+        if draft := store.drafts.get(param.get_string()):
+            self.open_draft(draft)
+
+    def _reply(self, _name, param: GLib.Variant, *_args):
+        ident = param.get_string()
+        for msgs in store.inbox, store.outbox, store.sent, store.broadcasts:
+            if msg := msgs.get(ident):
+                self.reply(msg)
+                return
+
     def _close(self):
         self.bottom_sheet.props.reveal_bottom_bar = False
         self.bottom_sheet.props.open = False
@@ -284,20 +316,3 @@ class ComposeSheet(Adw.BreakpointBin):
     @Gtk.Template.Callback()
     def _get_bottom_bar_label(self, _obj, subject: str) -> str:
         return subject or _("New Message")
-
-
-def _format(sheet: Gtk.Widget, _name, param: GLib.Variant | None):
-    if not (isinstance(sheet, ComposeSheet) and param):
-        return
-
-    kind, string = param.unpack()
-    match kind:
-        case "inline":
-            sheet.format_inline(string)
-        case "line":
-            sheet.format_line(string)
-        case "always-prepend":
-            sheet.format_line(string, always_prepend=True)
-
-
-ComposeSheet.install_action("compose.format", "(ss)", _format)

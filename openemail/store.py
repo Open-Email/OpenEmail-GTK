@@ -40,6 +40,18 @@ core.data_dir = Path(GLib.get_user_data_dir(), "openemail")  # TODO: This may no
 profiles = defaultdict[Address, Profile](Profile)
 
 
+def flatten(*models: GObject.Object) -> Gtk.FlattenListModel:
+    """Flatten `models` into a `Gtk.FlattenListModel`.
+
+    All `models` must be `Gio.ListModel` implementations.
+    """
+    store = Gio.ListStore.new(Gio.ListModel)
+    for m in models:
+        store.append(m)
+
+    return Gtk.FlattenListModel.new(store)
+
+
 class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
 
@@ -239,15 +251,15 @@ class People(GObject.Object):
 
     __gtype_name__ = "People"
 
+    all = Property(
+        Gtk.FlattenListModel,
+        default=flatten(address_book, contact_requests),
+    )
+
     @Property(_AddressBook)
     def address_book(self) -> _AddressBook:
         """The global model for contacts."""
         return address_book
-
-    @Property(Gtk.FlattenListModel)
-    def all(self) -> Gtk.FlattenListModel:
-        """The global model for both the address book and contact requests."""
-        return all_contacts
 
 
 class MessageStore(DictStore[str, Message]):
@@ -256,6 +268,10 @@ class MessageStore(DictStore[str, Message]):
     item_type = Message
     key_for = message.get_unique_id
     default_factory = Message
+
+    def get(self, ident: str) -> Message | None:
+        """Get the message with `ident` or `None` if it is not in `self`."""
+        return self._items.get(ident)
 
     async def _update(self):
         idents = set[str]()
@@ -477,22 +493,6 @@ async def sync(*, periodic: bool = False):
         "changed::contact-requests",
         lambda *_: tasks.create(contact_requests.update()),
     )
-
-
-def flatten(*models: GObject.Object) -> Gtk.FlattenListModel:
-    """Flatten `models` into a `Gtk.FlattenListModel`.
-
-    All `models` must be `Gio.ListModel` implementations.
-    """
-    store = Gio.ListStore.new(Gio.ListModel)
-    for m in models:
-        store.append(m)
-
-    return Gtk.FlattenListModel.new(store)
-
-
-all_contacts = flatten(address_book, contact_requests)
-messages = flatten(inbox, sent, broadcasts)
 
 
 def empty_trash():

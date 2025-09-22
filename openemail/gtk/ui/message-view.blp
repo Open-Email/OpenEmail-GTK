@@ -106,11 +106,12 @@ template $MessageView: Box {
       halign: end;
       valign: start;
 
-      Button reply_button {
+      Button {
         visible: bind template.message as <$Message>.can-reply;
         icon-name: "mail-reply-sender-symbolic";
         tooltip-text: _("Reply");
-        clicked => $_reply();
+        action-name: "compose.reply";
+        action-target: bind $_string_to_variant(template.message as <$Message>.unique-id) as <$GVariant>;
       }
 
       Button {

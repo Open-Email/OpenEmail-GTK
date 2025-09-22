@@ -9,15 +9,15 @@ from gi.repository import Adw, Gdk, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, Notifier, Property
 from openemail.core import client
+from openemail.gtk.compose_sheet import ComposeSheet
 from openemail.store import Profile
 
-from .compose_sheet import ComposeSheet
 from .contacts import Contacts
 from .messages import Broadcasts, Drafts, Inbox, Outbox, Sent, Trash
 from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
-for t in Contacts, Broadcasts, Drafts, Inbox, Outbox, Sent, Trash:
+for t in Contacts, Broadcasts, Drafts, Inbox, Outbox, Sent, Trash, ComposeSheet:
     GObject.type_ensure(t)
 
 
@@ -30,7 +30,6 @@ class Content(Adw.BreakpointBin):
 
     __gtype_name__ = "Content"
 
-    compose_sheet: ComposeSheet = child
     split_view: Adw.OverlaySplitView = child
 
     sidebar_toolbar_view: Adw.ToolbarView = child
@@ -55,8 +54,6 @@ class Content(Adw.BreakpointBin):
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
-
-        ComposeSheet.default = self.compose_sheet
 
         self.sidebar.set_header_func(self._header_func)
         self.sidebar.select_row(self.sidebar.get_row_at_index(0))

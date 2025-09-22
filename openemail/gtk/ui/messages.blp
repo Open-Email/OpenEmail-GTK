@@ -44,9 +44,10 @@ Adw.StatusPage no_messages {
   title: _("No Messages");
   description: _("Select another folder or start a conversation");
 
-  child: Button new_button {
+  child: Button {
     halign: center;
     label: _("New Message");
+    action-name: "compose.new";
 
     styles [
       "pill",
@@ -61,6 +62,7 @@ Adw.StatusPage no_messages {
 Button toolbar_new {
   icon-name: "mail-message-new-symbolic";
   tooltip-text: _("New Message");
+  action-name: "compose.new";
 
   ShortcutController {
     scope: managed;

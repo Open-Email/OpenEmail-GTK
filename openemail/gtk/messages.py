@@ -10,7 +10,6 @@ from openemail import PREFIX, Property, store
 from openemail.message import Message
 from openemail.store import DictStore
 
-from .compose_sheet import ComposeSheet
 from .page import Page
 from .thread_view import ThreadView
 
@@ -34,12 +33,9 @@ class _Messages(Adw.NavigationPage):
 
         self.trashed: Gtk.BoolFilter = self._get_object("trashed")
         store.settings.connect("changed::trashed-messages", self._on_trash_changed)
-        self._get_object("sort_model").props.model = model
 
+        self._get_object("sort_model").props.model = model
         self.thread_view: ThreadView = self._get_object("thread_view")
-        self.thread_view.connect(
-            "reply", lambda _, msg: ComposeSheet.default.reply(msg)
-        )
 
         self.page: Page = self._get_object("page")
         self.page.title = self.props.title = title
@@ -84,11 +80,8 @@ class _Folder(_Messages):
 
         self.page.toolbar_button = self._get_object("toolbar_new")
         self.page.empty_page = self._get_object("no_messages")
+
         Property.bind(self.page.model, "selected-item", self.thread_view, "message")
-
-        for button in self.page.toolbar_button, self._get_object("new_button"):
-            button.connect("clicked", lambda *_: ComposeSheet.default.new_message())
-
         Property.bind(self.folder, "updating", self.page, "loading")
 
 
@@ -104,16 +97,6 @@ class Outbox(_Folder):
 
     __gtype_name__ = "Outbox"
     folder, title, subtitle = store.outbox, _("Outbox"), _("Can be discarded")
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self.thread_view.model = store.flatten(
-            store.inbox,
-            store.outbox,
-            store.broadcasts,
-            Gtk.FilterListModel.new(store.sent, store.outbox.filter),
-        )
 
 
 class Sent(_Folder):
@@ -146,7 +129,9 @@ class Drafts(_Messages):
     def _on_selected(self, selection: Gtk.SingleSelection, *_args):
         if isinstance(msg := selection.props.selected_item, Message):
             selection.unselect_all()
-            ComposeSheet.default.open_draft(msg)
+            self.activate_action(
+                "compose.draft", GLib.Variant.new_string(msg.unique_id)
+            )
 
 
 class Trash(_Messages):
@@ -154,9 +139,11 @@ class Trash(_Messages):
 
     __gtype_name__ = "Trash"
 
+    model = store.flatten(store.inbox, store.sent, store.broadcasts)
+
     def __init__(self, **kwargs: Any):
         super().__init__(
-            store.messages,
+            self.model,
             title=_("Trash"),
             subtitle=_("On this device"),
             **kwargs,

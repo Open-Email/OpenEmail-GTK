@@ -5,7 +5,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, GLib, GObject, Gtk
 
 from openemail import PREFIX, Notifier, Property, tasks
 from openemail.message import Message
@@ -23,7 +23,6 @@ class MessageView(Gtk.Box):
 
     __gtype_name__ = "MessageView"
 
-    reply_button: Gtk.Button = child
     body_view: Body = child
     attachments: Attachments = child
 
@@ -31,7 +30,6 @@ class MessageView(Gtk.Box):
     profile_view: ProfileView = child
     confirm_discard_dialog: Adw.AlertDialog = child
 
-    reply = GObject.Signal()
     undo = GObject.Signal(flags=GObject.SignalFlags.ACTION)
 
     _history: dict[Adw.Toast, Callable[[], Any]]
@@ -55,13 +53,13 @@ class MessageView(Gtk.Box):
         self._history = {}
 
     @Gtk.Template.Callback()
+    def _string_to_variant(self, _obj, string: str) -> GLib.Variant:
+        return GLib.Variant.new_string(string)
+
+    @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args):
         self.profile_view.profile = self.message.profile
         self.profile_dialog.present(self)
-
-    @Gtk.Template.Callback()
-    def _reply(self, *_args):
-        self.emit("reply")
 
     @Gtk.Template.Callback()
     def _trash(self, *_args):

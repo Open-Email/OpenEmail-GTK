@@ -217,7 +217,7 @@ class Message(GObject.Object):
 
     __gtype_name__ = "Message"
 
-    draft_id = Property(str)
+    unique_id = Property(str)
     author = Property(str)
     original_author = Property(str)
     date = Property(int)
@@ -240,13 +240,12 @@ class Message(GObject.Object):
     list_initials = Property(bool)
 
     is_outgoing, is_incoming = Property(bool), Property(bool, default=True)
+    is_draft = Property(bool)
     different_author = Property(bool)
     has_other_readers = Property(bool)
     can_reply = Property(bool)
     can_trash = Property(bool)
     can_discard = Property(bool)
-
-    unique_id: str
 
     _bindings: tuple[GObject.Binding, ...] = ()
     _message: model.Message | None = None
@@ -341,7 +340,7 @@ class Message(GObject.Object):
             case model.IncomingMessage() | model.OutgoingMessage():
                 self.subject_id = msg.subject_id
             case model.DraftMessage():
-                self.draft_id = msg.ident
+                self.is_draft = True
 
         for binding in self._bindings:
             binding.unbind()
