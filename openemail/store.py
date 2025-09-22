@@ -45,10 +45,7 @@ def flatten(*models: GObject.Object) -> Gtk.FlattenListModel:
 
     All `models` must be `Gio.ListModel` implementations.
     """
-    store = Gio.ListStore.new(Gio.ListModel)
-    for m in models:
-        store.append(m)
-
+    (store := Gio.ListStore.new(Gio.ListModel)).splice(0, 0, models)
     return Gtk.FlattenListModel.new(store)
 
 
