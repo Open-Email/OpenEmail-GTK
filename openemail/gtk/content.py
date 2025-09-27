@@ -14,7 +14,6 @@ from openemail.store import Profile
 
 from .contacts import Contacts
 from .messages import Broadcasts, Drafts, Inbox, Outbox, Sent, Trash
-from .navigation_row import NavigationRow
 from .profile_settings import ProfileSettings
 
 for t in Contacts, Broadcasts, Drafts, Inbox, Outbox, Sent, Trash, ComposeSheet:
@@ -33,7 +32,6 @@ class Content(Adw.BreakpointBin):
     split_view: Adw.OverlaySplitView = child
 
     sidebar_toolbar_view: Adw.ToolbarView = child
-    sidebar: Gtk.ListBox = child
     stack: Adw.ViewStack = child
     profile_settings: ProfileSettings = child
 
@@ -55,9 +53,6 @@ class Content(Adw.BreakpointBin):
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
-        self.sidebar.set_header_func(self._header_func)
-        self.sidebar.select_row(self.sidebar.get_row_at_index(0))
-
         Property.bind(Profile.of(client.user), "image", self, "profile-image")
         Property.bind(
             Notifier(), "sending", self.sidebar_toolbar_view, "reveal-bottom-bars"
@@ -68,24 +63,8 @@ class Content(Adw.BreakpointBin):
             lambda *_: self.notify("header-bar-layout"),
         )
 
-    def _header_func(self, row: NavigationRow, *_args):
-        row.set_header(
-            Gtk.Separator(
-                margin_start=9,
-                margin_end=9,
-            )
-            if row.separator
-            else None
-        )
-
     @Gtk.Template.Callback()
-    def _on_row_selected(self, _obj, row: NavigationRow | None):
-        if not row:
-            return
-
-        self.sidebar.select_row(row)
-        self.stack.props.visible_child = row.page.props.child
-
+    def _close_sidebar(self, *_args):
         if self.split_view.props.collapsed:
             self.split_view.props.show_sidebar = False
 
