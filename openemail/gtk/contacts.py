@@ -3,10 +3,12 @@
 # SPDX-FileContributor: kramo
 
 from contextlib import suppress
+from typing import Any
 
 from gi.repository import Adw, GObject, Gtk
 
 from openemail import PREFIX, store, tasks
+from openemail._property import Property
 from openemail.core.model import Address
 from openemail.store import DictStore, People
 
@@ -33,6 +35,20 @@ class Contacts(Adw.NavigationPage):
     add_contact_dialog: Adw.AlertDialog = child
     address: Adw.EntryRow = child
     address_form: Form = child
+
+    contact_requests_filter: Gtk.BoolFilter = child
+
+    counter = Property(int)
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+        store.settings.connect(
+            "changed::contact-requests",
+            lambda *_: self.contact_requests_filter.changed(
+                Gtk.FilterChange.MORE_STRICT
+            ),
+        )
 
     @Gtk.Template.Callback()
     def _new_contact(self, *_args):

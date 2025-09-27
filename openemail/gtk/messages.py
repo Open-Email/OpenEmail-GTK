@@ -18,6 +18,8 @@ GObject.type_ensure(ThreadView)
 
 
 class _Messages(Adw.NavigationPage):
+    counter = Property(int)
+
     def __init__(
         self,
         model: Gio.ListModel,
@@ -46,6 +48,17 @@ class _Messages(Adw.NavigationPage):
         )
 
         self.props.child = self.page
+
+        unread: Gtk.FilterListModel = self._get_object("unread")
+        unread.bind_property(
+            "n-items", self, "counter", GObject.BindingFlags.SYNC_CREATE
+        )
+
+        unread_filter = self._get_object("unread_filter")
+        store.settings.connect(
+            "changed::unread-messages",
+            lambda *_: unread_filter.changed(Gtk.FilterChange.MORE_STRICT),
+        )
 
     def _get_object(self, name: str) -> Any:  # noqa: ANN401
         return self.builder.get_object(name)
