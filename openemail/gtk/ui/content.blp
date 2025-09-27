@@ -119,45 +119,9 @@ template $Content: Adw.BreakpointBin {
             ]
           }
 
-          content: ScrolledWindow {
-            hscrollbar-policy: never;
-
-            child: ListBox sidebar {
-              row-selected => $_on_row_selected();
-
-              $NavigationRow {
-                page: bind inbox_page;
-              }
-
-              $NavigationRow {
-                page: bind outbox_page;
-              }
-
-              $NavigationRow {
-                page: bind sent_page;
-              }
-
-              $NavigationRow {
-                page: bind drafts_page;
-              }
-
-              $NavigationRow {
-                page: bind trash_page;
-              }
-
-              $NavigationRow {
-                page: bind broadcasts_page;
-                separator: true;
-              }
-
-              $NavigationRow {
-                page: bind contacts_page;
-              }
-
-              styles [
-                "navigation-sidebar",
-              ]
-            };
+          content: Adw.ViewSwitcherSidebar {
+            stack: stack;
+            activated => $_close_sidebar();
           };
         };
       };
@@ -171,6 +135,7 @@ template $Content: Adw.BreakpointBin {
           Adw.ViewStackPage inbox_page {
             icon-name: "inbox-symbolic";
             title: bind inbox.title;
+            badge-number: bind inbox.counter;
 
             child: $Inbox inbox {};
           }
@@ -178,6 +143,7 @@ template $Content: Adw.BreakpointBin {
           Adw.ViewStackPage outbox_page {
             icon-name: "outbox-symbolic";
             title: bind outbox.title;
+            badge-number: bind outbox.counter;
 
             child: $Outbox outbox {};
           }
@@ -185,6 +151,7 @@ template $Content: Adw.BreakpointBin {
           Adw.ViewStackPage sent_page {
             icon-name: "sent-symbolic";
             title: bind sent.title;
+            badge-number: bind sent.counter;
 
             child: $Sent sent {};
           }
@@ -192,6 +159,7 @@ template $Content: Adw.BreakpointBin {
           Adw.ViewStackPage drafts_page {
             icon-name: "drafts-symbolic";
             title: bind drafts.title;
+            badge-number: bind drafts.counter;
 
             child: $Drafts drafts {};
           }
@@ -199,13 +167,16 @@ template $Content: Adw.BreakpointBin {
           Adw.ViewStackPage trash_page {
             icon-name: "trash-symbolic";
             title: bind trash.title;
+            badge-number: bind trash.counter;
 
             child: $Trash trash {};
           }
 
           Adw.ViewStackPage broadcasts_page {
+            starts-section: true;
             icon-name: "broadcasts-symbolic";
             title: bind broadcasts.title;
+            badge-number: bind broadcasts.counter;
 
             child: $Broadcasts broadcasts {};
           }
@@ -213,6 +184,7 @@ template $Content: Adw.BreakpointBin {
           Adw.ViewStackPage contacts_page {
             icon-name: "contacts-symbolic";
             title: bind contacts.title;
+            badge-number: bind contacts.counter;
 
             child: $Contacts contacts {};
           }

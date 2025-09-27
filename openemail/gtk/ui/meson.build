@@ -9,7 +9,6 @@ blueprints = custom_target(
         'message-row.blp',
         'message-view.blp',
         'messages.blp',
-        'navigation-row.blp',
         'page.blp',
         'preferences.blp',
         'profile-settings.blp',
