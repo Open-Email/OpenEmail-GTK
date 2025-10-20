@@ -15,6 +15,7 @@ class Notifier(GObject.Object):
 
     sending = Property(bool)
     syncing = Property(bool)
+    offline = Property(bool)
 
     send_notification = GObject.Signal("send", arg_types=(Adw.Toast,))
 

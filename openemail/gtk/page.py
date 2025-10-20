@@ -23,6 +23,7 @@ class Page(Adw.BreakpointBin):
 
     split_view: Adw.NavigationSplitView = child
     sync_button: Gtk.Button = child
+    offline_banner: Adw.Banner = child
 
     factory = Property(Gtk.ListItemFactory)
 
@@ -50,6 +51,7 @@ class Page(Adw.BreakpointBin):
                 self.sync_button.props.sensitive = True
 
         Notifier().connect("notify::syncing", on_syncing_changed)
+        Property.bind(Notifier(), "offline", self.offline_banner, "revealed")
 
     @Gtk.Template.Callback()
     def _show_sidebar(self, *_args):

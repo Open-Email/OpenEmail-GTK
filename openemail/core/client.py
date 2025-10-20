@@ -3,8 +3,10 @@
 # SPDX-FileContributor: kramo
 
 import asyncio
+from collections.abc import Callable
 from http.client import HTTPResponse, InvalidURL
 from logging import getLogger
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -15,6 +17,7 @@ from .model import Address, User
 MAX_AGENTS = 3
 
 user = User()
+on_offline: Callable[[bool], Any] | None = None
 
 logger = getLogger(__name__)
 
@@ -49,6 +52,9 @@ async def request(
             urlopen, Request(url, method=method, headers=headers, data=data)
         )
     except (InvalidURL, URLError, HTTPError, TimeoutError, ValueError) as error:
+        if on_offline and isinstance(error, (URLError, TimeoutError)):
+            on_offline(True)
+
         logger.debug(
             "%s, URL: %s, Method: %s, Auth: %s",
             error,
@@ -67,6 +73,9 @@ async def request(
         if length > max_length:
             logger.debug("Content-Length for %s exceeds max_length", url)
             return None
+
+    if on_offline:
+        on_offline(False)
 
     return response
 

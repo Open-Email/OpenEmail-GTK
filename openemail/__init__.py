@@ -20,6 +20,9 @@ gi.require_versions({"Gdk": "4.0", "Gtk": "4.0", "Adw": "1"})
 from gi.repository import GLib
 
 from ._config import APP_ID, LOCALEDIR, PKGDATADIR, PREFIX, PROFILE, VERSION
+from ._notifier import Notifier
+from ._property import Property
+from .core import client
 
 signal(SIGINT, SIG_DFL)
 
@@ -39,8 +42,7 @@ logging.basicConfig(
     ),
 )
 
-from ._notifier import Notifier
-from ._property import Property
+client.on_offline = lambda offline: Notifier().set_property("offline", offline)
 
 __all__ = (
     "APP_ID",
