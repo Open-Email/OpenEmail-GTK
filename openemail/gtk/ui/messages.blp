@@ -38,6 +38,14 @@ $Page page {
   };
 }
 
+FilterListModel unread {
+  filter: BoolFilter unread_filter {
+    expression: expr item as <$Message>.new;
+  };
+
+  model: bind page.model;
+}
+
 /* Folder */
 Adw.StatusPage no_messages {
   icon-name: "mailbox-symbolic";

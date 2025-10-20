@@ -13,7 +13,6 @@ openemail/gtk/ui/content.blp
 openemail/gtk/ui/login-view.blp
 openemail/gtk/ui/message-row.blp
 openemail/gtk/ui/message-view.blp
-openemail/gtk/ui/navigation-row.blp
 openemail/gtk/ui/page.blp
 openemail/gtk/ui/preferences.blp
 openemail/gtk/ui/profile-settings.blp
@@ -30,7 +29,6 @@ openemail/gtk/form.py
 openemail/gtk/login_view.py
 openemail/gtk/message_view.py
 openemail/gtk/messages.py
-openemail/gtk/navigation_row.py
 openemail/gtk/page.py
 openemail/gtk/preferences.py
 openemail/gtk/profile_settings.py

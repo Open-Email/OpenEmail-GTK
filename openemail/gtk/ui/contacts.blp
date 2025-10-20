@@ -5,6 +5,7 @@ $People people {}
 
 template $Contacts: Adw.NavigationPage {
   title: _("Contacts");
+  counter: bind people.contact_requests as <$DictStore>.n-items;
 
   child: $Page page {
     title: bind template.title;

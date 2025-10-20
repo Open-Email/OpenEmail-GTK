@@ -6,7 +6,7 @@ from contextlib import suppress
 
 from gi.repository import Adw, GObject, Gtk
 
-from openemail import PREFIX, store, tasks
+from openemail import PREFIX, Property, store, tasks
 from openemail.core.model import Address
 from openemail.store import DictStore, People
 
@@ -33,6 +33,8 @@ class Contacts(Adw.NavigationPage):
     add_contact_dialog: Adw.AlertDialog = child
     address: Adw.EntryRow = child
     address_form: Form = child
+
+    counter = Property(int)
 
     @Gtk.Template.Callback()
     def _new_contact(self, *_args):

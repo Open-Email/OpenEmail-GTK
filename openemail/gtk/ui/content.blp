@@ -119,45 +119,9 @@ template $Content: Adw.BreakpointBin {
             ]
           }
 
-          content: ScrolledWindow {
-            hscrollbar-policy: never;
-
-            child: ListBox sidebar {
-              row-selected => $_on_row_selected();
-
-              $NavigationRow {
-                page: bind inbox_page;
-              }
-
-              $NavigationRow {
-                page: bind outbox_page;
-              }
-
-              $NavigationRow {
-                page: bind sent_page;
-              }
-
-              $NavigationRow {
-                page: bind drafts_page;
-              }
-
-              $NavigationRow {
-                page: bind trash_page;
-              }
-
-              $NavigationRow {
-                page: bind broadcasts_page;
-                separator: true;
-              }
-
-              $NavigationRow {
-                page: bind contacts_page;
-              }
-
-              styles [
-                "navigation-sidebar",
-              ]
-            };
+          content: Adw.ViewSwitcherSidebar {
+            stack: stack;
+            activated => $_close_sidebar();
           };
         };
       };
@@ -168,51 +132,57 @@ template $Content: Adw.BreakpointBin {
         child: Adw.ViewStack stack {
           enable-transitions: true;
 
-          Adw.ViewStackPage inbox_page {
+          Adw.ViewStackPage {
             icon-name: "inbox-symbolic";
             title: bind inbox.title;
+            badge-number: bind inbox.counter;
 
             child: $Inbox inbox {};
           }
 
-          Adw.ViewStackPage outbox_page {
+          Adw.ViewStackPage {
             icon-name: "outbox-symbolic";
             title: bind outbox.title;
 
             child: $Outbox outbox {};
           }
 
-          Adw.ViewStackPage sent_page {
+          Adw.ViewStackPage {
             icon-name: "sent-symbolic";
             title: bind sent.title;
 
             child: $Sent sent {};
           }
 
-          Adw.ViewStackPage drafts_page {
+          Adw.ViewStackPage {
             icon-name: "drafts-symbolic";
             title: bind drafts.title;
+            badge-number: bind drafts.counter;
 
             child: $Drafts drafts {};
           }
 
-          Adw.ViewStackPage trash_page {
+          Adw.ViewStackPage {
             icon-name: "trash-symbolic";
             title: bind trash.title;
+            badge-number: bind trash.counter;
 
             child: $Trash trash {};
           }
 
-          Adw.ViewStackPage broadcasts_page {
+          Adw.ViewStackPage {
+            starts-section: true;
             icon-name: "broadcasts-symbolic";
             title: bind broadcasts.title;
+            badge-number: bind broadcasts.counter;
 
             child: $Broadcasts broadcasts {};
           }
 
-          Adw.ViewStackPage contacts_page {
+          Adw.ViewStackPage {
             icon-name: "contacts-symbolic";
             title: bind contacts.title;
+            badge-number: bind contacts.counter;
 
             child: $Contacts contacts {};
           }
