@@ -5,7 +5,7 @@ $People people {}
 
 template $Contacts: Adw.NavigationPage {
   title: _("Contacts");
-  counter: bind contact_requests.n-items;
+  counter: bind people.contact_requests as <$DictStore>.n-items;
 
   child: $Page page {
     title: bind template.title;
@@ -108,12 +108,4 @@ $Form address_form {
     field: address;
     type: address;
   }
-}
-
-FilterListModel contact_requests {
-  filter: BoolFilter contact_requests_filter {
-    expression: expr item as <$Profile>.contact-request;
-  };
-
-  model: bind people.all;
 }

@@ -54,19 +54,32 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
 
     __gtype_name__ = "DictStore"
 
-    item_type: type
-
     key_for: Callable[[Any], K] = lambda k: k
     default_factory: Callable[[Any], V]
 
     updating = Property(bool)
 
+    _item_type: type
     _items: dict[K, V]
+
+    @Property(GObject.Object)
+    def item_type(self) -> type:
+        """The type of items contained in this dict store.
+
+        Items must be subclasses of GObject.
+        """
+        return self.get_item_type()
+
+    @Property(int)
+    def n_items(self) -> int:
+        """The number of items contained in this dict store."""
+        return self.get_n_items()
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
         self._items = {}
+        self.connect("items-changed", lambda *_: self.notify("n-items"))
 
     def __iter__(self) -> Iterator[V]:  # pyright: ignore[reportIncompatibleMethodOverride]
         return super().__iter__()  # pyright: ignore[reportReturnType]
@@ -83,7 +96,7 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
 
     def do_get_item_type(self) -> type:
         """Get the type of the items in `self`."""
-        return self.item_type
+        return self._item_type
 
     def do_get_n_items(self) -> int:
         """Get the number of items in `self`."""
@@ -140,8 +153,9 @@ class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
 class ProfileStore(DictStore[Address, Profile]):
     """An implementation of `Gio.ListModel` for storing profiles."""
 
-    item_type = Profile
     default_factory = Profile.of
+
+    _item_type = Profile
 
     async def update_profiles(self, *, trust_images: bool = True):
         """Update the profiles of contacts in the user's address book.
@@ -248,23 +262,24 @@ class People(GObject.Object):
 
     __gtype_name__ = "People"
 
+    contact_requests = Property(_ContactRequests, default=contact_requests)
+    address_book = Property(_AddressBook, default=address_book)
     all = Property(
         Gtk.FlattenListModel,
-        default=flatten(address_book, contact_requests),
+        default=flatten(
+            globals()["address_book"],
+            globals()["contact_requests"],
+        ),
     )
-
-    @Property(_AddressBook)
-    def address_book(self) -> _AddressBook:
-        """The global model for contacts."""
-        return address_book
 
 
 class MessageStore(DictStore[str, Message]):
     """An implementation of `Gio.ListModel` for storing Mail/HTTPS messages."""
 
-    item_type = Message
     key_for = message.get_unique_id
     default_factory = Message
+
+    _item_type = Message
 
     def get(self, ident: str) -> Message | None:
         """Get the message with `ident` or `None` if it is not in `self`."""
