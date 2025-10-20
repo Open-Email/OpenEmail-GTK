@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any
+from typing import Any, override
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
@@ -19,6 +19,8 @@ GObject.type_ensure(ThreadView)
 
 class _Messages(Adw.NavigationPage):
     counter = Property(int)
+
+    _count_unread = False
 
     def __init__(
         self,
@@ -48,6 +50,9 @@ class _Messages(Adw.NavigationPage):
         )
 
         self.props.child = self.page
+
+        if not self._count_unread:
+            return
 
         unread: Gtk.FilterListModel = self._get_object("unread")
         unread.bind_property(
@@ -104,6 +109,8 @@ class Inbox(_Folder):
     __gtype_name__ = "Inbox"
     folder, title = store.inbox, _("Inbox")
 
+    _count_unread = True
+
 
 class Outbox(_Folder):
     """A navigation page displaying the user's outbox."""
@@ -124,6 +131,11 @@ class Drafts(_Messages):
 
     __gtype_name__ = "Drafts"
 
+    @override
+    @Property(int)
+    def counter(self) -> int:
+        return len(store.drafts)
+
     def __init__(self, **kwargs: Any):
         super().__init__(store.drafts, title=_("Drafts"), **kwargs)
 
@@ -139,6 +151,8 @@ class Drafts(_Messages):
         self.page.empty_page = self._get_object("no_drafts")
         Property.bind(self.page.model, "n-items", delete_button, "sensitive")
 
+        store.drafts.connect("items-changed", lambda *_: self.notify("counter"))
+
     def _on_selected(self, selection: Gtk.SingleSelection, *_args):
         if isinstance(msg := selection.props.selected_item, Message):
             selection.unselect_all()
@@ -153,6 +167,8 @@ class Trash(_Messages):
     __gtype_name__ = "Trash"
 
     model = store.flatten(store.inbox, store.sent, store.broadcasts)
+
+    _count_unread = True
 
     def __init__(self, **kwargs: Any):
         super().__init__(
@@ -187,3 +203,5 @@ class Broadcasts(_Folder):
 
     __gtype_name__ = "Broadcasts"
     folder, title = store.broadcasts, _("Public")
+
+    _count_unread = True

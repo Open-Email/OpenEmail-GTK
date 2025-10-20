@@ -39,14 +39,8 @@ $Page page {
 }
 
 FilterListModel unread {
-  filter: AnyFilter unread_filter {
-    BoolFilter {
-      expression: expr item as <$Message>.new;
-    }
-
-    BoolFilter {
-      expression: expr item as <$Message>.is_draft;
-    }
+  filter: BoolFilter unread_filter {
+    expression: expr item as <$Message>.new;
   };
 
   model: bind page.model;
