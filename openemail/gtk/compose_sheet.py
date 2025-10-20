@@ -25,7 +25,7 @@ child = Gtk.Template.Child()
 class ComposeSheet(Adw.BreakpointBin):
     """A page listing a subset of the user's messages."""
 
-    __gtype_name__ = "ComposeSheet"
+    __gtype_name__ = __qualname__
 
     bottom_sheet: Adw.BottomSheet = child
     readers: Gtk.Text = child

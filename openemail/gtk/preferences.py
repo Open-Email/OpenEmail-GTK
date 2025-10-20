@@ -20,7 +20,7 @@ child = Gtk.Template.Child()
 class Preferences(Adw.PreferencesDialog):
     """The application's preferences dialog."""
 
-    __gtype_name__ = "Preferences"
+    __gtype_name__ = __qualname__
 
     confirm_remove_dialog: Adw.AlertDialog = child
     confirm_delete_dialog: Adw.AlertDialog = child

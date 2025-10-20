@@ -24,7 +24,7 @@ class FormFieldType(GObject.GEnum):
 class FormField(GObject.Object):
     """A field in a form."""
 
-    __gtype_name__ = "FormField"
+    __gtype_name__ = __qualname__
 
     type = Property(FormFieldType, default=FormFieldType.PLAIN)
 
@@ -82,7 +82,7 @@ class FormField(GObject.Object):
 class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatibleMethodOverride]
     """An abstract representation of a form in UI with validation."""
 
-    __gtype_name__ = "Form"
+    __gtype_name__ = __qualname__
 
     submit_widget = Property(Gtk.Widget)
 

@@ -19,7 +19,7 @@ child = Gtk.Template.Child()
 class Page(Adw.BreakpointBin):
     """A split view for content and details."""
 
-    __gtype_name__ = "Page"
+    __gtype_name__ = __qualname__
 
     split_view: Adw.NavigationSplitView = child
     sync_button: Gtk.Button = child

@@ -25,7 +25,7 @@ def get_unique_id(message: model.Message) -> str:
 class Attachment(GObject.Object):
     """An file attached to a Mail/HTTPS message."""
 
-    __gtype_name__ = "Attachment"
+    __gtype_name__ = __qualname__
 
     name = Property(str)
     type = Property(str)
@@ -52,7 +52,7 @@ class Attachment(GObject.Object):
 class OutgoingAttachment(Attachment):
     """An attachment that has not yet been sent."""
 
-    __gtype_name__ = "OutgoingAttachment"
+    __gtype_name__ = __qualname__
 
     file = Property(Gio.File)
 
@@ -131,7 +131,7 @@ class OutgoingAttachment(Attachment):
 class IncomingAttachment(Attachment):
     """An attachment received by the user."""
 
-    __gtype_name__ = "IncomingAttachment"
+    __gtype_name__ = __qualname__
 
     _parts: list[model.Message]
 
@@ -215,7 +215,7 @@ class IncomingAttachment(Attachment):
 class Message(GObject.Object):
     """A Mail/HTTPS message."""
 
-    __gtype_name__ = "Message"
+    __gtype_name__ = __qualname__
 
     unique_id = Property(str)
     author = Property(str)

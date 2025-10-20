@@ -22,7 +22,7 @@ child = Gtk.Template.Child()
 class ProfileSettings(Adw.PreferencesDialog):
     """A page presenting the user's editable public profile."""
 
-    __gtype_name__ = "ProfileSettings"
+    __gtype_name__ = __qualname__
 
     name: Adw.EntryRow = child
     away: Adw.ExpanderRow = child

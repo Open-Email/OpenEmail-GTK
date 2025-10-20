@@ -52,7 +52,7 @@ def flatten(*models: GObject.Object) -> Gtk.FlattenListModel:
 class DictStore[K, V](GObject.Object, Gio.ListModel):  # pyright: ignore[reportIncompatibleMethodOverride]
     """An implementation of `Gio.ListModel` for storing data in a Python dictionary."""
 
-    __gtype_name__ = "DictStore"
+    __gtype_name__ = __qualname__
 
     key_for: Callable[[Any], K] = lambda k: k
     default_factory: Callable[[Any], V]
@@ -260,7 +260,7 @@ contact_requests = _ContactRequests()
 class People(GObject.Object):
     """The global GObject address store. Mostly useful in a `Gtk.Builder` context."""
 
-    __gtype_name__ = "People"
+    __gtype_name__ = __qualname__
 
     contact_requests = Property(_ContactRequests, default=contact_requests)
     address_book = Property(_AddressBook, default=address_book)

@@ -20,7 +20,7 @@ child = Gtk.Template.Child()
 class LoginView(Adw.Bin):
     """A view prompting the user to authenticate."""
 
-    __gtype_name__ = "LoginView"
+    __gtype_name__ = __qualname__
 
     navigation_view: Adw.NavigationView = child
 

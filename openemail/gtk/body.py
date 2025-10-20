@@ -30,7 +30,7 @@ MARKDOWN_PATTERNS = (
 class Body(Gtk.TextView):
     """A widget for displaying a message's body with Markdown support."""
 
-    __gtype_name__ = "Body"
+    __gtype_name__ = __qualname__
 
     summary = Property(bool)
 

@@ -27,7 +27,7 @@ child = Gtk.Template.Child()
 class Content(Adw.BreakpointBin):
     """The main content of the application."""
 
-    __gtype_name__ = "Content"
+    __gtype_name__ = __qualname__
 
     split_view: Adw.OverlaySplitView = child
 

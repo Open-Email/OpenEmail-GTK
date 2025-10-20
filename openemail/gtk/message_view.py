@@ -21,7 +21,7 @@ child = Gtk.Template.Child()
 class MessageView(Gtk.Box):
     """A view displaying metadata about, and the contents of a message."""
 
-    __gtype_name__ = "MessageView"
+    __gtype_name__ = __qualname__
 
     body_view: Body = child
     attachments: Attachments = child

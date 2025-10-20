@@ -66,7 +66,7 @@ class ProfileCategory(GObject.Object, Gio.ListModel):  # pyright: ignore[reportI
 class Profile(GObject.Object):
     """A GObject representation of a user profile."""
 
-    __gtype_name__ = "Profile"
+    __gtype_name__ = __qualname__
 
     updating = Property(bool)
 

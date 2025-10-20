@@ -14,7 +14,7 @@ from openemail.message import IncomingAttachment, OutgoingAttachment
 class Attachments(Adw.Bin):
     """A grid of files attached to a message."""
 
-    __gtype_name__ = "Attachments"
+    __gtype_name__ = __qualname__
 
     model = Property(Gio.ListStore)
 
@@ -30,7 +30,7 @@ class Attachments(Adw.Bin):
 class RemoveAttachmentButton(Gtk.Button):
     """A button in a list of attachments, used to remove one."""
 
-    __gtype_name__ = "RemoveAttachmentButton"
+    __gtype_name__ = __qualname__
 
     position = Property(int)
 

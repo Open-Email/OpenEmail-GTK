@@ -15,7 +15,7 @@ from openemail.profile import Profile
 class ContactRow(Gtk.Box):
     """A row to display a contact or contact request."""
 
-    __gtype_name__ = "ContactRow"
+    __gtype_name__ = __qualname__
 
     profile = Property(Profile)
 

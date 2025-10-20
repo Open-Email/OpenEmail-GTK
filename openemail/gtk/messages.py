@@ -106,7 +106,7 @@ class _Folder(_Messages):
 class Inbox(_Folder):
     """A navigation page displaying the user's inbox."""
 
-    __gtype_name__ = "Inbox"
+    __gtype_name__ = __qualname__
     folder, title = store.inbox, _("Inbox")
 
     _count_unread = True
@@ -115,21 +115,21 @@ class Inbox(_Folder):
 class Outbox(_Folder):
     """A navigation page displaying the user's outbox."""
 
-    __gtype_name__ = "Outbox"
+    __gtype_name__ = __qualname__
     folder, title, subtitle = store.outbox, _("Outbox"), _("Can be discarded")
 
 
 class Sent(_Folder):
     """A navigation page displaying the user's sent messages."""
 
-    __gtype_name__ = "Sent"
+    __gtype_name__ = __qualname__
     folder, title, subtitle = store.sent, _("Sent"), _("From this device")
 
 
 class Drafts(_Messages):
     """A navigation page displaying the user's drafts."""
 
-    __gtype_name__ = "Drafts"
+    __gtype_name__ = __qualname__
 
     @override
     @Property(int)
@@ -164,7 +164,7 @@ class Drafts(_Messages):
 class Trash(_Messages):
     """A navigation page displaying the user's trash folder."""
 
-    __gtype_name__ = "Trash"
+    __gtype_name__ = __qualname__
 
     model = store.flatten(store.inbox, store.sent, store.broadcasts)
 
@@ -201,7 +201,7 @@ class Trash(_Messages):
 class Broadcasts(_Folder):
     """A navigation page displaying the user's broadcasts folder."""
 
-    __gtype_name__ = "Broadcasts"
+    __gtype_name__ = __qualname__
     folder, title = store.broadcasts, _("Public")
 
     _count_unread = True

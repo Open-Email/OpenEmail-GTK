@@ -21,7 +21,7 @@ child = Gtk.Template.Child()
 class Window(Adw.ApplicationWindow):
     """The main application window."""
 
-    __gtype_name__ = "Window"
+    __gtype_name__ = __qualname__
 
     toast_overlay: Adw.ToastOverlay = child
 

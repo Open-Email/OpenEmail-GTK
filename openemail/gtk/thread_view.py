@@ -18,7 +18,7 @@ child = Gtk.Template.Child()
 class ThreadView(Adw.Bin):
     """A view displaying a thread of messages."""
 
-    __gtype_name__ = "ThreadView"
+    __gtype_name__ = __qualname__
 
     box: Gtk.ListBox = child
     viewport: Gtk.Viewport = child

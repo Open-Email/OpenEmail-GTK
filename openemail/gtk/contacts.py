@@ -26,7 +26,7 @@ child = Gtk.Template.Child()
 class Contacts(Adw.NavigationPage):
     """A page with the contents of the user's address book."""
 
-    __gtype_name__ = "Contacts"
+    __gtype_name__ = __qualname__
 
     page: Page = child
 

@@ -17,7 +17,7 @@ child = Gtk.Template.Child()
 class ProfileView(Adw.Bin):
     """A page presenting a user's profile."""
 
-    __gtype_name__ = "ProfileView"
+    __gtype_name__ = __qualname__
 
     _groups: list[Adw.PreferencesGroup]
 
