@@ -5,7 +5,6 @@
     <file>compose-sheet.ui</file>
     <file>contact-row.ui</file>
     <file>contacts.ui</file>
-    <file>content.ui</file>
     <file>login-view.ui</file>
     <file>message-row.ui</file>
     <file>message-view.ui</file>

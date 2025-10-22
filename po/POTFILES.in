@@ -9,7 +9,6 @@ openemail/gtk/ui/attachments.blp
 openemail/gtk/ui/compose-sheet.blp
 openemail/gtk/ui/contact-row.blp
 openemail/gtk/ui/contacts.blp
-openemail/gtk/ui/content.blp
 openemail/gtk/ui/login-view.blp
 openemail/gtk/ui/message-row.blp
 openemail/gtk/ui/message-view.blp
@@ -24,7 +23,6 @@ openemail/gtk/ui/window.blp
 openemail/gtk/body.py
 openemail/gtk/compose_sheet.py
 openemail/gtk/contacts.py
-openemail/gtk/content.py
 openemail/gtk/form.py
 openemail/gtk/login_view.py
 openemail/gtk/message_view.py

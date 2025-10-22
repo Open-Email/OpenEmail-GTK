@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from gi.repository import GObject
+from gi.repository import Gio, GObject
 
 
 class Property[T](GObject.Property):
@@ -41,4 +41,20 @@ class Property[T](GObject.Property):
             target_property or source_property,
             GObject.BindingFlags.SYNC_CREATE
             | (GObject.BindingFlags.BIDIRECTIONAL if bidirectional else 0),
+        )
+
+    @staticmethod
+    def bind_setting(
+        settings: Gio.Settings,
+        key: str,
+        target: GObject.Object,
+        target_property: str | None = None,
+        /,
+    ):
+        """Create setting bindings more conveniently.
+
+        An empty `target_property` is assumed to be the same as `key`.
+        """
+        settings.bind(
+            key, target, target_property or key, Gio.SettingsBindFlags.DEFAULT
         )
