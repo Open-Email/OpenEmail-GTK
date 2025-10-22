@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
+# SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
 import json
@@ -67,7 +68,7 @@ class Application(Adw.Application):
     def _about(self):
         about = Adw.AboutDialog.new_from_appdata(f"{PREFIX}/{APP_ID}.metainfo.xml")
 
-        about.props.copyright = "© 2025 Mercata Sagl"
+        about.props.copyright = "© 2025 OpenEmail SA"
         about.props.developers = ["kramo https://kramo.page"]
         about.props.designers = [
             "kramo https://kramo.page",
