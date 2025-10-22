@@ -5,7 +5,7 @@
 from sys import platform
 from typing import Any
 
-from gi.repository import Adw, Gdk, GObject, Gtk
+from gi.repository import Adw, Gdk, Gio, GObject, Gtk
 
 from openemail import APP_ID, PREFIX, Notifier, Property
 from openemail.core import client
@@ -53,6 +53,19 @@ class Content(Adw.BreakpointBin):
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
+        self.insert_action_group("content", group := Gio.SimpleActionGroup())
+        group.add_action_entries(
+            (
+                ("profile-settings", lambda *_: self.profile_settings.present(self)),
+                (
+                    "toggle-sidebar",
+                    lambda *_: self.split_view.set_show_sidebar(
+                        not self.split_view.props.show_sidebar
+                    ),
+                ),
+            ),
+        )
+
         Property.bind(Profile.of(client.user), "image", self, "profile-image")
         Property.bind(
             Notifier(), "sending", self.sidebar_toolbar_view, "reveal-bottom-bars"
@@ -64,10 +77,6 @@ class Content(Adw.BreakpointBin):
         )
 
     @Gtk.Template.Callback()
-    def _close_sidebar(self, *_args):
+    def _hide_sidebar(self, *_args):
         if self.split_view.props.collapsed:
             self.split_view.props.show_sidebar = False
-
-    @Gtk.Template.Callback()
-    def _on_profile_button_clicked(self, *_args):
-        self.profile_settings.present(self)

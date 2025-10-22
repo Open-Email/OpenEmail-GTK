@@ -3,13 +3,13 @@
 # SPDX-FileContributor: kramo
 
 import json
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Generator
 from contextlib import suppress
 from datetime import UTC, date, datetime
-from typing import Any, override
+from typing import override
 
 import keyring
-from gi.repository import Adw, Gio
+from gi.repository import Adw
 
 import openemail as app
 from openemail import APP_ID, PREFIX, store
@@ -26,9 +26,17 @@ class Application(Adw.Application):
 
     def __init__(self):
         super().__init__(application_id=APP_ID)
-        self._add_action("preferences", self._preferences, ("<primary>comma",))
-        self._add_action("about", self._about)
-        self._add_action("quit", self._quit, ("<primary>q",))
+
+        self.add_action_entries(
+            (
+                ("preferences", lambda *_: self._preferences()),
+                ("about", lambda *_: self._about()),
+                ("quit", lambda *_: self._quit()),
+            )
+        )
+
+        self.set_accels_for_action("app.preferences", ("<primary>comma",))
+        self.set_accels_for_action("app.quit", ("<primary>q",))
 
         if interval := store.settings.get_uint("empty-trash-interval"):
             expired = tuple(self._get_expired_trash_items(interval))
@@ -51,11 +59,10 @@ class Application(Adw.Application):
     def do_activate(self):
         (self.props.active_window or Window(application=self)).present()
 
-    def _add_action(self, name: str, cb: Callable[[], Any], accels: Sequence[str] = ()):
-        action = Gio.SimpleAction.new(name, None)
-        action.connect("activate", lambda *_: cb())
-        self.add_action(action)
-        self.set_accels_for_action(f"app.{name}", accels)
+    def _preferences(self):
+        win = self.props.active_window
+        if not (isinstance(win, Adw.ApplicationWindow) and win.props.visible_dialog):
+            Preferences().present(win)
 
     def _about(self):
         about = Adw.AboutDialog.new_from_appdata(f"{PREFIX}/{APP_ID}.metainfo.xml")
@@ -77,11 +84,6 @@ class Application(Adw.Application):
         about.props.debug_info_filename = app.log_path.name
 
         about.present(self.props.active_window)
-
-    def _preferences(self):
-        win = self.props.active_window
-        if not (isinstance(win, Adw.ApplicationWindow) and win.props.visible_dialog):
-            Preferences().present(win)
 
     def _quit(self):
         if win := self.props.active_window:

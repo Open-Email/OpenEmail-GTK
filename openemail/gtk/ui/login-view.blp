@@ -13,7 +13,8 @@ template $LoginView: Adw.Bin {
           show-title: false;
         }
 
-        content: Adw.StatusPage email_status_page {
+        content: Adw.StatusPage {
+          icon-name: bind template.root as <Window>.application as <Application>.application-id;
           title: _("Email of the Future, Today");
           description: _("Spam-free, phishing-free, private &amp; secure by design");
 
@@ -35,7 +36,8 @@ template $LoginView: Adw.Bin {
 
                 Button {
                   label: _("Create Account");
-                  clicked => $_sign_up();
+                  action-name: "navigation.push";
+                  action-target: "'sign-up'";
 
                   styles [
                     "pill",

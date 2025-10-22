@@ -11,6 +11,7 @@ reportUnknownArgumentType = "none"
 reportUnknownLambdaType = "none"
 reportUnknownMemberType = "none"
 reportUnknownParameterType = "none"
+reportUntypedFunctionDecorator = "none"
 reportUnusedImport = "none"
 reportUnusedVariable = "none"
 

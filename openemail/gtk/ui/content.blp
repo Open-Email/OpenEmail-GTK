@@ -64,7 +64,7 @@ template $Content: Adw.BreakpointBin {
             [profile]
             Button {
               tooltip-text: _("Profile");
-              clicked => $_on_profile_button_clicked();
+              action-name: "content.profile-settings";
 
               child: Adw.Avatar {
                 size: 24;
@@ -121,7 +121,7 @@ template $Content: Adw.BreakpointBin {
 
           content: Adw.ViewSwitcherSidebar {
             stack: stack;
-            activated => $_close_sidebar();
+            activated => $_hide_sidebar();
           };
         };
       };

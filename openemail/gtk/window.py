@@ -2,13 +2,12 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-import json
+
 from typing import Any
 
-import keyring
 from gi.repository import Adw, Gio, Gtk
 
-from openemail import APP_ID, PREFIX, Notifier, Property, store, tasks
+from openemail import PREFIX, Notifier, Property, store, tasks
 from openemail.core import client
 
 from .content import Content
@@ -64,20 +63,6 @@ class Window(Adw.ApplicationWindow):
 
     @Gtk.Template.Callback()
     def _on_auth(self, *_args):
-        keyring.set_password(
-            f"{APP_ID}.Keys",
-            client.user.address,
-            json.dumps(
-                {
-                    "privateEncryptionKey": str(client.user.encryption_keys.private),
-                    "privateSigningKey": str(client.user.signing_keys),
-                }
-            ),
-        )
-
-        store.settings.set_string("address", client.user.address)
-
-        tasks.create(store.sync())
         self.visible_child_name = "content"
 
     def _on_send_notification(self, _obj, toast: Adw.Toast):

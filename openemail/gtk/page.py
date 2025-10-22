@@ -2,15 +2,11 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
 from gi.repository import Adw, Gtk
 
 from openemail import PREFIX, Notifier, Property, store, tasks
-
-if TYPE_CHECKING:
-    from .window import Window
-
 
 child = Gtk.Template.Child()
 
@@ -52,11 +48,6 @@ class Page(Adw.BreakpointBin):
 
         Notifier().connect("notify::syncing", on_syncing_changed)
         Property.bind(Notifier(), "offline", self.offline_banner, "revealed")
-
-    @Gtk.Template.Callback()
-    def _show_sidebar(self, *_args):
-        split_view = cast("Window", self.props.root).content.split_view
-        split_view.props.show_sidebar = not split_view.props.show_sidebar
 
     @Gtk.Template.Callback()
     def _sync(self, *_args):

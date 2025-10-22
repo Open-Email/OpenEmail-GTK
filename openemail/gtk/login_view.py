@@ -2,11 +2,12 @@
 # SPDX-FileCopyrightText: Copyright 2025 Mercata Sagl
 # SPDX-FileContributor: kramo
 
-from typing import Any
+import json
 
+import keyring
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Notifier, Property, account
+from openemail import APP_ID, PREFIX, Notifier, Property, account, store, tasks
 from openemail.core import client
 from openemail.core.crypto import KeyPair
 from openemail.core.model import Address
@@ -24,7 +25,6 @@ class LoginView(Adw.Bin):
 
     navigation_view: Adw.NavigationView = child
 
-    email_status_page: Adw.StatusPage = child
     email_entry: Adw.EntryRow = child
     email_form: Form = child
 
@@ -38,13 +38,6 @@ class LoginView(Adw.Bin):
     button_child_name = Property(str, default="label")
     register_button_child_name = Property(str, default="label")
 
-    authenticated = GObject.Signal()
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self.email_status_page.props.icon_name = APP_ID
-
     @Gtk.Template.Callback()
     def _log_in(self, *_args):
         if not self.email_form.valid:
@@ -52,10 +45,6 @@ class LoginView(Adw.Bin):
 
         self.navigation_view.push_by_tag("keys")
         self.signing_key_entry.grab_focus()
-
-    @Gtk.Template.Callback()
-    def _sign_up(self, *_args):
-        self.navigation_view.push_by_tag("sign-up")
 
     @Gtk.Template.Callback()
     def _register(self, *_args):
@@ -70,18 +59,10 @@ class LoginView(Adw.Bin):
         client.user.encryption_keys = KeyPair.for_encryption()
         client.user.signing_keys = KeyPair.for_signing()
 
-        def success():
-            self.register_button_child_name = "label"
-            self.emit("authenticated")
-            GLib.timeout_add_seconds(1, self._reset)
-
         self.register_button_child_name = "loading"
         account.register(
-            success,
-            lambda: self.set_property(
-                "register-button-child-name",
-                "label",
-            ),
+            lambda: self.emit("authenticated"),
+            lambda: self.set_property("register-button-child-name", "label"),
         )
 
     @Gtk.Template.Callback()
@@ -105,22 +86,34 @@ class LoginView(Adw.Bin):
             Notifier.send(_("Incorrect key format"))
             return
 
-        def success():
-            self.button_child_name = "label"
-            self.emit("authenticated")
-            GLib.timeout_add_seconds(1, self._reset)
-
         self.button_child_name = "loading"
         account.try_auth(
-            success,
-            lambda: self.set_property(
-                "button-child-name",
-                "label",
+            lambda: self.emit("authenticated"),
+            lambda: self.set_property("button-child-name", "label"),
+        )
+
+    @GObject.Signal(name="authenticated")
+    def _authenticated(self):
+        self.button_child_name = self.register_button_child_name = "label"
+
+        store.settings.set_string("address", client.user.address)
+        keyring.set_password(
+            f"{APP_ID}.Keys",
+            client.user.address,
+            json.dumps(
+                {
+                    "privateEncryptionKey": str(client.user.encryption_keys.private),
+                    "privateSigningKey": str(client.user.signing_keys),
+                }
             ),
         )
 
-    def _reset(self):
-        self.email_form.reset()
-        self.register_form.reset()
-        self.navigation_view.pop_to_tag("landing")
-        self.auth_form.reset()
+        tasks.create(store.sync())
+
+        def _reset():
+            self.email_form.reset()
+            self.register_form.reset()
+            self.navigation_view.pop_to_tag("landing")
+            self.auth_form.reset()
+
+        GLib.timeout_add_seconds(1, _reset)
