@@ -41,7 +41,7 @@ async def fetch() -> set[tuple[Address, bool]]:
                     line.strip().split(",")[1].strip(),
                     client.user.encryption_keys.private,
                 ).decode("utf-8")
-            except (KeyError, ValueError):
+            except (IndexError, ValueError):
                 continue
 
             # For backwards-compatibility with contacts added before 1.0
