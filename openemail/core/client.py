@@ -52,10 +52,7 @@ async def request(
         response = await asyncio.to_thread(
             urlopen, Request(url, method=method, headers=headers, data=data)
         )
-    except (InvalidURL, URLError, HTTPError, TimeoutError, ValueError) as error:
-        if on_offline and isinstance(error, (URLError, TimeoutError)):
-            on_offline(True)
-
+    except (InvalidURL, URLError, TimeoutError, ValueError) as error:
         logger.debug(
             "%s, URL: %s, Method: %s, Auth: %s",
             error,
@@ -63,6 +60,14 @@ async def request(
             method or ("POST" if data else "GET"),
             auth,
         )
+
+        if (
+            on_offline
+            and isinstance(error, (URLError, TimeoutError))
+            and not isinstance(error, HTTPError)
+        ):
+            on_offline(True)
+
         return None
 
     if max_length:
