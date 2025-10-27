@@ -80,7 +80,7 @@ class Window(Adw.ApplicationWindow):
 
         Property.bind_setting(store.state_settings, "width", self, "default-width")
         Property.bind_setting(store.state_settings, "height", self, "default-height")
-        Property.bind_setting(store.state_settings, "show-sidebar", self)
+        Property.bind_setting(store.state_settings, "show-sidebar", self.split_view)
 
         self.get_settings().connect(
             "notify::gtk-decoration-layout",
