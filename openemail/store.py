@@ -353,7 +353,7 @@ class _InboxStore(MessageStore):
                 known_notifiers.add(notifier)
                 continue
 
-            settings_add("contact_requests", notifier)
+            settings_add("contact-requests", notifier)
 
         async for msg in self._process_messages(
             (

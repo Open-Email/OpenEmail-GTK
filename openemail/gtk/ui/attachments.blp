@@ -17,11 +17,14 @@ template $Attachments: Adw.Bin {
       template ListItem {
         child: Overlay {
           [overlay]
-          $RemoveAttachmentButton {
+          Button {
             visible: bind template.item as <$Attachment>.can-remove;
             halign: end;
             valign: start;
-            position: bind template.position;
+            icon-name: "remove-symbolic";
+            tooltip-text: _("Remove");
+            action-name: "attachments.remove";
+            action-target: bind template.item as <$Attachment>.ident;
 
             styles [
               "circular",
