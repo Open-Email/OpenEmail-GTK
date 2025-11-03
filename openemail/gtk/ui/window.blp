@@ -147,6 +147,7 @@ template $Window: Adw.ApplicationWindow {
                   icon-name: "inbox-symbolic";
                   title: bind inbox.title;
                   badge-number: bind inbox.counter;
+                  needs-attention: bind inbox.counter;
 
                   child: $Inbox inbox {};
                 }
@@ -194,6 +195,7 @@ template $Window: Adw.ApplicationWindow {
                   icon-name: "contacts-symbolic";
                   title: bind contacts.title;
                   badge-number: bind contacts.counter;
+                  needs-attention: bind contacts.counter;
 
                   child: $Contacts contacts {};
                 }
