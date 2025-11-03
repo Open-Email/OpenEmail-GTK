@@ -93,7 +93,8 @@ def log_out():
 
     keyring.delete_password(store.secret_service, client.user.address)
 
-    rmtree(core.data_dir, ignore_errors=True)
+    for directory in core.cache_dir, core.data_dir:
+        rmtree(directory, ignore_errors=True)
 
     for field in fields(model.User):
         delattr(client.user, field.name)
