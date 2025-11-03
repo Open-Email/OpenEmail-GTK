@@ -36,7 +36,10 @@ ADDRESS_SPLIT_PATTERN = ",|;| "
 settings = Gio.Settings.new(APP_ID)
 state_settings = Gio.Settings.new(f"{APP_ID}.State")
 secret_service = f"{APP_ID}.Keys"
-core.data_dir = Path(GLib.get_user_data_dir(), "openemail")  # TODO: This may not work?
+
+# TODO: This may not work?
+core.data_dir = Path(GLib.get_user_data_dir(), "openemail")
+core.cache_dir = Path(GLib.get_user_cache_dir(), "openemail")
 
 profiles = defaultdict[Address, Profile](Profile)
 
@@ -170,11 +173,21 @@ class ProfileStore(DictStore[Address, Profile]):
 
     @classmethod
     async def _update_profile(cls, address: Address):
-        cls.default_factory(address).set_from_profile(await core_profile.fetch(address))
+        profile = cls.default_factory(address)
+        profile.set_from_profile(core_profile.cached(address))
+        profile.set_from_profile(await core_profile.fetch(address))
 
     @classmethod
     async def _update_profile_image(cls, address: Address):
         profile = cls.default_factory(address)
+
+        with suppress(GLib.Error):
+            profile.image = (
+                Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))
+                if (image := core_profile.cached_image(address))
+                else None
+            )
+
         try:
             profile.image = (
                 Gdk.Texture.new_from_bytes(GLib.Bytes.new(image))

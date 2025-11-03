@@ -3,10 +3,11 @@
 # SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
+from contextlib import suppress
 from datetime import UTC, datetime
 from logging import getLogger
 
-from . import client, model, urls
+from . import cache_dir, client, model, urls
 from .model import Address, Profile, WriteError
 
 MAX_PROFILE_SIZE = 64_000
@@ -22,16 +23,31 @@ async def fetch(address: Address) -> Profile | None:
         if not (response := await client.request(urls.Mail(agent, address).profile)):
             continue
 
-        with response:
-            try:
-                logger.debug("Profile fetched for %s", address)
-                return Profile(address, response.read(MAX_PROFILE_SIZE).decode("utf-8"))
-            except UnicodeError:
-                continue
+        try:
+            with response:
+                contents = response.read(MAX_PROFILE_SIZE).decode("utf-8")
 
-            break
+            profile = Profile(address, contents)
+
+        except (UnicodeError, ValueError):
+            continue
+
+        # TODO: Clear cache
+        (caches_dir := cache_dir / "profiles").mkdir(parents=True, exist_ok=True)
+        (caches_dir / address).write_text(contents)
+
+        logger.debug("Profile fetched for %s", address)
+        return profile
 
     logger.error("Could not fetch profile for %s", address)
+    return None
+
+
+def cached(address: Address) -> Profile | None:
+    """Load the locally cached profile of a given `address`, if one exists."""
+    with suppress(FileNotFoundError, ValueError):
+        return Profile(address, (cache_dir / "profiles" / address).read_text())
+
     return None
 
 
@@ -91,11 +107,24 @@ async def fetch_image(address: Address) -> bytes | None:
             continue
 
         with response:
-            logger.debug("Profile image fetched for %s", address)
-            return response.read()
-            break
+            contents = response.read()
+
+        # TODO: Clear cache
+        (caches_dir := cache_dir / "images").mkdir(parents=True, exist_ok=True)
+        (caches_dir / address).write_bytes(contents)
+
+        logger.debug("Profile image fetched for %s", address)
+        return contents
 
     logger.warning("Could not fetch profile image for %s", address)
+    return None
+
+
+def cached_image(address: Address) -> bytes | None:
+    """Load the locally cached profile image of a given `address`, if one exists."""
+    with suppress(FileNotFoundError, ValueError):
+        return (cache_dir / "images" / address).read_bytes()
+
     return None
 
 
