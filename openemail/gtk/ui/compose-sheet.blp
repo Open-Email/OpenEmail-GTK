@@ -3,8 +3,8 @@ using Adw 1;
 using Gio 2.0;
 
 template $ComposeSheet: Adw.BreakpointBin {
-  width-request: 360;
-  height-request: 294;
+  width-request: bind template.root as <Adw.ApplicationWindow>.width-request;
+  height-request: bind template.root as <Adw.ApplicationWindow>.height-request;
   body: bind body_view.buffer;
 
   Adw.Breakpoint {
@@ -23,8 +23,8 @@ template $ComposeSheet: Adw.BreakpointBin {
     align: 0.02;
 
     sheet: Adw.BreakpointBin {
-      width-request: 360;
-      height-request: 294;
+      width-request: bind template.width-request;
+      height-request: bind template.height-request;
 
       Adw.Breakpoint {
         condition ("max-width: 450")
