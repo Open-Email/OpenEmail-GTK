@@ -2,8 +2,8 @@ using Gtk 4.0;
 using Adw 1;
 
 template $Page: Adw.BreakpointBin {
-  width-request: 360;
-  height-request: 294;
+  width-request: bind template.root as <Adw.ApplicationWindow>.width-request;
+  height-request: bind template.root as <Adw.ApplicationWindow>.height-request;
 
   Adw.Breakpoint {
     condition ("max-width: 600")
