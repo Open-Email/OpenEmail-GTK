@@ -8,7 +8,7 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import PREFIX, Notifier, Property, tasks
+from openemail import PREFIX, Notifier, Property, store, tasks
 from openemail.message import Message
 
 from .attachments import Attachments
@@ -54,6 +54,10 @@ class MessageView(Gtk.Box):
         self._history = {}
 
     @Gtk.Template.Callback()
+    def _can_mark_unread(self, _obj, can_mark_unread: bool, new: bool) -> bool:
+        return can_mark_unread and (not new)
+
+    @Gtk.Template.Callback()
     def _string_to_variant(self, _obj, string: str) -> GLib.Variant:
         return GLib.Variant.new_string(string)
 
@@ -63,12 +67,22 @@ class MessageView(Gtk.Box):
         self.profile_dialog.present(self)
 
     @Gtk.Template.Callback()
-    def _trash(self, *_args):
-        if not self.message:
-            return
+    def _read(self, *_args):
+        if self.message:
+            self.message.new = False
+            store.settings_discard("unread-messages", self.message.unique_id)
 
-        (message := self.message).trash()
-        self._add_to_undo(_("Message moved to trash"), lambda: message.restore())
+    @Gtk.Template.Callback()
+    def _unread(self, *_args):
+        if self.message:
+            self.message.new = True
+            store.settings_add("unread-messages", self.message.unique_id)
+
+    @Gtk.Template.Callback()
+    def _trash(self, *_args):
+        if self.message:
+            (message := self.message).trash()
+            self._add_to_undo(_("Message moved to trash"), lambda: message.restore())
 
     @Gtk.Template.Callback()
     def _restore(self, *_args):

@@ -253,6 +253,7 @@ class Message(GObject.Object):
     can_reply = Property(bool)
     can_trash = Property(bool)
     can_discard = Property(bool)
+    can_mark_unread = Property(bool, default=True)
 
     _bindings: tuple[GObject.Binding, ...] = ()
     _message: model.Message | None = None

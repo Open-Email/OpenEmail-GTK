@@ -383,6 +383,8 @@ inbox = _InboxStore()
 
 
 class _SentStore(MessageStore):
+    default_factory = partial(Message, can_mark_unread=False)
+
     async def _fetch(self) -> AsyncGenerator[model.Message]:
         for msg in await core_messages.fetch_sent(_exclude(client.user.address)):
             msg.new = False  # New sent messages should be marked read automatically
@@ -393,8 +395,13 @@ sent = _SentStore()
 
 
 class _OutboxStore(MessageStore):
-    default_factory = partial(Message, can_discard=True, can_trash=False)
     filter = Gtk.CustomFilter.new(lambda msg: msg.unique_id not in outbox._items)
+    default_factory = partial(
+        Message,
+        can_discard=True,
+        can_trash=False,
+        can_mark_unread=False,
+    )
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)

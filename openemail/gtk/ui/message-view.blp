@@ -107,6 +107,20 @@ template $MessageView: Box {
       valign: start;
 
       Button {
+        visible: bind template.message as <$Message>.new;
+        icon-name: "mail-read-symbolic";
+        tooltip-text: _("Read");
+        clicked => $_read();
+      }
+
+      Button {
+        visible: bind $_can_mark_unread(template.message as <$Message>.can-mark-unread, template.message as <$Message>.new) as <bool>;
+        icon-name: "mail-unread-symbolic";
+        tooltip-text: _("Unread");
+        clicked => $_unread();
+      }
+
+      Button {
         visible: bind template.message as <$Message>.can-reply;
         icon-name: "mail-reply-sender-symbolic";
         tooltip-text: _("Reply");

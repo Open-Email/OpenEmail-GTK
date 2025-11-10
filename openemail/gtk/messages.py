@@ -63,7 +63,7 @@ class _Messages(Adw.NavigationPage):
         unread_filter = self._get_object("unread_filter")
         store.settings.connect(
             "changed::unread-messages",
-            lambda *_: unread_filter.changed(Gtk.FilterChange.MORE_STRICT),
+            lambda *_: unread_filter.changed(Gtk.FilterChange.DIFFERENT),
         )
 
     def _get_object(self, name: str) -> Any:  # noqa: ANN401

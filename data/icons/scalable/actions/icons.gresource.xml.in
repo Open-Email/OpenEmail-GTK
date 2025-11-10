@@ -14,7 +14,9 @@
     <file>list-add-symbolic.svg</file>
     <file>mail-attachment-symbolic.svg</file>
     <file>mail-message-new-symbolic.svg</file>
+    <file>mail-read-symbolic.svg</file>
     <file>mail-reply-sender-symbolic.svg</file>
+    <file>mail-unread-symbolic.svg</file>
     <file>mailbox-symbolic.svg</file>
     <file>open-menu-symbolic.svg</file>
     <file>private-message-symbolic.svg</file>
