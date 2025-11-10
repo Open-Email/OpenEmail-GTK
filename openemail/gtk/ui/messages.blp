@@ -9,30 +9,30 @@ $Page page {
     autoselect: false;
 
     model: FilterListModel {
-      model: SortListModel sort_model {
-        sorter: NumericSorter {
-          expression: expr item as <$Message>.date;
-          sort-order: descending;
-        };
+      filter: AnyFilter {
+        StringFilter {
+          expression: expr item as <$Message>.subject;
+          search: bind page.search_text;
+        }
+
+        StringFilter {
+          expression: expr item as <$Message>.body;
+          search: bind page.search_text;
+        }
       };
 
-      filter: EveryFilter {
-        BoolFilter trashed {
+      model: FilterListModel trashed_model {
+        model: SortListModel sort_model {
+          sorter: NumericSorter {
+            expression: expr item as <$Message>.date;
+            sort-order: descending;
+          };
+        };
+
+        filter: BoolFilter trashed {
           expression: expr item as <$Message>.trashed;
           invert: true;
-        }
-
-        AnyFilter {
-          StringFilter {
-            expression: expr item as <$Message>.subject;
-            search: bind page.search_text;
-          }
-
-          StringFilter {
-            expression: expr item as <$Message>.body;
-            search: bind page.search_text;
-          }
-        }
+        };
       };
     };
   };
@@ -43,7 +43,7 @@ FilterListModel unread {
     expression: expr item as <$Message>.new;
   };
 
-  model: bind page.model;
+  model: trashed_model;
 }
 
 /* Folder */
