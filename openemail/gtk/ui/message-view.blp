@@ -129,22 +129,6 @@ template $MessageView: Box {
       }
 
       Button {
-        visible: bind template.message as <$Message>.can-discard;
-        icon-name: "trash-symbolic";
-        tooltip-text: _("Discard");
-        clicked => $_discard();
-
-        ShortcutController {
-          scope: managed;
-
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
-          }
-        }
-      }
-
-      Button {
         visible: bind template.message as <$Message>.can-trash;
         icon-name: "trash-symbolic";
         tooltip-text: _("Trash");
@@ -165,6 +149,22 @@ template $MessageView: Box {
         icon-name: "restore-symbolic";
         tooltip-text: _("Restore");
         clicked => $_restore();
+
+        ShortcutController {
+          scope: managed;
+
+          Shortcut {
+            trigger: "Delete|KP_Delete";
+            action: "activate";
+          }
+        }
+      }
+
+      Button {
+        visible: bind template.message as <$Message>.can-discard;
+        icon-name: "trash-symbolic";
+        tooltip-text: _("Discard");
+        clicked => $_discard();
 
         ShortcutController {
           scope: managed;
