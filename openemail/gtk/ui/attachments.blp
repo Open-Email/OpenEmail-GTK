@@ -15,69 +15,8 @@ template $Attachments: Adw.Bin {
 
     factory: BuilderListItemFactory {
       template ListItem {
-        child: Overlay {
-          [overlay]
-          Button {
-            visible: bind template.item as <$Attachment>.can-remove;
-            halign: end;
-            valign: start;
-            icon-name: "remove-symbolic";
-            tooltip-text: _("Remove");
-            action-name: "attachments.remove";
-            action-target: bind template.item as <$Attachment>.ident;
-
-            styles [
-              "circular",
-              "flat",
-            ]
-          }
-
-          child: Box {
-            margin-top: 12;
-            margin-bottom: 12;
-            spacing: 6;
-            orientation: vertical;
-
-            Image {
-              gicon: bind template.item as <$Attachment>.icon;
-              icon-size: large;
-
-              styles [
-                "lowres-icon",
-              ]
-            }
-
-            Box {
-              margin-start: 6;
-              margin-end: 6;
-              spacing: 3;
-              orientation: vertical;
-
-              Label {
-                label: bind template.item as <$Attachment>.name;
-                ellipsize: middle;
-                wrap: true;
-                wrap-mode: word_char;
-                lines: 3;
-                justify: center;
-
-                styles [
-                  "caption",
-                ]
-              }
-
-              Label {
-                label: bind template.item as <$Attachment>.size;
-                ellipsize: middle;
-                justify: center;
-
-                styles [
-                  "dimmed",
-                  "caption",
-                ]
-              }
-            }
-          };
+        child: $AttachmentsItem {
+          attachment: bind template.item;
         };
       }
     };

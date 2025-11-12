@@ -6,6 +6,7 @@ data/metainfo.xml.in
 data/gschema.xml.in
 
 openemail/gtk/ui/attachments.blp
+openemail/gtk/ui/attachments-item.blp
 openemail/gtk/ui/compose-sheet.blp
 openemail/gtk/ui/contact-row.blp
 openemail/gtk/ui/contacts.blp
