@@ -18,9 +18,9 @@ from .core.model import Address, WriteError
 from .profile import Profile
 
 
-def get_unique_id(message: model.Message) -> str:
-    """Get a globally unique identifier for `message`."""
-    return f"{message.author.host_part} {message.ident}"
+def get_unique_id(msg: model.Message) -> str:
+    """Get a globally unique identifier for `msg`."""
+    return f"{msg.author.host_part} {msg.ident}"
 
 
 class Attachment(GObject.Object):
@@ -98,8 +98,8 @@ class OutgoingAttachment(Attachment):
                 ),
             )
         except GLib.Error as error:
-            msg = "Could not create attachment: File missing required attributes"
-            raise ValueError(msg) from error
+            e = "Could not create attachment: File missing required attributes"
+            raise ValueError(e) from error
 
         return cls(
             file=file,
@@ -165,7 +165,7 @@ class IncomingAttachment(Attachment):
         tasks.create(self._save(parent))
 
     async def _save(self, parent: Gtk.Widget | None):
-        msg = _("Failed to download attachment")
+        notification = _("Failed to download attachment")
 
         try:
             file = await cast(
@@ -185,7 +185,7 @@ class IncomingAttachment(Attachment):
             return
 
         if not (data := await messages.download_attachment(self._parts)):
-            Notifier.send(msg)
+            Notifier.send(notification)
             return
 
         try:
@@ -204,7 +204,7 @@ class IncomingAttachment(Attachment):
             )
 
         except GLib.Error:
-            Notifier.send(msg)
+            Notifier.send(notification)
             return
 
         if self.modified and (
@@ -256,12 +256,12 @@ class Message(GObject.Object):
     can_mark_unread = Property(bool, default=True)
 
     _bindings: tuple[GObject.Binding, ...] = ()
-    _message: model.Message | None = None
+    _msg: model.Message | None = None
 
     @Property(bool)
     def trashed(self) -> bool:
         """Whether the item is in the trash."""
-        if self.can_discard or (not self._message):
+        if self.can_discard or (not self._msg):
             return False
 
         from . import store
@@ -271,14 +271,14 @@ class Message(GObject.Object):
             for msg in store.settings.get_strv("trashed-messages")
         )
 
-    def __init__(self, message: model.Message | None = None, **kwargs: Any):
+    def __init__(self, msg: model.Message | None = None, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.attachments = Gio.ListStore.new(Attachment)
-        self.set_from_message(message)
+        self.set_from_message(msg)
 
     def __hash__(self) -> int:
-        return hash(self.unique_id) if self._message else super().__hash__()
+        return hash(self.unique_id) if self._msg else super().__hash__()
 
     def __eq__(self, value: object, /) -> bool:
         return (
@@ -295,8 +295,8 @@ class Message(GObject.Object):
         )
 
     def set_from_message(self, msg: model.Message | None, /):
-        """Set the properties of `self` from `message`."""
-        self._message = msg
+        """Set the properties of `self` from `msg`."""
+        self._msg = msg
 
         if not msg:
             return
@@ -386,7 +386,7 @@ class Message(GObject.Object):
 
     def trash(self):
         """Move `self` to the trash."""
-        if not self._message:
+        if not self._msg:
             return
 
         from . import store
@@ -400,7 +400,7 @@ class Message(GObject.Object):
 
     def restore(self):
         """Restore `self` from the trash."""
-        if not self._message:
+        if not self._msg:
             return
 
         from . import store
@@ -418,20 +418,20 @@ class Message(GObject.Object):
 
     def delete(self):
         """Remove `self` from the trash."""
-        if not self._message:
+        if not self._msg:
             return
 
         from . import store
 
         model = (
             store.sent
-            if self._message.author == client.user.address
+            if self._msg.author == client.user.address
             else store.broadcasts
-            if self._message.is_broadcast
+            if self._msg.is_broadcast
             else store.inbox
         )
 
-        for child in self._message, *self._message.children:
+        for child in self._msg, *self._msg.children:
             messages.remove_from_disk(child)
 
         store.settings_add("deleted-messages", self.unique_id)
@@ -441,11 +441,11 @@ class Message(GObject.Object):
 
     async def discard(self):
         """Discard `self` and its children."""
-        if not self._message:
+        if not self._msg:
             return
 
         # TODO: Better UX, cancellation?
-        if isinstance(self._message, model.OutgoingMessage) and self._message.sending:
+        if isinstance(self._msg, model.OutgoingMessage) and self._msg.sending:
             Notifier.send(_("Cannot discard message while sending"))
             return
 
@@ -456,7 +456,7 @@ class Message(GObject.Object):
             store.sent.remove(ident)
 
         failed = False
-        for msg in self._message, *self._message.children:
+        for msg in self._msg, *self._msg.children:
             try:
                 await messages.delete(msg.ident)
             except WriteError:  # noqa: PERF203
@@ -472,19 +472,19 @@ class Message(GObject.Object):
     def mark_read(self):
         """Mark a message as read.
 
-        Does nothing if `message.new` is already `False`.
+        Does nothing if `self.new` is already `False`.
         """
         if not self.new:
             return
 
         self.new = False
 
-        if not self._message:
+        if not self._msg:
             return
 
         from . import store
 
-        self._message.new = False
+        self._msg.new = False
         store.settings_discard("unread-messages", self.unique_id)
 
     def _update_trashed_state(self):
@@ -534,7 +534,7 @@ async def send(
     from . import store
 
     store.outbox.add(
-        message := model.OutgoingMessage(
+        msg := model.OutgoingMessage(
             readers=list(readers),
             subject=subject,
             body=body,
@@ -544,12 +544,12 @@ async def send(
     )
 
     try:
-        await messages.send(message)
+        await messages.send(msg)
     except WriteError:
-        store.outbox.remove(message.ident)
+        store.outbox.remove(msg.ident)
         Notifier.send(_("Failed to send message"))
         Notifier().sending = False
         raise
 
-    store.sent.add(message)
+    store.sent.add(msg)
     Notifier().sending = False

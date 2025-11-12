@@ -59,8 +59,8 @@ class KeyPair(NamedTuple):
             case 64:
                 return cls(Key(data[:32]), Key(data[32:]))
             case length:
-                msg = f"Invalid key length of {length}"
-                raise ValueError(msg)
+                e = f"Invalid key length of {length}"
+                raise ValueError(e)
 
     @classmethod
     def for_encryption(cls) -> Self:
@@ -92,8 +92,8 @@ def sign_data(private_key: Key, data: bytes) -> str:
             SigningKey(bytes(private_key)).sign(data).signature,
         ).decode("utf-8")
     except CryptoError as error:
-        msg = "Unable to sign data"
-        raise ValueError(msg) from error
+        e = "Unable to sign data"
+        raise ValueError(e) from error
 
 
 def random_bytes(length: int) -> bytes:
@@ -114,8 +114,8 @@ def get_nonce(agent: str, keys: KeyPair) -> str:
             f"{agent}{(value := random_string(30))}".encode("utf-8"),  # noqa: UP012
         )
     except ValueError as error:
-        msg = "Unable to get authentication nonce"
-        raise ValueError(msg) from error
+        e = "Unable to get authentication nonce"
+        raise ValueError(e) from error
 
     return "SOTN " + "; ".join(
         (
@@ -133,14 +133,14 @@ def decrypt_anonymous(cipher_text: str, private_key: Key) -> bytes:
     try:
         data = b64decode(cipher_text)
     except ValueError as error:
-        msg = "Invalid cipher text"
-        raise ValueError(msg) from error
+        e = "Invalid cipher text"
+        raise ValueError(e) from error
 
     try:
         return SealedBox(PrivateKey(bytes(private_key))).decrypt(data)
     except CryptoError as error:
-        msg = "Unable to decrypt cipher text"
-        raise ValueError(msg) from error
+        e = "Unable to decrypt cipher text"
+        raise ValueError(e) from error
 
 
 def encrypt_anonymous(data: bytes, public_key: Key) -> bytes:
@@ -148,8 +148,8 @@ def encrypt_anonymous(data: bytes, public_key: Key) -> bytes:
     try:
         return SealedBox(PublicKey(bytes(public_key))).encrypt(data)
     except CryptoError as error:
-        msg = "Unable to encrypt data"
-        raise ValueError(msg) from error
+        e = "Unable to encrypt data"
+        raise ValueError(e) from error
 
 
 def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
@@ -162,8 +162,8 @@ def decrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
             access_key,
         )
     except CryptoError as error:
-        msg = "Unable to decrypt data"
-        raise ValueError(msg) from error
+        e = "Unable to decrypt data"
+        raise ValueError(e) from error
 
 
 def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
@@ -174,8 +174,8 @@ def encrypt_xchacha20poly1305(data: bytes, access_key: bytes) -> bytes:
             data, None, nonce, access_key
         )
     except CryptoError as error:
-        msg = "Unable to encrypt data"
-        raise ValueError(msg) from error
+        e = "Unable to encrypt data"
+        raise ValueError(e) from error
 
 
 def fingerprint(public_key: Key) -> str:

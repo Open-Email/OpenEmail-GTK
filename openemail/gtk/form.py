@@ -100,8 +100,8 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
     def do_add_child(self, _builder, field: GObject.Object, _type):
         """Add a child to `self`."""
         if not isinstance(field, FormField):
-            msg = "Children of Form must be FormField"
-            raise TypeError(msg)
+            e = "Children of Form must be FormField"
+            raise TypeError(e)
 
         self._fields.append(field)
 
@@ -117,8 +117,8 @@ class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatible
         match widget := self.submit_widget:
             case Adw.AlertDialog():
                 if not (default := widget.props.default_response):
-                    msg = "submit-widget must have Adw.AlertDialog:default-response"
-                    raise ValueError(msg)
+                    e = "submit-widget must have Adw.AlertDialog:default-response"
+                    raise ValueError(e)
 
                 widget.set_response_enabled(default, self.valid)
 

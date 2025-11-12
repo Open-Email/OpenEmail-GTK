@@ -25,8 +25,8 @@ def create(
     and `False` otherwise.
     """
     if not (app := Gio.Application.get_default()):
-        msg = "tasks.create() called before Application finished initializing"
-        raise RuntimeError(msg)
+        e = "tasks.create() called before Application finished initializing"
+        raise RuntimeError(e)
 
     task = cast("Task[Any]", app.create_asyncio_task(coro))  # pyright: ignore[reportAttributeAccessIssue]
     task.add_done_callback(

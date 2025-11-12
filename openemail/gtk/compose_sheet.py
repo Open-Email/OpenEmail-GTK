@@ -85,16 +85,16 @@ class ComposeSheet(Adw.BreakpointBin):
         self.bottom_sheet.props.open = True
         self.bottom_sheet.props.reveal_bottom_bar = True
 
-    def reply(self, message: Message):
-        """Open `self`, replying to `message`."""
+    def reply(self, msg: Message):
+        """Open `self`, replying to `msg`."""
         if self.bottom_sheet.props.reveal_bottom_bar:
             self._cancel()
 
-        own_broadcast = message.is_broadcast and message.is_outgoing
+        own_broadcast = msg.is_broadcast and msg.is_outgoing
         self.privacy = "public" if own_broadcast else "private"
-        self.readers.props.text = message.readers
-        self.subject.props.text = message.subject
-        self.subject_id = message.subject_id
+        self.readers.props.text = msg.readers
+        self.subject.props.text = msg.subject
+        self.subject_id = msg.subject_id
 
         self.bottom_sheet.props.open = True
         self.bottom_sheet.props.reveal_bottom_bar = True

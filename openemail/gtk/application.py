@@ -93,8 +93,8 @@ class Application(Adw.Application):
     @staticmethod
     def _get_expired_trash_items(interval: int) -> Generator[str]:
         today = datetime.now(UTC).date()
-        for message in store.settings.get_strv("trashed-messages"):
-            ident, timestamp = message.rsplit(maxsplit=1)
+        for msg in store.settings.get_strv("trashed-messages"):
+            ident, timestamp = msg.rsplit(maxsplit=1)
             with suppress(ValueError):
                 if (today - date.fromisoformat(timestamp)).days >= interval:
                     yield ident

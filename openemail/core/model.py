@@ -39,8 +39,8 @@ class Address(str):
             r"^[a-z0-9][a-z0-9\.\-_\+]{2,}@[a-z0-9.-]+\.[a-z]{2,}|xn--[a-z0-9]{2,}$",
             address := address.lower(),
         ):
-            msg = f'Email address "{address}" is invalid'
-            raise ValueError(msg)
+            e = f'Email address "{address}" is invalid'
+            raise ValueError(e)
 
         return super().__new__(cls, address)
 
@@ -311,19 +311,19 @@ class IncomingMessage:
                     self.checksum = value
 
         if not message_headers:
-            msg = "Empty message headers"
-            raise ValueError(msg)
+            e = "Empty message headers"
+            raise ValueError(e)
 
         if not self.checksum:
-            msg = "Missing checksum"
-            raise ValueError(msg)
+            e = "Missing checksum"
+            raise ValueError(e)
 
         checksum = parse_headers(self.checksum)
 
         try:
             if checksum["algorithm"] != crypto.CHECKSUM_ALGORITHM:
-                msg = "Unsupported checksum algorithm"
-                raise ValueError(msg)
+                e = "Unsupported checksum algorithm"
+                raise ValueError(e)
 
             if (
                 checksum["value"]
@@ -341,12 +341,12 @@ class IncomingMessage:
                     ).encode("utf-8")
                 ).hexdigest()
             ):
-                msg = "Invalid checksum"
-                raise ValueError(msg)
+                e = "Invalid checksum"
+                raise ValueError(e)
 
         except KeyError as error:
-            msg = "Bad checksum format"
-            raise ValueError(msg) from error
+            e = "Bad checksum format"
+            raise ValueError(e) from error
 
         try:
             header_bytes = b64decode(parse_headers(message_headers)["value"])
@@ -362,16 +362,16 @@ class IncomingMessage:
                     for header in header_bytes.decode("utf-8").split("\n")
                 }
             except UnicodeDecodeError as error:
-                msg = "Unable to decode headers"
-                raise ValueError(msg) from error
+                e = "Unable to decode headers"
+                raise ValueError(e) from error
 
         except (IndexError, KeyError, ValueError) as error:
-            msg = "Could not parse headers"
-            raise ValueError(msg) from error
+            e = "Could not parse headers"
+            raise ValueError(e) from error
 
         if sum(len(k) + len(v) for k, v in headers.items()) > MAX_HEADERS_SIZE:
-            msg = "Envelope size exceeds MAX_HEADERS_SIZE"
-            raise ValueError(msg)
+            e = "Envelope size exceeds MAX_HEADERS_SIZE"
+            raise ValueError(e)
 
         try:
             self.ident = headers["id"]
@@ -379,8 +379,8 @@ class IncomingMessage:
             self.subject = headers["subject"]
             self.original_author = Address(headers["author"])
         except KeyError as error:
-            msg = "Incomplete header contents"
-            raise ValueError(msg) from error
+            e = "Incomplete header contents"
+            raise ValueError(e) from error
 
         self.subject_id = headers.get("subject-id", self.ident)
         self.parent_id = headers.get("parent-id")
@@ -546,8 +546,8 @@ class Profile:
                     continue
 
                 if required:
-                    msg = f'Required field "{f.name}" does not exist'
-                    raise ValueError(msg)
+                    e = f'Required field "{f.name}" does not exist'
+                    raise ValueError(e)
 
                 setattr(self, f.name, None)
                 continue
@@ -583,8 +583,8 @@ class Profile:
                     value = None
 
             if required and (value is None):
-                msg = f'Required field "{f.name}" contains invalid data'
-                raise ValueError(msg)
+                e = f'Required field "{f.name}" contains invalid data'
+                raise ValueError(e)
 
             setattr(self, f.name, value)
 

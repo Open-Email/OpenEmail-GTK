@@ -175,37 +175,37 @@ async def fetch_notifications() -> AsyncGenerator[Notification]:
     logger.debug("Notifications fetched")
 
 
-async def send(message: OutgoingMessage, /):
-    """Send `message` to `message.readers`."""
+async def send(msg: OutgoingMessage, /):
+    """Send `msg` to `msg.readers`."""
     logger.debug("Sending message…")
-    message.sending = True
+    msg.sending = True
 
     try:
-        await _build(message)
+        await _build(msg)
 
         for agent in await client.get_agents(client.user.address):
             if not await client.request(
                 urls.Home(agent, client.user.address).messages,
                 auth=True,
-                headers=message.headers,
-                data=message.content,
+                headers=msg.headers,
+                data=msg.content,
             ):
                 logger.error("Failed sending message")
-                message.sending = False
+                msg.sending = False
                 raise WriteError
 
-            await notify_readers(message.readers)
+            await notify_readers(msg.readers)
             break
 
-        for part in chain.from_iterable(message.attachments.values()):
+        for part in chain.from_iterable(msg.attachments.values()):
             await send(part)
 
     except ValueError as error:
         logger.exception("Error sending message")
-        message.sending = False
+        msg.sending = False
         raise WriteError from error
 
-    message.sending = False
+    msg.sending = False
 
 
 async def delete(ident: str):
@@ -228,18 +228,18 @@ async def delete(ident: str):
     raise WriteError
 
 
-def remove_from_disk(message: Message):
-    """Remove `message` from disk if it has been downloaded before.
+def remove_from_disk(msg: Message):
+    """Remove `msg` from disk if it has been downloaded before.
 
-    Note that this will not remove children of `message`.
+    Note that this will not remove children of `msg`.
     """
-    logger.debug("Removing message %s from disk…", message.ident[:_SHORT])
-    host, local = message.author.host_part, message.author.local_part
-    path = Path(host, local, "broadcasts" if message.is_broadcast else "")
+    logger.debug("Removing message %s from disk…", msg.ident[:_SHORT])
+    host, local = msg.author.host_part, msg.author.local_part
+    path = Path(host, local, "broadcasts" if msg.is_broadcast else "")
 
-    (data_dir / "envelopes" / path / f"{message.ident}.json").unlink(missing_ok=True)
-    (data_dir / "messages" / path / message.ident).unlink(True)
-    logger.debug("Removed message %s from disk", message.ident[:_SHORT])
+    (data_dir / "envelopes" / path / f"{msg.ident}.json").unlink(missing_ok=True)
+    (data_dir / "messages" / path / msg.ident).unlink(True)
+    logger.debug("Removed message %s from disk", msg.ident[:_SHORT])
 
 
 async def _process_notification(
@@ -376,22 +376,18 @@ async def _fetch_from_agent(
         return None
 
     try:
-        message = IncomingMessage(
-            ident,
-            author,
-            envelope,
-            client.user.encryption_keys.private,
-            new=new,
+        msg = IncomingMessage(
+            ident, author, envelope, client.user.encryption_keys.private, new=new
         )
     except ValueError:
         logger.exception("Constructing message %s failed", ident[:_SHORT])
         return None
 
-    if message.is_child:
-        message.attachment_url = url
+    if msg.is_child:
+        msg.attachment_url = url
 
         logger.debug("Fetched message %s", ident[:_SHORT])
-        return message
+        return msg
 
     try:
         contents = message_path.read_bytes()
@@ -409,9 +405,9 @@ async def _fetch_from_agent(
         message_path.parent.mkdir(parents=True, exist_ok=True)
         message_path.write_bytes(contents)
 
-    if (not message.is_broadcast) and message.access_key:
+    if (not msg.is_broadcast) and msg.access_key:
         try:
-            contents = crypto.decrypt_xchacha20poly1305(contents, message.access_key)
+            contents = crypto.decrypt_xchacha20poly1305(contents, msg.access_key)
         except ValueError:
             logger.exception(
                 "Fetching message %s failed: Failed to decrypt body",
@@ -420,7 +416,7 @@ async def _fetch_from_agent(
             return None
 
     try:
-        message.body = contents.decode("utf-8")
+        msg.body = contents.decode("utf-8")
     except UnicodeError:
         logger.exception(
             "Fetching message %s failed: Failed to decode body",
@@ -429,7 +425,7 @@ async def _fetch_from_agent(
         return None
 
     logger.debug("Fetched message %s", ident[:_SHORT])
-    return message
+    return msg
 
 
 async def _fetch_idents(
@@ -493,7 +489,7 @@ async def _fetch(
     local, remote = await _fetch_idents(author, broadcasts=broadcasts)
     for ident in remote if remote_only else local | remote:
         for agent in await client.get_agents(client.user.address):
-            if message := await _fetch_from_agent(
+            if msg := await _fetch_from_agent(
                 (
                     urls.Home(agent, author)
                     if author == client.user.address
@@ -509,103 +505,101 @@ async def _fetch(
                 broadcast=broadcasts,
                 exclude=exclude,
             ):
-                messages[message.ident] = message
+                messages[msg.ident] = msg
                 break
 
-    for ident, message in messages.copy().items():
-        if message.parent_id and (parent := messages.get(message.parent_id)):
+    for ident, msg in messages.copy().items():
+        if msg.parent_id and (parent := messages.get(msg.parent_id)):
             parent.add_child(messages.pop(ident))
 
-    for message in messages.values():
-        message.reconstruct_from_children()
+    for msg in messages.values():
+        msg.reconstruct_from_children()
 
     logger.debug("Fetched messages from %s", author)
     return tuple(messages.values())
 
 
-async def _build(message: OutgoingMessage):
-    if message.headers:
+async def _build(msg: OutgoingMessage):
+    if msg.headers:
         return
 
-    message.headers = {
-        "Message-Id": message.ident,
+    msg.headers = {
+        "Message-Id": msg.ident,
         "Content-Type": "application/octet-stream",
     }
 
     headers_bytes = model.to_fields(
         {
-            "Id": message.headers["Message-Id"],
+            "Id": msg.headers["Message-Id"],
             "Author": client.user.address,
-            "Date": message.date.isoformat(timespec="seconds"),
-            "Size": str(len(message.content)),
+            "Date": msg.date.isoformat(timespec="seconds"),
+            "Size": str(len(msg.content)),
             "Checksum": model.to_attrs(
                 {
                     "algorithm": crypto.CHECKSUM_ALGORITHM,
-                    "value": sha256(message.content).hexdigest(),
+                    "value": sha256(msg.content).hexdigest(),
                 }
             ),
-            "Subject": message.subject,
-            "Subject-Id": message.subject_id,
+            "Subject": msg.subject,
+            "Subject-Id": msg.subject_id,
             "Category": "personal",
         }
-        | ({"Readers": ",".join(map(str, message.readers))} if message.readers else {})
-        | ({"File": model.to_attrs(message.file.dict)} if message.file else {})
-        | ({"Parent-Id": message.parent_id} if message.parent_id else {})
+        | ({"Readers": ",".join(map(str, msg.readers))} if msg.readers else {})
+        | ({"File": model.to_attrs(msg.file.dict)} if msg.file else {})
+        | ({"Parent-Id": msg.parent_id} if msg.parent_id else {})
         | (
-            {"Files": ",".join((model.to_attrs(a.dict)) for a in message.files)}
-            if message.files
+            {"Files": ",".join((model.to_attrs(a.dict)) for a in msg.files)}
+            if msg.files
             else {}
         )
     ).encode("utf-8")
 
-    if message.readers:
-        message.access_key = crypto.random_bytes(32)
+    if msg.readers:
+        msg.access_key = crypto.random_bytes(32)
 
         try:
-            access = await _build_access(message.readers, message.access_key)
+            access = await _build_access(msg.readers, msg.access_key)
         except ValueError as error:
-            msg = "Error building message: Building access failed"
-            raise ValueError(msg) from error
+            e = "Error building message: Building access failed"
+            raise ValueError(e) from error
 
         try:
-            message.content = crypto.encrypt_xchacha20poly1305(
-                message.content, message.access_key
-            )
+            msg.content = crypto.encrypt_xchacha20poly1305(msg.content, msg.access_key)
             headers_bytes = crypto.encrypt_xchacha20poly1305(
-                headers_bytes, message.access_key
+                headers_bytes, msg.access_key
             )
         except ValueError as error:
-            msg = "Error building message: Encryption failed"
-            raise ValueError(msg) from error
+            e = "Error building message: Encryption failed"
+            raise ValueError(e) from error
 
-        message.headers.update(
+        msg.headers.update(
             {
                 "Message-Access": ",".join(access),
                 "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
             }
         )
 
-    message.headers["Message-Headers"] = (
-        message.headers.get("Message-Headers", "")
+    msg.headers["Message-Headers"] = (
+        msg.headers.get("Message-Headers", "")
         + f"value={b64encode(headers_bytes).decode('utf-8')}"
     )
 
     checksum_fields = sorted(
         ("Message-Id", "Message-Headers")
-        + (("Message-Encryption", "Message-Access") if message.readers else ())
+        + (("Message-Encryption", "Message-Access") if msg.readers else ())
     )
 
     try:
         checksum, signature = _sign_headers(
-            tuple(message.headers[f] for f in checksum_fields)
+            tuple(msg.headers[f] for f in checksum_fields)
         )
     except ValueError as error:
-        msg = "Error building message: Signing headers failed"
-        raise ValueError(msg) from error
+        e = "Error building message: Signing headers failed"
+        raise ValueError(e) from error
 
-    message.headers.update(
+    msg.headers.update(
         {
-            "Content-Length": str(len(message.content)),
+            "Content-Length": str(len(msg.content)),
             "Message-Checksum": model.to_attrs(
                 {
                     "algorithm": crypto.CHECKSUM_ALGORITHM,
@@ -637,14 +631,14 @@ async def _build_access(
             and (key := profile.encryption_key)
             and (key_id := key.key_id)
         ):
-            msg = "Failed fetching reader profiles"
-            raise ValueError(msg)
+            e = "Failed fetching reader profiles"
+            raise ValueError(e)
 
         try:
             encrypted = crypto.encrypt_anonymous(access_key, key)
         except ValueError as error:
-            msg = "Failed to encrypt access key"
-            raise ValueError(msg) from error
+            e = "Failed to encrypt access key"
+            raise ValueError(e) from error
 
         access.append(
             model.to_attrs(
@@ -668,7 +662,7 @@ def _sign_headers(fields: Sequence[str]) -> ...:
             client.user.signing_keys.private, checksum.digest()
         )
     except ValueError as error:
-        msg = f"Can't sign message: {error}"
-        raise ValueError(msg) from error
+        e = f"Can't sign message: {error}"
+        raise ValueError(e) from error
 
     return checksum, signature
