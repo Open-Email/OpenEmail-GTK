@@ -3,12 +3,10 @@
 # SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
-from typing import Any
-
-from gi.repository import Adw, Gio, GLib, Gtk
+from gi.repository import Adw, Gio, Gtk
 
 from openemail import PREFIX, Property
-from openemail.message import IncomingAttachment, OutgoingAttachment
+from openemail.message import Attachment, IncomingAttachment, OutgoingAttachment
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/attachments.ui")
@@ -19,14 +17,6 @@ class Attachments(Adw.Bin):
 
     model = Property(Gio.ListStore)
 
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self.insert_action_group("attachments", group := Gio.SimpleActionGroup())
-        group.add_action_entries(
-            (("remove", lambda _action, ident, _data: self._remove(ident), "x"),)
-        )
-
     @Gtk.Template.Callback()
     def _open(self, _obj, pos: int):
         match attachment := self.model.get_item(pos):
@@ -35,6 +25,20 @@ class Attachments(Adw.Bin):
             case IncomingAttachment():
                 attachment.open(self)
 
-    def _remove(self, ident: GLib.Variant):
-        pos = next(i for i, a in enumerate(self.model) if a.ident == ident)  # pyright: ignore[reportAttributeAccessIssue]
-        self.model.remove(pos)
+
+@Gtk.Template.from_resource(f"{PREFIX}/attachments-item.ui")
+class AttachmentsItem(Adw.Bin):
+    """A widget representing an attachment in `Attachments`."""
+
+    __gtype_name__ = __qualname__
+
+    attachment = Property(Attachment)
+
+    @Gtk.Template.Callback()
+    def _remove(self, *args):
+        if not (attachments := self.get_ancestor(Attachments)):
+            return
+
+        found, pos = attachments.model.find(self.attachment)
+        if found:
+            attachments.model.remove(pos)

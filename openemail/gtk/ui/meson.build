@@ -1,6 +1,7 @@
 blueprints = custom_target(
     input: files(
         'attachments.blp',
+        'attachments-item.blp',
         'compose-sheet.blp',
         'contact-row.blp',
         'contacts.blp',

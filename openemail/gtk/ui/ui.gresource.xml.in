@@ -2,6 +2,7 @@
 <gresources>
   <gresource prefix="@PREFIX@">
     <file>attachments.ui</file>
+    <file>attachments-item.ui</file>
     <file>compose-sheet.ui</file>
     <file>contact-row.ui</file>
     <file>contacts.ui</file>
