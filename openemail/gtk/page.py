@@ -7,7 +7,8 @@ from typing import Any
 
 from gi.repository import Adw, Gtk
 
-from openemail import PREFIX, Notifier, Property, store, tasks
+import openemail as app
+from openemail import PREFIX, Property, store, tasks
 
 child = Gtk.Template.Child()
 
@@ -40,15 +41,15 @@ class Page(Adw.BreakpointBin):
         super().__init__(**kwargs)
 
         def on_syncing_changed(*_args):
-            if Notifier().syncing:
+            if app.notifier.syncing:
                 self.sync_button.props.sensitive = False
                 self.sync_button.add_css_class("spinning")
             else:
                 self.sync_button.remove_css_class("spinning")
                 self.sync_button.props.sensitive = True
 
-        Notifier().connect("notify::syncing", on_syncing_changed)
-        Property.bind(Notifier(), "offline", self.offline_banner, "revealed")
+        app.notifier.connect("notify::syncing", on_syncing_changed)
+        Property.bind(app.notifier, "offline", self.offline_banner, "revealed")
 
     @Gtk.Template.Callback()
     def _sync(self, *_args):

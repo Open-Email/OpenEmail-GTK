@@ -22,7 +22,9 @@ from typing import Any
 
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
-from . import APP_ID, Notifier, Property, core, message, profile, tasks
+import openemail as app
+
+from . import APP_ID, Property, core, message, profile, tasks
 from .core import client, contacts, model
 from .core import drafts as core_drafts
 from .core import messages as core_messages
@@ -214,7 +216,7 @@ class _AddressBook(ProfileStore):
             tasks.create(broadcasts.update())
             tasks.create(inbox.update())
 
-            Notifier.send(_("Failed to add contact"))
+            app.notifier.send(_("Failed to add contact"))
             raise
 
     async def delete(self, address: Address):
@@ -230,7 +232,7 @@ class _AddressBook(ProfileStore):
             tasks.create(broadcasts.update())
             tasks.create(inbox.update())
 
-            Notifier.send(_("Failed to remove contact"))
+            app.notifier.send(_("Failed to remove contact"))
             raise
 
     async def _update(self):
@@ -482,7 +484,7 @@ drafts = _DraftStore()
 
 async def sync(*, periodic: bool = False):
     """Populate the app's content by fetching the user's data."""
-    Notifier().syncing = True
+    app.notifier.syncing = True
 
     if periodic:
         interval = settings.get_uint("sync-interval")
@@ -517,7 +519,7 @@ async def sync(*, periodic: bool = False):
     def done(task: Coroutine[Any, Any, Any]):
         task_set.discard(task)
         if not task_set:
-            Notifier().syncing = False
+            app.notifier.syncing = False
 
     for task in task_set:
         tasks.create(task, lambda _, t=task: done(t))

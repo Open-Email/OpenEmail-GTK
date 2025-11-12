@@ -8,7 +8,8 @@ import json
 import keyring
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Notifier, Property, account, store, tasks
+import openemail as app
+from openemail import APP_ID, PREFIX, Property, account, store, tasks
 from openemail.core import client
 from openemail.core.crypto import KeyPair
 from openemail.core.model import Address
@@ -54,7 +55,7 @@ class LoginView(Adw.Bin):
                 f"{self.user_name_entry.props.text}@open.email"
             )
         except ValueError:
-            Notifier.send(_("Invalid name, try another one"))
+            app.notifier.send(_("Invalid name, try another one"))
             return
 
         client.user.encryption_keys = KeyPair.for_encryption()
@@ -84,7 +85,7 @@ class LoginView(Adw.Bin):
             client.user.encryption_keys = KeyPair.from_b64(encryption_keys)
             client.user.signing_keys = KeyPair.from_b64(signing_keys)
         except ValueError:
-            Notifier.send(_("Incorrect key format"))
+            app.notifier.send(_("Incorrect key format"))
             return
 
         self.button_child_name = "loading"

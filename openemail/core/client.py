@@ -22,6 +22,8 @@ on_offline: Callable[[bool], Any] | None = None
 
 logger = getLogger(__name__)
 
+_agents = dict[str, tuple[str, ...]]()
+
 
 async def request(
     url: str,
@@ -84,9 +86,6 @@ async def request(
         on_offline(False)
 
     return response
-
-
-_agents = dict[str, tuple[str, ...]]()
 
 
 async def get_agents(address: Address) -> tuple[str, ...]:

@@ -4,34 +4,24 @@
 # SPDX-FileContributor: kramo
 
 from collections.abc import Callable
-from typing import Any, Self
+from typing import Any
 
 from gi.repository import Adw, GObject
 
 from ._property import Property
 
 
-class Notifier(GObject.Object):
+class _Notifier(GObject.Object):
     """Used for sending user-facing information throughout the application."""
 
     sending = Property(bool)
     syncing = Property(bool)
     offline = Property(bool)
 
-    send_notification = GObject.Signal("send", arg_types=(Adw.Toast,))
+    _send = GObject.Signal("send", arg_types=(Adw.Toast,))
 
-    _default = None
-
-    def __new__(cls, **kwargs: Any) -> Self:
-        """Get the default instance of `cls`."""
-        if not cls._default:
-            cls._default = super().__new__(cls, **kwargs)
-
-        return cls._default
-
-    @classmethod
     def send(
-        cls, title: str, undo: Callable[[Adw.Toast, Any], Any] | None = None
+        self, title: str, undo: Callable[[Adw.Toast, Any], Any] | None = None
     ) -> Adw.Toast:
         """Emit the `Notifier::send` signal with a toast from `title` and `undo`.
 
@@ -43,5 +33,8 @@ class Notifier(GObject.Object):
             toast.props.button_label = _("Undo")
             toast.connect("button-clicked", undo)
 
-        cls().emit("send", toast)
+        self.emit("send", toast)
         return toast
+
+
+notifier = _Notifier()

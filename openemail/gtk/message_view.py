@@ -8,7 +8,8 @@ from typing import Any
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import PREFIX, Notifier, Property, store, tasks
+import openemail as app
+from openemail import PREFIX, Property, store, tasks
 from openemail.message import Message
 
 from .attachments import Attachments
@@ -93,5 +94,7 @@ class MessageView(Gtk.Box):
         callback()
 
     def _add_to_undo(self, title: str, undo: Callable[[], Any]):
-        toast = Notifier.send(title, lambda *_: self._history.pop(toast, lambda: ...)())
+        toast = app.notifier.send(
+            title, lambda *_: self._history.pop(toast, lambda: ...)()
+        )
         self._history[toast] = undo

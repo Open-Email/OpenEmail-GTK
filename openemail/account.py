@@ -10,7 +10,9 @@ from typing import Any
 
 import keyring
 
-from . import Notifier, core, store, tasks
+import openemail as app
+
+from . import core, store, tasks
 from .core import account, client, model
 from .core.model import WriteError
 
@@ -31,7 +33,7 @@ def try_auth(
                 on_success()
             return
 
-        Notifier.send(_("Authentication failed"))
+        app.notifier.send(_("Authentication failed"))
 
         if on_failure:
             on_failure()
@@ -55,7 +57,7 @@ def register(
                 on_success()
             return
 
-        Notifier.send(_("Registration failed, try another address"))
+        app.notifier.send(_("Registration failed, try another address"))
 
         if on_failure:
             on_failure()
@@ -105,7 +107,7 @@ async def delete():
     try:
         await account.delete()
     except WriteError:
-        Notifier.send(_("Failed to delete account"))
+        app.notifier.send(_("Failed to delete account"))
         return
 
     log_out()

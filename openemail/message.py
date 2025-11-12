@@ -12,7 +12,9 @@ from typing import Any, Self, cast, override
 
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
-from . import Notifier, Property, tasks
+import openemail as app
+
+from . import Property, tasks
 from .core import client, messages, model
 from .core.model import Address, WriteError
 from .profile import Profile
@@ -185,7 +187,7 @@ class IncomingAttachment(Attachment):
             return
 
         if not (data := await messages.download_attachment(self._parts)):
-            Notifier.send(notification)
+            app.notifier.send(notification)
             return
 
         try:
@@ -204,7 +206,7 @@ class IncomingAttachment(Attachment):
             )
 
         except GLib.Error:
-            Notifier.send(notification)
+            app.notifier.send(notification)
             return
 
         if self.modified and (
@@ -446,7 +448,7 @@ class Message(GObject.Object):
 
         # TODO: Better UX, cancellation?
         if isinstance(self._msg, model.OutgoingMessage) and self._msg.sending:
-            Notifier.send(_("Cannot discard message while sending"))
+            app.notifier.send(_("Cannot discard message while sending"))
             return
 
         from . import store
@@ -461,7 +463,7 @@ class Message(GObject.Object):
                 await messages.delete(msg.ident)
             except WriteError:  # noqa: PERF203
                 if not failed:
-                    Notifier.send(_("Failed to discard message"))
+                    app.notifier.send(_("Failed to discard message"))
 
                 failed = True
                 continue
@@ -508,7 +510,7 @@ async def send(
 
     `attachments` is a dictionary of `Gio.File`s and filenames.
     """
-    Notifier().sending = True
+    app.notifier.sending = True
 
     files = dict[model.AttachmentProperties, bytes]()
     for attachment in attachments:
@@ -518,8 +520,8 @@ async def send(
                 attachment.file.load_contents_async(),
             )
         except GLib.Error as error:
-            Notifier.send(_("Failed to send message"))
-            Notifier().sending = False
+            app.notifier.send(_("Failed to send message"))
+            app.notifier.sending = False
             raise WriteError from error
 
         files[
@@ -547,9 +549,9 @@ async def send(
         await messages.send(msg)
     except WriteError:
         store.outbox.remove(msg.ident)
-        Notifier.send(_("Failed to send message"))
-        Notifier().sending = False
+        app.notifier.send(_("Failed to send message"))
+        app.notifier.sending = False
         raise
 
     store.sent.add(msg)
-    Notifier().sending = False
+    app.notifier.sending = False

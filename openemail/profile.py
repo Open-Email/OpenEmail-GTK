@@ -8,7 +8,9 @@ from typing import Any, Self
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject
 
-from . import Notifier, Property, tasks
+import openemail as app
+
+from . import Property, tasks
 from .core import client, contacts, model, profile
 from .core.crypto import KeyPair
 from .core.model import Address, User, WriteError
@@ -292,7 +294,7 @@ async def update(values: dict[str, str]):
     try:
         await profile.update(values)
     except WriteError:
-        Notifier.send(_("Failed to update profile"))
+        app.notifier.send(_("Failed to update profile"))
         raise
 
     await refresh()
@@ -349,17 +351,17 @@ async def update_image(pixbuf: GdkPixbuf.Pixbuf):
             option_values=("80",),
         )
     except GLib.Error as error:
-        Notifier.send(_("Failed to update profile image"))
+        app.notifier.send(_("Failed to update profile image"))
         raise WriteError from error
 
     if not success:
-        Notifier.send(_("Failed to update profile image"))
+        app.notifier.send(_("Failed to update profile image"))
         raise WriteError
 
     try:
         await profile.update_image(data)
     except WriteError:
-        Notifier.send(_("Failed to update profile image"))
+        app.notifier.send(_("Failed to update profile image"))
         raise
 
     await refresh()
@@ -370,7 +372,7 @@ async def delete_image():
     try:
         await profile.delete_image()
     except WriteError:
-        Notifier.send(_("Failed to delete profile image"))
+        app.notifier.send(_("Failed to delete profile image"))
         raise
 
     await refresh()

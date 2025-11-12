@@ -23,9 +23,9 @@ from .model import (
     WriteError,
 )
 
-_SHORT = 8
-
 logger = getLogger(__name__)
+
+_SHORT = 8
 
 
 async def fetch_broadcasts(

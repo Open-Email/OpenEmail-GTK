@@ -9,7 +9,8 @@ from typing import Any
 
 from gi.repository import Adw, Gdk, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Notifier, Property, store, tasks
+import openemail as app
+from openemail import APP_ID, PREFIX, Property, store, tasks
 from openemail.core import client
 from openemail.gtk.compose_sheet import ComposeSheet
 from openemail.store import Profile
@@ -76,7 +77,7 @@ class Window(Adw.ApplicationWindow):
         )
 
         Property.bind(Profile.of(client.user), "image", self, "profile-image")
-        Property.bind(Notifier(), "sending", self.sidebar_view, "reveal-bottom-bars")
+        Property.bind(app.notifier, "sending", self.sidebar_view, "reveal-bottom-bars")
 
         Property.bind_setting(store.state_settings, "width", self, "default-width")
         Property.bind_setting(store.state_settings, "height", self, "default-height")
@@ -87,7 +88,7 @@ class Window(Adw.ApplicationWindow):
             lambda *_: self.notify("header-bar-layout"),
         )
 
-        Notifier().connect("send", self._on_send_notification)
+        app.notifier.connect("send", self._on_send_notification)
         tasks.create(store.sync(periodic=True))
 
         if client.user.logged_in:
