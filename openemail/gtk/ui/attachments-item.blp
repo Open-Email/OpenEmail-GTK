@@ -1,0 +1,68 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $AttachmentsItem: Adw.Bin {
+  child: Overlay {
+    [overlay]
+    Button {
+      visible: bind template.attachment as <$Attachment>.can-remove;
+      halign: end;
+      valign: start;
+      icon-name: "remove-symbolic";
+      tooltip-text: _("Remove");
+      clicked => $_remove();
+
+      styles [
+        "circular",
+        "flat",
+      ]
+    }
+
+    child: Box {
+      margin-top: 12;
+      margin-bottom: 12;
+      spacing: 6;
+      orientation: vertical;
+
+      Image {
+        gicon: bind template.attachment as <$Attachment>.icon;
+        icon-size: large;
+
+        styles [
+          "lowres-icon",
+        ]
+      }
+
+      Box {
+        margin-start: 6;
+        margin-end: 6;
+        spacing: 3;
+        orientation: vertical;
+
+        Label {
+          label: bind template.attachment as <$Attachment>.name;
+          ellipsize: middle;
+          wrap: true;
+          wrap-mode: word_char;
+          lines: 3;
+          justify: center;
+
+          styles [
+            "caption",
+          ]
+        }
+
+        Label {
+          label: bind template.attachment as <$Attachment>.size;
+          ellipsize: middle;
+          justify: center;
+
+          styles [
+            "dimmed",
+            "caption",
+          ]
+        }
+      }
+    };
+  };
+}

@@ -35,13 +35,7 @@ class Attachment(GObject.Object):
 
     icon = Property(Gio.Icon, default=Gio.ThemedIcon.new("application-x-generic"))
 
-    ident = Property(GObject.TYPE_VARIANT)
     can_remove = Property(bool)
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self.ident = GLib.Variant.new_int64(hash(self))
 
     @abstractmethod
     def open(self):
