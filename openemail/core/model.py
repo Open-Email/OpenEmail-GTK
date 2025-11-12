@@ -145,7 +145,7 @@ class DraftMessage:
     ):
         from .client import user
 
-        self.ident = ident or generate_ident(user.address)
+        self.ident = ident or generate_id(user.address)
         self.author = self.original_author = user.address
         self.date = date or datetime.now(UTC)
         self.subject = subject
@@ -188,7 +188,7 @@ class OutgoingMessage:
     ):
         from .client import user
 
-        self.ident = generate_ident(user.address)
+        self.ident = generate_id(user.address)
         self.author = self.original_author = user.address
         self.date = date or datetime.now(UTC)
         self.subject = subject
@@ -609,7 +609,7 @@ def generate_link(first: Address, second: Address) -> str:
     ).hexdigest()
 
 
-def generate_ident(author: Address) -> str:
+def generate_id(author: Address) -> str:
     """Generate a unique ID for a new message."""
     return sha256(
         "".join(

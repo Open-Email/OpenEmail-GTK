@@ -527,7 +527,7 @@ async def send(
         files[
             model.AttachmentProperties(
                 name=attachment.name,
-                ident=model.generate_ident(client.user.address),
+                ident=model.generate_id(client.user.address),
                 type=attachment.type,
                 modified=attachment.modified,
             )

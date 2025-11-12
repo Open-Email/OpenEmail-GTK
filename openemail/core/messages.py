@@ -428,7 +428,7 @@ async def _fetch_from_agent(
     return msg
 
 
-async def _fetch_idents(
+async def _fetch_ids(
     author: Address, *, broadcasts: bool = False
 ) -> tuple[set[str], set[str]]:
     """Fetch link or broadcast message IDs by `author`, addressed to `core.user`.
@@ -486,7 +486,7 @@ async def _fetch(
     exclude: Iterable[str] = (),
 ) -> tuple[IncomingMessage, ...]:
     messages = dict[str, IncomingMessage]()
-    local, remote = await _fetch_idents(author, broadcasts=broadcasts)
+    local, remote = await _fetch_ids(author, broadcasts=broadcasts)
     for ident in remote if remote_only else local | remote:
         for agent in await client.get_agents(client.user.address):
             if msg := await _fetch_from_agent(
