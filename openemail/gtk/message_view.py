@@ -34,19 +34,17 @@ class MessageView(Gtk.Box):
     undo = GObject.Signal(flags=GObject.SignalFlags.ACTION)
 
     _history: dict[Adw.Toast, Callable[[], Any]]
-    _message: Message | None = None
+    _message: Message
 
     @Property(Message)
-    def message(self) -> Message | None:
+    def message(self) -> Message:
         """The `Message` that `self` represents."""
         return self._message
 
     @message.setter
-    def message(self, message: Message | None):
+    def message(self, message: Message):
         self._message = message
-
-        if message:
-            self.attachments.model = message.attachments
+        self.attachments.model = message.attachments
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
@@ -68,27 +66,23 @@ class MessageView(Gtk.Box):
 
     @Gtk.Template.Callback()
     def _read(self, *_args):
-        if self.message:
-            self.message.new = False
-            store.settings_discard("unread-messages", self.message.unique_id)
+        self.message.new = False
+        store.settings_discard("unread-messages", self.message.unique_id)
 
     @Gtk.Template.Callback()
     def _unread(self, *_args):
-        if self.message:
-            self.message.new = True
-            store.settings_add("unread-messages", self.message.unique_id)
+        self.message.new = True
+        store.settings_add("unread-messages", self.message.unique_id)
 
     @Gtk.Template.Callback()
     def _trash(self, *_args):
-        if self.message:
-            (message := self.message).trash()
-            self._add_to_undo(_("Message moved to trash"), lambda: message.restore())
+        (message := self.message).trash()
+        self._add_to_undo(_("Message moved to trash"), lambda: message.restore())
 
     @Gtk.Template.Callback()
     def _restore(self, *_args):
-        if self.message:
-            (message := self.message).restore()
-            self._add_to_undo(_("Message restored"), lambda: message.trash())
+        (message := self.message).restore()
+        self._add_to_undo(_("Message restored"), lambda: message.trash())
 
     @Gtk.Template.Callback()
     def _discard(self, *_args):
@@ -96,8 +90,7 @@ class MessageView(Gtk.Box):
 
     @Gtk.Template.Callback()
     def _confirm_discard(self, *_args):
-        if self.message:
-            tasks.create(self.message.discard())
+        tasks.create(self.message.discard())
 
     @Gtk.Template.Callback()
     def _undo(self, *_args):
