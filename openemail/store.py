@@ -320,10 +320,10 @@ class MessageStore(DictStore[str, Message]):
             current_unread = settings.get_strv("unread-messages")
 
             for msg in msgs:
+                key = MessageStore.key_for(msg)
                 if msg.new:
-                    unread.add(message.get_unique_id(msg))
-
-                elif message.get_unique_id(msg) in current_unread:
+                    unread.add(key)
+                elif key in current_unread:
                     msg.new = True
 
                 yield msg
