@@ -18,7 +18,7 @@ from .core.model import Address, WriteError
 from .profile import Profile
 
 
-def get_unique_id(msg: model.Message) -> str:
+def get_unique_id(msg: model.Message, /) -> str:
     """Get a globally unique identifier for `msg`."""
     return f"{msg.author.host_part} {msg.ident}"
 
@@ -271,7 +271,7 @@ class Message(GObject.Object):
             for msg in store.settings.get_strv("trashed-messages")
         )
 
-    def __init__(self, msg: model.Message | None = None, **kwargs: Any):
+    def __init__(self, msg: model.Message | None = None, /, **kwargs: Any):
         super().__init__(**kwargs)
 
         self.attachments = Gio.ListStore.new(Attachment)

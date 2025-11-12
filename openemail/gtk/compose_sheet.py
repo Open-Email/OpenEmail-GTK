@@ -70,7 +70,7 @@ class ComposeSheet(Adw.BreakpointBin):
         self.bottom_sheet.props.reveal_bottom_bar = True
         self.readers.grab_focus()
 
-    def open_draft(self, draft: Message):
+    def open_draft(self, draft: Message, /):
         """Open `self` with `draft`."""
         if self.bottom_sheet.props.reveal_bottom_bar:
             self._cancel()
@@ -85,7 +85,7 @@ class ComposeSheet(Adw.BreakpointBin):
         self.bottom_sheet.props.open = True
         self.bottom_sheet.props.reveal_bottom_bar = True
 
-    def reply(self, msg: Message):
+    def reply(self, msg: Message, /):
         """Open `self`, replying to `msg`."""
         if self.bottom_sheet.props.reveal_bottom_bar:
             self._cancel()

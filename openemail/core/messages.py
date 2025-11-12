@@ -228,7 +228,7 @@ async def delete(ident: str):
     raise WriteError
 
 
-def remove_from_disk(msg: Message):
+def remove_from_disk(msg: Message, /):
     """Remove `msg` from disk if it has been downloaded before.
 
     Note that this will not remove children of `msg`.
@@ -519,7 +519,7 @@ async def _fetch(
     return tuple(messages.values())
 
 
-async def _build(msg: OutgoingMessage):
+async def _build(msg: OutgoingMessage, /):
     if msg.headers:
         return
 

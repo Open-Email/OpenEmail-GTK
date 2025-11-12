@@ -82,7 +82,7 @@ class ThreadView(Adw.Bin):
         self._rows[item] = row
         return row
 
-    def _scroll_to(self, msg: Message):
+    def _scroll_to(self, msg: Message, /):
         if self.message != msg:
             return
 
