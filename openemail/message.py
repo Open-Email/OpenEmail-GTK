@@ -301,7 +301,7 @@ class Message(GObject.Object):
         if not msg:
             return
 
-        self.unique_id = f"{msg.author.host_part} {msg.ident}"
+        self.unique_id = get_unique_id(msg)
 
         local_date = msg.date.astimezone(datetime.now(UTC).astimezone().tzinfo)
         self.date = int(local_date.timestamp())
