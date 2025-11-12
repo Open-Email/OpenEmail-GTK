@@ -202,7 +202,9 @@ template $MessageView: Box {
     text: bind template.message as <$Message>.body;
   }
 
-  $Attachments attachments {}
+  $Attachments {
+    model: bind template.message as <$Message>.attachments;
+  }
 
   styles [
     "view",

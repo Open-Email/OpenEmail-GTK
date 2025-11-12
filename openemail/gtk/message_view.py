@@ -17,6 +17,9 @@ from .profile_view import ProfileView
 
 child = Gtk.Template.Child()
 
+for t in Attachments, Body:
+    GObject.type_ensure(t)
+
 
 @Gtk.Template.from_resource(f"{PREFIX}/message-view.ui")
 class MessageView(Gtk.Box):
@@ -24,8 +27,7 @@ class MessageView(Gtk.Box):
 
     __gtype_name__ = __qualname__
 
-    body_view: Body = child
-    attachments: Attachments = child
+    message = Property(Message)
 
     profile_dialog: Adw.Dialog = child
     profile_view: ProfileView = child
@@ -34,17 +36,6 @@ class MessageView(Gtk.Box):
     undo = GObject.Signal(flags=GObject.SignalFlags.ACTION)
 
     _history: dict[Adw.Toast, Callable[[], Any]]
-    _message: Message
-
-    @Property(Message)
-    def message(self) -> Message:
-        """The `Message` that `self` represents."""
-        return self._message
-
-    @message.setter
-    def message(self, message: Message):
-        self._message = message
-        self.attachments.model = message.attachments
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
@@ -76,13 +67,13 @@ class MessageView(Gtk.Box):
 
     @Gtk.Template.Callback()
     def _trash(self, *_args):
-        (message := self.message).trash()
-        self._add_to_undo(_("Message moved to trash"), lambda: message.restore())
+        (msg := self.message).trash()
+        self._add_to_undo(_("Message moved to trash"), lambda: msg.restore())
 
     @Gtk.Template.Callback()
     def _restore(self, *_args):
-        (message := self.message).restore()
-        self._add_to_undo(_("Message restored"), lambda: message.trash())
+        (msg := self.message).restore()
+        self._add_to_undo(_("Message restored"), lambda: msg.trash())
 
     @Gtk.Template.Callback()
     def _discard(self, *_args):
