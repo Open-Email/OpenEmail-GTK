@@ -9,18 +9,39 @@ from gi.repository import Adw, GObject, Gtk
 
 from openemail import PREFIX, Property, store, tasks
 from openemail.core.model import Address
+from openemail.profile import Profile
 from openemail.store import DictStore, People
 
-from .contact_row import ContactRow
 from .form import Form
 from .page import Page
 from .profile_view import ProfileView
 
-for t in DictStore, People, ContactRow, ProfileView:
+for t in DictStore, People, ProfileView:
     GObject.type_ensure(t)
 
 
 child = Gtk.Template.Child()
+
+
+@Gtk.Template.from_resource(f"{PREFIX}/contact-row.ui")
+class ContactRow(Gtk.Box):
+    """A row to display a contact or contact request."""
+
+    __gtype_name__ = __qualname__
+
+    profile = Property(Profile)
+
+    @Gtk.Template.Callback()
+    def _accept(self, *_args):
+        address = self.profile.value_of("address")
+        store.settings_discard("contact-requests", address)
+
+        with suppress(ValueError):
+            tasks.create(store.address_book.new(address))
+
+    @Gtk.Template.Callback()
+    def _decline(self, *_args):
+        store.settings_discard("contact-requests", self.profile.value_of("address"))
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contacts.ui")

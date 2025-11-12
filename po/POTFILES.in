@@ -25,7 +25,6 @@ openemail/gtk/compose_sheet.py
 openemail/gtk/contacts.py
 openemail/gtk/form.py
 openemail/gtk/login_view.py
-openemail/gtk/message_view.py
 openemail/gtk/messages.py
 openemail/gtk/page.py
 openemail/gtk/preferences.py
