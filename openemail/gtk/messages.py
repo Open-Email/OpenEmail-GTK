@@ -14,8 +14,8 @@ from openemail.store import DictStore
 from .page import Page
 from .thread_view import ThreadView
 
-GObject.type_ensure(Page)
-GObject.type_ensure(ThreadView)
+for t in Page, ThreadView:
+    GObject.type_ensure(t)
 
 
 class _Messages(Adw.NavigationPage):
