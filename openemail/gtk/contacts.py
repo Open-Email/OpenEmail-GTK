@@ -6,7 +6,7 @@
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, cast
 
-from gi.repository import Adw, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, Property, store, tasks
 from openemail.core.model import Address
@@ -35,6 +35,23 @@ class ContactRow(Gtk.Box):
 
     profile = Property(Profile)
 
+    context_menu: Gtk.PopoverMenu = child
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.insert_action_group("row", group := Gio.SimpleActionGroup())
+        group.add_action_entries(
+            (
+                (
+                    "remove",
+                    lambda *_: self.activate_action(
+                        "contacts.remove", GLib.Variant.new_string(self.profile.address)
+                    ),
+                ),
+            )
+        )
+
     @Gtk.Template.Callback()
     def _accept(self, *_args):
         address = self.profile.value_of("address")
@@ -46,6 +63,16 @@ class ContactRow(Gtk.Box):
     @Gtk.Template.Callback()
     def _decline(self, *_args):
         store.settings_discard("contact-requests", self.profile.value_of("address"))
+
+    @Gtk.Template.Callback()
+    def _show_context_menu(self, _gesture, _n_press: int, x: float, y: float):
+        if self.profile.contact_request:
+            return
+
+        rect = Gdk.Rectangle()
+        rect.x, rect.y = int(x), int(y)
+        self.context_menu.props.pointing_to = rect
+        self.context_menu.popup()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/contacts.ui")
