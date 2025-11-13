@@ -33,11 +33,13 @@ class Application(Adw.Application):
                 ("preferences", lambda *_: self._preferences()),
                 ("about", lambda *_: self._about()),
                 ("quit", lambda *_: self._quit()),
+                ("undo", lambda *_: app.notifier.undo()),
             )
         )
 
         self.set_accels_for_action("app.preferences", ("<primary>comma",))
         self.set_accels_for_action("app.quit", ("<primary>q",))
+        self.set_accels_for_action("app.undo", ("<primary>z",))
 
         if interval := store.settings.get_uint("empty-trash-interval"):
             expired = tuple(self._get_expired_trash_items(interval))
