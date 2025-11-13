@@ -6,6 +6,11 @@ template $ContactRow: Box {
   margin-bottom: 12;
   spacing: 12;
 
+  GestureClick {
+    button: 3;
+    released => $_show_context_menu();
+  }
+
   Adw.Avatar {
     size: 32;
     text: bind template.profile as <$Profile>.name;
@@ -59,5 +64,14 @@ template $ContactRow: Box {
         "flat",
       ]
     }
+  }
+
+  PopoverMenu context_menu {
+    has-arrow: false;
+    halign: start;
+
+    menu-model: menu {
+      item (_("Remove Contact…"), "row.remove")
+    };
   }
 }
