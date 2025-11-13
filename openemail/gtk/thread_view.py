@@ -59,12 +59,10 @@ class MessageView(Gtk.Box):
     @Gtk.Template.Callback()
     def _read(self, *_args):
         self.message.new = False
-        store.settings_discard("unread-messages", self.message.unique_id)
 
     @Gtk.Template.Callback()
     def _unread(self, *_args):
         self.message.new = True
-        store.settings_add("unread-messages", self.message.unique_id)
 
     @Gtk.Template.Callback()
     def _trash(self, *_args):
