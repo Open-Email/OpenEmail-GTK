@@ -400,8 +400,11 @@ class Message(GObject.Object):
             Property.bind(p, "image", self, "list-image"),
         )
 
-    def trash(self):
-        """Move `self` to the trash."""
+    def trash(self, *, notify: bool = False):
+        """Move `self` to the trash.
+
+        If `notify` is `True`, send a confirmation notification.
+        """
         if not self._msg:
             return
 
@@ -414,8 +417,14 @@ class Message(GObject.Object):
 
         self._update_trashed_state()
 
-    def restore(self):
-        """Restore `self` from the trash."""
+        if notify:
+            app.notifier.send(_("Message moved to trash"), undo=self.restore)
+
+    def restore(self, *, notify: bool = False):
+        """Restore `self` from the trash.
+
+        If `notify` is `True`, send a confirmation notification.
+        """
         if not self._msg:
             return
 
@@ -431,6 +440,9 @@ class Message(GObject.Object):
         )
 
         self._update_trashed_state()
+
+        if notify:
+            app.notifier.send(_("Message restored"), undo=self.trash)
 
     def delete(self):
         """Remove `self` from the trash."""

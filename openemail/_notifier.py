@@ -4,7 +4,7 @@
 # SPDX-FileContributor: kramo
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, ClassVar
 
 from gi.repository import Adw, GObject
 
@@ -20,9 +20,9 @@ class _Notifier(GObject.Object):
 
     _send = GObject.Signal("send", arg_types=(Adw.Toast,))
 
-    def send(
-        self, title: str, undo: Callable[[Adw.Toast, Any], Any] | None = None
-    ) -> Adw.Toast:
+    _history: ClassVar[dict[Adw.Toast, Callable[..., Any]]] = {}
+
+    def send(self, title: str, *, undo: Callable[..., Any] | None = None):
         """Emit the `Notifier::send` signal with a toast from `title` and `undo`.
 
         `undo` is called on `Adw.Toast::button-clicked`.
@@ -31,10 +31,24 @@ class _Notifier(GObject.Object):
 
         if undo:
             toast.props.button_label = _("Undo")
-            toast.connect("button-clicked", undo)
+            toast.connect("button-clicked", lambda toast: self.undo(toast))
+            self._history[toast] = undo
 
         self.emit("send", toast)
-        return toast
+
+    def undo(self, toast: Adw.Toast | None = None):
+        """Undo the most recent item in history or a function of a toast."""
+        if toast:
+            self._history.pop(toast)()
+            return
+
+        try:
+            toast, func = self._history.popitem()
+        except KeyError:
+            return
+
+        toast.dismiss()
+        func()
 
 
 notifier = _Notifier()
