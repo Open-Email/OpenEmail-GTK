@@ -3,9 +3,11 @@
 # SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
+from collections.abc import Awaitable
 from contextlib import suppress
+from typing import Any, cast
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, Property, store, tasks
 from openemail.core.model import Address
@@ -53,10 +55,27 @@ class Contacts(Adw.NavigationPage):
     page: Page = child
 
     add_contact_dialog: Adw.AlertDialog = child
+    remove_contact_dialog: Adw.AlertDialog = child
     address: Adw.EntryRow = child
     address_form: Form = child
 
     counter = Property(int)
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.insert_action_group("contacts", group := Gio.SimpleActionGroup())
+        remove_action = Gio.SimpleAction.new("remove", GLib.VariantType("s"))
+        remove_action.connect(
+            "activate",
+            lambda _, address: tasks.create(self._remove_contact(address.get_string())),
+        )
+        group.add_action(remove_action)
+
+    async def _remove_contact(self, address: str):
+        response = await cast(Awaitable[str], self.remove_contact_dialog.choose(self))
+        if response == "remove":
+            await store.address_book.delete(Address(address))
 
     @Gtk.Template.Callback()
     def _new_contact(self, *_args):
