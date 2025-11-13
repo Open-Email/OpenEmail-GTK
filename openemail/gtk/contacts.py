@@ -4,8 +4,9 @@
 # SPDX-FileContributor: kramo
 
 from contextlib import suppress
+from typing import TYPE_CHECKING, Any, cast
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from openemail import PREFIX, Property, store, tasks
 from openemail.core.model import Address
@@ -15,6 +16,9 @@ from openemail.store import DictStore, People
 from .form import Form
 from .page import Page
 from .profile_view import ProfileView
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable
 
 for t in DictStore, People, ProfileView:
     GObject.type_ensure(t)
@@ -53,10 +57,32 @@ class Contacts(Adw.NavigationPage):
     page: Page = child
 
     add_contact_dialog: Adw.AlertDialog = child
+    remove_contact_dialog: Adw.AlertDialog = child
     address: Adw.EntryRow = child
     address_form: Form = child
 
     counter = Property(int)
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.insert_action_group("contacts", group := Gio.SimpleActionGroup())
+        group.add_action_entries(
+            (
+                (
+                    "remove",
+                    lambda _action, address, _data: tasks.create(
+                        self._remove_contact(address.get_string())
+                    ),
+                    "s",
+                ),
+            )
+        )
+
+    async def _remove_contact(self, address: str):
+        response = await cast("Awaitable[str]", self.remove_contact_dialog.choose(self))
+        if response == "remove":
+            await store.address_book.delete(Address(address))
 
     @Gtk.Template.Callback()
     def _new_contact(self, *_args):
