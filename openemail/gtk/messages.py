@@ -119,6 +119,11 @@ class Outbox(_Folder):
     __gtype_name__ = __qualname__
     folder, title, subtitle = store.outbox, _("Outbox"), _("Can be discarded")
 
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.discard_dialog: Adw.AlertDialog = self._get_object("discard_dialog")
+
 
 class Sent(_Folder):
     """A navigation page displaying the user's sent messages."""
