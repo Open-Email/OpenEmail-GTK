@@ -36,6 +36,14 @@ $Page page {
       };
     };
   };
+
+  factory: BuilderListItemFactory {
+    template ListItem {
+      child: $MessageRow {
+        message: bind template.item;
+      };
+    }
+  };
 }
 
 FilterListModel unread {
