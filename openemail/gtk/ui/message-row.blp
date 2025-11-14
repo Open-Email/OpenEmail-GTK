@@ -93,4 +93,46 @@ template $MessageRow: Box {
       }
     }
   }
+
+  PopoverMenu context_menu {
+    has-arrow: false;
+
+    menu-model: menu {
+      item {
+        label: _("Read");
+        action: "row.read";
+        hidden-when: "action-disabled";
+      }
+
+      item {
+        label: _("Unread");
+        action: "row.unread";
+        hidden-when: "action-disabled";
+      }
+
+      item {
+        label: _("Reply");
+        action: "row.reply";
+        hidden-when: "action-disabled";
+      }
+
+      item {
+        label: _("Trash");
+        action: "row.trash";
+        hidden-when: "action-disabled";
+      }
+
+      item {
+        label: _("Restore");
+        action: "row.restore";
+        hidden-when: "action-disabled";
+      }
+
+      item {
+        label: _("Discard…");
+        action: "row.discard";
+        hidden-when: "action-disabled";
+      }
+    };
+  }
 }
