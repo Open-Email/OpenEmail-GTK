@@ -82,6 +82,18 @@ Button toolbar_new {
   }
 }
 
+/* Outbox */
+Adw.AlertDialog discard_dialog {
+  heading: _("Discard Message?");
+  body: _("It will be permanently deleted from the outbox and it will no longer be accessible to readers.");
+  default-response: "discard";
+
+  responses [
+    close: _("Cancel"),
+    discard: _("Discard") destructive,
+  ]
+}
+
 /* Drafts */
 Adw.AlertDialog delete_dialog {
   heading: _("Delete Drafts?");
