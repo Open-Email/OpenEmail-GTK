@@ -1,93 +1,96 @@
 using Gtk 4.0;
 using Adw 1;
 
-template ListItem {
-  child: Box {
-    Revealer {
-      transition-type: crossfade;
-      reveal-child: bind template.item as <$Message>.new;
+template $MessageRow: Box {
+  GestureClick {
+    button: 3;
+    released => $_show_context_menu();
+  }
 
-      child: Image {
-        valign: start;
-        margin-top: 6;
-        icon-name: "dot-symbolic";
+  Revealer {
+    transition-type: crossfade;
+    reveal-child: bind template.message as <$Message>.new;
 
-        styles [
-          "accent",
-        ]
-      };
+    child: Image {
+      valign: start;
+      margin-top: 6;
+      icon-name: "dot-symbolic";
+
+      styles [
+        "accent",
+      ]
+    };
+  }
+
+  Box {
+    margin-top: 12;
+    margin-bottom: 12;
+    margin-end: 6;
+    spacing: 9;
+
+    Adw.Avatar {
+      valign: start;
+      margin-top: 3;
+      size: 32;
+      text: bind template.message as <$Message>.list-name;
+      icon-name: bind template.message as <$Message>.list-icon-name;
+      custom-image: bind template.message as <$Message>.list-image;
+      show-initials: bind template.message as <$Message>.list-initials;
     }
 
     Box {
-      margin-top: 12;
-      margin-bottom: 12;
-      margin-end: 6;
-      spacing: 9;
-
-      Adw.Avatar {
-        valign: start;
-        margin-top: 3;
-        size: 32;
-        text: bind template.item as <$Message>.list-name;
-        icon-name: bind template.item as <$Message>.list-icon-name;
-        custom-image: bind template.item as <$Message>.list-image;
-        show-initials: bind template.item as <$Message>.list-initials;
-      }
+      orientation: vertical;
+      spacing: 3;
 
       Box {
-        orientation: vertical;
-        spacing: 3;
-
-        Box {
-          spacing: 6;
-
-          Label {
-            hexpand: true;
-            halign: start;
-            label: bind template.item as <$Message>.list-name;
-            ellipsize: end;
-
-            styles [
-              "heading",
-            ]
-          }
-
-          Label {
-            halign: end;
-            label: bind template.item as <$Message>.display-date;
-            ellipsize: end;
-
-            styles [
-              "numeric",
-              "caption",
-            ]
-          }
-        }
+        spacing: 6;
 
         Label {
+          hexpand: true;
           halign: start;
-          label: bind template.item as <$Message>.subject;
+          label: bind template.message as <$Message>.list-name;
           ellipsize: end;
-          wrap: true;
-          wrap-mode: word_char;
-          lines: 2;
 
           styles [
-            "caption-heading",
+            "heading",
           ]
         }
 
-        $Body {
-          sensitive: false;
-          editable: false;
-          text: bind template.item as <$Message>.body;
-          summary: true;
+        Label {
+          halign: end;
+          label: bind template.message as <$Message>.display-date;
+          ellipsize: end;
 
           styles [
+            "numeric",
             "caption",
           ]
         }
       }
+
+      Label {
+        halign: start;
+        label: bind template.message as <$Message>.subject;
+        ellipsize: end;
+        wrap: true;
+        wrap-mode: word_char;
+        lines: 2;
+
+        styles [
+          "caption-heading",
+        ]
+      }
+
+      $Body {
+        sensitive: false;
+        editable: false;
+        text: bind template.message as <$Message>.body;
+        summary: true;
+
+        styles [
+          "caption",
+        ]
+      }
     }
-  };
+  }
 }

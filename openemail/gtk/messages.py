@@ -18,6 +18,15 @@ for t in Page, ThreadView:
     GObject.type_ensure(t)
 
 
+@Gtk.Template.from_resource(f"{PREFIX}/message-row.ui")
+class MessageRow(Gtk.Box):
+    """A row representing a message."""
+
+    __gtype_name__ = __qualname__
+
+    message = Property(Message)
+
+
 class _Messages(Adw.NavigationPage):
     counter = Property(int)
 
@@ -46,9 +55,6 @@ class _Messages(Adw.NavigationPage):
         self.page.title = self.props.title = title
         self.page.subtitle = subtitle
         self.page.model.connect("notify::selected", self._on_selected)
-        self.page.factory = Gtk.BuilderListItemFactory.new_from_resource(
-            None, f"{PREFIX}/message-row.ui"
-        )
 
         self.props.child = self.page
 
