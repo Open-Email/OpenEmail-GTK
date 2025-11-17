@@ -47,9 +47,9 @@ async def request(
             if not (agent := split.hostname):
                 return None
 
-            headers.update(
-                {"Authorization": crypto.get_nonce(agent, user.signing_keys)}
-            )
+            headers.update({
+                "Authorization": crypto.get_nonce(agent, user.signing_keys)
+            })
 
         response = await asyncio.to_thread(
             urlopen, Request(url, method=method, headers=headers, data=data)

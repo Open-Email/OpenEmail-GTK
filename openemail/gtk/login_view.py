@@ -102,12 +102,10 @@ class LoginView(Adw.Bin):
         keyring.set_password(
             f"{APP_ID}.Keys",
             client.user.address,
-            json.dumps(
-                {
-                    "privateEncryptionKey": str(client.user.encryption_keys.private),
-                    "privateSigningKey": str(client.user.signing_keys),
-                }
-            ),
+            json.dumps({
+                "privateEncryptionKey": str(client.user.encryption_keys.private),
+                "privateSigningKey": str(client.user.signing_keys),
+            }),
         )
 
         tasks.create(store.sync())

@@ -52,12 +52,10 @@ async def fetch() -> set[tuple[Address, bool]]:
                 pass
 
             try:
-                addresses.append(
-                    (
-                        Address((entry := model.parse_headers(contact))["address"]),
-                        entry.get("broadcasts", "yes").lower() != "no",
-                    )
-                )
+                addresses.append((
+                    Address((entry := model.parse_headers(contact))["address"]),
+                    entry.get("broadcasts", "yes").lower() != "no",
+                ))
             except (KeyError, ValueError):
                 continue
 
@@ -79,12 +77,10 @@ async def new(address: Address, *, receive_broadcasts: bool = True) -> Profile:
     try:
         data = b64encode(
             crypto.encrypt_anonymous(
-                model.to_attrs(
-                    {
-                        "address": address,
-                        "broadcasts": "Yes" if receive_broadcasts else "No",
-                    }
-                ).encode("utf-8"),
+                model.to_attrs({
+                    "address": address,
+                    "broadcasts": "Yes" if receive_broadcasts else "No",
+                }).encode("utf-8"),
                 client.user.encryption_keys.public,
             )
         )

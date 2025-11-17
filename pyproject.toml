@@ -17,6 +17,7 @@ reportUnusedVariable = "none"
 
 [tool.ruff]
 builtins = ["_"]
+format.preview = true
 
 [tool.ruff.lint]
 select = ["ALL"]

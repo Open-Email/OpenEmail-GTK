@@ -41,16 +41,15 @@ class ContactRow(Gtk.Box):
         super().__init__(**kwargs)
 
         self.insert_action_group("row", group := Gio.SimpleActionGroup())
-        group.add_action_entries(
+        group.add_action_entries((
             (
-                (
-                    "remove",
-                    lambda *_: self.activate_action(
-                        "contacts.remove", GLib.Variant.new_string(self.profile.address)
-                    ),
+                "remove",
+                lambda *_: self.activate_action(
+                    "contacts.remove",
+                    GLib.Variant.new_string(self.profile.address),
                 ),
-            )
-        )
+            ),
+        ))
 
     @Gtk.Template.Callback()
     def _accept(self, *_args):
@@ -94,17 +93,15 @@ class Contacts(Adw.NavigationPage):
         super().__init__(**kwargs)
 
         self.insert_action_group("contacts", group := Gio.SimpleActionGroup())
-        group.add_action_entries(
+        group.add_action_entries((
             (
-                (
-                    "remove",
-                    lambda _action, address, _data: tasks.create(
-                        self._remove_contact(address.get_string())
-                    ),
-                    "s",
+                "remove",
+                lambda _action, address, _data: tasks.create(
+                    self._remove_contact(address.get_string())
                 ),
-            )
-        )
+                "s",
+            ),
+        ))
 
     async def _remove_contact(self, address: str):
         response = await cast("Awaitable[str]", self.remove_contact_dialog.choose(self))

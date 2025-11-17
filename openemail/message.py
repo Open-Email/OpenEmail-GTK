@@ -80,15 +80,13 @@ class OutgoingAttachment(Attachment):
             info = await cast(
                 "Awaitable[Gio.FileInfo]",
                 file.query_info_async(
-                    ",".join(
-                        (
-                            Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
-                            Gio.FILE_ATTRIBUTE_TIME_MODIFIED,
-                            Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
-                            Gio.FILE_ATTRIBUTE_STANDARD_ICON,
-                            Gio.FILE_ATTRIBUTE_STANDARD_SIZE,
-                        )
-                    ),
+                    ",".join((
+                        Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
+                        Gio.FILE_ATTRIBUTE_TIME_MODIFIED,
+                        Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
+                        Gio.FILE_ATTRIBUTE_STANDARD_ICON,
+                        Gio.FILE_ATTRIBUTE_STANDARD_SIZE,
+                    )),
                     Gio.FileQueryInfoFlags.NONE,
                     GLib.PRIORITY_DEFAULT,
                 ),

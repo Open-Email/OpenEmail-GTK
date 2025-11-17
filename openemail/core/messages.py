@@ -534,12 +534,10 @@ async def _build(msg: OutgoingMessage, /):
             "Author": client.user.address,
             "Date": msg.date.isoformat(timespec="seconds"),
             "Size": str(len(msg.content)),
-            "Checksum": model.to_attrs(
-                {
-                    "algorithm": crypto.CHECKSUM_ALGORITHM,
-                    "value": sha256(msg.content).hexdigest(),
-                }
-            ),
+            "Checksum": model.to_attrs({
+                "algorithm": crypto.CHECKSUM_ALGORITHM,
+                "value": sha256(msg.content).hexdigest(),
+            }),
             "Subject": msg.subject,
             "Subject-Id": msg.subject_id,
             "Category": "personal",
@@ -572,12 +570,10 @@ async def _build(msg: OutgoingMessage, /):
             e = "Error building message: Encryption failed"
             raise ValueError(e) from error
 
-        msg.headers.update(
-            {
-                "Message-Access": ",".join(access),
-                "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
-            }
-        )
+        msg.headers.update({
+            "Message-Access": ",".join(access),
+            "Message-Encryption": f"algorithm={crypto.SYMMETRIC_CIPHER};",
+        })
 
     msg.headers["Message-Headers"] = (
         msg.headers.get("Message-Headers", "")
@@ -597,25 +593,19 @@ async def _build(msg: OutgoingMessage, /):
         e = "Error building message: Signing headers failed"
         raise ValueError(e) from error
 
-    msg.headers.update(
-        {
-            "Content-Length": str(len(msg.content)),
-            "Message-Checksum": model.to_attrs(
-                {
-                    "algorithm": crypto.CHECKSUM_ALGORITHM,
-                    "order": ":".join(checksum_fields),
-                    "value": checksum.hexdigest(),
-                }
-            ),
-            "Message-Signature": model.to_attrs(
-                {
-                    "id": client.user.encryption_keys.public.key_id or 0,
-                    "algorithm": crypto.SIGNING_ALGORITHM,
-                    "value": signature,
-                }
-            ),
-        }
-    )
+    msg.headers.update({
+        "Content-Length": str(len(msg.content)),
+        "Message-Checksum": model.to_attrs({
+            "algorithm": crypto.CHECKSUM_ALGORITHM,
+            "order": ":".join(checksum_fields),
+            "value": checksum.hexdigest(),
+        }),
+        "Message-Signature": model.to_attrs({
+            "id": client.user.encryption_keys.public.key_id or 0,
+            "algorithm": crypto.SIGNING_ALGORITHM,
+            "value": signature,
+        }),
+    })
 
 
 async def _build_access(
@@ -641,14 +631,12 @@ async def _build_access(
             raise ValueError(e) from error
 
         access.append(
-            model.to_attrs(
-                {
-                    "link": model.generate_link(client.user.address, reader),
-                    "fingerprint": crypto.fingerprint(profile.signing_key),
-                    "value": b64encode(encrypted).decode("utf-8"),
-                    "id": key_id,
-                }
-            )
+            model.to_attrs({
+                "link": model.generate_link(client.user.address, reader),
+                "fingerprint": crypto.fingerprint(profile.signing_key),
+                "value": b64encode(encrypted).decode("utf-8"),
+                "id": key_id,
+            })
         )
 
     return tuple(access)

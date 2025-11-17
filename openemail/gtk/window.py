@@ -64,17 +64,15 @@ class Window(Adw.ApplicationWindow):
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
-        self.add_action_entries(
+        self.add_action_entries((
+            ("profile-settings", lambda *_: self.profile_settings.present(self)),
             (
-                ("profile-settings", lambda *_: self.profile_settings.present(self)),
-                (
-                    "toggle-sidebar",
-                    lambda *_: self.split_view.set_show_sidebar(
-                        not self.split_view.props.show_sidebar
-                    ),
+                "toggle-sidebar",
+                lambda *_: self.split_view.set_show_sidebar(
+                    not self.split_view.props.show_sidebar
                 ),
             ),
-        )
+        ))
 
         Property.bind(Profile.of(client.user), "image", self, "profile-image")
         Property.bind(app.notifier, "sending", self.sidebar_view, "reveal-bottom-bars")

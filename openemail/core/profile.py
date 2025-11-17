@@ -55,24 +55,18 @@ async def update(values: dict[str, str]):
     """Update `core.user`'s public profile with `values`."""
     logger.debug("Updating user profile…")
 
-    values.update(
-        {
-            "Updated": datetime.now(UTC).isoformat(timespec="seconds"),
-            "Encryption-Key": "; ".join(
-                (
-                    f"id={client.user.encryption_keys.public.key_id or 0}",
-                    f"algorithm={client.user.encryption_keys.public.algorithm}",
-                    f"value={client.user.encryption_keys.public}",
-                )
-            ),
-            "Signing-Key": "; ".join(
-                (
-                    f"algorithm={client.user.signing_keys.public.algorithm}",
-                    f"value={client.user.signing_keys.public}",
-                )
-            ),
-        }
-    )
+    values.update({
+        "Updated": datetime.now(UTC).isoformat(timespec="seconds"),
+        "Encryption-Key": "; ".join((
+            f"id={client.user.encryption_keys.public.key_id or 0}",
+            f"algorithm={client.user.encryption_keys.public.algorithm}",
+            f"value={client.user.encryption_keys.public}",
+        )),
+        "Signing-Key": "; ".join((
+            f"algorithm={client.user.signing_keys.public.algorithm}",
+            f"value={client.user.signing_keys.public}",
+        )),
+    })
 
     data = (
         f"# Profile of {client.user.address}\n"

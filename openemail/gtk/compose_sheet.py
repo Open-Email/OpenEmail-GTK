@@ -52,14 +52,12 @@ class ComposeSheet(Adw.BreakpointBin):
         super().__init__(**kwargs)
 
         self.insert_action_group("compose", group := Gio.SimpleActionGroup())
-        group.add_action_entries(
-            (
-                ("format", self._format, "(ss)"),
-                ("new", lambda *_: self.new_message()),
-                ("draft", self._draft, "s"),
-                ("reply", self._reply, "s"),
-            )
-        )
+        group.add_action_entries((
+            ("format", self._format, "(ss)"),
+            ("new", lambda *_: self.new_message()),
+            ("draft", self._draft, "s"),
+            ("reply", self._reply, "s"),
+        ))
 
     def new_message(self):
         """Open `self` with empty contents."""

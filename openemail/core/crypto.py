@@ -117,15 +117,13 @@ def get_nonce(agent: str, keys: KeyPair) -> str:
         e = "Unable to get authentication nonce"
         raise ValueError(e) from error
 
-    return "SOTN " + "; ".join(
-        (
-            f"value={value}",
-            f"host={agent}",
-            f"algorithm={SIGNING_ALGORITHM}",
-            f"signature={signature}",
-            f"key={keys.public}",
-        )
-    )
+    return "SOTN " + "; ".join((
+        f"value={value}",
+        f"host={agent}",
+        f"algorithm={SIGNING_ALGORITHM}",
+        f"signature={signature}",
+        f"key={keys.public}",
+    ))
 
 
 def decrypt_anonymous(cipher_text: str, private_key: Key) -> bytes:

@@ -28,14 +28,12 @@ class Application(Adw.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID)
 
-        self.add_action_entries(
-            (
-                ("preferences", lambda *_: self._preferences()),
-                ("about", lambda *_: self._about()),
-                ("quit", lambda *_: self._quit()),
-                ("undo", lambda *_: app.notifier.undo()),
-            )
-        )
+        self.add_action_entries((
+            ("preferences", lambda *_: self._preferences()),
+            ("about", lambda *_: self._about()),
+            ("quit", lambda *_: self._quit()),
+            ("undo", lambda *_: app.notifier.undo()),
+        ))
 
         self.set_accels_for_action("app.preferences", ("<primary>comma",))
         self.set_accels_for_action("app.quit", ("<primary>q",))

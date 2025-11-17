@@ -33,25 +33,19 @@ async def register() -> bool:
     """Try registering `core.user` and return whether the attempt was successful."""
     logger.info("Registering…")
 
-    data = model.to_fields(
-        {
-            "Name": client.user.address.local_part,
-            "Encryption-Key": model.to_attrs(
-                {
-                    "id": client.user.encryption_keys.public.key_id,
-                    "algorithm": crypto.ANONYMOUS_ENCRYPTION_CIPHER,
-                    "value": client.user.encryption_keys.public,
-                }
-            ),
-            "Signing-Key": model.to_attrs(
-                {
-                    "algorithm": crypto.SIGNING_ALGORITHM,
-                    "value": client.user.signing_keys.public,
-                }
-            ),
-            "Updated": datetime.now(UTC).isoformat(timespec="seconds"),
-        }
-    ).encode("utf-8")
+    data = model.to_fields({
+        "Name": client.user.address.local_part,
+        "Encryption-Key": model.to_attrs({
+            "id": client.user.encryption_keys.public.key_id,
+            "algorithm": crypto.ANONYMOUS_ENCRYPTION_CIPHER,
+            "value": client.user.encryption_keys.public,
+        }),
+        "Signing-Key": model.to_attrs({
+            "algorithm": crypto.SIGNING_ALGORITHM,
+            "value": client.user.signing_keys.public,
+        }),
+        "Updated": datetime.now(UTC).isoformat(timespec="seconds"),
+    }).encode("utf-8")
 
     for agent in await client.get_agents(client.user.address):
         if await client.request(

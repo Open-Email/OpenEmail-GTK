@@ -612,13 +612,11 @@ def generate_link(first: Address, second: Address) -> str:
 def generate_id(author: Address) -> str:
     """Generate a unique ID for a new message."""
     return sha256(
-        "".join(
-            (
-                crypto.random_string(length=24),
-                author.host_part,
-                author.local_part,
-            )
-        ).encode("utf-8")
+        "".join((
+            crypto.random_string(length=24),
+            author.host_part,
+            author.local_part,
+        )).encode("utf-8")
     ).hexdigest()
 
 
