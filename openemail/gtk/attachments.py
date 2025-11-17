@@ -35,7 +35,7 @@ class AttachmentsItem(Adw.Bin):
     attachment = Property(Attachment)
 
     @Gtk.Template.Callback()
-    def _remove(self, *args):
+    def _remove(self, *_args):
         if not (attachments := self.get_ancestor(Attachments)):
             return
 
