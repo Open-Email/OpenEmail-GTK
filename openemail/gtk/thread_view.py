@@ -138,7 +138,7 @@ class ThreadView(Adw.Bin):
             GLib.timeout_add(100, self._scroll_to, self.message)
 
     def _create_widget(self, item: Message) -> Gtk.Widget:
-        row = Gtk.ListBoxRow(activatable=False, child=MessageView(message=item))
+        row = Gtk.ListBoxRow(activatable=False, child=MessageView(message=item))  # pyright: ignore[reportCallIssue]
         self._rows[item] = row
         return row
 
