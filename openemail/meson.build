@@ -2,7 +2,7 @@ moduledir = py_installation.get_install_dir() / 'openemail'
 
 subdir('gtk/ui')
 
-init = configure_file(
+configure_file(
     input: '_config.py.in',
     output: '@BASENAME@',
     configuration: conf,
