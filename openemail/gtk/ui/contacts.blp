@@ -101,6 +101,17 @@ Adw.AlertDialog add_contact_dialog {
   ]
 }
 
+Adw.AlertDialog remove_contact_dialog {
+  heading: _("Remove Contact?");
+  body: _("You will not see messages from this person unless you add them to your address book again.");
+  default-response: "remove";
+
+  responses [
+    close: _("Cancel"),
+    remove: _("Remove") destructive,
+  ]
+}
+
 $Form address_form {
   submit-widget: add_contact_dialog;
 

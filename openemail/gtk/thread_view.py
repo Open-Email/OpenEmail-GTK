@@ -3,18 +3,19 @@
 # SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-import openemail as app
 from openemail import APP_ID, PREFIX, Property, store, tasks
 from openemail.message import Message
 
 from .attachments import Attachments
 from .body import Body
 from .profile_view import ProfileView
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable
 
 child = Gtk.Template.Child()
 
@@ -32,16 +33,6 @@ class MessageView(Gtk.Box):
 
     profile_dialog: Adw.Dialog = child
     profile_view: ProfileView = child
-    confirm_discard_dialog: Adw.AlertDialog = child
-
-    undo = GObject.Signal(flags=GObject.SignalFlags.ACTION)
-
-    _history: dict[Adw.Toast, Callable[[], Any]]
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self._history = {}
 
     @Gtk.Template.Callback()
     def _can_mark_unread(self, _obj, can_mark_unread: bool, new: bool) -> bool:
@@ -59,45 +50,29 @@ class MessageView(Gtk.Box):
     @Gtk.Template.Callback()
     def _read(self, *_args):
         self.message.new = False
-        store.settings_discard("unread-messages", self.message.unique_id)
 
     @Gtk.Template.Callback()
     def _unread(self, *_args):
         self.message.new = True
-        store.settings_add("unread-messages", self.message.unique_id)
 
     @Gtk.Template.Callback()
     def _trash(self, *_args):
-        (msg := self.message).trash()
-        self._add_to_undo(_("Message moved to trash"), lambda: msg.restore())
+        self.message.trash(notify=True)
 
     @Gtk.Template.Callback()
     def _restore(self, *_args):
-        (msg := self.message).restore()
-        self._add_to_undo(_("Message restored"), lambda: msg.trash())
+        self.message.restore(notify=True)
 
-    @Gtk.Template.Callback()
-    def _discard(self, *_args):
-        self.confirm_discard_dialog.present(self)
+    @tasks.callback
+    async def _discard(self, *_args):
+        from .messages import Outbox
 
-    @Gtk.Template.Callback()
-    def _confirm_discard(self, *_args):
-        tasks.create(self.message.discard())
-
-    @Gtk.Template.Callback()
-    def _undo(self, *_args):
-        if not self._history:
+        if not (outbox := self.get_ancestor(Outbox)):
             return
 
-        toast, callback = self._history.popitem()
-        toast.dismiss()
-        callback()
-
-    def _add_to_undo(self, title: str, undo: Callable[[], Any]):
-        toast = app.notifier.send(
-            title, lambda *_: self._history.pop(toast, lambda: ...)()
-        )
-        self._history[toast] = undo
+        response = await cast("Awaitable[str]", outbox.discard_dialog.choose(self))
+        if response == "discard":
+            await self.message.discard()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/thread-view.ui")

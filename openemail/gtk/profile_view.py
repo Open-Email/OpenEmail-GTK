@@ -5,10 +5,9 @@
 
 from typing import Any
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, GLib, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Property, store, tasks
-from openemail.core.model import Address
+from openemail import APP_ID, PREFIX, Property, store
 from openemail.profile import Profile, ProfileField
 
 child = Gtk.Template.Child()
@@ -25,7 +24,6 @@ class ProfileView(Adw.Bin):
     page: Adw.PreferencesPage = child
 
     image_dialog: Adw.Dialog = child
-    confirm_remove_dialog: Adw.AlertDialog = child
 
     name = Property(str)
     address = Property(str)
@@ -117,17 +115,9 @@ class ProfileView(Adw.Bin):
 
     @Gtk.Template.Callback()
     def _remove_contact(self, *_args):
-        self.confirm_remove_dialog.present(self)
-
-    @Gtk.Template.Callback()
-    def _confirm_remove(self, *_args):
-        if not self.profile:
-            return
-
-        try:
-            tasks.create(store.address_book.delete(Address(self.profile.address)))
-        except ValueError:
-            return
+        self.activate_action(
+            "contacts.remove", GLib.Variant.new_string(self.profile.address)
+        )
 
     @Gtk.Template.Callback()
     def _show_image_dialog(self, *_args):

@@ -3,11 +3,12 @@
 # SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
-from typing import Any, override
+from collections.abc import Awaitable, Callable
+from typing import Any, cast, override
 
-from gi.repository import Adw, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, Property, store
+from openemail import PREFIX, Property, store, tasks
 from openemail.message import Message
 from openemail.store import DictStore
 
@@ -16,6 +17,93 @@ from .thread_view import ThreadView
 
 for t in Page, ThreadView:
     GObject.type_ensure(t)
+
+
+@Gtk.Template.from_resource(f"{PREFIX}/message-row.ui")
+class MessageRow(Gtk.Box):
+    """A row representing a message."""
+
+    __gtype_name__ = __qualname__
+
+    message = Property(Message)
+
+    context_menu = Gtk.Template.Child()
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self._action_group = Gio.SimpleActionGroup()
+        self.insert_action_group("row", self._action_group)
+
+        template = Gtk.ConstantExpression.new_for_value(self)
+        message = Gtk.PropertyExpression.new(MessageRow, template, "message")
+
+        self._add_action(
+            "read",
+            lambda: self.message.set_property("new", False),
+            Gtk.PropertyExpression.new(Message, message, "new"),
+        )
+        self._add_action(
+            "unread",
+            lambda: self.message.set_property("new", True),
+            Gtk.ClosureExpression.new(
+                bool,
+                lambda _, can_mark_unread, new: can_mark_unread and not new,
+                (
+                    Gtk.PropertyExpression.new(Message, message, "can-mark-unread"),
+                    Gtk.PropertyExpression.new(Message, message, "new"),
+                ),
+            ),
+        )
+        self._add_action(
+            "reply",
+            lambda: self.activate_action(
+                "compose.reply", GLib.Variant.new_string(self.message.unique_id)
+            ),
+            Gtk.PropertyExpression.new(Message, message, "can-reply"),
+        )
+        self._add_action(
+            "trash",
+            lambda: self.message.trash(notify=True),
+            Gtk.PropertyExpression.new(Message, message, "can-trash"),
+        )
+        self._add_action(
+            "restore",
+            lambda: self.message.restore(notify=True),
+            Gtk.PropertyExpression.new(Message, message, "trashed"),
+        )
+        self._add_action(
+            "discard",
+            lambda: tasks.create(self._discard()),
+            Gtk.PropertyExpression.new(Message, message, "can-discard"),
+        )
+
+    async def _discard(self):
+        if not (outbox := self.get_ancestor(Outbox)):
+            return
+
+        response = await cast("Awaitable[str]", outbox.discard_dialog.choose(self))
+        if response == "discard":
+            await self.message.discard()
+
+    def _add_action(self, name: str, func: Callable[..., Any], expr: Gtk.Expression):
+        action = Gio.SimpleAction.new(name)
+        action.connect("activate", lambda *_: func())
+
+        if expr:
+            expr.bind(action, "enabled")
+
+        self._action_group.add_action(action)
+
+    @Gtk.Template.Callback()
+    def _show_context_menu(self, _gesture, _n_press: int, x: float, y: float):
+        if self.message.is_draft:
+            return
+
+        rect = Gdk.Rectangle()
+        rect.x, rect.y = int(x), int(y)
+        self.context_menu.props.pointing_to = rect
+        self.context_menu.popup()
 
 
 class _Messages(Adw.NavigationPage):
@@ -46,9 +134,6 @@ class _Messages(Adw.NavigationPage):
         self.page.title = self.props.title = title
         self.page.subtitle = subtitle
         self.page.model.connect("notify::selected", self._on_selected)
-        self.page.factory = Gtk.BuilderListItemFactory.new_from_resource(
-            None, f"{PREFIX}/message-row.ui"
-        )
 
         self.props.child = self.page
 
@@ -80,7 +165,7 @@ class _Messages(Adw.NavigationPage):
 
         self.thread_view.message = msg
         if isinstance(msg, Message):
-            msg.mark_read()
+            msg.new = False
             self.page.split_view.props.show_content = True
 
 
@@ -118,6 +203,11 @@ class Outbox(_Folder):
 
     __gtype_name__ = __qualname__
     folder, title, subtitle = store.outbox, _("Outbox"), _("Can be discarded")
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.discard_dialog: Adw.AlertDialog = self._get_object("discard_dialog")
 
 
 class Sent(_Folder):
