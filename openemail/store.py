@@ -307,7 +307,7 @@ class MessageStore(DictStore[str, Message]):
         async for msg in self._fetch():
             idents.add(self.add(msg).unique_id)
 
-        for ident in self._items:
+        for ident in self._items.copy():
             if ident not in idents:
                 self.remove(ident)
 
