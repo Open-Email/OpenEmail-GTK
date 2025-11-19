@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
+from collections.abc import Callable
 from typing import Any
 
 from gi.repository import Gio, GObject
@@ -29,6 +30,9 @@ class Property[T](GObject.Property):
         target: GObject.Object,
         target_property: str | None = None,
         /,
+        transform_to: Callable[..., Any] | None = None,
+        transform_from: Callable[..., Any] | None = None,
+        user_data: Any | None = None,  # noqa: ANN401
         *,
         bidirectional: bool = False,
     ) -> GObject.Binding:
@@ -42,6 +46,9 @@ class Property[T](GObject.Property):
             target_property or source_property,
             GObject.BindingFlags.SYNC_CREATE
             | (GObject.BindingFlags.BIDIRECTIONAL if bidirectional else 0),
+            transform_to,
+            transform_from,
+            user_data,
         )
 
     @staticmethod

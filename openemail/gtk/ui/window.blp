@@ -1,7 +1,30 @@
 using Gtk 4.0;
 using Adw 1;
 
+$Folders folders {}
+
+$People people {}
+
 $ProfileSettings profile_settings {}
+
+BoolFilter unread_filter {
+  expression: expr item as <$Message>.unread;
+}
+
+FilterListModel inbox_unread {
+  filter: unread_filter;
+  model: bind folders.inbox;
+}
+
+FilterListModel trash_unread {
+  filter: unread_filter;
+  model: bind folders.trash;
+}
+
+FilterListModel broadcasts_unread {
+  filter: unread_filter;
+  model: bind folders.broadcasts;
+}
 
 template $Window: Adw.ApplicationWindow {
   title: _("OpenEmail");
@@ -25,7 +48,7 @@ template $Window: Adw.ApplicationWindow {
         name: "content";
 
         child: $ComposeSheet {
-          content: Adw.OverlaySplitView split_view {
+          content: Adw.OverlaySplitView outer_split_view {
             sidebar-width-unit: px;
             min-sidebar-width: 200;
             max-sidebar-width: 200;
@@ -130,76 +153,299 @@ template $Window: Adw.ApplicationWindow {
                   ]
                 }
 
-                content: Adw.ViewSwitcherSidebar {
-                  stack: stack;
-                  activated => $_hide_sidebar();
+                content: Adw.Sidebar inner_sidebar {
+                  activated => $_switch_page();
+
+                  Adw.SidebarSection {
+                    $FolderSidebarItem {
+                      icon-name: "inbox-symbolic";
+                      title: _("Inbox");
+                      model: bind folders.inbox;
+                      badge-number: bind inbox_unread.n-items;
+                    }
+
+                    $FolderSidebarItem {
+                      icon-name: "outbox-symbolic";
+                      title: _("Outbox");
+                      description: _("Can be discarded");
+                      model: bind folders.outbox;
+                    }
+
+                    $FolderSidebarItem {
+                      icon-name: "sent-symbolic";
+                      title: _("Sent");
+                      description: _("From this device");
+                      model: bind folders.sent;
+                    }
+
+                    $FolderSidebarItem {
+                      icon-name: "drafts-symbolic";
+                      title: _("Drafts");
+                      model: bind folders.drafts;
+                      badge-number: bind folders.drafts as <$DictStore>.n-items;
+                    }
+
+                    $FolderSidebarItem {
+                      icon-name: "trash-symbolic";
+                      title: _("Trash");
+                      description: _("On this device");
+                      model: bind folders.trash;
+                      badge-number: bind trash_unread.n-items;
+                    }
+                  }
+
+                  Adw.SidebarSection {
+                    $FolderSidebarItem {
+                      icon-name: "broadcasts-symbolic";
+                      title: _("Public");
+                      model: bind folders.broadcasts;
+                      badge-number: bind broadcasts_unread.n-items;
+                    }
+
+                    $SidebarItem contacts_item {
+                      icon-name: "contacts-symbolic";
+                      title: _("Contacts");
+                      action-name: "contacts.new";
+                      action-label: _("New Contact");
+                      action-icon-name: "contact-new-symbolic";
+                      placeholder-title: _("No Contacts");
+                      model: bind people.all;
+                      badge-number: bind people.contact-requests as <$DictStore>.n-items;
+                    }
+                  }
                 };
               };
             };
 
             content: Adw.NavigationPage {
-              title: _("Content");
+              title: bind template.item as <$SidebarItem>.title;
 
-              child: Adw.ViewStack stack {
-                enable-transitions: true;
+              Adw.NavigationSplitView inner_split_view {
+                sidebar-width-unit: px;
+                min-sidebar-width: 300;
+                max-sidebar-width: 400;
+                sidebar-width-fraction: 0.4;
 
-                Adw.ViewStackPage {
-                  icon-name: "inbox-symbolic";
-                  title: bind inbox.title;
-                  badge-number: bind inbox.counter;
-                  needs-attention: bind inbox.counter;
+                sidebar: Adw.NavigationPage {
+                  title: _("Content");
 
-                  child: $Inbox inbox {};
-                }
+                  child: Adw.ToolbarView {
+                    [top]
+                    Adw.HeaderBar {
+                      title-widget: Adw.WindowTitle {
+                        title: bind template.item as <$SidebarItem>.title;
+                        subtitle: bind template.item as <$SidebarItem>.description;
+                      };
 
-                Adw.ViewStackPage {
-                  icon-name: "outbox-symbolic";
-                  title: bind outbox.title;
+                      [start]
+                      Button {
+                        icon-name: "sidebar-show-symbolic";
+                        tooltip-text: _("Toggle Sidebar");
+                        action-name: "win.toggle-sidebar";
+                      }
 
-                  child: $Outbox outbox {};
-                }
+                      [start]
+                      Button sync_button {
+                        icon-name: "sync-symbolic";
+                        tooltip-text: _("Sync");
+                        clicked => $_sync();
 
-                Adw.ViewStackPage {
-                  icon-name: "sent-symbolic";
-                  title: bind sent.title;
+                        ShortcutController {
+                          scope: managed;
 
-                  child: $Sent sent {};
-                }
+                          Shortcut {
+                            trigger: "<primary>r|F5";
+                            action: "activate";
+                          }
+                        }
+                      }
 
-                Adw.ViewStackPage {
-                  icon-name: "drafts-symbolic";
-                  title: bind drafts.title;
-                  badge-number: bind drafts.counter;
+                      [end]
+                      ToggleButton search_button {
+                        icon-name: "search-symbolic";
+                        tooltip-text: _("Search");
 
-                  child: $Drafts drafts {};
-                }
+                        ShortcutController {
+                          scope: managed;
 
-                Adw.ViewStackPage {
-                  icon-name: "trash-symbolic";
-                  title: bind trash.title;
-                  badge-number: bind trash.counter;
+                          Shortcut {
+                            trigger: "<primary>f";
+                            action: "activate";
+                          }
+                        }
+                      }
 
-                  child: $Trash trash {};
-                }
+                      [end]
+                      Button {
+                        icon-name: bind template.item as <$SidebarItem>.action-icon-name;
+                        tooltip-text: bind template.item as <$SidebarItem>.action-label;
+                        action-name: bind template.item as <$SidebarItem>.action-name;
+                      }
+                    }
 
-                Adw.ViewStackPage {
-                  starts-section: true;
-                  icon-name: "broadcasts-symbolic";
-                  title: bind broadcasts.title;
-                  badge-number: bind broadcasts.counter;
+                    [top]
+                    SearchBar {
+                      search-mode-enabled: bind search_button.active bidirectional;
+                      key-capture-widget: template;
 
-                  child: $Broadcasts broadcasts {};
-                }
+                      child: SearchEntry {
+                        hexpand: true;
+                        placeholder-text: _("Search");
+                        text: bind template.search-text bidirectional;
+                      };
+                    }
 
-                Adw.ViewStackPage {
-                  icon-name: "contacts-symbolic";
-                  title: bind contacts.title;
-                  badge-number: bind contacts.counter;
-                  needs-attention: bind contacts.counter;
+                    [top]
+                    Adw.Banner offline_banner {
+                      title: _("Offline");
+                    }
 
-                  child: $Contacts contacts {};
-                }
-              };
+                    content: Adw.ViewStack list_view_stack {
+                      visible-child-name: bind $_get_list_child_name(template.item-type, folder_selection.n-items, contacts_selection.n-items, template.loading, template.search-text) as <string>;
+
+                      Adw.ViewStackPage {
+                        name: "empty";
+
+                        child: Adw.StatusPage {
+                          icon-name: bind template.item as <$SidebarItem>.icon-name;
+                          title: bind template.item as <$SidebarItem>.placeholder-title;
+                          description: bind template.item as <$SidebarItem>.placeholder-description;
+
+                          child: Button {
+                            halign: center;
+                            label: bind template.item as <$SidebarItem>.action-label;
+                            action-name: bind template.item as <$SidebarItem>.action-name;
+
+                            styles [
+                              "pill",
+                            ]
+                          };
+
+                          styles [
+                            "compact",
+                          ]
+                        };
+                      }
+
+                      Adw.ViewStackPage {
+                        name: "folder";
+
+                        child: ScrolledWindow {
+                          child: ListView {
+                            model: SingleSelection folder_selection {
+                              autoselect: false;
+
+                              model: FilterListModel {
+                                filter: AnyFilter {
+                                  StringFilter {
+                                    expression: expr item as <$Message>.subject;
+                                    search: bind template.search_text;
+                                  }
+
+                                  StringFilter {
+                                    expression: expr item as <$Message>.body;
+                                    search: bind template.search_text;
+                                  }
+                                };
+
+                                model: SortListModel {
+                                  sorter: NumericSorter {
+                                    expression: expr item as <$Message>.date;
+                                    sort-order: descending;
+                                  };
+
+                                  model: bind template.folder as <$FolderSidebarItem>.model;
+                                };
+                              };
+                            };
+
+                            factory: BuilderListItemFactory {
+                              template ListItem {
+                                child: $MessageRow {
+                                  message: bind template.item as <$Message>;
+                                };
+                              }
+                            };
+
+                            styles [
+                              "navigation-sidebar",
+                            ]
+                          };
+                        };
+                      }
+
+                      Adw.ViewStackPage {
+                        name: "contacts";
+
+                        child: ScrolledWindow {
+                          child: ListView {
+                            model: SingleSelection contacts_selection {
+                              autoselect: false;
+                              model: bind contacts_item.model;
+                            };
+
+                            factory: BuilderListItemFactory {
+                              template ListItem {
+                                child: $ContactRow {
+                                  profile: bind template.item as <$Profile>;
+                                };
+                              }
+                            };
+
+                            styles [
+                              "navigation-sidebar",
+                            ]
+                          };
+                        };
+                      }
+
+                      Adw.ViewStackPage {
+                        name: "loading";
+
+                        child: Adw.Spinner {};
+                      }
+
+                      Adw.ViewStackPage {
+                        name: "no-results";
+
+                        child: Adw.StatusPage {
+                          icon-name: "search-symbolic";
+                          title: _("No Results Found");
+                          description: _("Try a different search");
+
+                          styles [
+                            "compact",
+                          ]
+                        };
+                      }
+                    };
+                  };
+                };
+
+                content: Adw.NavigationPage {
+                  title: _("Details");
+
+                  child: Adw.ViewStack {
+                    visible-child-name: bind template.item-type;
+
+                    Adw.ViewStackPage {
+                      name: "folder";
+
+                      child: $ThreadView {
+                        message: bind folder_selection.selected-item;
+                      };
+                    }
+
+                    Adw.ViewStackPage {
+                      name: "contacts";
+
+                      child: $ProfileView {
+                        profile: bind contacts_selection.selected-item;
+                      };
+                    }
+                  };
+                };
+              }
             };
           };
         };
@@ -218,7 +464,16 @@ template $Window: Adw.ApplicationWindow {
     condition ("max-width: 900")
 
     setters {
-      split_view.collapsed: true;
+      outer_split_view.collapsed: true;
+    }
+  }
+
+  Adw.Breakpoint {
+    condition ("max-width: 600")
+
+    setters {
+      inner_split_view.collapsed: true;
+      outer_split_view.collapsed: true;
     }
   }
 }
