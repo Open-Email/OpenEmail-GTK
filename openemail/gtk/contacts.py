@@ -14,7 +14,8 @@ from openemail.profile import Profile
 from openemail.store import DictStore, People
 
 from .form import Form
-from .page import Page
+
+# from .page import Page
 from .profile_view import ProfileView
 
 if TYPE_CHECKING:
@@ -74,50 +75,51 @@ class ContactRow(Gtk.Box):
         self.context_menu.popup()
 
 
-@Gtk.Template.from_resource(f"{PREFIX}/contacts.ui")
-class Contacts(Adw.NavigationPage):
-    """A page with the contents of the user's address book."""
-
-    __gtype_name__ = __qualname__
-
-    page: Page = child
-
-    add_contact_dialog: Adw.AlertDialog = child
-    remove_contact_dialog: Adw.AlertDialog = child
-    address: Adw.EntryRow = child
-    address_form: Form = child
-
-    counter = Property(int)
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self.insert_action_group("contacts", group := Gio.SimpleActionGroup())
-        group.add_action_entries((
-            (
-                "remove",
-                lambda _action, address, _data: tasks.create(
-                    self._remove_contact(address.get_string())
-                ),
-                "s",
-            ),
-        ))
-
-    async def _remove_contact(self, address: str):
-        response = await cast("Awaitable[str]", self.remove_contact_dialog.choose(self))
-        if response == "remove":
-            await store.address_book.delete(Address(address))
-
-    @Gtk.Template.Callback()
-    def _new_contact(self, *_args):
-        self.address_form.reset()
-        self.add_contact_dialog.present(self)
-
-    @Gtk.Template.Callback()
-    def _add_contact(self, *_args):
-        with suppress(ValueError):
-            tasks.create(store.address_book.new(Address(self.address.props.text)))
-
-    @Gtk.Template.Callback()
-    def _on_selected(self, selection: Gtk.SingleSelection, *_args):
-        self.page.split_view.props.show_content = bool(selection.props.selected_item)
+#
+# @Gtk.Template.from_resource(f"{PREFIX}/contacts.ui")
+# class Contacts(Adw.NavigationPage):
+# """A page with the contents of the user's address book."""
+#
+# __gtype_name__ = __qualname__
+#
+# page: Page = child
+#
+# add_contact_dialog: Adw.AlertDialog = child
+# remove_contact_dialog: Adw.AlertDialog = child
+# address: Adw.EntryRow = child
+# address_form: Form = child
+#
+# counter = Property(int)
+#
+# def __init__(self, **kwargs: Any):
+#     super().__init__(**kwargs)
+#
+#     self.insert_action_group("contacts", group := Gio.SimpleActionGroup())
+#     group.add_action_entries((
+#         (
+#             "remove",
+#             lambda _action, address, _data: tasks.create(
+#                 self._remove_contact(address.get_string())
+#             ),
+#             "s",
+#         ),
+#     ))
+#
+# async def _remove_contact(self, address: str):
+#     response = await cast("Awaitable[str]", self.remove_contact_dialog.choose(self))
+#     if response == "remove":
+#         await store.address_book.delete(Address(address))
+#
+# @Gtk.Template.Callback()
+# def _new_contact(self, *_args):
+#     self.address_form.reset()
+#     self.add_contact_dialog.present(self)
+#
+# @Gtk.Template.Callback()
+# def _add_contact(self, *_args):
+#     with suppress(ValueError):
+#         tasks.create(store.address_book.new(Address(self.address.props.text)))
+#
+# @Gtk.Template.Callback()
+# def _on_selected(self, selection: Gtk.SingleSelection, *_args):
+#     self.page.split_view.props.show_content = bool(selection.props.selected_item)

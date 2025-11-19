@@ -482,6 +482,26 @@ class _DraftStore(MessageStore):
 drafts = _DraftStore()
 
 
+class Folders(GObject.Object):
+    """The global GObject message store. Mostly useful in a `Gtk.Builder` context."""
+
+    __gtype_name__ = __qualname__
+
+    inbox = Property(_InboxStore, default=inbox)
+    outbox = Property(_OutboxStore, default=outbox)
+    sent = Property(_SentStore, default=sent)
+    drafts = Property(_DraftStore, default=drafts)
+    broadcasts = Property(_BroadcastStore, default=broadcasts)
+    trash = Property(
+        Gtk.FlattenListModel,
+        default=flatten(
+            globals()["inbox"],
+            globals()["sent"],
+            globals()["broadcasts"],
+        ),
+    )
+
+
 async def sync(*, periodic: bool = False):
     """Populate the app's content by fetching the user's data."""
     app.notifier.syncing = True
