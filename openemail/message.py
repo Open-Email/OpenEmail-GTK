@@ -8,11 +8,12 @@ from collections.abc import AsyncGenerator, Awaitable, Iterable
 from contextlib import suppress
 from datetime import UTC, datetime
 from gettext import ngettext
-from typing import Any, Self, cast, override
+from typing import Any, Callable, Self, cast, override
 
-from gi.repository import Gdk, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 import openemail as app
+from openemail import PREFIX
 
 from . import Property, tasks
 from .core import client, messages, model
@@ -213,7 +214,7 @@ class IncomingAttachment(Attachment):
         Gio.AppInfo.launch_default_for_uri(file.get_uri())
 
 
-class Message(GObject.Object):
+class Message(Gio.SimpleActionGroup):
     """A Mail/HTTPS message."""
 
     __gtype_name__ = __qualname__
@@ -290,6 +291,22 @@ class Message(GObject.Object):
 
         self.attachments = Gio.ListStore.new(Attachment)
         self.set_from_message(msg)
+
+        template = Gtk.ConstantExpression.new_for_value(self)
+        can_mark_unread = Gtk.ClosureExpression.new(
+            bool,
+            lambda _, can_mark_unread, new: can_mark_unread and not new,
+            (
+                Gtk.PropertyExpression.new(Message, template, "can-mark-unread"),
+                Gtk.PropertyExpression.new(Message, template, "new"),
+            ),
+        )
+
+        self._add_action("read", lambda: setattr(self, "new", False), "new")
+        self._add_action("unread", lambda: setattr(self, "new", True), can_mark_unread)
+        self._add_action("trash", lambda: self.trash(notify=True), "can-trash")
+        self._add_action("restore", lambda: self.restore(notify=True), "trashed")
+        self._add_action("discard", lambda: tasks.create(self.discard()), "can-discard")
 
     def __hash__(self) -> int:
         return hash(self.unique_id) if self._msg else super().__hash__()
@@ -467,7 +484,18 @@ class Message(GObject.Object):
 
     async def discard(self):
         """Discard `self` and its children."""
-        if not self._msg:
+        if not (
+            self._msg
+            and (application := cast("Gtk.Application", Gio.Application.get_default()))
+            and (window := application.props.active_window)
+        ):
+            return
+
+        builder = Gtk.Builder.new_from_resource(f"{PREFIX}/dialogs.ui")
+        dialog = cast("Adw.AlertDialog", builder.get_object("discard_dialog"))
+
+        response = await cast("Awaitable[str]", dialog.choose(window))
+        if response != "discard":
             return
 
         # TODO: Better UX, cancellation?
@@ -499,6 +527,23 @@ class Message(GObject.Object):
         self.can_trash = not (self.can_discard or self.trashed)
         self.can_reply = self.can_discard or self.can_trash
         self.notify("trashed")
+
+    def _add_action(
+        self,
+        name: str,
+        func: Callable[..., Any],
+        bind_to: str | Gtk.Expression | None = None,
+    ):
+        action = Gio.SimpleAction.new(name)
+        action.connect("activate", lambda *_: func())
+
+        match bind_to:
+            case str():
+                Property.bind(self, bind_to, action, "enabled")
+            case Gtk.Expression():
+                bind_to.bind(action, "enabled")
+
+        self.add_action(action)
 
 
 async def send(

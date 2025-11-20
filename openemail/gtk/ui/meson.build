@@ -5,6 +5,7 @@ blueprints = custom_target(
         'compose-sheet.blp',
         'contact-row.blp',
         'contacts.blp',
+        'dialogs.blp',
         'login-view.blp',
         'message-row.blp',
         'message-view.blp',

@@ -3,12 +3,11 @@
 # SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
-from collections.abc import Awaitable, Callable
-from typing import Any, cast, override
+from typing import Any, override
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
-from openemail import PREFIX, Property, store, tasks
+from openemail import PREFIX, Property, store
 from openemail.message import Message
 from openemail.store import DictStore
 
@@ -25,75 +24,35 @@ class MessageRow(Gtk.Box):
 
     __gtype_name__ = __qualname__
 
-    message = Property(Message)
-
     context_menu = Gtk.Template.Child()
+
+    @Property[Message | None](Message)
+    def message(self) -> Message | None:
+        """The message that `self` represents."""  # noqa: D401
+        return self._message
+
+    @message.setter
+    def message(self, msg: Message | None):
+        self._message = msg
+        self.insert_action_group("message", msg)
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
-        self._action_group = Gio.SimpleActionGroup()
-        self.insert_action_group("row", self._action_group)
+        self.insert_action_group("row", group := Gio.SimpleActionGroup())
+
+        reply = Gio.SimpleAction.new("reply")
+        reply.connect("activate", lambda *_: self._reply())
 
         template = Gtk.ConstantExpression.new_for_value(self)
         message = Gtk.PropertyExpression.new(MessageRow, template, "message")
+        Gtk.PropertyExpression.new(Message, message, "can-reply").bind(reply, "enabled")
 
-        self._add_action(
-            "read",
-            lambda: self.message.set_property("new", False),
-            Gtk.PropertyExpression.new(Message, message, "new"),
-        )
-        self._add_action(
-            "unread",
-            lambda: self.message.set_property("new", True),
-            Gtk.ClosureExpression.new(
-                bool,
-                lambda _, can_mark_unread, new: can_mark_unread and not new,
-                (
-                    Gtk.PropertyExpression.new(Message, message, "can-mark-unread"),
-                    Gtk.PropertyExpression.new(Message, message, "new"),
-                ),
-            ),
-        )
-        self._add_action(
-            "reply",
-            lambda: self.activate_action(
-                "compose.reply", GLib.Variant.new_string(self.message.unique_id)
-            ),
-            Gtk.PropertyExpression.new(Message, message, "can-reply"),
-        )
-        self._add_action(
-            "trash",
-            lambda: self.message.trash(notify=True),
-            Gtk.PropertyExpression.new(Message, message, "can-trash"),
-        )
-        self._add_action(
-            "restore",
-            lambda: self.message.restore(notify=True),
-            Gtk.PropertyExpression.new(Message, message, "trashed"),
-        )
-        self._add_action(
-            "discard",
-            lambda: tasks.create(self._discard()),
-            Gtk.PropertyExpression.new(Message, message, "can-discard"),
-        )
+        group.add_action(reply)
 
-    async def _discard(self):
-        if not (outbox := self.get_ancestor(Outbox)):
-            return
-
-        response = await cast("Awaitable[str]", outbox.discard_dialog.choose(self))
-        if response == "discard":
-            await self.message.discard()
-
-    def _add_action(self, name: str, func: Callable[..., Any], expr: Gtk.Expression):
-        action = Gio.SimpleAction.new(name)
-        action.connect("activate", lambda *_: func())
-
-        if expr:
-            expr.bind(action, "enabled")
-
-        self._action_group.add_action(action)
+    def _reply(self):
+        ident = GLib.Variant.new_string(self.message.unique_id)
+        self.activate_action("compose.reply", ident)
 
     @Gtk.Template.Callback()
     def _show_context_menu(self, _gesture, _n_press: int, x: float, y: float):
@@ -203,11 +162,6 @@ class Outbox(_Folder):
 
     __gtype_name__ = __qualname__
     folder, title, subtitle = store.outbox, _("Outbox"), _("Can be discarded")
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-
-        self.discard_dialog: Adw.AlertDialog = self._get_object("discard_dialog")
 
 
 class Sent(_Folder):

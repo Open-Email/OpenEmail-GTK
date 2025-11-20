@@ -96,18 +96,18 @@ template $MessageView: Box {
       halign: end;
       valign: start;
 
-      Button {
-        visible: bind template.message as <$Message>.new;
+      Button read_button {
+        visible: bind read_button.sensitive;
         icon-name: "mail-read-symbolic";
         tooltip-text: _("Read");
-        clicked => $_read();
+        action-name: "message.read";
       }
 
-      Button {
-        visible: bind $_can_mark_unread(template.message as <$Message>.can-mark-unread, template.message as <$Message>.new) as <bool>;
+      Button unread_button {
+        visible: bind unread_button.sensitive;
         icon-name: "mail-unread-symbolic";
         tooltip-text: _("Unread");
-        clicked => $_unread();
+        action-name: "message.unread";
       }
 
       Button {
@@ -118,11 +118,11 @@ template $MessageView: Box {
         action-target: bind $_string_to_variant(template.message as <$Message>.unique-id) as <$GVariant>;
       }
 
-      Button {
-        visible: bind template.message as <$Message>.can-trash;
+      Button trash_button {
+        visible: bind trash_button.sensitive;
         icon-name: "trash-symbolic";
         tooltip-text: _("Trash");
-        clicked => $_trash();
+        action-name: "message.trash";
 
         ShortcutController {
           scope: managed;
@@ -134,11 +134,11 @@ template $MessageView: Box {
         }
       }
 
-      Button {
-        visible: bind template.message as <$Message>.trashed;
+      Button restore_button {
+        visible: bind restore_button.sensitive;
         icon-name: "restore-symbolic";
         tooltip-text: _("Restore");
-        clicked => $_restore();
+        action-name: "message.restore";
 
         ShortcutController {
           scope: managed;
@@ -150,11 +150,11 @@ template $MessageView: Box {
         }
       }
 
-      Button {
-        visible: bind template.message as <$Message>.can-discard;
+      Button discard_button {
+        visible: bind discard_button.sensitive;
         icon-name: "trash-symbolic";
         tooltip-text: _("Discard");
-        clicked => $_discard();
+        action-name: "message.discard";
 
         ShortcutController {
           scope: managed;
