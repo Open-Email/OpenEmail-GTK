@@ -3,19 +3,16 @@
 # SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Property, store, tasks
+from openemail import APP_ID, PREFIX, Property, store
 from openemail.message import Message
 
 from .attachments import Attachments
 from .body import Body
 from .profile_view import ProfileView
-
-if TYPE_CHECKING:
-    from collections.abc import Awaitable
 
 child = Gtk.Template.Child()
 
@@ -34,45 +31,26 @@ class MessageView(Gtk.Box):
     profile_dialog: Adw.Dialog = child
     profile_view: ProfileView = child
 
-    @Gtk.Template.Callback()
-    def _can_mark_unread(self, _obj, can_mark_unread: bool, new: bool) -> bool:
-        return can_mark_unread and (not new)
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
 
-    @Gtk.Template.Callback()
-    def _string_to_variant(self, _obj, string: str) -> GLib.Variant:
-        return GLib.Variant.new_string(string)
+        self.insert_action_group("message", self.message)
+        self.insert_action_group("message-view", group := Gio.SimpleActionGroup())
+
+        reply = Gio.SimpleAction.new("reply")
+        reply.connect("activate", lambda *_: self._reply())
+        Property.bind(self.message, "can-reply", reply, "enabled")
+
+        group.add_action(reply)
+
+    def _reply(self):
+        ident = GLib.Variant.new_string(self.message.unique_id)
+        self.activate_action("compose.reply", ident)
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args):
         self.profile_view.profile = self.message.profile
         self.profile_dialog.present(self)
-
-    @Gtk.Template.Callback()
-    def _read(self, *_args):
-        self.message.new = False
-
-    @Gtk.Template.Callback()
-    def _unread(self, *_args):
-        self.message.new = True
-
-    @Gtk.Template.Callback()
-    def _trash(self, *_args):
-        self.message.trash(notify=True)
-
-    @Gtk.Template.Callback()
-    def _restore(self, *_args):
-        self.message.restore(notify=True)
-
-    @tasks.callback
-    async def _discard(self, *_args):
-        from .messages import Outbox
-
-        if not (outbox := self.get_ancestor(Outbox)):
-            return
-
-        response = await cast("Awaitable[str]", outbox.discard_dialog.choose(self))
-        if response == "discard":
-            await self.message.discard()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/thread-view.ui")
