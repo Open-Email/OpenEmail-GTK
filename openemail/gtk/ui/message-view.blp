@@ -96,30 +96,26 @@ template $MessageView: Box {
       halign: end;
       valign: start;
 
-      Button read_button {
-        visible: bind read_button.sensitive;
+      $ToolbarButton {
         icon-name: "mail-read-symbolic";
         tooltip-text: _("Read");
         action-name: "message.read";
       }
 
-      Button unread_button {
-        visible: bind unread_button.sensitive;
+      $ToolbarButton {
         icon-name: "mail-unread-symbolic";
         tooltip-text: _("Unread");
         action-name: "message.unread";
       }
 
-      Button {
-        visible: bind template.message as <$Message>.can-reply;
+      $ToolbarButton {
         icon-name: "mail-reply-sender-symbolic";
         tooltip-text: _("Reply");
         action-name: "compose.reply";
         action-target: bind $_string_to_variant(template.message as <$Message>.unique-id) as <$GVariant>;
       }
 
-      Button trash_button {
-        visible: bind trash_button.sensitive;
+      $ToolbarButton {
         icon-name: "trash-symbolic";
         tooltip-text: _("Trash");
         action-name: "message.trash";
@@ -134,8 +130,7 @@ template $MessageView: Box {
         }
       }
 
-      Button restore_button {
-        visible: bind restore_button.sensitive;
+      $ToolbarButton {
         icon-name: "restore-symbolic";
         tooltip-text: _("Restore");
         action-name: "message.restore";
@@ -150,8 +145,7 @@ template $MessageView: Box {
         }
       }
 
-      Button discard_button {
-        visible: bind discard_button.sensitive;
+      $ToolbarButton {
         icon-name: "trash-symbolic";
         tooltip-text: _("Discard");
         action-name: "message.discard";
