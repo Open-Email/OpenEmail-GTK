@@ -10,6 +10,7 @@ openemail/gtk/ui/attachments-item.blp
 openemail/gtk/ui/compose-sheet.blp
 openemail/gtk/ui/contact-row.blp
 openemail/gtk/ui/contacts.blp
+openemail/gtk/ui/dialogs.blp
 openemail/gtk/ui/login-view.blp
 openemail/gtk/ui/message-row.blp
 openemail/gtk/ui/message-view.blp

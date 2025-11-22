@@ -3,24 +3,56 @@
 # SPDX-FileCopyrightText: Copyright 2025 OpenEmail SA
 # SPDX-FileContributor: kramo
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from openemail import APP_ID, PREFIX, Property, store, tasks
+from openemail import APP_ID, PREFIX, Property, store
 from openemail.message import Message
 
 from .attachments import Attachments
 from .body import Body
 from .profile_view import ProfileView
 
-if TYPE_CHECKING:
-    from collections.abc import Awaitable
-
 child = Gtk.Template.Child()
 
 for t in Attachments, Body:
     GObject.type_ensure(t)
+
+
+class ToolbarItem(GObject.Object):
+    """An item for in a toolbar."""
+
+    __gtype_name__ = __qualname__
+
+    action_name = GObject.Property(type=str)
+    label = GObject.Property(type=str)
+    icon_name = GObject.Property(type=str)
+
+
+class Toolbar(Gtk.Box, Gtk.Buildable):
+    """A container for actions."""
+
+    __gtype_name__ = __qualname__
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        self.add_css_class("toolbar")
+        self.add_css_class("card")
+
+    def do_add_child(self, _builder, child: GObject.Object, _type):
+        """Add a child to `self`."""
+        if not isinstance(child, ToolbarItem):
+            raise TypeError
+
+        button = Gtk.Button(
+            action_name=child.action_name,
+            tooltip_text=child.label,
+            icon_name=child.icon_name,
+        )
+        Property.bind(button, "sensitive", button, "visible")
+        self.append(button)
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/message-view.ui")
@@ -34,45 +66,26 @@ class MessageView(Gtk.Box):
     profile_dialog: Adw.Dialog = child
     profile_view: ProfileView = child
 
-    @Gtk.Template.Callback()
-    def _can_mark_unread(self, _obj, can_mark_unread: bool, new: bool) -> bool:
-        return can_mark_unread and (not new)
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
 
-    @Gtk.Template.Callback()
-    def _string_to_variant(self, _obj, string: str) -> GLib.Variant:
-        return GLib.Variant.new_string(string)
+        self.insert_action_group("message", self.message)
+        self.insert_action_group("message-view", group := Gio.SimpleActionGroup())
+
+        reply = Gio.SimpleAction.new("reply")
+        reply.connect("activate", lambda *_: self._reply())
+        Property.bind(self.message, "can-reply", reply, "enabled")
+
+        group.add_action(reply)
+
+    def _reply(self):
+        ident = GLib.Variant.new_string(self.message.unique_id)
+        self.activate_action("compose.reply", ident)
 
     @Gtk.Template.Callback()
     def _show_profile_dialog(self, *_args):
         self.profile_view.profile = self.message.profile
         self.profile_dialog.present(self)
-
-    @Gtk.Template.Callback()
-    def _read(self, *_args):
-        self.message.new = False
-
-    @Gtk.Template.Callback()
-    def _unread(self, *_args):
-        self.message.new = True
-
-    @Gtk.Template.Callback()
-    def _trash(self, *_args):
-        self.message.trash(notify=True)
-
-    @Gtk.Template.Callback()
-    def _restore(self, *_args):
-        self.message.restore(notify=True)
-
-    @tasks.callback
-    async def _discard(self, *_args):
-        from .messages import Outbox
-
-        if not (outbox := self.get_ancestor(Outbox)):
-            return
-
-        response = await cast("Awaitable[str]", outbox.discard_dialog.choose(self))
-        if response == "discard":
-            await self.message.discard()
 
 
 @Gtk.Template.from_resource(f"{PREFIX}/thread-view.ui")

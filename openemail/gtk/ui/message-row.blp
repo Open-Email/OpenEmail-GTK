@@ -96,17 +96,18 @@ template $MessageRow: Box {
 
   PopoverMenu context_menu {
     has-arrow: false;
+    halign: start;
 
     menu-model: menu {
       item {
         label: _("Read");
-        action: "row.read";
+        action: "message.read";
         hidden-when: "action-disabled";
       }
 
       item {
         label: _("Unread");
-        action: "row.unread";
+        action: "message.unread";
         hidden-when: "action-disabled";
       }
 
@@ -118,19 +119,19 @@ template $MessageRow: Box {
 
       item {
         label: _("Trash");
-        action: "row.trash";
+        action: "message.trash";
         hidden-when: "action-disabled";
       }
 
       item {
         label: _("Restore");
-        action: "row.restore";
+        action: "message.restore";
         hidden-when: "action-disabled";
       }
 
       item {
         label: _("Discard…");
-        action: "row.discard";
+        action: "message.discard";
         hidden-when: "action-disabled";
       }
     };
