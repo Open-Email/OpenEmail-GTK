@@ -295,9 +295,8 @@ Adw.AlertDialog confirm_send_dialog {
 $Form compose_form {
   submit-widget: send_button;
 
-  $FormField {
+  $AddressListFormField {
     field: readers;
-    type: address-list;
     active: bind $_get_readers_field_active(template.privacy) as <bool>;
   }
 
