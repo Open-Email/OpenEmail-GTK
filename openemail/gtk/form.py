@@ -5,7 +5,7 @@
 # SPDX-FileContributor: Jamie Gravendeel
 
 import re
-from typing import Any
+from typing import Any, override
 
 from gi.repository import Adw, GObject, Gtk
 
@@ -14,20 +14,10 @@ from openemail.core.model import Address
 from openemail.store import ADDRESS_SPLIT_PATTERN
 
 
-class FormFieldType(GObject.GEnum):
-    """A type of form field."""
-
-    PLAIN = 0
-    ADDRESS = 1
-    ADDRESS_LIST = 2
-
-
 class FormField(GObject.Object):
     """A field in a form."""
 
     __gtype_name__ = __qualname__
-
-    type = Property(FormFieldType, default=FormFieldType.PLAIN)
 
     active = Property(bool, default=True)
     valid = Property(bool)
@@ -35,49 +25,61 @@ class FormField(GObject.Object):
     text = Property(str)
 
     @Property(Gtk.Widget)
-    def field(self) -> Gtk.Editable | Gtk.TextView:
+    def field(self) -> Gtk.Widget:
         """The field containing the text."""
         return self._field
 
     @field.setter
-    def field(self, field: Gtk.Editable | Gtk.TextView):
+    def field(self, field: Gtk.Widget):
         self._field = field
 
         buffer = field.props.buffer if isinstance(field, Gtk.TextView) else field
-        Property.bind(buffer, "text", self, bidirectional=True)  # pyright: ignore[reportArgumentType]
+        Property.bind(buffer, "text", self, bidirectional=True)
         buffer.connect("notify::text", lambda *_: self.validate())
 
     def validate(self):
         """Validate the form field."""
-        match self.type:
-            case FormFieldType.PLAIN:
-                self.valid = bool(self.text)
-
-            case FormFieldType.ADDRESS:
-                try:
-                    Address(self.text)
-                except ValueError:
-                    self.valid = False
-                else:
-                    self.valid = True
-
-            case FormFieldType.ADDRESS_LIST:
-                if not any(addresses := re.split(ADDRESS_SPLIT_PATTERN, self.text)):
-                    self.valid = False
-                    return
-
-                try:
-                    for address in addresses:
-                        if address:
-                            Address(address)
-                except ValueError:
-                    self.valid = False
-                else:
-                    self.valid = True
+        self.valid = bool(self.text)
 
     def reset(self):
         """Reset the form field to be empty."""
         self.text = ""
+
+
+class AddressFormField(FormField):
+    """A form field for validating an address."""
+
+    __gtype_name__ = __qualname__
+
+    @override
+    def validate(self):
+        try:
+            Address(self.text)
+        except ValueError:
+            self.valid = False
+        else:
+            self.valid = True
+
+
+class AddressListFormField(FormField):
+    """A form field for validating a list of addresses."""
+
+    __gtype_name__ = __qualname__
+
+    @override
+    def validate(self):
+        try:
+            if not any(addresses := re.split(ADDRESS_SPLIT_PATTERN, self.text)):
+                raise ValueError
+
+            for address in addresses:
+                if address:
+                    Address(address)
+
+        except ValueError:
+            self.valid = False
+        else:
+            self.valid = True
 
 
 class Form(GObject.Object, Gtk.Buildable):  # pyright: ignore[reportIncompatibleMethodOverride]
