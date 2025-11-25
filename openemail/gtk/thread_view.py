@@ -20,6 +20,17 @@ for t in Attachments, Body:
     GObject.type_ensure(t)
 
 
+class ToolbarButton(Gtk.Button):
+    """A button that automatically hides if its action is disabled."""
+
+    __gtype_name__ = __qualname__
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+
+        Property.bind(self, "sensitive", self, "visible")
+
+
 @Gtk.Template.from_resource(f"{PREFIX}/message-view.ui")
 class MessageView(Gtk.Box):
     """A view displaying metadata about, and the contents of a message."""
