@@ -9,6 +9,25 @@ template $MessageView: Box {
   margin-end: 6;
   spacing: 9;
 
+  ShortcutController {
+    scope: managed;
+
+    Shortcut {
+      trigger: "Delete|KP_Delete";
+      action: "action(message.trash)";
+    }
+
+    Shortcut {
+      trigger: "Delete|KP_Delete";
+      action: "action(message.restore)";
+    }
+
+    Shortcut {
+      trigger: "Delete|KP_Delete";
+      action: "action(message.discard)";
+    }
+  }
+
   Box {
     valign: start;
     spacing: 6;
@@ -119,45 +138,18 @@ template $MessageView: Box {
         icon-name: "trash-symbolic";
         tooltip-text: _("Trash");
         action-name: "message.trash";
-
-        ShortcutController {
-          scope: managed;
-
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
-          }
-        }
       }
 
       $ToolbarButton {
         icon-name: "restore-symbolic";
         tooltip-text: _("Restore");
         action-name: "message.restore";
-
-        ShortcutController {
-          scope: managed;
-
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
-          }
-        }
       }
 
       $ToolbarButton {
         icon-name: "trash-symbolic";
         tooltip-text: _("Discard");
         action-name: "message.discard";
-
-        ShortcutController {
-          scope: managed;
-
-          Shortcut {
-            trigger: "Delete|KP_Delete";
-            action: "activate";
-          }
-        }
       }
 
       styles [
