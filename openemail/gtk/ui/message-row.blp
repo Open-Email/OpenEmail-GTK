@@ -9,7 +9,7 @@ template $MessageRow: Box {
 
   Revealer {
     transition-type: crossfade;
-    reveal-child: bind template.message as <$Message>.new;
+    reveal-child: bind template.message as <$Message>.unread;
 
     child: Image {
       valign: start;

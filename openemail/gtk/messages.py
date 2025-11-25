@@ -124,7 +124,7 @@ class _Messages(Adw.NavigationPage):
 
         self.thread_view.message = msg
         if isinstance(msg, Message):
-            msg.new = False
+            msg.unread = False
             self.page.split_view.props.show_content = True
 
 

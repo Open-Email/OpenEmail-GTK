@@ -48,7 +48,7 @@ $Page page {
 
 FilterListModel unread {
   filter: BoolFilter unread_filter {
-    expression: expr item as <$Message>.new;
+    expression: expr item as <$Message>.unread;
   };
 
   model: trashed_model;

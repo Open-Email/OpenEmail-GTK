@@ -4,11 +4,11 @@
 # SPDX-FileContributor: kramo
 
 from abc import abstractmethod
-from collections.abc import AsyncGenerator, Awaitable, Iterable
+from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable
 from contextlib import suppress
 from datetime import UTC, datetime
 from gettext import ngettext
-from typing import Any, Callable, Self, cast, override
+from typing import Any, Self, cast, override
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
@@ -253,22 +253,22 @@ class Message(Gio.SimpleActionGroup):
     _msg: model.Message | None = None
 
     @Property(bool)
-    def new(self) -> bool:
-        """Whether the message is unread."""
+    def unread(self) -> bool:
+        """Whether the message is unread by the user."""
         from . import store
 
         return self.unique_id in store.settings.get_strv("unread-messages")
 
-    @new.setter
-    def new(self, new: bool):
+    @unread.setter
+    def unread(self, unread: bool):
         if not self._msg:
             return
 
-        self._msg.new = new
+        self._msg.new = unread
 
         from . import store
 
-        if new:
+        if unread:
             store.settings_add("unread-messages", self.unique_id)
         else:
             store.settings_discard("unread-messages", self.unique_id)
@@ -293,17 +293,17 @@ class Message(Gio.SimpleActionGroup):
         self.set_from_message(msg)
 
         template = Gtk.ConstantExpression.new_for_value(self)
-        can_mark_unread = Gtk.ClosureExpression.new(
+        unread_active = Gtk.ClosureExpression.new(
             bool,
-            lambda _, can_mark_unread, new: can_mark_unread and not new,
+            lambda _, can_mark_unread, unread: can_mark_unread and not unread,
             (
                 Gtk.PropertyExpression.new(Message, template, "can-mark-unread"),
-                Gtk.PropertyExpression.new(Message, template, "new"),
+                Gtk.PropertyExpression.new(Message, template, "unread"),
             ),
         )
 
-        self._add_action("read", lambda: setattr(self, "new", False), "new")
-        self._add_action("unread", lambda: setattr(self, "new", True), can_mark_unread)
+        self._add_action("read", lambda: setattr(self, "unread", False), "unread")
+        self._add_action("unread", lambda: setattr(self, "unread", True), unread_active)
         self._add_action("trash", lambda: self.trash(notify=True), "can-trash")
         self._add_action("restore", lambda: self.restore(notify=True), "trashed")
         self._add_action("discard", lambda: tasks.create(self.discard()), "can-discard")
@@ -344,7 +344,7 @@ class Message(Gio.SimpleActionGroup):
 
         self.subject = msg.subject
         self.body = msg.body or ""
-        self.new = msg.new
+        self.unread = msg.new
         self.is_broadcast = msg.is_broadcast
 
         self.is_outgoing = msg.author == client.user.address
