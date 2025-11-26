@@ -481,6 +481,52 @@ class _DraftStore(MessageStore):
 
 drafts = _DraftStore()
 
+_trashed_msg = Gtk.PropertyExpression.new(Message, None, "trashed")
+_trashed_filter = Gtk.BoolFilter(expression=_trashed_msg)
+_not_trashed_filter = Gtk.BoolFilter(expression=_trashed_msg, invert=True)
+
+
+def _update_trashed_state(*_args):
+    for f in _trashed_filter, _not_trashed_filter:
+        f.changed(Gtk.FilterChange.DIFFERENT)
+
+
+settings.connect("changed::trashed-messages", _update_trashed_state)
+
+
+def _filtered_folder(
+    folder: Gio.ListModel, /, *, trashed: bool = False
+) -> Property[Gtk.FilterListModel]:
+    return Property(
+        Gtk.FilterListModel,
+        default=Gtk.FilterListModel.new(
+            folder, _trashed_filter if trashed else _not_trashed_filter
+        ),
+    )
+
+
+class Folders(GObject.Object):
+    """The global GObject message store. Most useful in a `Gtk.Builder` context.
+
+    Has the added benefit of filtering out trashed messages when not relevant.
+    """
+
+    __gtype_name__ = __qualname__
+
+    inbox = _filtered_folder(inbox)
+    outbox = Property(_OutboxStore, default=outbox)
+    sent = _filtered_folder(sent)
+    drafts = Property(_DraftStore, default=drafts)
+    broadcasts = _filtered_folder(broadcasts)
+    trash = _filtered_folder(
+        flatten(
+            globals()["inbox"],
+            globals()["sent"],
+            globals()["broadcasts"],
+        ),
+        trashed=True,
+    )
+
 
 async def sync(*, periodic: bool = False):
     """Populate the app's content by fetching the user's data."""
