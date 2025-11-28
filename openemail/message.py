@@ -292,13 +292,12 @@ class Message(Gio.SimpleActionGroup):
         self.attachments = Gio.ListStore.new(Attachment)
         self.set_from_message(msg)
 
-        template = Gtk.ConstantExpression.new_for_value(self)
         unread_active = Gtk.ClosureExpression.new(
             bool,
             lambda _, can_mark_unread, unread: can_mark_unread and not unread,
             (
-                Gtk.PropertyExpression.new(Message, template, "can-mark-unread"),
-                Gtk.PropertyExpression.new(Message, template, "unread"),
+                Gtk.PropertyExpression.new(Message, None, "can-mark-unread"),
+                Gtk.PropertyExpression.new(Message, None, "unread"),
             ),
         )
 
@@ -541,7 +540,7 @@ class Message(Gio.SimpleActionGroup):
             case str():
                 Property.bind(self, bind_to, action, "enabled")
             case Gtk.Expression():
-                bind_to.bind(action, "enabled")
+                bind_to.bind(action, "enabled", self)
 
         self.add_action(action)
 
