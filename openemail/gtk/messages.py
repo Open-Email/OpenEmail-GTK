@@ -44,9 +44,9 @@ class MessageRow(Gtk.Box):
         reply = Gio.SimpleAction.new("reply")
         reply.connect("activate", lambda *_: self._reply())
 
-        template = Gtk.ConstantExpression.new_for_value(self)
-        message = Gtk.PropertyExpression.new(MessageRow, template, "message")
-        Gtk.PropertyExpression.new(Message, message, "can-reply").bind(reply, "enabled")
+        message = Gtk.PropertyExpression.new(MessageRow, None, "message")
+        can_reply = Gtk.PropertyExpression.new(Message, message, "can-reply")
+        can_reply.bind(reply, "enabled", self)
 
         group.add_action(reply)
 
