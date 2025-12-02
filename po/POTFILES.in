@@ -14,7 +14,6 @@ openemail/gtk/ui/dialogs.blp
 openemail/gtk/ui/login-view.blp
 openemail/gtk/ui/message-row.blp
 openemail/gtk/ui/message-view.blp
-openemail/gtk/ui/page.blp
 openemail/gtk/ui/preferences.blp
 openemail/gtk/ui/profile-settings.blp
 openemail/gtk/ui/profile-view.blp
@@ -28,11 +27,11 @@ openemail/gtk/contacts.py
 openemail/gtk/form.py
 openemail/gtk/login_view.py
 openemail/gtk/messages.py
-openemail/gtk/page.py
 openemail/gtk/preferences.py
 openemail/gtk/profile_settings.py
 openemail/gtk/profile_view.py
 openemail/gtk/request_buttons.py
+openemail/gtk/sidebar_item.py
 openemail/gtk/thread_view.py
 openemail/gtk/window.py
 
